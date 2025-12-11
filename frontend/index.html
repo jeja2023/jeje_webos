@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JeJe WebOS</title>
+    
+    <!-- 核心样式 -->
+    <link rel="stylesheet" href="/static/css/core/variables.css">
+    <link rel="stylesheet" href="/static/css/core/reset.css">
+    <link rel="stylesheet" href="/static/css/core/utils.css">
+    
+    <!-- 组件样式 -->
+    <link rel="stylesheet" href="/static/css/components/button.css">
+    <link rel="stylesheet" href="/static/css/components/card.css">
+    <link rel="stylesheet" href="/static/css/components/form.css">
+    <link rel="stylesheet" href="/static/css/components/table.css">
+    <link rel="stylesheet" href="/static/css/components/tag.css">
+    <link rel="stylesheet" href="/static/css/components/modal.css">
+    <link rel="stylesheet" href="/static/css/components/toast.css">
+    <link rel="stylesheet" href="/static/css/components/pagination.css">
+    <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <link rel="stylesheet" href="/static/css/components/header.css">
+    
+    <!-- 页面样式 -->
+    <link rel="stylesheet" href="/static/css/pages/layout.css">
+    <link rel="stylesheet" href="/static/css/pages/login.css">
+    <link rel="stylesheet" href="/static/css/pages/dashboard.css">
+    <link rel="stylesheet" href="/static/css/pages/blog.css">
+    <link rel="stylesheet" href="/static/css/pages/notes.css">
+    <link rel="stylesheet" href="/static/css/pages/users.css">
+    <link rel="stylesheet" href="/static/css/pages/system.css">
+    <link rel="stylesheet" href="/static/css/pages/features.css">
+    <link rel="stylesheet" href="/static/css/pages/help.css">
+    </head>
+<body>
+    <div id="app">
+        <!-- 应用容器，由JS动态渲染 -->
+        <div class="loading-screen">
+            <div class="loader"></div>
+            <p>正在加载系统...</p>
+        </div>
+    </div>
+    
+    <!-- 核心脚本 -->
+    <script src="/static/js/core/config.js"></script>
+    <script src="/static/js/core/api.js"></script>
+    <script src="/static/js/core/store.js"></script>
+    <script src="/static/js/core/router.js"></script>
+    <script src="/static/js/core/component.js"></script>
+    <script src="/static/js/core/websocket.js"></script>
+    
+    <!-- 组件脚本 -->
+    <script src="/static/js/components/header.js"></script>
+    <script src="/static/js/components/sidebar.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/components/toast.js"></script>
+    
+    <!-- 页面脚本 -->
+    <script src="/static/js/pages/login.js"></script>
+    <script src="/static/js/pages/dashboard.js"></script>
+    <script src="/static/js/pages/blog.js"></script>
+    <script src="/static/js/pages/users.js"></script>
+    <script src="/static/js/pages/notes.js"></script>
+    <script src="/static/js/pages/announcement.js"></script>
+    <script src="/static/js/pages/system.js"></script>
+    <script src="/static/js/pages/roles.js"></script>
+    <script src="/static/js/pages/storage.js"></script>
+    <script src="/static/js/pages/backup.js"></script>
+    <script src="/static/js/pages/monitor.js"></script>
+    <script src="/static/js/pages/notifications.js"></script>
+    <script src="/static/js/pages/import-export.js"></script>
+    <script src="/static/js/pages/i18n.js"></script>
+    <script src="/static/js/pages/profile.js"></script>
+    <script src="/static/js/pages/help.js"></script>
+    
+    <!-- 应用入口 -->
+    <script src="/static/js/pages/app.js"></script>
+</body>
+</html>
+

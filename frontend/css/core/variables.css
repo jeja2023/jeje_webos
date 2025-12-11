@@ -1,0 +1,140 @@
+/**
+ * 核心变量定义
+ * CSS变量和主题配置
+ */
+
+:root {
+    /* 深色主题（默认） */
+    --color-bg-deep: #0a0e17;
+    --color-bg-primary: #0f1419;
+    --color-bg-secondary: #161d27;
+    --color-bg-tertiary: #1e2836;
+    --color-bg-hover: #243042;
+    
+    /* 强调色 - 青蓝渐变 */
+    --color-accent: #00d4aa;
+    --color-accent-light: #00f5c4;
+    --color-accent-dark: #00a88a;
+    --color-accent-glow: rgba(0, 212, 170, 0.3);
+    
+    /* 辅助色 */
+    --color-warning: #ffc857;
+    --color-error: #ff6b6b;
+    --color-success: #4ecdc4;
+    --color-info: #74b9ff;
+    
+    /* 文字色 */
+    --color-text-primary: #e8eaed;
+    --color-text-secondary: #9aa0a6;
+    --color-text-tertiary: #5f6368;
+    --color-text-inverse: #0a0e17;
+    
+    /* 边框 */
+    --color-border: #2d3748;
+    --color-border-light: #3d4a5c;
+    
+    /* 阴影 */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px var(--color-accent-glow);
+    
+    /* 间距 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    
+    /* 圆角 */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+    
+    /* 字体 - 使用系统字体栈，避免外部加载 */
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "Courier New", monospace;
+    
+    /* 尺寸 */
+    --header-height: 60px;
+    --sidebar-width: 240px;
+    --sidebar-collapsed: 64px;
+    
+    /* 过渡 */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s ease;
+    --transition-slow: 0.4s ease;
+}
+
+/* 浅色主题 */
+:root.theme-light {
+    --color-bg-deep: #f5f7fb;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f1f3f7;
+    --color-bg-tertiary: #e8ebf1;
+    --color-bg-hover: #e2e6ee;
+    
+    --color-accent: #0066ff;
+    --color-accent-light: #4d8dff;
+    --color-accent-dark: #004fbf;
+    --color-accent-glow: rgba(0, 102, 255, 0.2);
+    
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-success: #16a34a;
+    --color-info: #2563eb;
+    
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #4b5563;
+    --color-text-tertiary: #6b7280;
+    --color-text-inverse: #ffffff;
+    
+    --color-border: #d1d5db;
+    --color-border-light: #e5e7eb;
+    
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 16px var(--color-accent-glow);
+}
+
+/* 跟随系统（自动） */
+:root.theme-auto { }
+
+@media (prefers-color-scheme: light) {
+    :root.theme-auto {
+        --color-bg-deep: #f5f7fb;
+        --color-bg-primary: #ffffff;
+        --color-bg-secondary: #f1f3f7;
+        --color-bg-tertiary: #e8ebf1;
+        --color-bg-hover: #e2e6ee;
+        
+        --color-accent: #0066ff;
+        --color-accent-light: #4d8dff;
+        --color-accent-dark: #004fbf;
+        --color-accent-glow: rgba(0, 102, 255, 0.2);
+        
+        --color-warning: #f59e0b;
+        --color-error: #ef4444;
+        --color-success: #16a34a;
+        --color-info: #2563eb;
+        
+        --color-text-primary: #1f2937;
+        --color-text-secondary: #4b5563;
+        --color-text-tertiary: #6b7280;
+        --color-text-inverse: #ffffff;
+        
+        --color-border: #d1d5db;
+        --color-border-light: #e5e7eb;
+        
+        --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+        --shadow-glow: 0 0 16px var(--color-accent-glow);
+    }
+}
+
+

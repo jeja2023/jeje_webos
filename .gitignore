@@ -1,0 +1,136 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 环境配置
+.env
+.env.local
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# 存储目录
+storage/
+uploads/
+module_db_backups/
+assets/
+
+# 数据库
+*.db
+*.sqlite3
+
+# 编译产物
+dist/
+build/
+*.spec
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node (如果有)
+node_modules/
+package-lock.json
+yarn.lock
+
+# 临时文件和报告
+*.tmp
+*.temp
+性能优化报告.md
+离线资源检查报告.md
+
+# Docker
+.dockerignore
+
+# 状态文件
+backend/state/*.json
+!backend/state/.gitkeep
+*.json.bak
+
+# 备份文件
+*.bak
+*.backup
+*~
+
+# 敏感信息
+*.key
+*.pem
+*.cert
+*.crt
+
+# 操作系统
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# 编辑器
+*.sublime-project
+*.sublime-workspace
+.vscode/
+.idea/
+*.iml
+
+# 日志文件
+*.log
+logs/
+*.log.*
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+
+# 数据库备份
+*.sql
+*.dump
+*.tar.gz
+!docker-entrypoint.sh
+
+# Python 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# 编译文件
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# 分发文件
+dist/
+build/
+*.egg-info/
+

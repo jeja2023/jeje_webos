@@ -1,0 +1,35 @@
+"""
+通知系统数据模型
+"""
+
+from typing import Optional
+from datetime import datetime, timezone
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
+
+from core.database import Base
+
+
+class Notification(Base):
+    """通知表"""
+    __tablename__ = "sys_notifications"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id"))  # 接收用户ID
+    title: Mapped[str] = mapped_column(String(200))  # 通知标题
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 通知内容
+    type: Mapped[str] = mapped_column(String(50), default="info")  # 通知类型: info, success, warning, error
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否已读
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 阅读时间
+    action_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 操作链接
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    
+    # 索引
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+    )
+
+
+
+
+

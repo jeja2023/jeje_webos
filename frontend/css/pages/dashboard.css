@@ -1,0 +1,21 @@
+/**
+ * 仪表盘页面样式
+ */
+
+.dashboard-welcome {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-modules {
+    margin-top: var(--spacing-xl);
+}
+
+
+

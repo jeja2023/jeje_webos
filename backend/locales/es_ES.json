@@ -1,0 +1,29 @@
+{
+  "common": {
+    "success": "Éxito",
+    "error": "Error",
+    "warning": "Advertencia",
+    "info": "Información",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "no_data": "Sin datos"
+  },
+  "auth": {
+    "login_success": "Inicio de sesión exitoso",
+    "login_failed": "Error de inicio de sesión",
+    "logout_success": "Cierre de sesión exitoso",
+    "unauthorized": "No autorizado",
+    "forbidden": "Prohibido"
+  },
+  "user": {
+    "user_created": "Usuario creado correctamente",
+    "user_updated": "Usuario actualizado correctamente",
+    "user_deleted": "Usuario eliminado correctamente"
+  }
+}
