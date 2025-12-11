@@ -5,6 +5,8 @@
 class StoragePage extends Component {
     constructor(container) {
         super(container);
+        const user = Store.get('user');
+        this.isAdmin = user?.role === 'admin';
         this.state = {
             files: [],
             total: 0,
@@ -21,10 +23,10 @@ class StoragePage extends Component {
         const { page, size, search } = this.state;
         try {
             const res = await StorageApi.list({ page, size, search: search || undefined });
-            this.setState({ 
-                files: res.data?.items || res.items || [], 
-                total: res.data?.total || res.total || 0, 
-                loading: false 
+            this.setState({
+                files: res.data?.items || res.items || [],
+                total: res.data?.total || res.total || 0,
+                loading: false
             });
         } catch (e) {
             Toast.error('加载文件列表失败');
@@ -56,6 +58,11 @@ class StoragePage extends Component {
                 Toast.error(e.message || '删除失败');
             }
         });
+    }
+
+    handleExport() {
+        const token = Store.get('token');
+        window.open(`/api/v1/export/files?token=${token}&format=xlsx`, '_blank');
     }
 
     handleDownload(fileId) {
@@ -109,6 +116,11 @@ class StoragePage extends Component {
                             <button class="btn btn-primary" id="uploadBtn" ${uploading ? 'disabled' : ''}>
                                 ${uploading ? '上传中...' : '📤 上传文件'}
                             </button>
+                            ${this.isAdmin ? `
+                                <button class="btn btn-secondary" id="exportFilesBtn">
+                                    📤 导出列表
+                                </button>
+                            ` : ''}
                             <div style="flex: 1; display: flex; gap: 8px;">
                                 <input type="text" class="form-input" id="searchInput" 
                                        placeholder="搜索文件名..." value="${Utils.escapeHtml(search)}"
@@ -181,6 +193,13 @@ class StoragePage extends Component {
             this.delegate('click', '#uploadBtn', () => {
                 this.$('#fileInput')?.click();
             });
+
+            // 导出按钮
+            if (this.isAdmin) {
+                this.delegate('click', '#exportFilesBtn', () => {
+                    this.handleExport();
+                });
+            }
 
             // 文件选择
             this.delegate('change', '#fileInput', (e) => {

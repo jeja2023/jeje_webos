@@ -32,10 +32,10 @@ class SidebarComponent extends Component {
     toggleMenu(menuId) {
         const expanded = { ...this.state.expandedMenus };
         const collapsed = { ...this.state.collapsedMenus };
-        
+
         // 检查当前是否展开（包括手动展开或因活动子项自动展开）
         const isCurrentlyExpanded = expanded[menuId] || (!collapsed[menuId] && this.hasActiveChild(menuId));
-        
+
         if (isCurrentlyExpanded) {
             // 折叠：标记为手动折叠
             delete expanded[menuId];
@@ -45,10 +45,10 @@ class SidebarComponent extends Component {
             expanded[menuId] = true;
             delete collapsed[menuId];
         }
-        
+
         this.setState({ expandedMenus: expanded, collapsedMenus: collapsed });
     }
-    
+
     hasActiveChild(menuId) {
         // 根据 menuId 查找对应的菜单项，检查是否有活动子项
         const findMenu = (menus) => {
@@ -62,10 +62,10 @@ class SidebarComponent extends Component {
             }
             return null;
         };
-        
+
         const menu = findMenu(this.getAllMenus());
         if (!menu || !menu.children) return false;
-        
+
         return menu.children.some(child => {
             if (child.path && this.isActive(child.path)) return true;
             if (child.children) {
@@ -74,27 +74,37 @@ class SidebarComponent extends Component {
             return false;
         });
     }
-    
+
     getAllMenus() {
         const { menus } = this.state;
         const user = Store.get('user');
         const isSuperAdmin = user?.role === 'admin';
         const isManager = user?.role === 'manager';
-        
+
         const defaultMenus = [
             { module: 'dashboard', title: '仪表盘', icon: '📊', path: '/dashboard' }
         ];
-        
+
+        // 将模块菜单中“意见建议”放到功能模块最下面，且排在“笔记”之后
+        const orderedMenus = [...menus].sort((a, b) => {
+            const rank = (m, idx) => {
+                if (m?.module === 'feedback') return 10000; // 最底部
+                if (m?.module === 'notes') return 9000;     // 保证在反馈之上
+                return idx; // 其他保持原有顺序（相对稳定）
+            };
+            return rank(a, menus.indexOf(a)) - rank(b, menus.indexOf(b));
+        });
+
         // 简化：返回完整菜单列表用于查找
-        return [...defaultMenus, ...menus, ...this.getAdminMenus(isSuperAdmin, isManager)];
+        return [...defaultMenus, ...orderedMenus, ...this.getAdminMenus(isSuperAdmin, isManager)];
     }
-    
+
     getAdminMenus(isSuperAdmin, isManager) {
         if (isSuperAdmin) {
             return [{
                 module: 'system',
                 title: '系统管理',
-                icon: '⚙️',
+                icon: '🧰',
                 children: [
                     {
                         title: '用户与权限',
@@ -102,40 +112,39 @@ class SidebarComponent extends Component {
                         children: [
                             { title: '用户列表', icon: '📋', path: '/users/list' },
                             { title: '待审核用户', icon: '⏳', path: '/users/pending' },
-                            { title: '用户组', icon: '🧰', path: '/system/roles' },
+                            { title: '用户组', icon: '🛡️', path: '/system/roles' },
                         ]
                     },
                     {
                         title: '系统与运维',
-                        icon: '🛠️',
+                        icon: '🖥️',
                         children: [
-                            { title: '系统设置', icon: '🛠️', path: '/system/settings' },
+                            { title: '系统设置', icon: '⚙️', path: '/system/settings' },
                             { title: '系统日志', icon: '📜', path: '/system/audit' },
                             { title: '系统监控', icon: '📈', path: '/system/monitor' },
-                            { title: '数据报表', icon: '📊', path: '/system/report' },
                             { title: '数据备份', icon: '💾', path: '/system/backup' },
                             { title: '文件存储', icon: '📁', path: '/system/storage' },
                         ]
                     },
                     {
                         title: '通知与公告',
-                        icon: '🔔',
+                        icon: '📬',
                         children: [
                             { title: '通知管理', icon: '🔔', path: '/notifications' },
                             { title: '公告管理', icon: '📢', path: '/announcement/list' },
                         ]
                     },
-                    { title: '语言设置', icon: '🌍', path: '/system/i18n' },
+
                     { title: '应用中心', icon: '🧩', path: '/system/apps' },
                 ]
             }];
         }
-        
+
         if (isManager) {
             return [{
                 module: 'system',
                 title: '系统管理',
-                icon: '⚙️',
+                icon: '🧰',
                 children: [
                     {
                         title: '用户与权限',
@@ -143,12 +152,12 @@ class SidebarComponent extends Component {
                         children: [
                             { title: '用户列表', icon: '📋', path: '/users/list' },
                             { title: '待审核用户', icon: '⏳', path: '/users/pending' },
-                            { title: '用户组', icon: '🧰', path: '/system/roles' },
+                            { title: '用户组', icon: '🛡️', path: '/system/roles' },
                         ]
                     },
                     {
                         title: '通知与公告',
-                        icon: '🔔',
+                        icon: '📬',
                         children: [
                             { title: '通知管理', icon: '🔔', path: '/notifications' },
                             { title: '公告管理', icon: '📢', path: '/announcement/list' },
@@ -158,7 +167,7 @@ class SidebarComponent extends Component {
                 ]
             }];
         }
-        
+
         return [];
     }
 
@@ -204,10 +213,10 @@ class SidebarComponent extends Component {
                 }
                 return false;
             });
-            
+
             // 展开逻辑：用户手动展开 或 (有活动子项 且 用户未手动折叠)
             const isExpanded = expandedMenus[key] || (hasActiveChild && !collapsedMenus[key]);
-            
+
             return `
                 <div class="nav-item nav-parent${isExpanded ? ' expanded' : ''}" 
                      data-menu="${key}">

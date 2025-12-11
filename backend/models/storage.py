@@ -3,7 +3,7 @@
 """
 
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
 
@@ -21,10 +21,10 @@ class FileRecord(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # MIME 类型
     uploader_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sys_users.id"), nullable=True)  # 上传者ID
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 文件描述
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     
     # 索引
     __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '文件存储记录表'},
     )
 

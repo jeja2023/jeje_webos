@@ -3,7 +3,7 @@
 表名遵循隔离协议：blog_前缀
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,20 +14,20 @@ from core.database import Base
 class BlogCategory(Base):
     """博客分类"""
     __tablename__ = "blog_categories"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True, "comment": "博客分类表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     slug: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class BlogPost(Base):
     """博客文章"""
     __tablename__ = "blog_posts"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True, "comment": "博客文章表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(200))
@@ -56,27 +56,25 @@ class BlogPost(Base):
     
     # 时间
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class BlogTag(Base):
     """博客标签"""
     __tablename__ = "blog_tags"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True, "comment": "博客标签表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(30), unique=True)
     slug: Mapped[str] = mapped_column(String(30), unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class BlogPostTag(Base):
     """文章标签关联"""
     __tablename__ = "blog_post_tags"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True, "comment": "文章与标签关联表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     post_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_posts.id", ondelete="CASCADE"))

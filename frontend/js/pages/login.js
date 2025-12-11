@@ -48,9 +48,17 @@ class LoginPage extends Component {
                 return;
             }
 
-            // 密码强度验证
-            if (password.length < 6) {
-                this.setState({ error: '密码长度至少6位' });
+            // 密码强度验证（与后端一致：≥8，含大小写、数字、特殊字符）
+            if (password.length < 8) {
+                this.setState({ error: '密码长度至少8位' });
+                return;
+            }
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasDigit = /\d/.test(password);
+            const hasSpecial = /[!@#$%^&*]/.test(password);
+            if (!hasUpper || !hasLower || !hasDigit || !hasSpecial) {
+                this.setState({ error: '密码需包含大写、小写、数字和特殊字符(!@#$%^&*)' });
                 return;
             }
 
@@ -121,7 +129,7 @@ class LoginPage extends Component {
                                 <div class="form-group">
                                     <label class="form-label">用户名</label>
                                     <input type="text" name="username" class="form-input" 
-                                           placeholder="请输入用户名" required>
+                                           placeholder="请输入用户名" autocomplete="username" required>
                                 </div>
                                 
                                 ${!isLogin ? `
@@ -136,15 +144,15 @@ class LoginPage extends Component {
                                 <div class="form-group">
                                     <label class="form-label">密码</label>
                                     <input type="password" name="password" class="form-input" 
-                                           placeholder="${isLogin ? '请输入密码' : '请输入密码（至少6位）'}" 
-                                           minlength="6" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required>
+                                           placeholder="${isLogin ? '请输入密码' : '至少8位，含大写/小写/数字/特殊字符'}" 
+                                           minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required>
                                 </div>
                                 
                                 ${!isLogin ? `
                                     <div class="form-group">
                                         <label class="form-label">确认密码</label>
                                         <input type="password" name="confirm_password" class="form-input" 
-                                               placeholder="请再次输入密码" minlength="6" 
+                                               placeholder="请再次输入密码" minlength="8" 
                                                autocomplete="new-password" required>
                                     </div>
                                 ` : ''}

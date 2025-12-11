@@ -331,6 +331,54 @@ class JWTRotator:
             logger.warning(f"无法检查.env文件修改时间: {e}")
         
         return False
+    
+    def should_cleanup(self) -> bool:
+        """
+        检查是否应该清理旧密钥
+        
+        策略：
+        1. 如果不存在旧密钥，无需清理
+        2. 检查轮换时间戳，如果已超过 Token 最大有效期（jwt_expire_minutes），则清理
+        
+        Returns:
+            是否应该清理旧密钥
+        """
+        settings = get_settings()
+        
+        # 检查是否存在旧密钥
+        if not settings.jwt_secret_old:
+            return False
+        
+        # 读取轮换时间戳
+        try:
+            _, config = self.read_env_file()
+            rotate_timestamp_str = config.get("JWT_ROTATE_TIMESTAMP", "").strip()
+            
+            if not rotate_timestamp_str:
+                # 没有轮换时间戳，使用文件修改时间作为后备
+                env_mtime = self.env_path.stat().st_mtime
+                rotate_time = datetime.fromtimestamp(env_mtime)
+            else:
+                rotate_time = datetime.fromisoformat(rotate_timestamp_str)
+            
+            # 计算过渡期（Token 最大有效期）
+            transition_minutes = settings.jwt_expire_minutes  # 默认 7 天 = 10080 分钟
+            transition_end = rotate_time + timedelta(minutes=transition_minutes)
+            
+            now = datetime.now()
+            if now >= transition_end:
+                days_passed = (now - rotate_time).days
+                logger.info(f"旧密钥过渡期已结束，距轮换已过 {days_passed} 天，可以清理")
+                return True
+            else:
+                remaining = transition_end - now
+                hours_remaining = remaining.total_seconds() / 3600
+                logger.debug(f"旧密钥过渡期未结束，还需等待 {hours_remaining:.1f} 小时")
+                return False
+                
+        except Exception as e:
+            logger.warning(f"检查清理条件失败: {e}")
+            return False
 
 
 # 全局轮换器实例

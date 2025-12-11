@@ -3,7 +3,7 @@
 """
 
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, DateTime, Enum as SQLEnum
 import enum
@@ -39,13 +39,13 @@ class BackupRecord(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 备份描述
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 错误信息
     created_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 创建者ID
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 开始时间
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 完成时间
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 开始时间
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 完成时间
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     
     # 索引
     __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统备份记录表'},
     )
 
 

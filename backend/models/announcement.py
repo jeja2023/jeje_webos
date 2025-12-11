@@ -3,7 +3,7 @@
 """
 
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
 
@@ -27,19 +27,19 @@ class Announcement(Base):
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否置顶
     
     # 有效期
-    start_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 开始时间
-    end_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 结束时间
+    start_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 开始时间
+    end_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 结束时间
     
     # 统计
     views: Mapped[int] = mapped_column(Integer, default=0)  # 浏览次数
     
     # 时间
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 索引
     __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统公告表'},
     )
 
 

@@ -278,11 +278,119 @@ async def system_stats(
     module_count = len(loader.modules) if loader else 0
     
     settings = get_settings()
-    return success({
+    
+    # 基础统计（所有用户可见）
+    stats = {
         "users": users,
         "modules": module_count,
         "version": settings.app_version
-    })
+    }
+    
+    # 管理员额外统计
+    if current_user.role in ["admin", "manager"]:
+        # 待审核用户数
+        pending_result = await db.execute(
+            select(func.count()).select_from(User).where(User.is_active == False)
+        )
+        pending_users = pending_result.scalar() or 0
+        stats["pending_users"] = pending_users
+        
+        # 待处理反馈数（如果反馈模块可用）
+        try:
+            from sqlalchemy import text
+            feedback_result = await db.execute(
+                text("SELECT COUNT(*) FROM feedback_feedback WHERE status = 'pending'")
+            )
+            pending_feedback = feedback_result.scalar() or 0
+            stats["pending_feedback"] = pending_feedback
+        except Exception:
+            stats["pending_feedback"] = 0
+        
+        # 系统健康状态
+        health = {
+            "database": "ok",
+            "redis": "unknown"
+        }
+        
+        # 检查 Redis
+        try:
+            from core.cache import _redis_client
+            if _redis_client:
+                await _redis_client.ping()
+                health["redis"] = "ok"
+            else:
+                health["redis"] = "disabled"
+        except Exception:
+            health["redis"] = "error"
+        
+        stats["health"] = health
+    
+    # 普通用户统计（所有已登录用户可见）
+    else:
+        user_stats = {}
+        
+        # 笔记数量
+        try:
+            from sqlalchemy import text
+            notes_result = await db.execute(
+                text("SELECT COUNT(*) FROM notes_notes WHERE user_id = :uid"),
+                {"uid": current_user.user_id}
+            )
+            user_stats["notes_count"] = notes_result.scalar() or 0
+        except Exception:
+            user_stats["notes_count"] = 0
+        
+        # 博客数量（如果博客模块可用）
+        try:
+            blogs_result = await db.execute(
+                text("SELECT COUNT(*) FROM blog_posts WHERE author_id = :uid"),
+                {"uid": current_user.user_id}
+            )
+            user_stats["blogs_count"] = blogs_result.scalar() or 0
+        except Exception:
+            user_stats["blogs_count"] = 0
+        
+        # 最近收藏的笔记
+        try:
+            starred_result = await db.execute(
+                text("""
+                    SELECT id, title, updated_at 
+                    FROM notes_notes 
+                    WHERE user_id = :uid AND is_starred = 1 
+                    ORDER BY updated_at DESC 
+                    LIMIT 5
+                """),
+                {"uid": current_user.user_id}
+            )
+            user_stats["recent_starred"] = [
+                {"id": row[0], "title": row[1], "updated_at": row[2].isoformat() if row[2] else None}
+                for row in starred_result.fetchall()
+            ]
+        except Exception:
+            user_stats["recent_starred"] = []
+        
+        # 最近浏览的内容（基于笔记更新时间，因为没有单独的浏览记录表）
+        try:
+            recent_result = await db.execute(
+                text("""
+                    SELECT id, title, updated_at 
+                    FROM notes_notes 
+                    WHERE user_id = :uid 
+                    ORDER BY updated_at DESC 
+                    LIMIT 5
+                """),
+                {"uid": current_user.user_id}
+            )
+            user_stats["recent_notes"] = [
+                {"id": row[0], "title": row[1], "updated_at": row[2].isoformat() if row[2] else None}
+                for row in recent_result.fetchall()
+            ]
+        except Exception:
+            user_stats["recent_notes"] = []
+        
+        stats["user_stats"] = user_stats
+    
+    return success(stats)
 
 
 @router.get("/health")

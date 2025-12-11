@@ -6,13 +6,13 @@
 import os
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from core.database import get_db
-from core.security import get_current_user, TokenData, require_permission
+from core.security import get_current_user, TokenData, require_permission, decode_token
 from models.storage import FileRecord
 from models.account import User
 from schemas.storage import FileInfo, FileUploadResponse, FileListResponse
@@ -22,6 +22,18 @@ from core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/storage", tags=["文件存储"])
 settings = get_settings()
+
+
+def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
+    """从URL参数获取Token并验证"""
+    if not token:
+        raise HTTPException(status_code=401, detail="未认证")
+    
+    token_data = decode_token(token)
+    if not token_data:
+        raise HTTPException(status_code=401, detail="无效的令牌")
+    
+    return token_data
 
 
 @router.post("/upload")
@@ -99,7 +111,7 @@ async def upload_file(
 @router.get("/download/{file_id}")
 async def download_file(
     file_id: int,
-    current_user: TokenData = Depends(get_current_user),
+    token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -107,6 +119,9 @@ async def download_file(
     
     需要权限：storage.download
     """
+    # 验证 Token
+    current_user = get_user_from_token(token)
+
     # 权限检查
     if not (current_user.permissions and ("*" in current_user.permissions or "storage.download" in current_user.permissions)):
         raise HTTPException(status_code=403, detail="无权下载文件")

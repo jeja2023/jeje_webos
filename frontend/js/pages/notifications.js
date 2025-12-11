@@ -112,6 +112,11 @@ class NotificationsPage extends Component {
         }
     }
 
+    handleExport() {
+        const token = Store.get('token');
+        window.open(`/api/v1/export/notifications?token=${token}&format=xlsx`, '_blank');
+    }
+
     async showSendNotificationModal() {
         if (!this.isAdmin) return;
 
@@ -224,9 +229,14 @@ class NotificationsPage extends Component {
                         <p class="page-desc">查看和管理系统通知</p>
                     </div>
                     ${this.isAdmin ? `
-                        <button class="btn btn-primary" id="openSendNotifModal">
-                            📤 发送通知
-                        </button>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-primary" id="openSendNotifModal">
+                                📤 发送通知
+                            </button>
+                            <button class="btn btn-secondary" id="exportNotifBtn">
+                                📤 导出列表
+                            </button>
+                        </div>
                     ` : ''}
                 </div>
 
@@ -341,6 +351,9 @@ class NotificationsPage extends Component {
             if (this.isAdmin) {
                 this.delegate('click', '#openSendNotifModal', () => {
                     this.showSendNotificationModal();
+                });
+                this.delegate('click', '#exportNotifBtn', () => {
+                    this.handleExport();
                 });
             }
         }

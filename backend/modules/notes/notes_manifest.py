@@ -10,14 +10,14 @@ manifest = ModuleManifest(
     name="笔记",
     version="1.0.0",
     description="支持无限层级目录的个人笔记管理",
-    icon="📝",
+    icon="📒",
     author="JeJe",
     
     router_prefix="/api/v1/notes",
     
     menu={
         "title": "笔记",
-        "icon": "📝",
+        "icon": "📒",
         "path": "/notes",
         "order": 2,
         "children": [

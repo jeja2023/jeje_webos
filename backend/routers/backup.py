@@ -6,14 +6,14 @@
 import logging
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pathlib import Path
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from core.database import get_db
-from core.security import require_admin, TokenData
+from core.security import require_admin, TokenData, decode_token
 from models.backup import BackupRecord, BackupType, BackupStatus
 from schemas.backup import BackupInfo, BackupCreate, BackupRestore, BackupListResponse
 from schemas.response import success
@@ -21,6 +21,20 @@ from utils.backup import get_backup_manager
 
 router = APIRouter(prefix="/api/v1/backup", tags=["数据备份"])
 logger = logging.getLogger(__name__)
+
+def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
+    """从URL参数获取Token并验证管理员权限"""
+    if not token:
+        raise HTTPException(status_code=401, detail="未认证")
+    
+    token_data = decode_token(token)
+    if not token_data:
+        raise HTTPException(status_code=401, detail="无效的令牌")
+    
+    if token_data.role != "admin":
+        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
+    
+    return token_data
 
 
 def execute_backup_task_sync(backup_id: int, backup_type: str):
@@ -306,9 +320,16 @@ async def delete_backup(
 async def download_backup(
     backup_id: int,
     file_index: int = 0,
-    current_user: TokenData = Depends(require_admin()),
+    token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    下载备份文件
+    
+    仅系统管理员可访问（通过URL Token验证）
+    """
+    # 验证 Token
+    current_user = get_user_from_token(token)
     """
     下载备份文件
     

@@ -107,12 +107,20 @@ const App = {
                 Toast.error('笔记模块已禁用');
                 return '/dashboard';
             }
+            if (checkDisabled('/api/v1/feedback') && path.startsWith('/feedback')) {
+                Toast.error('意见建议模块已禁用');
+                return '/dashboard';
+            }
             if (path.startsWith('/blog') && !hasModulePerm('blog')) {
                 Toast.error('无权访问博客模块');
                 return '/dashboard';
             }
             if (path.startsWith('/notes') && !hasModulePerm('notes')) {
                 Toast.error('无权访问笔记模块');
+                return '/dashboard';
+            }
+            if (path.startsWith('/feedback') && !hasModulePerm('feedback')) {
+                Toast.error('无权访问意见建议模块');
                 return '/dashboard';
             }
 
@@ -128,7 +136,7 @@ const App = {
                 { match: (p) => p.startsWith('/system/backup'), allowRoles: ['admin'], msg: '无权访问数据备份' },
                 { match: (p) => p.startsWith('/system/report'), allowRoles: ['admin'], msg: '无权访问数据报表' },
                 { match: (p) => p.startsWith('/system/import-export'), allowRoles: ['admin'], msg: '无权访问数据报表' },
-                { match: (p) => p.startsWith('/system/i18n'), allowRoles: ['admin'], msg: '无权访问语言设置' },
+
             ];
             for (const item of systemRoutePerms) {
                 if (item.match(path) && !item.allowRoles.includes(user.role)) {
@@ -362,15 +370,7 @@ const App = {
                     this.header.setBreadcrumb(['系统', '文件存储']);
                 }
             },
-            '/system/i18n': {
-                auth: true,
-                handler: () => {
-                    this.renderLayout();
-                    const page = new I18nSettingsPage(this.content);
-                    page.mount();
-                    this.header.setBreadcrumb(['系统', '语言设置']);
-                }
-            },
+
 
             '/notifications': {
                 auth: true,
@@ -483,6 +483,48 @@ const App = {
                     const page = new NotesTagsPage(this.content);
                     page.mount();
                     this.header.setBreadcrumb(['笔记', '标签管理']);
+                }
+            },
+
+            // 意见建议模块
+            '/feedback': {
+                auth: true,
+                handler: () => Router.replace('/feedback/my')
+            },
+            '/feedback/my': {
+                auth: true,
+                handler: () => {
+                    this.renderLayout();
+                    const page = new FeedbackListPage(this.content);
+                    page.mount();
+                    this.header.setBreadcrumb(['意见建议', '我的反馈']);
+                }
+            },
+            '/feedback/create': {
+                auth: true,
+                handler: () => {
+                    this.renderLayout();
+                    const page = new FeedbackCreatePage(this.content);
+                    page.mount();
+                    this.header.setBreadcrumb(['意见建议', '提交反馈']);
+                }
+            },
+            '/feedback/admin': {
+                auth: true,
+                handler: () => {
+                    this.renderLayout();
+                    const page = new FeedbackAdminPage(this.content);
+                    page.mount();
+                    this.header.setBreadcrumb(['意见建议', '反馈管理']);
+                }
+            },
+            '/feedback/view/:id': {
+                auth: true,
+                handler: ({ params }) => {
+                    this.renderLayout();
+                    const page = new FeedbackDetailPage(this.content, params.id);
+                    page.mount();
+                    this.header.setBreadcrumb(['意见建议', '反馈详情']);
                 }
             }
         });

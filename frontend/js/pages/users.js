@@ -26,18 +26,19 @@ class UserListPage extends Component {
         this._toggling = {};
         this._deleting = {};
         this._permsModalOpen = false;
+        this._handlers = {};
     }
-    
+
     // 批量导入用户
     async handleImportUsers(file) {
         if (!file) return;
-        
+
         this.setState({ importing: true, importResult: null });
         try {
             const res = await ExportApi.importUsers(file);
             const result = res.data || res;
-            this.setState({ 
-                importing: false, 
+            this.setState({
+                importing: false,
                 importResult: {
                     success: true,
                     total: result.total || 0,
@@ -50,8 +51,8 @@ class UserListPage extends Component {
             // 刷新用户列表
             this.loadData();
         } catch (e) {
-            this.setState({ 
-                importing: false, 
+            this.setState({
+                importing: false,
                 importResult: {
                     success: false,
                     message: e.message || '导入失败'
@@ -60,29 +61,29 @@ class UserListPage extends Component {
             Toast.error(e.message || '导入失败');
         }
     }
-    
+
     // 显示导入对话框
     showImportModal() {
         const content = `
             <div style="display:grid;gap:16px;">
                 <div>
-                    <input type="file" id="importUserFile" accept=".csv,.json,.xlsx,.xls" style="display:none;">
+                    <input type="file" id="importUserFile" accept=".xlsx,.xls" style="display:none;">
                     <div class="upload-area-compact" id="uploadUserArea" style="padding:40px 20px;border:2px dashed var(--border-color);border-radius:12px;text-align:center;cursor:pointer;">
                         <div style="font-size:36px;margin-bottom:8px;">📄</div>
-                        <div>点击或拖放文件</div>
-                        <small style="color:var(--text-secondary);">支持 Excel、CSV、JSON</small>
+                        <div>点击或拖放 Excel 文件</div>
+                        <small style="color:var(--text-secondary);">支持 .xlsx, .xls 格式</small>
                     </div>
                 </div>
                 <div style="background:var(--bg-secondary);padding:12px 16px;border-radius:8px;">
                     <div style="font-weight:500;margin-bottom:8px;">📋 导入说明</div>
                     <ul style="margin:0;padding-left:20px;color:var(--text-secondary);font-size:13px;line-height:1.8;">
-                        <li><b>用户名</b>（必填）：username 或 用户名</li>
-                        <li><b>密码</b>（可选）：password 或 密码，默认 123456</li>
-                        <li><b>手机号</b>（可选）：phone 或 手机号</li>
+                        <li><b>用户名</b>（必填）：username 或 用户名，需唯一</li>
+                        <li><b>手机号</b>（必填）：phone 或 手机号，11位手机号码</li>
                         <li><b>昵称</b>（可选）：nickname 或 昵称</li>
                         <li><b>角色</b>（可选）：role 或 角色，默认 guest</li>
-                        <li>已存在的用户名会被跳过</li>
-                        <li>新用户默认为<b>未激活</b>状态，需审核</li>
+                        <li><b>是否激活</b>（可选）：is_active，默认未激活需审核</li>
+                        <li style="margin-top:8px;">💡 密码将使用默认密码 <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
+                        <li>已存在的用户名或手机号会被跳过</li>
                     </ul>
                 </div>
                 <div id="importProgress" style="display:none;">
@@ -94,29 +95,29 @@ class UserListPage extends Component {
                 <div id="importResultBox"></div>
             </div>
         `;
-        
+
         const { overlay, close } = Modal.show({
             title: '📥 批量导入用户',
             content,
-            footer: `<button class="btn btn-secondary" data-close>关闭</button>`,
+            footer: `<button class="btn btn-secondary" data-action="cancel">关闭</button>`,
             width: '500px'
         });
-        
+
         const fileInput = overlay.querySelector('#importUserFile');
         const uploadArea = overlay.querySelector('#uploadUserArea');
         const progressBox = overlay.querySelector('#importProgress');
         const resultBox = overlay.querySelector('#importResultBox');
-        
+
         const handleFile = async (file) => {
             if (!file) return;
-            
+
             progressBox.style.display = 'block';
             resultBox.innerHTML = '';
-            
+
             try {
                 const res = await ExportApi.importUsers(file);
                 const result = res.data || res;
-                
+
                 progressBox.style.display = 'none';
                 resultBox.innerHTML = `
                     <div style="padding:12px;background:rgba(34,197,94,0.1);border-radius:8px;color:var(--color-success);">
@@ -132,7 +133,7 @@ class UserListPage extends Component {
                         ` : ''}
                     </div>
                 `;
-                
+
                 Toast.success(`导入完成：成功 ${result.imported || 0} 条`);
                 this.loadData();
             } catch (e) {
@@ -144,25 +145,25 @@ class UserListPage extends Component {
                 `;
             }
         };
-        
+
         uploadArea.addEventListener('click', () => fileInput.click());
-        
+
         fileInput.addEventListener('change', (e) => {
             handleFile(e.target.files[0]);
             e.target.value = '';
         });
-        
+
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.style.borderColor = 'var(--color-primary)';
             uploadArea.style.background = 'var(--bg-secondary)';
         });
-        
+
         uploadArea.addEventListener('dragleave', () => {
             uploadArea.style.borderColor = 'var(--border-color)';
             uploadArea.style.background = '';
         });
-        
+
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.style.borderColor = 'var(--border-color)';
@@ -170,16 +171,16 @@ class UserListPage extends Component {
             handleFile(e.dataTransfer.files[0]);
         });
     }
-    
+
     async loadData() {
         this.setState({ loading: true });
-        
+
         try {
             const params = {
                 page: this.state.page,
                 size: this.state.size
             };
-            
+
             if (this.state.filters.role) {
                 params.role = this.state.filters.role;
             }
@@ -189,7 +190,7 @@ class UserListPage extends Component {
             if (this.state.filters.keyword) {
                 params.keyword = this.state.filters.keyword;
             }
-            
+
             const [usersRes, groupsRes] = await Promise.all([
                 UserApi.getUsers(params),
                 GroupApi.list().catch(() => ({ data: [] }))
@@ -205,18 +206,19 @@ class UserListPage extends Component {
             this.setState({ loading: false });
         }
     }
-    
+
     changePage(page) {
         this.state.page = page;
         this.loadData();
     }
-    
+
     handleFilter(key, value) {
-        this.state.filters[key] = value;
-        this.state.page = 1; // 重置到第一页
+        // 直接更新状态对象（不使用回调函数，因为Component.setState不支持）
+        this.state.filters = { ...this.state.filters, [key]: value };
+        this.state.page = 1;
         this.loadData();
     }
-    
+
     async handleAudit(userId, isActive) {
         // 防止重复调用
         const key = `audit_${userId}_${isActive}`;
@@ -227,17 +229,17 @@ class UserListPage extends Component {
             this._auditing = {};
         }
         this._auditing[key] = true;
-        
+
         try {
             const action = isActive ? '通过' : '拒绝';
             const reason = await Modal.prompt(`审核${action}`, `请输入审核备注（可选）`);
-            
+
             // 如果用户取消，reason 为 null
             if (reason === null) {
                 delete this._auditing[key];
                 return;
             }
-            
+
             await UserApi.auditUser(userId, {
                 is_active: isActive,
                 reason: reason || null
@@ -250,7 +252,7 @@ class UserListPage extends Component {
             delete this._auditing[key];
         }
     }
-    
+
     async handleToggleStatus(userId, currentStatus) {
         // 防止重复调用
         const key = `toggle_${userId}`;
@@ -261,7 +263,7 @@ class UserListPage extends Component {
             this._toggling = {};
         }
         this._toggling[key] = true;
-        
+
         const action = currentStatus ? '禁用' : '启用';
         Modal.confirm(`${action}用户`, `确定要${action}此用户吗？`, async () => {
             try {
@@ -278,7 +280,7 @@ class UserListPage extends Component {
             delete this._toggling[key];
         });
     }
-    
+
     async handleDelete(userId, username) {
         // 防止重复调用
         const key = `delete_${userId}`;
@@ -289,7 +291,7 @@ class UserListPage extends Component {
             this._deleting = {};
         }
         this._deleting[key] = true;
-        
+
         Modal.confirm('删除用户', `确定要删除用户 "${username}" 吗？此操作不可恢复。`, async () => {
             try {
                 await UserApi.deleteUser(userId);
@@ -305,7 +307,7 @@ class UserListPage extends Component {
             delete this._deleting[key];
         });
     }
-    
+
     resolveRole(user) {
         if (user.role === 'admin') return { label: '系统管理员', cls: 'tag-danger' };
         if (user.role === 'manager') return { label: '管理员', cls: 'tag-warning' };
@@ -318,15 +320,15 @@ class UserListPage extends Component {
         if (user.role === 'guest') return { label: '访客', cls: 'tag-default' };
         return { label: '普通用户', cls: 'tag-info' };
     }
-    
+
     render() {
         const { users, total, page, size, loading, filters } = this.state;
         const pages = Math.ceil(total / size);
-        
+
         if (loading) {
             return '<div class="loading"></div>';
         }
-        
+
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
@@ -334,12 +336,18 @@ class UserListPage extends Component {
                         <h1 class="page-title">用户管理</h1>
                         <p class="page-desc">共 ${total} 个用户</p>
                     </div>
-                    <div style="display:flex;gap:12px;">
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-secondary" id="downloadTemplateBtn">
+                            📋 下载模板
+                        </button>
                         <button class="btn btn-primary" id="importUsersBtn">
                             📥 批量导入
                         </button>
-                        <a href="#/users/pending" class="btn btn-warning">
-                            ⏳ 待审核用户
+                        <button class="btn btn-secondary" id="exportUsersBtn">
+                            📤 导出列表
+                        </button>
+                        <a href="#/users/pending" class="btn btn-secondary" style="color:var(--color-warning);">
+                            ⏳ 待审核
                         </a>
                     </div>
                 </div>
@@ -365,12 +373,16 @@ class UserListPage extends Component {
                                 <option value="false" ${filters.is_active === 'false' ? 'selected' : ''}>待审核</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">搜索</label>
-                            <input type="text" class="form-input" id="filterKeyword" 
-                                   placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
+                        <div class="form-group" style="display:flex; gap:8px; align-items:flex-end;">
+                            <div style="flex:1;">
+                                <label class="form-label">搜索</label>
+                                <input type="text" class="form-input" id="filterKeyword" 
+                                       placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
+                            </div>
+                            <div style="padding-bottom: 0;">
+                                <button class="btn btn-primary" id="searchBtn" style="margin-top:auto;">搜索</button>
+                            </div>
                         </div>
-                        <button class="btn btn-primary" id="searchBtn">搜索</button>
                     </div>
                 </div>
                 
@@ -399,9 +411,9 @@ class UserListPage extends Component {
                                             <td>${Utils.escapeHtml(user.nickname || '-')}</td>
                                             <td>
                                                 ${(() => {
-                                                    const info = this.resolveRole(user);
-                                                    return `<span class="tag ${info.cls}">${info.label}</span>`;
-                                                })()}
+                const info = this.resolveRole(user);
+                return `<span class="tag ${info.cls}">${info.label}</span>`;
+            })()}
                                             </td>
                                             <td>
                                                 <span class="tag ${user.is_active ? 'tag-primary' : 'tag-danger'}">
@@ -443,7 +455,7 @@ class UserListPage extends Component {
             </div>
         `;
     }
-    
+
     afterMount() {
         // 重置事件绑定标志，确保重新挂载时能重新绑定
         this._eventsBinded = false;
@@ -451,42 +463,56 @@ class UserListPage extends Component {
         this._toggling = {};
         this._deleting = {};
         this._permsModalOpen = false;
+        this._handlers = {};
+        this._filterHandlers = {};
         this.loadData();
         this.bindEvents();
     }
-    
+
     afterUpdate() {
         // 只在首次绑定后不再重复绑定
         if (!this._eventsBinded) {
             this.bindEvents();
         }
+        // 每次更新后重新绑定筛选/搜索事件
+        if (typeof this.bindFilterEvents === 'function') {
+            this.bindFilterEvents();
+        }
     }
-    
+
     bindEvents() {
         if (this.container && !this._eventsBinded) {
             this._eventsBinded = true;
-            
+
             // 批量导入按钮 - 使用事件委托
             this.delegate('click', '#importUsersBtn', () => {
                 this.showImportModal();
             });
-            
+
+            // 下载导入模板按钮
+            this.delegate('click', '#downloadTemplateBtn', () => {
+                const token = Store.get('token');
+                window.open(`/api/v1/export/import/users/template?format=xlsx&token=${token}`, '_blank');
+            });
+
             // 筛选器
-            this.$('#filterRole')?.addEventListener('change', (e) => {
-                this.handleFilter('role', e.target.value);
-            });
-            
-            this.$('#filterStatus')?.addEventListener('change', (e) => {
-                this.handleFilter('is_active', e.target.value);
-            });
-            
-            this.$('#searchBtn')?.addEventListener('click', () => {
+            this.delegate('change', '#filterRole', (e) => this.handleFilter('role', e.target.value));
+            this.delegate('change', '#filterStatus', (e) => this.handleFilter('is_active', e.target.value));
+            this.delegate('click', '#searchBtn', () => {
                 const keyword = this.$('#filterKeyword')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             });
-            
+            this.delegate('keydown', '#filterKeyword', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                    this.handleFilter('keyword', keyword);
+                }
+            });
+            this.delegate('click', '#exportUsersBtn', () => this.handleExport());
+
             // 使用单一的事件监听器处理所有点击事件
-            this.container.addEventListener('click', (e) => {
+            const clickHandler = (e) => {
                 // 分页
                 const pageBtn = e.target.closest('[data-page]');
                 if (pageBtn && this.container.contains(pageBtn)) {
@@ -495,7 +521,7 @@ class UserListPage extends Component {
                     if (page > 0) this.changePage(page);
                     return;
                 }
-                
+
                 // 审核通过
                 const auditPassBtn = e.target.closest('[data-audit-pass]');
                 if (auditPassBtn && this.container.contains(auditPassBtn)) {
@@ -504,7 +530,7 @@ class UserListPage extends Component {
                     if (userId) this.handleAudit(userId, true);
                     return;
                 }
-                
+
                 // 审核拒绝
                 const auditRejectBtn = e.target.closest('[data-audit-reject]');
                 if (auditRejectBtn && this.container.contains(auditRejectBtn)) {
@@ -513,7 +539,7 @@ class UserListPage extends Component {
                     if (userId) this.handleAudit(userId, false);
                     return;
                 }
-                
+
                 // 启用
                 const enableBtn = e.target.closest('[data-enable]');
                 if (enableBtn && this.container.contains(enableBtn)) {
@@ -522,7 +548,7 @@ class UserListPage extends Component {
                     if (userId) this.handleToggleStatus(userId, false);
                     return;
                 }
-                
+
                 // 禁用
                 const disableBtn = e.target.closest('[data-disable]');
                 if (disableBtn && this.container.contains(disableBtn)) {
@@ -531,7 +557,7 @@ class UserListPage extends Component {
                     if (userId) this.handleToggleStatus(userId, true);
                     return;
                 }
-                
+
                 // 删除
                 const deleteBtn = e.target.closest('[data-delete]');
                 if (deleteBtn && this.container.contains(deleteBtn)) {
@@ -541,19 +567,21 @@ class UserListPage extends Component {
                     if (userId && username) this.handleDelete(userId, username);
                     return;
                 }
-            });
+            };
+            this._handlers.clickHandler = clickHandler;
+            this.container.addEventListener('click', clickHandler);
 
             // 权限设置弹窗 - 防止重复打开
             const handlePerms = async (e, target) => {
                 e.stopPropagation();
                 const userId = target.dataset.perms;
-                
+
                 // 防止重复打开弹窗
                 if (this._permsModalOpen) {
                     return;
                 }
                 this._permsModalOpen = true;
-                
+
                 const currentUser = this.state.users.find(u => String(u.id) === String(userId));
 
                 // 拉取用户组
@@ -612,7 +640,7 @@ class UserListPage extends Component {
 
                 const renderModules = (selectedGroupIds, presetModules = [], isUpgrade = false) => {
                     const { wildcard, allowedModules } = computeAllowed(selectedGroupIds);
-                    
+
                     // 如果是升级，默认选中所有允许的模块
                     // 如果是降级或保持，使用预设的模块（保留用户已选择的）
                     let defaultModules;
@@ -652,7 +680,7 @@ class UserListPage extends Component {
                     if (!wildcard && allowedSpecific.length === 0) {
                         return '<div style="color:var(--text-secondary);">该用户组未暴露子功能权限</div>';
                     }
-                    
+
                     // 如果是升级，默认选中所有允许的子功能
                     // 如果是降级或保持，使用预设的子功能（保留用户已选择的）
                     let presets;
@@ -671,7 +699,7 @@ class UserListPage extends Component {
                             presets = presetSpecific.length ? presetSpecific.filter(p => specific.has(p)) : allowedSpecific;
                         }
                     }
-                    
+
                     // 构建分组显示
                     // 如果用户组是全权限，显示已有的子功能（如果有），否则显示所有允许的子功能
                     const displayList = wildcard && presets.length ? presets : allowedSpecific;
@@ -744,7 +772,7 @@ class UserListPage extends Component {
 
                 // 记录初始用户组，用于判断升级/降级
                 let previousGroupIds = [...currentGroupIds];
-                
+
                 const getSelectedGroupIds = () => {
                     const checked = overlay.querySelector('#groupBox input[name="roles"]:checked');
                     return checked ? [parseInt(checked.value)] : [];
@@ -756,21 +784,21 @@ class UserListPage extends Component {
 
                 const refreshModules = () => {
                     const selectedGroupIds = getSelectedGroupIds();
-                    
+
                     // 判断是升级还是降级
                     // 从无用户组到有用户组，或者从低优先级到高优先级，都视为升级
                     const previousPriority = getGroupPriority(previousGroupIds);
                     const currentPriority = getGroupPriority(selectedGroupIds);
                     const isUpgrade = currentPriority > previousPriority;
-                    
+
                     // 获取当前已选中的模块和子功能（用于降级时保留）
                     const currentCheckedModules = getSelectedModules();
                     const currentCheckedSpecific = getSelectedSpecific();
-                    
+
                     // 刷新模块和子功能显示
                     overlay.querySelector('#moduleAccessBox').innerHTML = renderModules(selectedGroupIds, currentCheckedModules, isUpgrade);
                     overlay.querySelector('#specificBox').innerHTML = renderSpecific(selectedGroupIds, currentCheckedSpecific, isUpgrade);
-                    
+
                     // 更新记录的用户组
                     previousGroupIds = [...selectedGroupIds];
                 };
@@ -787,7 +815,7 @@ class UserListPage extends Component {
                         return;
                     }
                     saving = true;
-                    
+
                     const selectedGroupIds = getSelectedGroupIds();
                     const selectedModules = getSelectedModules();
                     const selectedSpecific = getSelectedSpecific();
@@ -827,7 +855,7 @@ class UserListPage extends Component {
                         saving = false;
                     }
                 });
-                
+
                 // 关闭按钮也重置标志
                 overlay.querySelectorAll('[data-close]').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -835,15 +863,75 @@ class UserListPage extends Component {
                     }, { once: true });
                 });
             };
-            
+
             // 使用事件委托绑定权限按钮
-            this.container.addEventListener('click', (e) => {
+            const permsClickHandler = (e) => {
                 const permsBtn = e.target.closest('[data-perms]');
                 if (permsBtn && this.container.contains(permsBtn)) {
                     handlePerms(e, permsBtn);
                 }
-            });
+            };
+            this._handlers.permsClickHandler = permsClickHandler;
+            this.container.addEventListener('click', permsClickHandler);
         }
+    }
+
+    bindFilterEvents() {
+        // 为过滤和搜索绑定事件（非委托），避免渲染替换后失效
+        const bind = (selector, event, key, handler) => {
+            const el = this.$(selector);
+            if (!el) return;
+            if (this._filterHandlers[key]) {
+                el.removeEventListener(event, this._filterHandlers[key]);
+            }
+            el.addEventListener(event, handler);
+            this._filterHandlers[key] = handler;
+        };
+
+        bind('#filterRole', 'change', 'roleChange', (e) => this.handleFilter('role', e.target.value));
+        bind('#filterStatus', 'change', 'statusChange', (e) => this.handleFilter('is_active', e.target.value));
+        bind('#searchBtn', 'click', 'searchClick', () => {
+            const keyword = this.$('#filterKeyword')?.value.trim() || '';
+            this.handleFilter('keyword', keyword);
+        });
+        bind('#filterKeyword', 'keydown', 'searchEnter', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                this.handleFilter('keyword', keyword);
+            }
+        });
+    }
+
+    handleExport() {
+        const token = localStorage.getItem(Config.storageKeys.token);
+        if (!token) {
+            Toast.error('请先登录');
+            return;
+        }
+        window.open(`${ExportApi.exportUsers('xlsx')}&token=${token}`, '_blank');
+    }
+
+    destroy() {
+        if (this._eventsBinded && this.container) {
+            if (this._handlers.roleHandler) {
+                this.$('#filterRole')?.removeEventListener('change', this._handlers.roleHandler);
+            }
+            if (this._handlers.statusHandler) {
+                this.$('#filterStatus')?.removeEventListener('change', this._handlers.statusHandler);
+            }
+            if (this._handlers.searchHandler) {
+                this.$('#searchBtn')?.removeEventListener('click', this._handlers.searchHandler);
+            }
+            if (this._handlers.clickHandler) {
+                this.container.removeEventListener('click', this._handlers.clickHandler);
+            }
+            if (this._handlers.permsClickHandler) {
+                this.container.removeEventListener('click', this._handlers.permsClickHandler);
+            }
+        }
+        this._eventsBinded = false;
+        this._handlers = {};
     }
 }
 
@@ -857,11 +945,12 @@ class PendingUsersPage extends Component {
         };
         this._eventsBinded = false;
         this._auditing = {};
+        this._handlers = {};
     }
-    
+
     async loadData() {
         this.setState({ loading: true });
-        
+
         try {
             const res = await UserApi.getPendingUsers();
             this.setState({
@@ -873,7 +962,7 @@ class PendingUsersPage extends Component {
             this.setState({ loading: false });
         }
     }
-    
+
     async handleAudit(userId, isActive) {
         // 防止重复调用
         const key = `audit_${userId}_${isActive}`;
@@ -884,30 +973,30 @@ class PendingUsersPage extends Component {
             this._auditing = {};
         }
         this._auditing[key] = true;
-        
+
         try {
             const action = isActive ? '通过' : '拒绝';
             const reason = await Modal.prompt(`审核${action}`, `请输入审核备注（可选）`);
-            
+
             // 如果用户取消，reason 为 null
             if (reason === null) {
                 delete this._auditing[key];
                 return;
             }
-            
+
             // 在审核过程中，禁用所有审核按钮，防止重复点击
             const auditButtons = this.container.querySelectorAll('[data-audit-pass], [data-audit-reject]');
             auditButtons.forEach(btn => {
                 btn.disabled = true;
             });
-            
+
             try {
                 await UserApi.auditUser(userId, {
                     is_active: isActive,
                     reason: reason || null
                 });
                 Toast.success(`用户审核${action}成功`);
-                
+
                 // 审核成功后，重新加载数据（这会更新 DOM，用户会从列表中移除）
                 await this.loadData();
             } catch (error) {
@@ -923,14 +1012,14 @@ class PendingUsersPage extends Component {
             delete this._auditing[key];
         }
     }
-    
+
     render() {
         const { users, loading } = this.state;
-        
+
         if (loading) {
             return '<div class="loading"></div>';
         }
-        
+
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
@@ -986,22 +1075,22 @@ class PendingUsersPage extends Component {
             </div>
         `;
     }
-    
+
     afterMount() {
         this._auditing = {};
         this.loadData();
         this.bindEvents();
     }
-    
+
     afterUpdate() {
         // 待审核用户页面不需要在更新后重新绑定事件
         // 因为事件委托绑定在容器上，DOM 更新不影响事件监听
     }
-    
+
     bindEvents() {
         if (this.container && !this._eventsBinded) {
             this._eventsBinded = true;
-            
+
             // 审核通过 - 使用 once 选项防止重复触发
             const handlePass = (e, target) => {
                 e.stopPropagation();
@@ -1010,7 +1099,7 @@ class PendingUsersPage extends Component {
                     this.handleAudit(userId, true);
                 }
             };
-            
+
             // 审核拒绝 - 使用 once 选项防止重复触发
             const handleReject = (e, target) => {
                 e.stopPropagation();
@@ -1019,9 +1108,9 @@ class PendingUsersPage extends Component {
                     this.handleAudit(userId, false);
                 }
             };
-            
+
             // 使用事件委托，但只绑定一次
-            this.container.addEventListener('click', (e) => {
+            const clickHandler = (e) => {
                 const passBtn = e.target.closest('[data-audit-pass]');
                 if (passBtn && this.container.contains(passBtn)) {
                     handlePass(e, passBtn);
@@ -1032,8 +1121,18 @@ class PendingUsersPage extends Component {
                     handleReject(e, rejectBtn);
                     return;
                 }
-            });
+            };
+            this._handlers.clickHandler = clickHandler;
+            this.container.addEventListener('click', clickHandler);
         }
+    }
+
+    destroy() {
+        if (this._eventsBinded && this.container && this._handlers?.clickHandler) {
+            this.container.removeEventListener('click', this._handlers.clickHandler);
+        }
+        this._eventsBinded = false;
+        this._handlers = {};
     }
 }
 

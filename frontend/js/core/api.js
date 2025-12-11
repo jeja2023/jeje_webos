@@ -240,6 +240,23 @@ const GroupApi = {
 // 兼容旧命名
 const RoleApi = GroupApi;
 
+// 意见建议
+const FeedbackApi = {
+    // 用户视角
+    list: (params) => Api.get('/feedback', params),
+    listMy: (params) => Api.get('/feedback/my', params),
+    get: (id) => Api.get(`/feedback/${id}`),
+    create: (data) => Api.post('/feedback', data),
+    update: (id, data) => Api.put(`/feedback/${id}`, data),
+    remove: (id) => Api.delete(`/feedback/${id}`),
+    
+    // 管理员
+    adminList: (params) => Api.get('/feedback/admin/all', params),
+    reply: (id, data) => Api.post(`/feedback/${id}/reply`, data),
+    adminUpdate: (id, data) => Api.put(`/feedback/${id}/admin`, data),
+    statistics: () => Api.get('/feedback/admin/statistics')
+};
+
 const NotesApi = {
     // 文件夹
     getFolders: (parentId) => Api.get('/notes/folders', parentId ? { parent_id: parentId } : {}),

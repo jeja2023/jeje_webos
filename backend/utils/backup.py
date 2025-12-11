@@ -26,6 +26,9 @@ class BackupManager:
         self.storage_root = Path(settings.upload_dir).resolve().parent
         self.backup_dir = self.storage_root / "backups"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
+        # 分类子目录：数据库和文件
+        (self.backup_dir / "db").mkdir(parents=True, exist_ok=True)
+        (self.backup_dir / "files").mkdir(parents=True, exist_ok=True)
     
     def backup_database(self, backup_id: str) -> Tuple[bool, Optional[str], Optional[int]]:
         """
@@ -41,7 +44,7 @@ class BackupManager:
             # 生成备份文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_filename = f"db_{backup_id}_{timestamp}.sql"
-            backup_path = self.backup_dir / backup_filename
+            backup_path = self.backup_dir / "db" / backup_filename
             
             # 构建 mysqldump 命令
             cmd = [
@@ -105,7 +108,7 @@ class BackupManager:
             # 生成备份文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_filename = f"files_{backup_id}_{timestamp}.tar.gz"
-            backup_path = self.backup_dir / backup_filename
+            backup_path = self.backup_dir / "files" / backup_filename
             
             # 获取上传目录（绝对路径）
             upload_dir = Path(settings.upload_dir).resolve()

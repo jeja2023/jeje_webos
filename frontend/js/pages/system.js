@@ -28,8 +28,9 @@ class AppCenterPage extends Component {
     async toggleModule(id, enabled) {
         try {
             await SystemApi.toggleModule(id, enabled);
-            Toast.success('已保存，重启后生效');
+            Toast.success('已保存');
             this.loadData();
+            await Store.refreshSystemInfo();
         } catch (e) {
             Toast.error(e.message);
         }

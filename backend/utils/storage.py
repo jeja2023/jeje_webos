@@ -64,18 +64,22 @@ class StorageManager:
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.{ext}" if ext else file_id
         
+        # 为不同业务留出空间，统一放在 files 子目录下
+        base_dir = self.upload_dir / "files"
+        base_dir.mkdir(parents=True, exist_ok=True)
+        
         # 如果提供了用户ID，按用户分类存储
         if user_id:
-            user_dir = self.upload_dir / str(user_id)
+            user_dir = base_dir / str(user_id)
             user_dir.mkdir(parents=True, exist_ok=True)
-            relative_path = f"{user_id}/{filename}"
+            relative_path = f"files/{user_id}/{filename}"
             full_path = user_dir / filename
         else:
             # 按日期分类存储
             date_dir = datetime.now().strftime("%Y/%m")
-            date_path = self.upload_dir / date_dir
+            date_path = base_dir / date_dir
             date_path.mkdir(parents=True, exist_ok=True)
-            relative_path = f"{date_dir}/{filename}"
+            relative_path = f"files/{date_dir}/{filename}"
             full_path = date_path / filename
         
         return relative_path, str(full_path)

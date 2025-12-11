@@ -310,16 +310,21 @@ async def import_users(
     data = normalized_data
     
     # 验证数据
-    required_fields = ["username"]
+    required_fields = ["username", "phone"]  # 用户名和手机号必填
     is_valid, error_msg = importer.validate_data(data, required_fields)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
+    
+    # 查询用户组（用于自动分配）
+    from models import Role as UserGroup
+    groups_result = await db.execute(select(UserGroup))
+    groups = {g.name.lower(): g for g in groups_result.scalars().all()}
     
     # 导入数据
     imported_count = 0
     skipped_count = 0
     errors = []
-    default_password = "123456"  # 默认密码
+    default_password = "Import@123"  # 默认密码（符合密码复杂度规则：至少8位、大小写字母、数字、特殊字符）
     
     for item in data:
         try:
@@ -339,24 +344,45 @@ async def import_users(
                 errors.append(f"用户 {username} 已存在，跳过")
                 continue
             
-            # 处理密码
-            password = item.get("password") or default_password
+            # 处理密码（使用默认密码）
+            password = default_password
             password_hash = hash_password(str(password))
             
-            # 处理手机号
+            # 处理手机号（必填）
             phone = item.get("phone")
-            if phone:
-                phone = str(phone).strip()
-                # 检查手机号是否已被使用
-                if phone:
-                    phone_check = await db.execute(select(User).where(User.phone == phone))
-                    if phone_check.scalar_one_or_none():
-                        phone = None  # 手机号已存在，置空
+            if not phone:
+                errors.append(f"用户 {username} 缺少手机号，跳过")
+                continue
+            
+            phone = str(phone).strip()
+            # 验证手机号格式
+            import re
+            if not re.match(r'^1[3-9]\d{9}$', phone):
+                errors.append(f"用户 {username} 手机号格式不正确，跳过")
+                continue
+            
+            # 检查手机号是否已被使用
+            phone_check = await db.execute(select(User).where(User.phone == phone))
+            if phone_check.scalar_one_or_none():
+                skipped_count += 1
+                errors.append(f"用户 {username} 的手机号 {phone} 已存在，跳过")
+                continue
             
             # 处理角色（默认为 guest）
             role = item.get("role") or "guest"
             if role not in ("admin", "manager", "user", "guest"):
                 role = "guest"
+            
+            # 根据角色自动分配用户组和权限
+            role_ids = []
+            permissions = []
+            
+            # 查找对应的用户组
+            group = groups.get(role.lower())
+            if group:
+                role_ids = [group.id]
+                # 复制用户组的权限
+                permissions = group.permissions.copy() if group.permissions else []
             
             # 处理激活状态
             is_active = item.get("is_active")
@@ -371,11 +397,11 @@ async def import_users(
             user = User(
                 username=username,
                 password_hash=password_hash,
-                phone=phone if phone else None,
+                phone=phone,
                 nickname=item.get("nickname") or username,
                 role=role,
-                permissions=[],
-                role_ids=[],
+                permissions=permissions,
+                role_ids=role_ids,
                 is_active=is_active
             )
             db.add(user)
@@ -395,3 +421,59 @@ async def import_users(
         "errors": errors[:20]  # 只返回前20条错误
     }, f"导入完成：共 {len(data)} 条，成功 {imported_count} 条，跳过 {skipped_count} 条")
 
+
+@router.get("/import/users/template")
+async def download_user_import_template(
+    format: str = Query("xlsx", description="模板格式: xlsx"),
+    token: Optional[str] = Query(None)
+):
+    """
+    下载用户导入模板（Excel格式）
+    
+    仅系统管理员可执行
+    
+    模板字段说明：
+    - username (必填): 用户名，3-50个字符，需唯一
+    - phone (必填): 11位手机号，需唯一
+    - nickname (可选): 昵称
+    - role (可选): 角色 (admin/manager/user/guest)，默认为 guest
+    - is_active (可选): 是否激活 (true/false/是/否)，默认为 false（需审核）
+    
+    注意：密码使用默认密码 Import@123
+    """
+    # 验证 token
+    current_user = get_user_from_token(token)
+    
+    # 模板数据（包含示例和说明）
+    template_data = [
+        {
+            "username": "zhangsan",
+            "phone": "13800138001",
+            "nickname": "张三",
+            "role": "user",
+            "is_active": ""
+        },
+        {
+            "username": "lisi",
+            "phone": "13800138002",
+            "nickname": "李四",
+            "role": "",
+            "is_active": ""
+        },
+        {
+            "username": "【必填】用户名需唯一",
+            "phone": "【必填】11位手机号需唯一",
+            "nickname": "【可选】用户昵称",
+            "role": "【可选】user/guest",
+            "is_active": "【可选】是/否"
+        }
+    ]
+    
+    # 导出 Excel
+    exporter = DataExporter()
+    file_stream = exporter.export_to_excel(template_data, sheet_name="用户导入模板")
+    return StreamingResponse(
+        file_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="user_import_template.xlsx"'}
+    )

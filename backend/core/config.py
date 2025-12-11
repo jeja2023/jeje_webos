@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     db_user: str = "root"
     db_password: str = ""
     db_name: str = "jeje_webos"
+    db_time_zone: str = "+08:00"  # 数据库会话时区，使用东八区写入
     
     @property
     def db_url(self) -> str:
@@ -79,6 +80,7 @@ class Settings(BaseSettings):
     csrf_enabled: bool = False  # 是否启用 CSRF 防护（默认关闭，生产环境建议开启）
     
     # 速率限制配置
+    rate_limit_enabled: bool = True  # 是否启用速率限制（开发环境可关闭）
     rate_limit_requests: int = 200  # 默认请求数限制（每分钟）
     rate_limit_window: int = 60  # 时间窗口（秒）
     rate_limit_block_duration: int = 30  # 超限后封禁时间（秒），开发环境建议30秒，生产环境可设置为60-300秒

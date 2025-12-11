@@ -1,6 +1,6 @@
 /**
  * 路由管理
- * 基于Hash的SPA路由
+ * 基于 History 的 SPA 路由
  */
 
 const Router = {
@@ -37,15 +37,33 @@ const Router = {
         });
     },
     
+    normalizePath(rawPath) {
+        if (!rawPath) return '/';
+        let p = rawPath.split('#')[0]; // 去除可能的 hash
+        if (!p.startsWith('/')) p = '/' + p;
+        // 去掉末尾斜杠（根路径除外）
+        if (p.length > 1 && p.endsWith('/')) {
+            p = p.replace(/\/+$/, '');
+            if (p === '') p = '/';
+        }
+        return p;
+    },
+
     /**
      * 获取当前路由
      */
     current() {
-        const hash = window.location.hash.slice(1) || '/';
-        const [path, queryString] = hash.split('?');
-        const query = queryString 
-            ? Object.fromEntries(new URLSearchParams(queryString))
-            : {};
+        // 优先兼容旧 hash 链接（#/path -> /path）
+        if (window.location.hash.startsWith('#/')) {
+            const hashPath = window.location.hash.slice(1);
+            const [hp, qs] = hashPath.split('?');
+            const queryFromHash = qs ? Object.fromEntries(new URLSearchParams(qs)) : {};
+            return { path: this.normalizePath(hp || '/'), query: queryFromHash };
+        }
+
+        const path = this.normalizePath(window.location.pathname || '/');
+        const qs = window.location.search.slice(1);
+        const query = qs ? Object.fromEntries(new URLSearchParams(qs)) : {};
         return { path, query };
     },
     
@@ -53,18 +71,22 @@ const Router = {
      * 跳转路由
      */
     push(path, query = {}) {
+        path = this.normalizePath(path);
         const queryString = new URLSearchParams(query).toString();
-        const hash = queryString ? `${path}?${queryString}` : path;
-        window.location.hash = hash;
+        const url = queryString ? `${path}?${queryString}` : path;
+        window.history.pushState({}, '', url);
+        this.handleRoute();
     },
     
     /**
      * 替换路由
      */
     replace(path, query = {}) {
+        path = this.normalizePath(path);
         const queryString = new URLSearchParams(query).toString();
-        const hash = queryString ? `${path}?${queryString}` : path;
-        window.location.replace(`#${hash}`);
+        const url = queryString ? `${path}?${queryString}` : path;
+        window.history.replaceState({}, '', url);
+        this.handleRoute();
     },
     
     /**
@@ -78,6 +100,7 @@ const Router = {
      * 解析路由
      */
     resolve(currentPath) {
+        currentPath = this.normalizePath(currentPath);
         // 精确匹配
         if (this.routes[currentPath]) {
             return { route: this.routes[currentPath], params: {} };
@@ -150,13 +173,30 @@ const Router = {
      * 初始化
      */
     init() {
-        // 监听路由变化
-        window.addEventListener('hashchange', () => this.handleRoute());
+        // 兼容旧 hash 链接：首次加载时把 #/path 转成 history
+        if (window.location.hash.startsWith('#/')) {
+            const hashPath = window.location.hash.slice(1);
+            window.history.replaceState({}, '', hashPath);
+        }
+
+        // 拦截站内链接（href 以 #/ 开头的旧写法）
+        document.addEventListener('click', (e) => {
+            const anchor = e.target.closest('a');
+            if (!anchor) return;
+            const href = anchor.getAttribute('href') || '';
+            if (href.startsWith('#/')) {
+                e.preventDefault();
+                this.push(href.slice(1));
+            }
+        });
+
+        // 监听浏览器前进/后退
+        window.addEventListener('popstate', () => this.handleRoute());
         
         // 立即处理当前路由（不等待 load 事件）
         this.handleRoute();
         
-        Config.log('路由初始化完成');
+        Config.log('路由初始化完成（History 模式）');
     }
 };
 

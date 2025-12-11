@@ -14,7 +14,7 @@ JeJe WebOS - 主入口
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 
@@ -160,13 +160,60 @@ async def lifespan(app: FastAPI):
             minute=current_settings.jwt_rotate_check_minute,
             name="jwt_rotation_check"
         )
+        
+        # 10. 调度JWT旧密钥自动清理（在轮换检查后1小时执行）
+        async def check_jwt_cleanup():
+            """检查并清理过期的旧JWT密钥"""
+            try:
+                rotator = get_jwt_rotator()
+                if rotator.should_cleanup():
+                    result = rotator.cleanup_old_secret()
+                    if result.get("cleaned"):
+                        logger.info(f"🧹 旧JWT密钥已自动清理")
+                    else:
+                        logger.debug(f"旧密钥清理检查: {result.get('reason', '无需清理')}")
+            except Exception as e:
+                logger.error(f"❌ 旧JWT密钥清理失败: {e}")
+        
+        # 清理任务在轮换检查后1小时执行
+        cleanup_hour = (current_settings.jwt_rotate_check_hour + 1) % 24
+        await scheduler.schedule_daily(
+            check_jwt_cleanup,
+            hour=cleanup_hour,
+            minute=current_settings.jwt_rotate_check_minute,
+            name="jwt_cleanup_check"
+        )
+        
         logger.info(f"✅ JWT密钥自动轮换已启用（检查时间: {current_settings.jwt_rotate_check_hour:02d}:{current_settings.jwt_rotate_check_minute:02d}）")
+        logger.info(f"✅ JWT旧密钥自动清理已启用（检查时间: {cleanup_hour:02d}:{current_settings.jwt_rotate_check_minute:02d}）")
     
     # 10. 发布启动事件
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
     
     current_settings = get_settings()  # 获取最新配置
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")
+    
+    # ==================== 注册前端 History 回退路由（必须放在所有业务路由之后） ====================
+    async def spa_history_fallback(full_path: str):
+        """
+        前端 History 路由回退：
+        - 排除 /api 和 /static 等后端路径
+        - 其他路径统一返回前端 index.html
+        """
+        ignore_prefixes = ("api/", "static/", "health", "favicon.ico", "robots.txt")
+        if full_path.startswith(ignore_prefixes):
+            raise HTTPException(status_code=404, detail="Not Found")
+        
+        index_path_local = os.path.join(frontend_path, "index.html")
+        if os.path.exists(index_path_local):
+            return FileResponse(index_path_local)
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    app.add_api_route(
+        "/{full_path:path}",
+        spa_history_fallback,
+        include_in_schema=False
+    )
     
     yield
     
@@ -215,8 +262,12 @@ app.add_middleware(
     slow_request_threshold=1.0  # 超过1秒的请求记录为慢请求
 )
 
-# 4. 速率限制中间件
-app.add_middleware(RateLimitMiddleware)
+# 4. 速率限制中间件（可配置关闭）
+if settings.rate_limit_enabled:
+    app.add_middleware(RateLimitMiddleware)
+    logger.info("速率限制已启用")
+else:
+    logger.info("速率限制已禁用（rate_limit_enabled=False）")
 
 # 5. 审计日志中间件（自动记录用户操作）
 from core.middleware import AuditMiddleware
@@ -254,7 +305,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 from routers import (
     auth, boot, user, system_settings, audit, roles,
     storage, backup, monitor, notification, websocket,
-    import_export, i18n, announcement
+    import_export, announcement
 )
 
 # 系统核心路由
@@ -272,7 +323,6 @@ app.include_router(monitor.router)
 app.include_router(notification.router)
 app.include_router(websocket.router)
 app.include_router(import_export.router)
-app.include_router(i18n.router)
 app.include_router(announcement.router)
 
 # 健康检查路由

@@ -3,7 +3,7 @@
 """
 
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
 
@@ -20,13 +20,13 @@ class Notification(Base):
     content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 通知内容
     type: Mapped[str] = mapped_column(String(50), default="info")  # 通知类型: info, success, warning, error
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否已读
-    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # 阅读时间
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 阅读时间
     action_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 操作链接
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     
     # 索引
     __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4'},
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统通知表'},
     )
 
 

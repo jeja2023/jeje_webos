@@ -3,7 +3,7 @@
 用户账号表
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,6 +14,7 @@ from core.database import Base
 class User(Base):
     """用户表"""
     __tablename__ = "sys_users"
+    __table_args__ = {"comment": "系统用户表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
@@ -25,7 +26,7 @@ class User(Base):
     permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)  # 默认未激活，需管理员审核
-    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 

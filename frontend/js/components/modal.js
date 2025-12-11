@@ -121,9 +121,9 @@ class Modal {
 
         // 点击遮罩
         this.overlay.onclick = (e) => {
-            if (e.target === this.overlay && this.options.closable) {
-                this.close();
-                if (this.options.onCancel) this.options.onCancel();
+            // 用户要求：点击遮罩不关闭，必须点击关闭按钮
+            if (e.target === this.overlay) {
+                // e.stopPropagation();
             }
         };
 
@@ -142,10 +142,23 @@ class Modal {
             confirmBtn.onclick = async () => {
                 if (this.options.onConfirm) {
                     try {
+                        // 防止重复点击
+                        if (confirmBtn.disabled) return;
+
+                        // 设置加载状态
+                        const originalText = confirmBtn.innerText;
+                        confirmBtn.classList.add('loading');
+                        confirmBtn.disabled = true;
+                        confirmBtn.innerText = '处理中...';
+
                         const shouldClose = await this.options.onConfirm();
                         if (shouldClose !== false) this.close();
                     } catch (e) {
                         console.error(e);
+                        // 发生错误时恢复按钮状态
+                        confirmBtn.classList.remove('loading');
+                        confirmBtn.disabled = false;
+                        confirmBtn.innerText = originalText;
                     }
                 } else {
                     this.close();
@@ -198,6 +211,44 @@ class Modal {
                 footer: `<div class="modal-footer"><button class="btn btn-primary" data-action="confirm">确定</button></div>`,
                 onConfirm: () => resolve(true)
             }).show();
+        });
+    }
+
+    /**
+     * 带输入框的提示框
+     * @param {string} title 标题
+     * @param {string} message 描述
+     * @param {string} placeholder 占位文本
+     * @param {string} defaultValue 默认值
+     * @returns {Promise<string|null>} 用户输入，取消时返回 null
+     */
+    static prompt(title, message = '', placeholder = '', defaultValue = '') {
+        return new Promise((resolve) => {
+            let inputEl;
+            const modal = new Modal({
+                title,
+                content: `
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        ${message ? `<p>${message}</p>` : ''}
+                        <input type="text" class="form-input" id="modalPromptInput"
+                               placeholder="${placeholder || '请输入'}"
+                               value="${defaultValue || ''}">
+                    </div>
+                `,
+                onConfirm: () => {
+                    const value = inputEl?.value ?? '';
+                    resolve(value);
+                    return true;
+                },
+                onCancel: () => {
+                    resolve(null);
+                }
+            });
+            modal.show();
+            inputEl = modal.overlay?.querySelector('#modalPromptInput');
+            if (inputEl) {
+                setTimeout(() => inputEl.focus(), 50);
+            }
         });
     }
 

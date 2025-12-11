@@ -40,19 +40,32 @@ class RateLimiter:
     """
     速率限制器
     使用滑动窗口算法限制请求频率
+    优化：自动清理过期状态，限制内存使用
     """
+    
+    # 最大存储的客户端数量（防止内存溢出）
+    MAX_CLIENTS = 10000
+    # 客户端状态过期时间（秒）
+    CLIENT_EXPIRE_TIME = 300  # 5分钟不活跃则清理
+    # 清理间隔（每 N 次请求触发一次清理检查）
+    CLEANUP_INTERVAL = 1000
     
     def __init__(self):
         # 存储客户端状态：IP -> ClientState
-        self._clients: Dict[str, ClientState] = defaultdict(ClientState)
-        # 路由级别配置：path -> RateLimitConfig
+        self._clients: Dict[str, ClientState] = {}
+        # 路由级别配置：path -> RateLimitConfig（使用有序列表优化查找）
         self._route_configs: Dict[str, RateLimitConfig] = {}
+        self._route_prefixes: list = []  # 缓存的路由前缀列表
         # 默认配置
         self._default_config = RateLimitConfig()
-        # 白名单IP
+        # 白名单IP（使用 frozenset 优化查找）
         self._whitelist: set = set()
         # 黑名单IP
         self._blacklist: set = set()
+        # 请求计数器（用于触发清理）
+        self._request_count = 0
+        # 上次清理时间
+        self._last_cleanup = time.time()
     
     def configure(
         self,
@@ -79,6 +92,12 @@ class RateLimiter:
             requests=requests,
             window=window,
             block_duration=block_duration
+        )
+        # 更新前缀缓存（按长度降序排列，确保最长匹配优先）
+        self._route_prefixes = sorted(
+            self._route_configs.keys(), 
+            key=len, 
+            reverse=True
         )
     
     def add_whitelist(self, ip: str):
@@ -111,16 +130,52 @@ class RateLimiter:
         # 回退到直连IP
         return request.client.host if request.client else "unknown"
     
+    def _cleanup_stale_clients(self):
+        """清理过期的客户端状态（性能优化）"""
+        current_time = time.time()
+        
+        # 只在距上次清理超过60秒时执行
+        if current_time - self._last_cleanup < 60:
+            return
+        
+        self._last_cleanup = current_time
+        stale_ips = []
+        
+        for ip, state in self._clients.items():
+            # 如果客户端不活跃且未被封禁，则标记为过期
+            if (current_time - state.window_start > self.CLIENT_EXPIRE_TIME and 
+                state.blocked_until <= current_time):
+                stale_ips.append(ip)
+        
+        # 批量删除过期状态
+        for ip in stale_ips:
+            del self._clients[ip]
+        
+        if stale_ips:
+            logger.debug(f"已清理 {len(stale_ips)} 个过期客户端状态")
+        
+        # 如果仍超过限制，清理最旧的
+        if len(self._clients) > self.MAX_CLIENTS:
+            # 按最后活跃时间排序，删除最旧的
+            sorted_clients = sorted(
+                self._clients.items(), 
+                key=lambda x: x[1].window_start
+            )
+            to_remove = len(self._clients) - self.MAX_CLIENTS
+            for ip, _ in sorted_clients[:to_remove]:
+                del self._clients[ip]
+            logger.warning(f"客户端数量超限，已清理 {to_remove} 个最旧状态")
+    
     def _get_config(self, path: str) -> RateLimitConfig:
-        """获取路由配置"""
-        # 精确匹配
+        """获取路由配置（优化版）"""
+        # 精确匹配（最快）
         if path in self._route_configs:
             return self._route_configs[path]
         
-        # 前缀匹配
-        for route_path, config in self._route_configs.items():
+        # 前缀匹配（使用缓存的前缀列表）
+        for route_path in self._route_prefixes:
             if path.startswith(route_path):
-                return config
+                return self._route_configs[route_path]
         
         return self._default_config
     
@@ -131,15 +186,21 @@ class RateLimiter:
         Returns:
             (allowed, info): allowed为是否允许，info包含限制信息
         """
+        # 递增请求计数，定期触发清理
+        self._request_count += 1
+        if self._request_count >= self.CLEANUP_INTERVAL:
+            self._request_count = 0
+            self._cleanup_stale_clients()
+        
         client_ip = self._get_client_ip(request)
         current_time = time.time()
         path = request.url.path
         
-        # 检查白名单
+        # 检查白名单（O(1) 查找）
         if client_ip in self._whitelist:
             return True, {"whitelisted": True}
         
-        # 检查黑名单
+        # 检查黑名单（O(1) 查找）
         if client_ip in self._blacklist:
             return False, {
                 "reason": "blocked",
@@ -147,6 +208,10 @@ class RateLimiter:
             }
         
         config = self._get_config(path)
+        
+        # 获取或创建客户端状态
+        if client_ip not in self._clients:
+            self._clients[client_ip] = ClientState(window_start=current_time)
         state = self._clients[client_ip]
         
         # 检查是否在封禁期

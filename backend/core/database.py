@@ -6,7 +6,7 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text
+from sqlalchemy import text, event
 from typing import AsyncGenerator
 
 from .config import get_settings
@@ -14,14 +14,24 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# 创建异步引擎
+# 创建异步引擎（初始化会话时区）
 engine = create_async_engine(
     settings.db_url,
     echo=False,  # 禁用 SQL 详细输出，避免日志过多
     pool_pre_ping=True,
     pool_size=10,
-    max_overflow=20
+    max_overflow=20,
+    connect_args={
+        "init_command": f"SET time_zone = '{settings.db_time_zone}'"
+    }
 )
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def _set_session_time_zone(dbapi_connection, connection_record):
+    """确保每个连接会话时区一致"""
+    with dbapi_connection.cursor() as cursor:
+        cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
 
 # 会话工厂
 async_session = async_sessionmaker(
@@ -56,7 +66,18 @@ async def ensure_database_exists():
     # 创建不指定数据库的连接URL（用于创建数据库）
     from sqlalchemy.ext.asyncio import create_async_engine as create_engine
     admin_url = f"mysql+aiomysql://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}"
-    admin_engine = create_engine(admin_url, echo=False)
+    admin_engine = create_engine(
+        admin_url,
+        echo=False,
+        connect_args={
+            "init_command": f"SET time_zone = '{settings.db_time_zone}'"
+        }
+    )
+
+    @event.listens_for(admin_engine.sync_engine, "connect")
+    def _set_admin_time_zone(dbapi_connection, connection_record):
+        with dbapi_connection.cursor() as cursor:
+            cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
     
     try:
         async with admin_engine.connect() as conn:
