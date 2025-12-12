@@ -70,42 +70,34 @@ JeJe WebOS 是一个基于**微内核架构**的可扩展平台，支持：
 ```
 jeje_webos/
 ├── backend/                    # 后端代码
+│   ├── .env                   # 环境变量（本地开发）
+│   ├── alembic/               # 数据库迁移
 │   ├── core/                   # 内核层（基础设施）
 │   │   ├── config.py          # 配置管理
-│   │   ├── database.py        # 数据库连接
-│   │   ├── security.py        # 统一鉴权
-│   │   ├── events.py          # 事件总线
-│   │   ├── loader.py          # 模块加载器
-│   │   ├── cache.py           # Redis 缓存
-│   │   ├── rate_limit.py      # 速率限制
-│   │   ├── middleware.py      # 请求日志中间件
-│   │   ├── health.py          # 健康检查
-│   │   ├── pagination.py      # 统一分页
-│   │   ├── errors.py          # 标准错误码
-│   │   ├── versioning.py      # API 版本管理
-│   │   └── deps.py            # 依赖注入
-│   ├── alembic/               # 数据库迁移
-│   │   ├── env.py
-│   │   └── versions/
-│   ├── scripts/               # 工具脚本
-│   │   ├── create_module.py   # 模块脚手架
-│   │   └── delete_module.py   # 模块删除工具
+│   │   ├── ...
 │   ├── models/                # 系统数据模型
-│   ├── schemas/               # 数据验证
-│   ├── routers/               # 系统路由
 │   ├── modules/               # 可插拔模块
 │   │   ├── _template/         # 模块模板
-│   │   ├── blog/              # 博客模块
-│   │   └── notes/             # 笔记模块
-│   ├── storage/               # 存储目录
-│   └── main.py                # 应用入口
+│   │   └── ...
+│   ├── routers/               # 系统路由
+│   ├── schemas/               # 数据验证
+│   ├── scripts/               # 工具脚本
+│   ├── utils/                 # 工具类
+│   ├── main.py                # 应用入口
+│   └── requirements.txt       # 依赖清单
 ├── frontend/                  # 前端代码（原生 JS）
 │   ├── css/                   # 样式文件
 │   ├── js/                    # JavaScript 文件
 │   └── index.html             # 入口页面
-├── docker/                    # Docker 配置
-│   └── nginx/                 # Nginx 配置
-├── docker-compose.yml         # Docker Compose 配置
+├── docker/                    # Docker 相关文件
+│   ├── docker-compose.yml     # Docker Compose 配置
+│   ├── Dockerfile             # 镜像构建文件
+│   ├── docker-entrypoint.sh   # 启动脚本
+│   ├── env_docker             # Docker 环境变量
+│   └── env_docker.example     # 环境变量示例
+├── storage/                   # 持久化存储（上传文件/备份）
+│   ├── uploads/               # 用户上传
+│   └── backups/               # 系统备份
 └── README.md                  # 项目说明
 ```
 
