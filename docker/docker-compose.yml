@@ -70,10 +70,10 @@ services:
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_password}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_123456}
       - MYSQL_DATABASE=${DB_NAME:-jeje_webos}
       - MYSQL_USER=${DB_USER:-jeje}
-      - MYSQL_PASSWORD=${DB_PASSWORD:-jeje_password}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-jeje_123456}
     volumes:
       - jeje-mysql-data:/var/lib/mysql
     command: >
