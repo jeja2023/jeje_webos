@@ -35,10 +35,10 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["认证"])
 
-# 配置认证相关接口的速率限制（更严格）
-rate_limiter.configure_route("/api/v1/auth/login", requests=5, window=60, block_duration=300)  # 5次/分钟，超限封禁5分钟
-rate_limiter.configure_route("/api/v1/auth/register", requests=3, window=60, block_duration=600)  # 3次/分钟，超限封禁10分钟
-rate_limiter.configure_route("/api/v1/auth/password", requests=3, window=60, block_duration=300)  # 3次/分钟
+# 配置认证相关接口的速率限制
+rate_limiter.configure_route("/api/v1/auth/login", requests=30, window=60, block_duration=300)  # 30次/分钟，防暴力破解依然有效
+rate_limiter.configure_route("/api/v1/auth/register", requests=10, window=60, block_duration=600)  # 10次/分钟
+rate_limiter.configure_route("/api/v1/auth/password", requests=10, window=60, block_duration=300)  # 10次/分钟
 
 
 @router.post("/register")

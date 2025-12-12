@@ -13,6 +13,8 @@ import logging
 
 from core.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 # 尝试导入文件类型检测库
 try:
     import filetype
@@ -20,8 +22,6 @@ try:
 except ImportError:
     FILE_TYPE_AVAILABLE = False
     logger.warning("filetype 库未安装，文件内容验证功能将受限。安装: pip install python-filetype")
-
-logger = logging.getLogger(__name__)
 settings = get_settings()
 
 

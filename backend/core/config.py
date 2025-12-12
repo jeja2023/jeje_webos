@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     
     # 速率限制配置
     rate_limit_enabled: bool = True  # 是否启用速率限制（开发环境可关闭）
-    rate_limit_requests: int = 200  # 默认请求数限制（每分钟）
+    rate_limit_requests: int = 1000  # 默认请求数限制（每分钟）
     rate_limit_window: int = 60  # 时间窗口（秒）
     rate_limit_block_duration: int = 30  # 超限后封禁时间（秒），开发环境建议30秒，生产环境可设置为60-300秒
     rate_limit_enable_whitelist_localhost: bool = True  # 是否将本地IP加入白名单（开发环境推荐开启）

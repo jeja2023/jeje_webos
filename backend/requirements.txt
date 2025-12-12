@@ -14,6 +14,7 @@ openpyxl>=3.1.0
 alembic>=1.13.0
 nest-asyncio>=1.5.0
 filetype>=1.2.0
+python-multipart>=0.0.6
 
 # 测试依赖
 pytest>=7.4.0

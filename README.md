@@ -439,8 +439,8 @@ alembic history
 #### 方式二：使用 Docker Compose
 
 ```bash
-# 启动所有服务（开发环境）
-docker-compose up -d
+# 启动所有服务（开发环境，使用 env_docker）
+docker-compose --env-file env_docker up -d
 
 # 启动所有服务（生产环境，包含 Nginx）
 docker-compose --profile production up -d
@@ -450,7 +450,7 @@ docker-compose logs -f              # 查看所有服务日志
 docker-compose logs -f backend     # 查看指定服务日志
 
 # 停止服务
-docker-compose down
+docker-compose --env-file env_docker down
 
 # 停止服务并删除数据卷（谨慎使用）
 docker-compose down -v
@@ -460,7 +460,7 @@ docker-compose down -v
 
 #### 1. 创建环境变量文件
 
-在项目根目录创建 `.env` 文件（或从 `.env.docker` 复制）：
+在 `docker` 目录中已经准备好了 `env_docker` 配置文件（可从 `env_docker.example` 复制）：
 
 ```env
 # ==================== 应用配置 ====================
@@ -500,7 +500,11 @@ ADMIN_NICKNAME=系统管理员
 MAX_UPLOAD_SIZE=104857600  # 100MB
 
 # ==================== 审计日志 ====================
-AUDIT_ALL_OPERATIONS=true
+# ==================== 速率限制配置 ====================
+# 是否启用速率限制
+RATE_LIMIT_ENABLED=true
+# 全局请求限制（次/分钟），Docker 环境建议适当调大以防误封网关 IP
+RATE_LIMIT_REQUESTS=2000
 ```
 
 > ⚠️ **安全提示**：生产环境部署前，请务必修改所有默认密码和密钥！
@@ -790,7 +794,13 @@ docker stats
 3. 使用 API 文档 (`/api/docs`) 测试接口
 4. 检查浏览器控制台的前端错误
 
-### Q3: 数据库迁移失败怎么办？
+### Q3: Docker 部署时频繁被封禁 IP？
+
+这是因为在部分 Docker 网络环境（如 Windows Docker Desktop）中，容器内看到的请求来源 IP 都是 Docker 网关 IP。
+解决方案：
+1. 确保使用最新代码，已放宽单 IP 请求限制（全局 2000次/分）。
+2. 在 `env_docker` 中适当调大 `RATE_LIMIT_REQUESTS`。
+3. 如果前面有 Nginx，请配置 `ProxyHeadersMiddleware` 透传真实 IP。
 
 ```bash
 # 查看当前迁移状态

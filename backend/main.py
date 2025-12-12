@@ -331,7 +331,8 @@ app.include_router(health_router)
 
 
 # ==================== 静态文件配置 ====================
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+# 前端路径可通过环境变量 FRONTEND_PATH 配置，默认使用相对路径（本地开发）
+frontend_path = os.environ.get("FRONTEND_PATH", os.path.join(os.path.dirname(__file__), "..", "frontend"))
 
 if os.path.exists(frontend_path):
     # 挂载 CSS（带缓存控制）
