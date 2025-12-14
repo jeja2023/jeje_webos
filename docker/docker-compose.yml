@@ -1,0 +1,126 @@
+# ============================================================
+# JeJe WebOS Docker Compose 配置
+# ============================================================
+#
+# 使用方法（从项目根目录执行）:
+#   1. 进入 docker 目录: cd docker
+#   2. 复制配置: cp env_docker.example env_docker
+#   3. 编辑配置: notepad env_docker
+#   4. 启动服务: docker-compose up -d
+#
+# 或从项目根目录使用管理脚本:
+#   .\docker\docker.ps1 start
+#
+# 访问地址:
+#   - 前端页面: http://localhost:8000
+#   - API 文档:  http://localhost:8000/api/docs
+#
+# ============================================================
+
+services:
+  # ==================== 应用服务（前后端一体） ====================
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: jeje_webos:latest
+    container_name: jeje-webos-app
+    restart: unless-stopped
+    env_file:
+      - env_docker
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      # 前端文件路径（Docker 中为 /frontend）
+      - FRONTEND_PATH=/frontend
+      # 文件存储路径（Docker 中为 /app/storage/uploads）
+      - UPLOAD_DIR=/app/storage/uploads
+      # 覆盖数据库连接（使用 Docker 内部服务名）
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      # 覆盖 Redis 连接（使用 Docker 内部服务名）
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    volumes:
+      - jeje-uploads:/app/storage/uploads
+      - jeje-backups:/app/storage/backups
+      - jeje-logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jeje-network
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ==================== MySQL 数据库 ====================
+  mysql:
+    image: mysql:8.0
+    container_name: jeje-webos-mysql
+    restart: unless-stopped
+    env_file:
+      - env_docker
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_123456}
+      - MYSQL_DATABASE=${DB_NAME:-jeje_webos}
+      - MYSQL_USER=${DB_USER:-jeje}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-jeje_123456}
+    volumes:
+      - jeje-mysql-data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password --max_connections=500 --innodb_buffer_pool_size=256M
+    networks:
+      - jeje-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==================== Redis 缓存 ====================
+  redis:
+    image: redis:7-alpine
+    container_name: jeje-webos-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - jeje-redis-data:/data
+    networks:
+      - jeje-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ==================== 数据卷 ====================
+volumes:
+  jeje-mysql-data:
+    driver: local
+  jeje-redis-data:
+    driver: local
+  jeje-uploads:
+    driver: local
+  jeje-backups:
+    driver: local
+  jeje-logs:
+    driver: local
+
+# ==================== 网络 ====================
+networks:
+  jeje-network:
+    driver: bridge

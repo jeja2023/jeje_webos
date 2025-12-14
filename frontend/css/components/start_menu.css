@@ -1,0 +1,343 @@
+/* Start Menu Styles */
+
+/* 1. Base Definitions (Light Mode Default) */
+:root {
+    --sm-bg: #ffffff;
+    --sm-border: 1px solid rgba(0, 0, 0, 0.05);
+    --sm-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --sm-backdrop: none;
+    --sm-text-primary: var(--color-text-primary);
+    --sm-text-secondary: var(--color-text-secondary);
+
+    --sm-header-bg: transparent;
+    --sm-header-border: none;
+
+    --sm-badge-bg: #f3f4f6;
+    --sm-badge-text: var(--color-text-secondary);
+
+    --sm-item-hover-bg: #f3f4f6;
+    --sm-item-hover-text: var(--color-text-primary);
+
+    --sm-footer-bg: #f9fafb;
+    --sm-footer-border: 1px solid #e5e7eb;
+
+    --sm-btn-hover-bg: #e5e7eb;
+    --sm-btn-hover-text: var(--color-text-primary);
+
+    --sm-scroll-thumb: rgba(0, 0, 0, 0.1);
+}
+
+/* 2. Dark Mode Variable Overrides */
+/* Use a mixin-like approach by updating variables in specific contexts */
+
+/* Manual Dark Theme Toggle */
+:root.theme-dark {
+    --sm-bg: rgba(30, 30, 40, 0.85);
+    --sm-border: 1px solid rgba(255, 255, 255, 0.1);
+    --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    --sm-backdrop: blur(20px) saturate(180%);
+    --sm-text-primary: rgba(255, 255, 255, 0.9);
+    --sm-text-secondary: rgba(255, 255, 255, 0.7);
+
+    --sm-header-bg: rgba(255, 255, 255, 0.03);
+    --sm-header-border: 1px solid rgba(255, 255, 255, 0.06);
+
+    --sm-badge-bg: rgba(255, 255, 255, 0.15);
+    --sm-badge-text: rgba(255, 255, 255, 0.9);
+
+    --sm-item-hover-bg: rgba(255, 255, 255, 0.08);
+    --sm-item-hover-text: white;
+
+    --sm-footer-bg: rgba(0, 0, 0, 0.2);
+    --sm-footer-border: 1px solid rgba(255, 255, 255, 0.06);
+
+    --sm-btn-hover-bg: rgba(255, 255, 255, 0.1);
+    --sm-btn-hover-text: white;
+
+    --sm-scroll-thumb: rgba(255, 255, 255, 0.15);
+}
+
+/* macOS 26 (Sunrise) Theme Support */
+:root.theme-sunrise {
+    --sm-bg: rgba(20, 20, 30, 0.6);
+    /* 更通透的深色背景 */
+    --sm-border: 1px solid rgba(255, 255, 255, 0.15);
+    --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    --sm-backdrop: blur(40px) saturate(200%);
+    /* 更强的磨砂效果 */
+    --sm-text-primary: rgba(255, 255, 255, 0.95);
+    --sm-text-secondary: rgba(255, 255, 255, 0.75);
+
+    --sm-header-bg: rgba(255, 255, 255, 0.05);
+    --sm-header-border: 1px solid rgba(255, 255, 255, 0.1);
+
+    --sm-badge-bg: rgba(255, 255, 255, 0.2);
+    --sm-badge-text: #ffffff;
+
+    --sm-item-hover-bg: rgba(255, 255, 255, 0.15);
+    --sm-item-hover-text: white;
+
+    --sm-footer-bg: rgba(0, 0, 0, 0.3);
+    --sm-footer-border: 1px solid rgba(255, 255, 255, 0.1);
+
+    --sm-btn-hover-bg: rgba(255, 255, 255, 0.15);
+    --sm-btn-hover-text: white;
+
+    --sm-scroll-thumb: rgba(255, 255, 255, 0.2);
+}
+
+/* System Dark Mode Preference (Only applies if not overridden by explicit sunrise theme) */
+@media (prefers-color-scheme: dark) {
+    :root:not(.theme-sunrise) {
+        --sm-bg: rgba(30, 30, 40, 0.85);
+        --sm-border: 1px solid rgba(255, 255, 255, 0.1);
+        --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        --sm-backdrop: blur(20px) saturate(180%);
+        --sm-text-primary: rgba(255, 255, 255, 0.9);
+        --sm-text-secondary: rgba(255, 255, 255, 0.7);
+
+        --sm-header-bg: rgba(255, 255, 255, 0.03);
+        --sm-header-border: 1px solid rgba(255, 255, 255, 0.06);
+
+        --sm-badge-bg: rgba(255, 255, 255, 0.15);
+        --sm-badge-text: rgba(255, 255, 255, 0.9);
+
+        --sm-item-hover-bg: rgba(255, 255, 255, 0.08);
+        --sm-item-hover-text: white;
+
+        --sm-footer-bg: rgba(0, 0, 0, 0.2);
+        --sm-footer-border: 1px solid rgba(255, 255, 255, 0.06);
+
+        --sm-btn-hover-bg: rgba(255, 255, 255, 0.1);
+        --sm-btn-hover-text: white;
+
+        --sm-scroll-thumb: rgba(255, 255, 255, 0.15);
+    }
+}
+
+/* 3. Component Styles (Using Variables) */
+.start-menu-container {
+    position: fixed;
+    bottom: 80px;
+    left: 20px;
+    z-index: 9999;
+    /* 让点击事件穿透容器，只有子元素可以接收点击 */
+    pointer-events: none;
+}
+
+.start-menu {
+    width: 260px;
+    height: 600px;
+    max-height: 80vh;
+
+    background: var(--sm-bg);
+    border: var(--sm-border);
+    box-shadow: var(--sm-shadow);
+    backdrop-filter: var(--sm-backdrop);
+    -webkit-backdrop-filter: var(--sm-backdrop);
+
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px) scale(0.95);
+    transform-origin: bottom left;
+    transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+    overflow: hidden;
+    color: var(--sm-text-primary);
+}
+
+.start-menu.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.start-menu-header {
+    padding: 24px 20px 16px;
+    background: var(--sm-header-bg);
+    border-bottom: var(--sm-header-border);
+}
+
+.user-profile-brief {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), #a855f7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-info .username {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sm-text-primary);
+    margin-bottom: 2px;
+}
+
+.user-info .role-badge {
+    font-size: 11px;
+    background: var(--sm-badge-bg);
+    color: var(--sm-badge-text);
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    font-weight: 500;
+}
+
+.start-menu-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 12px 12px;
+}
+
+/* Menu Item Styles */
+.menu-item-wrapper {
+    margin-bottom: 2px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    color: var(--sm-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    gap: 12px;
+    position: relative;
+    font-size: 14px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.menu-item:hover {
+    background: var(--sm-item-hover-bg);
+    color: var(--sm-item-hover-text);
+}
+
+/* Active State */
+.menu-item.expanded,
+.menu-item.active {
+    background: var(--color-accent);
+    color: white !important;
+    /* Force white text on accent background */
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+/* Fix active state in dark mode to be subtle if needed, or keep blue */
+/* Currently keeping blue accent for consistency, but removing shadow in dark mode via override */
+:root.theme-dark .menu-item.expanded {
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.12);
+    /* Use subtle glass in dark mode instead of harsh blue */
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not(.theme-sunrise) .menu-item.expanded {
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.12);
+    }
+}
+
+
+.menu-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-title {
+    flex: 1;
+}
+
+.menu-arrow {
+    font-size: 10px;
+    opacity: 0.5;
+    transition: transform 0.3s;
+}
+
+.menu-item.expanded .menu-arrow {
+    transform: rotate(180deg);
+    opacity: 0.8;
+}
+
+.menu-children {
+    display: none;
+    padding: 4px 0 8px 0;
+}
+
+.menu-children.show {
+    display: block;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Footer */
+.start-menu-footer {
+    padding: 12px 20px;
+    background: var(--sm-footer-bg);
+    border-top: var(--sm-footer-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-icon-text {
+    background: transparent;
+    border: none;
+    color: var(--sm-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.btn-icon-text:hover {
+    background: var(--sm-btn-hover-bg);
+    color: var(--sm-btn-hover-text);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--sm-scroll-thumb);
+    border-radius: 3px;
+}

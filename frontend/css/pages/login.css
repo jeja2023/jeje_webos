@@ -1,0 +1,201 @@
+/**
+ * Login Page Styles - macOS Aesthetic
+ */
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    /* Match desktop variable.css deep background */
+    background:
+        radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.2) 0%, transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 25%),
+        linear-gradient(135deg, #111827 0%, #0B0F19 100%);
+    background-attachment: fixed;
+    background-size: cover;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 380px;
+    /* Slightly narrower for elegance */
+    z-index: 10;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.login-logo {
+    font-size: 56px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.login-title {
+    font-size: 26px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    font-weight: 400;
+}
+
+/* Glass Card */
+.login-form .card {
+    padding: 32px;
+    background: rgba(30, 30, 35, 0.7);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.form-label {
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    margin-left: 2px;
+}
+
+.form-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: #0A84FF;
+    /* Apple Blue */
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.form-error {
+    background: rgba(255, 69, 58, 0.1);
+    /* Red background */
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    color: #FF453A;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+/* Button */
+.login-form .btn {
+    width: 100%;
+    margin-top: 10px;
+    height: 44px;
+    font-size: 14px;
+    font-weight: 500;
+    background: #0A84FF;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: 0.3px;
+}
+
+.login-form .btn:hover {
+    background: #0077ED;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+}
+
+.login-form .btn:active {
+    background: #006EDB;
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.login-form .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    background: #3a3a3c;
+    color: #888;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 24px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    animation: fadeIn 1s 0.3s forwards ease;
+    opacity: 0;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+.login-footer a {
+    color: #0A84FF;
+    font-weight: 500;
+    text-decoration: none;
+    margin-left: 6px;
+    transition: color 0.2s;
+}
+
+.login-footer a:hover {
+    color: #60A5FA;
+    text-decoration: underline;
+}

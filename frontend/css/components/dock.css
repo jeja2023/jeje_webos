@@ -1,0 +1,328 @@
+/**
+ * Dock Styles - macOS 文件夹风格
+ */
+.dock-container {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+}
+
+.dock {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.15),
+        0 10px 20px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dock-item {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+}
+
+.dock-item:hover {
+    transform: scale(1.15) translateY(-8px);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.dock-icon {
+    font-size: 32px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Active indicator dot */
+.dock-item.active::after,
+.dock-folder.active::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+}
+
+/* Tooltip */
+.dock-tooltip {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dock-item:hover .dock-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+/* Separator */
+.dock-separator {
+    width: 1px;
+    height: 42px;
+    background: linear-gradient(to bottom,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent);
+    flex-shrink: 0;
+}
+
+/* ===== 文件夹样式 ===== */
+.dock-folder {
+    position: relative;
+}
+
+.dock-folder .dock-folder-trigger {
+    position: relative;
+}
+
+/* 文件夹打开时的视觉反馈 */
+.dock-folder.open .dock-folder-trigger {
+    transform: scale(1.1) translateY(-4px);
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== 弹出菜单 ===== */
+.dock-folder-popup {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+
+    min-width: 200px;
+    max-width: 320px;
+
+    background: rgba(30, 30, 32, 0.85);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+
+    padding: 12px;
+
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.4),
+        0 10px 20px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 3000;
+}
+
+/* 弹出箭头 */
+.dock-folder-popup::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: rgba(30, 30, 32, 0.85);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.dock-folder-popup.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) scale(1);
+}
+
+.folder-popup-header {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 8px;
+}
+
+.folder-popup-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.folder-app-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.folder-app-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.folder-app-item.active {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.folder-app-icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+}
+
+.folder-app-title {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ===== 子分组样式 (系统管理等) ===== */
+.dock-folder-popup.has-subgroups {
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.folder-subgroup {
+    margin-bottom: 12px;
+}
+
+.folder-subgroup:last-child {
+    margin-bottom: 0;
+}
+
+.folder-subgroup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 6px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+}
+
+.subgroup-icon {
+    font-size: 14px;
+}
+
+.subgroup-title {
+    flex: 1;
+}
+
+.folder-subgroup-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Light Theme Dock Overrides */
+:root.theme-light .dock {
+    /* 增加不透明度，使用混合模式 */
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 240, 245, 0.5) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.15),
+        0 10px 20px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+:root.theme-light .dock-item {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+:root.theme-light .dock-item:hover {
+    background: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+:root.theme-light .dock-separator {
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.15), transparent);
+}
+
+/* Light Mode Active Dot */
+:root.theme-light .dock-item.active::after,
+:root.theme-light .dock-folder.active::after {
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Light Mode Folders Popups */
+:root.theme-light .dock-folder-popup {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.15),
+        0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+:root.theme-light .dock-folder-popup::after {
+    background: rgba(255, 255, 255, 0.85);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+:root.theme-light .folder-app-item {
+    color: rgba(0, 0, 0, 0.85);
+}
+
+:root.theme-light .folder-app-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+:root.theme-light .folder-popup-header,
+:root.theme-light .folder-subgroup-header {
+    color: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}

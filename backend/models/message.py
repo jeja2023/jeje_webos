@@ -1,0 +1,40 @@
+"""
+信息系统数据模型
+"""
+
+from typing import Optional
+from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
+
+from core.database import Base
+
+
+
+class Message(Base):
+    """信息表"""
+    __tablename__ = "sys_messages"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id"))  # 接收用户ID
+    sender_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sys_users.id"), nullable=True)  # 发送者ID
+    title: Mapped[str] = mapped_column(String(200))  # 信息标题
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 信息内容
+    type: Mapped[str] = mapped_column(String(50), default="info")  # 信息类型: info, success, warning, error
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否已读
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 阅读时间
+    action_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 操作链接
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    
+    # Relationships
+    sender = relationship("User", foreign_keys=[sender_id], lazy="joined")
+    
+    # 索引
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统信息表'},
+    )
+
+
+
+
+

@@ -1,0 +1,94 @@
+/**
+ * 页面布局样式
+ */
+
+/* 应用容器 */
+#app {
+    min-height: 100vh;
+}
+
+/* 主布局 */
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 主内容区 */
+.main-wrapper {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left var(--transition-normal);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar.collapsed ~ .main-wrapper {
+    margin-left: var(--sidebar-collapsed);
+}
+
+/* 主内容 */
+.main-content {
+    flex: 1;
+    padding: var(--spacing-lg);
+    background: var(--color-bg-deep);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 在内容不足以滚动时隐藏滚动条 */
+.main-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: transparent;
+}
+
+.main-content:hover::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+}
+
+/* 页面容器 */
+.page {
+    /* 移除动画，避免创建层叠上下文 */
+}
+
+.page-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.page-desc {
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .main-wrapper {
+        margin-left: 0;
+    }
+    
+    .main-content {
+        padding: var(--spacing-md);
+    }
+}
+
+
+

@@ -1,0 +1,94 @@
+/**
+ * 分页组件样式
+ */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xl);
+    flex-wrap: wrap;
+}
+
+.pagination-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    border-color: var(--color-border-light);
+    color: var(--color-text-primary);
+}
+
+.pagination-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-inverse);
+    font-weight: 500;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 首页/末页按钮 */
+.pagination-first,
+.pagination-last {
+    font-weight: bold;
+}
+
+/* 上一页/下一页按钮 */
+.pagination-prev,
+.pagination-next {
+    font-size: 1rem;
+}
+
+/* 省略号 */
+.pagination-ellipsis {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+/* 分页信息文本 */
+.pagination-info {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin-left: var(--spacing-md);
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+    .pagination {
+        gap: 4px;
+    }
+    
+    .pagination-btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+    
+    .pagination-ellipsis {
+        min-width: 24px;
+    }
+}

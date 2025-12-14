@@ -1,0 +1,208 @@
+/**
+ * 核心变量定义
+ * CSS变量和主题配置
+ */
+
+:root {
+    /* 清新现代主题（默认 - 浅色） */
+    --color-bg-deep: #f3f4f6;
+    /* 整体背景 - 浅灰 */
+    --color-bg-primary: #ffffff;
+    /* 主要容器背景 - 纯白 */
+    --color-bg-secondary: #ffffff;
+    /* 次要容器背景 - 纯白 */
+    --color-bg-tertiary: #f9fafb;
+    /* 第三个层级 - 极浅灰 */
+    --color-bg-hover: #f3f4f6;
+    /* 悬停背景 */
+
+    /* 强调色 - 鲜亮的蓝色 (Tailwind Blue 600) */
+    --color-accent: #2563eb;
+    --color-accent-light: #60a5fa;
+    --color-accent-dark: #1d4ed8;
+    --color-accent-glow: rgba(37, 99, 235, 0.25);
+
+    /* 辅助色 - iOS 风格 */
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-success: #10b981;
+    --color-info: #3b82f6;
+
+    /* 文字色 - 提高对比度与易读性 */
+    --color-text-primary: #111827;
+    /* Gray 900 */
+    --color-text-secondary: #4b5563;
+    /* Gray 600 */
+    --color-text-tertiary: #9ca3af;
+    /* Gray 400 */
+    --color-text-inverse: #ffffff;
+
+    /* 边框 - 浅灰 */
+    --color-border: #e5e7eb;
+    /* Gray 200 */
+    --color-border-light: #f3f4f6;
+
+    /* 阴影 - 柔和 */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.3);
+
+    /* 间距 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+
+    /* 圆角 */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* 字体 */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Roboto Mono", monospace;
+
+    /* 尺寸 */
+    --header-height: 52px;
+    --sidebar-width: 240px;
+    --sidebar-collapsed: 64px;
+
+    /* 过渡 */
+    --transition-fast: 0.15s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+    --transition-normal: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+    --transition-slow: 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+}
+
+/* 显式浅色主题类（用于手动切换 - 覆盖深色媒体查询） */
+:root.theme-light {
+    --color-bg-deep: #f3f4f6;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #ffffff;
+    --color-bg-tertiary: #f9fafb;
+    --color-bg-hover: #f3f4f6;
+
+    --color-accent: #2563eb;
+    --color-accent-light: #60a5fa;
+    --color-accent-dark: #1d4ed8;
+    --color-accent-glow: rgba(37, 99, 235, 0.25);
+
+    --color-text-primary: #111827;
+    --color-text-secondary: #4b5563;
+    --color-text-tertiary: #9ca3af;
+    --color-text-inverse: #ffffff;
+
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.3);
+}
+
+/* macOS 26 概念主题（活力抽象） */
+:root.theme-sunrise {
+    /* macOS 风格动态抽象渐变 */
+    --color-bg-deep: linear-gradient(125deg, #FF2E63 0%, #08D9D6 50%, #252A34 100%);
+    /* 备选：更像 Sequoia 的渐变: 
+    --color-bg-deep: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                     radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                     radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%),
+                     linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    */
+    --color-bg-deep: linear-gradient(135deg, #302b63 0%, #24243e 100%);
+    /* 深紫色回退基础色 */
+    --color-bg-deep:
+        radial-gradient(circle at 80% 20%, rgba(255, 46, 99, 0.4) 0%, transparent 40%),
+        radial-gradient(circle at 20% 80%, rgba(8, 217, 214, 0.4) 0%, transparent 40%),
+        linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
+    /* 深色赛博朋克/MacOS 深色 */
+
+
+    /* 极致磨砂玻璃 - 更高通透度与现代感 */
+    --color-bg-primary: rgba(255, 255, 255, 0.15);
+    --color-bg-secondary: rgba(255, 255, 255, 0.1);
+    --color-bg-tertiary: rgba(255, 255, 255, 0.05);
+    --color-bg-hover: rgba(255, 255, 255, 0.2);
+
+    /* 强调色 - 霓虹质感 */
+    --color-accent: #0A84FF;
+    --color-accent-light: #5E5CE6;
+    --color-accent-dark: #32D74B;
+    --color-accent-glow: rgba(10, 132, 255, 0.4);
+
+    /* 辅助色 - 有机且鲜亮 */
+    --color-warning: #FFD60A;
+    --color-error: #FF453A;
+    --color-success: #32D74B;
+    --color-info: #64D2FF;
+
+    /* 文字 - 适应深色多彩背景自动调整 */
+    --color-text-primary: #ffffff;
+    --color-text-secondary: rgba(255, 255, 255, 0.8);
+    --color-text-tertiary: rgba(255, 255, 255, 0.6);
+    --color-text-inverse: #000000;
+
+    --color-border: rgba(255, 255, 255, 0.15);
+    --color-border-light: rgba(255, 255, 255, 0.1);
+
+    /* 现代弥散阴影 */
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.4);
+}
+
+/* 深色模式覆盖 (如果系统开启) */
+/* 深色模式覆盖 (如果系统开启) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg-deep: #1c1c1e;
+        --color-bg-primary: #2c2c2e;
+        --color-bg-secondary: #3a3a3c;
+        --color-bg-tertiary: #48484a;
+        --color-bg-hover: #565658;
+
+        --color-text-primary: #ffffff;
+        --color-text-secondary: #ebebf5;
+        --color-text-tertiary: #aeaeb2;
+        --color-text-inverse: #000000;
+
+        --color-border: #38383a;
+        --color-border-light: #48484a;
+
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* 显式深色主题类（用于手动切换） */
+:root.theme-dark {
+    /* macOS 风格深色抽象背景 */
+    --color-bg-deep:
+        radial-gradient(circle at 20% 40%, rgba(45, 55, 72, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 80% 60%, rgba(20, 30, 40, 0.4) 0%, transparent 50%),
+        linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    --color-bg-primary: #2c2c2e;
+    --color-bg-secondary: #3a3a3c;
+    --color-bg-tertiary: #48484a;
+    --color-bg-hover: #565658;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #ebebf5;
+    --color-text-tertiary: #aeaeb2;
+    --color-text-inverse: #000000;
+
+    --color-border: #38383a;
+    --color-border-light: #48484a;
+
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+}

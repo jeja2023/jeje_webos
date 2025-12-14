@@ -1,0 +1,96 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 环境配置
+.env
+.env.local
+*.local
+docker/env_docker
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# 系统文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 日志
+*.log
+logs/
+
+# 存储目录 (保留目录结构，忽略内容)
+storage/*
+!storage/.gitkeep
+!storage/uploads/
+!storage/backups/
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+module_db_backups/
+assets/
+
+# 数据库
+*.db
+*.sqlite3
+*.sql
+*.dump
+
+# 编译产物
+dist/
+build/
+*.spec
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# Docker
+.dockerignore
+
+# 状态文件
+backend/state/*.json
+!backend/state/.gitkeep
+*.json.bak
+
+# 备份文件
+*.bak
+*.backup
+
+# 敏感信息
+*.key
+*.pem
+*.cert
+*.crt
+
+# 临时文件
+*.tmp
+*.temp
