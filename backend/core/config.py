@@ -111,6 +111,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = str(ENV_FILE)
         env_file_encoding = "utf-8"
+        extra = "ignore"  # 忽略 .env 中多余的字段（如自动生成的动态配置）
 
 
 _settings_instance: Optional[Settings] = None

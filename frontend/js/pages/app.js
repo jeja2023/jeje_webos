@@ -129,15 +129,20 @@ const App = {
 
         // 多窗口包装器
         const wrap = (PageClass, title, ...args) => {
-            return ({ params, path }) => {
+            return ({ params, path, query }) => {
                 this.ensureDesktopEnvironment();
 
-                // 构造参数：(container, id, ...args)
+                // 构造完整 URL 以便 WindowManager 同步状态
                 const props = [params ? params.id : null, ...args];
+
+                // 重构完整路径（含查询参数）
+                const qs = new URLSearchParams(query).toString();
+                const fullUrl = qs ? `${path}?${qs}` : path;
 
                 WindowManager.open(PageClass, props, {
                     title: title,
-                    id: path // 路径作为唯一ID（实现 URL 单例）
+                    id: path, // 路径作为唯一ID（实现 URL 单例）
+                    url: fullUrl
                 });
             };
         };

@@ -24,6 +24,11 @@ const WindowManager = {
 
         // 如果已存在（且是单例类型），则聚焦它
         if (this.windows.has(id)) {
+            // 更新该窗口关联的 URL（如果有）
+            if (options.url) {
+                const win = this.windows.get(id);
+                win.url = options.url;
+            }
             this.focus(id);
             return id;
         }
@@ -51,7 +56,8 @@ const WindowManager = {
             element: winEl,
             component: componentInstance,
             minimized: false,
-            maximized: false
+            maximized: false,
+            url: options.url || (id.startsWith('/') ? id : null) // 保存 URL 状态
         });
 
         // 聚焦新窗口
@@ -103,9 +109,7 @@ const WindowManager = {
 
         this.updateDesktopState();
 
-        // 如果没有剩余窗口，可能需要路由到桌面？
-        // 实际上，Router 可能仍然指向已关闭的应用 URL。
-        // 理想情况下应该同步 Router，但目前让我们保持视觉上的多窗口。
+        // 移除旧的路由逻辑注释，现在由 focusLastActive 处理
     },
 
     focus(id) {
@@ -127,6 +131,25 @@ const WindowManager = {
         }
 
         this.activeWindowId = id;
+
+        // 同步 URL 到 Router
+        if (typeof Router !== 'undefined') {
+            const targetUrl = win.url || (id.startsWith('/') ? id : null);
+            if (targetUrl) {
+                // 检查是否需要更新，避免循环
+                const currentFn = () => {
+                    const { path, query } = Router.current();
+                    const qs = new URLSearchParams(query).toString();
+                    return qs ? `${path}?${qs}` : path;
+                };
+                const currentUrl = currentFn();
+
+                // 简单比对（注意 query 顺序可能影响，但暂忽略）
+                if (currentUrl !== targetUrl && decodeURIComponent(currentUrl) !== decodeURIComponent(targetUrl)) {
+                    Router.replace(targetUrl);
+                }
+            }
+        }
     },
 
     minimize(id) {
@@ -182,20 +205,37 @@ const WindowManager = {
                 pId = id;
             }
         });
-        if (pId) this.focus(pId);
+        if (pId) {
+            this.focus(pId);
+        } else {
+            // 没有活动窗口了，回到桌面
+            if (typeof Router !== 'undefined') {
+                const { path } = Router.current();
+                if (path !== '/desktop') {
+                    Router.replace('/desktop');
+                }
+            }
+        }
     },
 
+
     updateDesktopState() {
-        const hasOpenWindows = Array.from(this.windows.values()).some(w => !w.minimized);
+        const windowsList = Array.from(this.windows.values());
+        const hasOpenWindows = windowsList.some(w => !w.minimized);
         const widgets = document.getElementById('desktop-widgets');
         if (widgets) {
             if (hasOpenWindows) widgets.classList.add('blur-out');
             else widgets.classList.remove('blur-out');
         }
 
-        // TopBar 逻辑？
-        // App.topbar.setState({ hideTime: !hasOpenWindows });
-        // 如果需要，我们可以发出事件或访问 App 全局对象。
+        // 更新 Store 中的打开窗口列表，供 Dock 使用
+        if (typeof Store !== 'undefined') {
+            // 保存所有窗口的 ID (即 path)
+            const openWindowIds = windowsList.map(w => w.id);
+            Store.set('openWindows', openWindowIds);
+        }
+
+        // TopBar 逻辑
         if (typeof App !== 'undefined' && App.topbar) {
             App.topbar.setState({ showTime: hasOpenWindows });
         }

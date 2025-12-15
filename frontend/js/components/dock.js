@@ -8,6 +8,7 @@ class DockComponent extends Component {
         this.state = {
             categories: [],
             activeApp: Store.get('currentRoute') || '/dashboard',
+            openWindows: Store.get('openWindows') || [], // 当前打开的所有窗口ID
             openFolder: null // 当前打开的文件夹ID
         };
 
@@ -16,6 +17,11 @@ class DockComponent extends Component {
 
         Store.subscribe('currentRoute', (route) => {
             this.setState({ activeApp: route, openFolder: null });
+        });
+
+        // 监听打开的窗口列表，用于确定的 Dock 指示器（小白点）
+        Store.subscribe('openWindows', (windows) => {
+            this.setState({ openWindows: windows || [] });
         });
 
         // 监听模块变化，动态更新 Dock
@@ -263,7 +269,11 @@ class DockComponent extends Component {
     }
 
     render() {
-        const { categories, activeApp, openFolder } = this.state;
+        // 解构 openWindows
+        const { categories, activeApp, openFolder, openWindows } = this.state;
+
+        // 应用中心是否激活：检查是否有以 /apps 开头的窗口打开
+        const isAppsActive = openWindows && openWindows.some(id => id.startsWith('/apps'));
 
         return `
             <div class="dock-container">
@@ -277,12 +287,12 @@ class DockComponent extends Component {
                     <div class="dock-separator"></div>
                     
                     <!-- 分类文件夹 -->
-                    ${categories.map(cat => this.renderCategory(cat, activeApp, openFolder)).join('')}
+                    ${categories.map(cat => this.renderCategory(cat, activeApp, openFolder, openWindows)).join('')}
                     
                     <div class="dock-separator"></div>
                     
                     <!-- 应用中心（最右侧） -->
-                    <div class="dock-item ${activeApp.startsWith('/apps') ? 'active' : ''}" 
+                    <div class="dock-item ${isAppsActive ? 'active' : ''}" 
                          onclick="Router.push('/apps')" 
                          title="应用中心">
                         <span class="dock-icon">🏪</span>
@@ -293,21 +303,29 @@ class DockComponent extends Component {
         `;
     }
 
-    renderCategory(category, activeApp, openFolder) {
+    renderCategory(category, activeApp, openFolder, openWindows) {
         const isOpen = openFolder === category.id;
         const hasChildren = category.children && category.children.length > 0;
         const hasSubgroups = category.hasSubgroups && category.subgroups;
 
-        // 检查是否有子项激活
+        // 辅助函数：检查路径是否对应任何打开的窗口
+        const isPathOpen = (path) => {
+            if (!openWindows) return false;
+            return openWindows.some(winId => winId.startsWith(path));
+        };
+
+        // 检查是否有子项激活（显示在图标下的小白点）
         let hasActiveChild = false;
         if (hasChildren) {
-            hasActiveChild = category.children.some(child => activeApp.startsWith(child.path));
+            hasActiveChild = category.children.some(child => isPathOpen(child.path));
         } else if (hasSubgroups) {
             hasActiveChild = category.subgroups.some(group =>
-                group.children.some(child => activeApp.startsWith(child.path))
+                group.children.some(child => isPathOpen(child.path))
             );
         }
-        const isActive = category.path && activeApp.startsWith(category.path);
+
+        // 单个应用的激活状态
+        const isActive = category.path && isPathOpen(category.path);
 
         // 如果没有子项也没有子分组，直接跳转
         if (!hasChildren && !hasSubgroups) {
