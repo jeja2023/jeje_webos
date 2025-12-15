@@ -155,6 +155,12 @@ class Modal {
                         if (shouldClose !== false) this.close();
                     } catch (e) {
                         console.error(e);
+                        // 显示错误提示
+                        const msg = e.message || e.toString();
+                        if (msg !== 'false') { // 忽略主动返回false的情况
+                            alert(`❌ 操作失败: ${msg}`);
+                        }
+
                         // 发生错误时恢复按钮状态
                         confirmBtn.classList.remove('loading');
                         confirmBtn.disabled = false;

@@ -65,7 +65,11 @@ async def ensure_database_exists():
     """确保数据库存在，如果不存在则尝试创建"""
     # 创建不指定数据库的连接URL（用于创建数据库）
     from sqlalchemy.ext.asyncio import create_async_engine as create_engine
-    admin_url = f"mysql+aiomysql://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}"
+    from urllib.parse import quote_plus
+    
+    encoded_user = quote_plus(settings.db_user)
+    encoded_pwd = quote_plus(settings.db_password)
+    admin_url = f"mysql+aiomysql://{encoded_user}:{encoded_pwd}@{settings.db_host}:{settings.db_port}"
     admin_engine = create_engine(
         admin_url,
         echo=False,

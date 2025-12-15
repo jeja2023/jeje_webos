@@ -262,7 +262,7 @@ async def refresh_token(
     使用刷新令牌获取新的访问令牌和刷新令牌
     """
     # 解码刷新令牌（验证令牌类型）
-    token_data = decode_token(data.refresh_token, check_type="refresh")
+    token_data = decode_token(data.refresh_token, expected_type="refresh")
     
     if not token_data:
         raise HTTPException(status_code=401, detail="无效的刷新令牌")

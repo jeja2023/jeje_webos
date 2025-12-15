@@ -125,19 +125,35 @@ async def list_posts(
     # 获取每篇文章的标签
     items = []
     for post in posts:
-        post_dict = PostListItem.model_validate(post).model_dump()
-        tags = await service.get_post_tags(post.id)
-        post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
-        
-        # 获取分类
-        if post.category_id:
-            category = await service.get_category(post.category_id)
-            if category:
-                post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
-        
-        items.append(post_dict)
+        items.append(await _enrich_post_data(service, post))
     
     return paginate(items, total, page, size)
+
+
+async def _enrich_post_data(service: BlogService, post, schema=PostListItem):
+    """辅助函数：填充文章的关联数据（标签、分类）"""
+    post_dict = schema.model_validate(post).model_dump()
+    
+    # 获取标签
+    tags = await service.get_post_tags(post.id)
+    post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
+    
+    # 获取分类
+    if post.category_id:
+        category = await service.get_category(post.category_id)
+        if category:
+            post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
+
+    # 处理详情特有字段（如果有），或者统一使用 PostInfo/PostListItem
+    # 这里为了通用性，post 参数是 ORM 对象，返回的是 dict
+    # 如果 post 是 PostInfo 类型需要的，上面的 model_validate 会自动处理多余字段吗？
+    # PostListItem 通常是 PostInfo 的子集。
+    # 为了严谨，我们检查一下是否需要完整详情。
+    # 因为 list 接口用 PostListItem, detail 接口用 PostInfo。
+    # 既然这是 python，我们可以让调用者决定 validate 哪种 model，或者简单地返回 dict
+    # 这里为了最大复用，我们只负责填充 tags 和 category 到 dict 中。
+    
+    return post_dict
 
 
 @router.get("/posts/my")
@@ -163,17 +179,7 @@ async def list_my_posts(
     
     items = []
     for post in posts:
-        post_dict = PostListItem.model_validate(post).model_dump()
-        tags = await service.get_post_tags(post.id)
-        post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
-        
-        # 获取分类
-        if post.category_id:
-            category = await service.get_category(post.category_id)
-            if category:
-                post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
-        
-        items.append(post_dict)
+        items.append(await _enrich_post_data(service, post))
     
     return paginate(items, total, page, size)
 
@@ -194,19 +200,12 @@ async def get_post(
     await service.increment_views(post_id)
     
     # 构建响应
-    post_dict = PostInfo.model_validate(post).model_dump()
-    
-    # 获取标签
-    tags = await service.get_post_tags(post.id)
-    post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
-    
-    # 获取分类
-    if post.category_id:
-        category = await service.get_category(post.category_id)
-        if category:
-            post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
+    # 使用 PostInfo schema 获取完整详情（包含 content）
+    post_dict = await _enrich_post_data(service, post, schema=PostInfo)
     
     return success(post_dict)
+    
+
 
 
 @router.get("/posts/slug/{slug}")
@@ -223,14 +222,7 @@ async def get_post_by_slug(
     
     await service.increment_views(post.id)
     
-    post_dict = PostInfo.model_validate(post).model_dump()
-    tags = await service.get_post_tags(post.id)
-    post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
-    
-    if post.category_id:
-        category = await service.get_category(post.category_id)
-        if category:
-            post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
+    post_dict = await _enrich_post_data(service, post, schema=PostInfo)
     
     return success(post_dict)
 
@@ -307,5 +299,3 @@ async def delete_post(
     })
     
     return success(message="删除成功")
-
-

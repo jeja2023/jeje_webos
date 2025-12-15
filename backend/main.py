@@ -92,6 +92,13 @@ async def lifespan(app: FastAPI):
     
     # 1. 初始化速率限制器
     init_rate_limiter()
+    if current_settings.rate_limit_enabled:
+        logger.info("✅ 速率限制中间件已启用")
+    else:
+        logger.info("ℹ️ 速率限制中间件已禁用")
+    
+    if current_settings.csrf_enabled:
+        logger.info("✅ CSRF 防护中间件已启用")
     
     # 2. 初始化模块加载器（加载模型和路由）
     loader = init_loader(app)
@@ -254,9 +261,6 @@ app.add_middleware(
 # 4. 速率限制中间件（可配置关闭）
 if settings.rate_limit_enabled:
     app.add_middleware(RateLimitMiddleware)
-    logger.info("速率限制已启用")
-else:
-    logger.info("速率限制已禁用（rate_limit_enabled=False）")
 
 # 5. 审计日志中间件（自动记录用户操作）
 from core.middleware import AuditMiddleware
@@ -269,7 +273,6 @@ app.add_middleware(
 if settings.csrf_enabled:
     from core.csrf import CSRFMiddleware
     app.add_middleware(CSRFMiddleware)
-    logger.info("CSRF 防护已启用")
 
 
 # ==================== 异常处理器 ====================

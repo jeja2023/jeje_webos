@@ -39,55 +39,64 @@ const Api = {
 
         try {
             const response = await fetch(fullUrl, config);
-            const data = await response.json();
+            const contentType = response.headers.get('content-type') || '';
+            const isJson = contentType.includes('application/json');
 
-            // 处理 HTTP 错误状态码
-            if (!response.ok) {
-                let errorMessage = '请求失败';
+            // JSON 响应
+            if (isJson) {
+                const data = await response.json();
 
-                // FastAPI HTTPException 返回 detail 字段
-                if (data.detail) {
-                    // Pydantic 验证错误返回数组
-                    if (Array.isArray(data.detail)) {
-                        // 提取第一个错误的消息
-                        const firstError = data.detail[0];
-                        if (firstError.msg) {
-                            // 字段验证错误
-                            const field = firstError.loc?.[firstError.loc.length - 1] || '';
-                            const fieldNames = {
-                                'username': '用户名',
-                                'password': '密码',
-                                'confirm_password': '确认密码',
-                                'phone': '手机号码',
-                                'nickname': '昵称'
-                            };
-                            const fieldName = fieldNames[field] || field;
-                            errorMessage = firstError.msg.replace('Value error, ', '');
-                            if (fieldName && !errorMessage.includes(fieldName)) {
-                                errorMessage = `${fieldName}: ${errorMessage}`;
+                // 处理 HTTP 错误状态码（JSON）
+                if (!response.ok) {
+                    let errorMessage = '请求失败';
+
+                    if (data.detail) {
+                        if (Array.isArray(data.detail)) {
+                            const firstError = data.detail[0];
+                            if (firstError.msg) {
+                                const field = firstError.loc?.[firstError.loc.length - 1] || '';
+                                const fieldNames = {
+                                    'username': '用户名',
+                                    'password': '密码',
+                                    'confirm_password': '确认密码',
+                                    'phone': '手机号码',
+                                    'nickname': '昵称'
+                                };
+                                const fieldName = fieldNames[field] || field;
+                                errorMessage = firstError.msg.replace('Value error, ', '');
+                                if (fieldName && !errorMessage.includes(fieldName)) {
+                                    errorMessage = `${fieldName}: ${errorMessage}`;
+                                }
                             }
+                        } else {
+                            errorMessage = data.detail;
                         }
-                    } else {
-                        errorMessage = data.detail;
                     }
+
+                    if (response.status === 401) {
+                        Store.clearAuth();
+                        Router.push('/login');
+                        throw new Error(errorMessage || '登录已过期，请重新登录');
+                    }
+
+                    throw new Error(errorMessage);
                 }
 
-                // 处理 401 未授权
-                if (response.status === 401) {
-                    Store.clearAuth();
-                    Router.push('/login');
-                    throw new Error(errorMessage || '登录已过期，请重新登录');
+                // 业务错误（自定义响应格式）
+                if (data.code && data.code !== 200) {
+                    throw new Error(data.message || '请求失败');
                 }
 
-                throw new Error(errorMessage);
+                return data;
             }
 
-            // 处理业务错误（自定义响应格式）
-            if (data.code && data.code !== 200) {
-                throw new Error(data.message || '请求失败');
+            // 非 JSON 响应（如文件流）
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || '请求失败');
             }
 
-            return data;
+            return await response.blob();
         } catch (error) {
             Config.error('请求失败:', error);
             throw error;
@@ -161,6 +170,46 @@ const Api = {
         });
 
         return response.json();
+    },
+
+    /**
+     * 下载文件（返回 Blob 与推断的文件名）
+     * 注意：不走 JSON 流程，避免二进制解析异常
+     */
+    async download(url, options = {}) {
+        const token = localStorage.getItem(Config.storageKeys.token);
+        const fullUrl = url.startsWith('http') ? url : `${Config.apiBase}${url}`;
+
+        const headers = {
+            ...options.headers
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(fullUrl, {
+            ...options,
+            headers
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || '下载失败');
+        }
+
+        const disposition = response.headers.get('content-disposition') || '';
+        let filename = options.filename;
+        const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+        if (!filename && match && match[1]) {
+            try {
+                filename = decodeURIComponent(match[1].trim().replace(/(^"|"$)/g, ''));
+            } catch (_) {
+                filename = match[1].trim().replace(/(^"|"$)/g, '');
+            }
+        }
+
+        const blob = await response.blob();
+        return { blob, filename };
     }
 };
 

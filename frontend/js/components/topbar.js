@@ -166,6 +166,9 @@ class TopBarComponent extends Component {
 
                     <!-- 胶囊 1: 用户 -->
                     <div class="status-pill user-pill" id="userPillToggle">
+                        <div class="user-avatar">
+                            ${(user.nickname || user.username || 'U')[0].toUpperCase()}
+                        </div>
                         <span class="user-name-text">${Utils.escapeHtml(user.nickname || user.username)}</span>
 
                         <!-- Dropdown Menu -->

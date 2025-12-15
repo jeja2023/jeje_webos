@@ -1,0 +1,25 @@
+# Exclude version control settings
+.git
+.gitignore
+
+# Exclude environment files
+# Prevent .env from being copied to image and causing conflicts
+.env
+.env.*
+!.env.example
+!env_docker
+!env_docker.example
+
+# Exclude dependencies and virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Exclude frontend dependencies and build artifacts
+frontend/node_modules/
+frontend/dist/
+
+# Exclude logs and temp files
+*.log
+tmp/

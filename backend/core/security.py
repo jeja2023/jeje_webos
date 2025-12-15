@@ -123,23 +123,30 @@ def create_token_pair(data: TokenData) -> tuple[str, str]:
     return access_token, refresh_token
 
 
-def decode_token(token: str) -> Optional[TokenData]:
+def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[TokenData]:
     """
     解码JWT令牌
     支持密钥轮换：先尝试新密钥，失败则尝试旧密钥
+    
+    Args:
+        token: 待解码的JWT
+        expected_type: 期望的令牌类型（"access"/"refresh"），不匹配则返回None
     """
-    # 先尝试使用新密钥
-    try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    def _decode(secret: str):
+        payload = jwt.decode(token, secret, algorithms=[settings.jwt_algorithm])
+        if expected_type and payload.get("type") != expected_type:
+            raise JWTError("token type mismatch")
         return TokenData(**payload)
+    
+    # 先尝试新密钥
+    try:
+        return _decode(settings.jwt_secret)
     except JWTError:
-        # 如果新密钥验证失败，尝试旧密钥（用于密钥轮换）
         if settings.jwt_secret_old:
             try:
-                payload = jwt.decode(token, settings.jwt_secret_old, algorithms=[settings.jwt_algorithm])
-                return TokenData(**payload)
+                return _decode(settings.jwt_secret_old)
             except JWTError:
-                pass
+                return None
         return None
 
 

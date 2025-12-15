@@ -14,10 +14,10 @@ ENV/
 *.egg
 
 # 环境配置
-.env
+
 .env.local
 *.local
-docker/env_docker
+
 .agent/
 
 # IDE
@@ -75,7 +75,7 @@ package-lock.json
 yarn.lock
 
 # Docker
-.dockerignore
+
 
 # 状态文件
 backend/state/*.json

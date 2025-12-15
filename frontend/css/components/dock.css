@@ -321,8 +321,142 @@
     background: rgba(0, 0, 0, 0.05);
 }
 
-:root.theme-light .folder-popup-header,
 :root.theme-light .folder-subgroup-header {
     color: rgba(0, 0, 0, 0.5);
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ===== 移动端适配 (Responsive) ===== */
+@media (max-width: 768px) {
+    .dock-container {
+        bottom: 8px;
+        width: 95%;
+        /* 稍微留边 */
+
+        /* 关键修复：移除 transform 以确保子元素的 position: fixed 能够相对于视口定位 */
+        left: 2.5%;
+        /* (100% - 95%) / 2 */
+        transform: none;
+    }
+
+    .dock {
+        position: relative;
+        /* 为伪元素定位 */
+
+        padding: 8px 12px;
+        gap: 8px;
+
+        justify-content: center;
+        /* 图标少时居中 */
+        flex-wrap: nowrap;
+        /* 不换行 */
+
+        /* 如果图标太多，允许横向滚动（类似iPad） */
+        overflow-x: auto;
+        justify-content: flex-start;
+        /* 滚动时左对齐 */
+        width: 100%;
+
+        /* 隐藏滚动条 */
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+
+        /* 核心修复：将背景和滤镜移至伪元素，防止父级 transform/filter 锁住 fixed 子元素 */
+        transform: none !important;
+        perspective: none !important;
+        /* Keep this if it was there before and not explicitly removed */
+        filter: none !important;
+        /* Keep this if it was there before and not explicitly removed */
+        background: transparent !important;
+        backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* 使用伪元素重建毛玻璃背景 */
+    .dock::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: 20px;
+
+        /* 毛玻璃效果 */
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow:
+            0 10px 30px rgba(0, 0, 0, 0.1),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .dock-folder {
+        /* 确保父元素没有 transform */
+        transform: none !important;
+        position: static;
+        /* 尝试 static 让 fixed 逃逸? 不，fixed 忽略 relative。主要是 transform */
+    }
+
+    .dock::-webkit-scrollbar {
+        display: none;
+    }
+
+    .dock-item {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        /* 只有在滚动时需要 */
+        border-radius: 10px;
+    }
+
+    .dock-icon {
+        font-size: 24px;
+    }
+
+    .dock-item:hover {
+        /* 移动端移除悬停放大，或者减小幅度 */
+        transform: none;
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* 文件夹弹出菜单适配 - 移动端全屏居中或底部动作面板模式 */
+    .dock-folder-popup {
+        position: fixed;
+        /* 脱离父元素定位 */
+        bottom: 80px;
+        /* Dock 栏上方 */
+        left: 50%;
+        transform: translateX(-50%) !important;
+        /* 强制水平居中 */
+
+        width: 280px;
+        max-width: 90vw;
+        max-height: 60vh;
+        overflow-y: auto;
+
+        z-index: 3000;
+
+        /* 移动端增强阴影 */
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 移动端隐藏弹出菜单的小箭头，因为位置不再对齐图标 */
+    .dock-folder-popup::after {
+        display: none;
+    }
+
+    /* 显示时的动画 */
+    .dock-folder-popup.show {
+        transform: translateX(-50%) translateY(0) scale(1) !important;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* 初始隐藏状态调整 */
+    .dock-folder-popup:not(.show) {
+        transform: translateX(-50%) translateY(20px) scale(0.9) !important;
+    }
 }

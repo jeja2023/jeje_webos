@@ -8,6 +8,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
+from urllib.parse import quote_plus
 
 # 获取backend目录的绝对路径
 BACKEND_DIR = Path(__file__).parent.parent.resolve()
@@ -32,11 +33,15 @@ class Settings(BaseSettings):
     
     @property
     def db_url(self) -> str:
-        return f"mysql+aiomysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        encoded_user = quote_plus(self.db_user)
+        encoded_pwd = quote_plus(self.db_password)
+        return f"mysql+aiomysql://{encoded_user}:{encoded_pwd}@{self.db_host}:{self.db_port}/{self.db_name}"
     
     @property
     def db_url_sync(self) -> str:
-        return f"mysql+pymysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        encoded_user = quote_plus(self.db_user)
+        encoded_pwd = quote_plus(self.db_password)
+        return f"mysql+pymysql://{encoded_user}:{encoded_pwd}@{self.db_host}:{self.db_port}/{self.db_name}"
     
     # MySQL二进制文件路径（可选，用于备份）
     mysql_bin_path: str = ""  # 例如: "C:/Program Files/MySQL/MySQL Server 8.0/bin"
@@ -60,7 +65,15 @@ class Settings(BaseSettings):
     jwt_secret: str = "your-secret-key-change-in-production"
     jwt_secret_old: Optional[str] = None  # 旧密钥（用于密钥轮换）
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 7  # 7天
+    jwt_expire_minutes: int = 60  # 1小时 (配合刷新令牌使用)
+    
+    @classmethod
+    def check_production_security(cls, values):
+        """检查生产环境安全配置"""
+        # 注意: 在 Pydantic v2 中验证方式有所不同，这里假设是 compat 或 v1 风格，
+        # 为了稳健性，我们在 __init__ 后或使用 property 检查，或者简单地在 main.py 启动时检查。
+        # 这里仅修改默认值，安全检查建议放在 main.py 启动时统一处理，避免 Pydantic 版本兼容问题干扰。
+        pass
     
     # JWT密钥自动轮换配置
     jwt_auto_rotate: bool = True  # 是否启用自动轮换
@@ -111,6 +124,14 @@ def get_settings() -> Settings:
     global _settings_instance
     if _settings_instance is None:
         _settings_instance = Settings()
+        
+        # 安全检查: 如果是生产环境且使用默认密钥，发出警告
+        if not _settings_instance.debug and _settings_instance.jwt_secret == "your-secret-key-change-in-production":
+            import logging
+            logging.getLogger("core.config").warning(
+                "🚨 [SECURITY WARNING] You are using the default JWT_SECRET in production mode! "
+                "Please set JWT_SECRET in your .env file immediately."
+            )
     return _settings_instance
 
 
