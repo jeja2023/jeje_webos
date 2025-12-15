@@ -64,9 +64,52 @@
     letter-spacing: -0.5px;
 }
 
+/* 品牌标题 Tooltip (自定义下方显示) */
+#brandPill {
+    position: relative;
+}
+
+#brandPill[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 500;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#brandPill:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 浅色模式适配 */
+:root.theme-light #brandPill[data-tooltip]::after {
+    background: rgba(255, 255, 255, 0.85);
+    color: #333;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 /* 通用胶囊样式 */
-/* Common Capsule Style */
-/* Common Capsule Style */
+
 .status-pill {
     pointer-events: auto;
     /* 渐变以获得微妙的光泽 */
@@ -116,13 +159,19 @@
     letter-spacing: 0.5px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     transition: opacity 0.3s ease, transform 0.3s ease;
-}
 
-/* 隐藏时间状态（当桌面大钟显示时） */
-.top-bar.hide-time .time-pill {
+    /* 默认隐藏 (由JS控制在有窗口时显示) */
     opacity: 0;
     pointer-events: none;
     transform: translateY(-10px);
+}
+
+/* 隐藏时间状态（当桌面大钟显示时） */
+/* 显示时间状态（当有窗口打开时） */
+.top-bar.show-time .time-pill {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
 }
 
 /* 胶囊 2 (中间): 系统图标 */
@@ -446,6 +495,7 @@
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -500,7 +550,7 @@
     font-size: 13px;
 }
 
-/* ===== 移动端适配 (Responsive) ===== */
+/* ===== 移动端适配 ===== */
 @media (max-width: 768px) {
     .top-bar {
         top: 8px;

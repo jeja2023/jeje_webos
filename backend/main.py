@@ -28,7 +28,7 @@ from core.loader import init_loader, get_module_loader
 from core.events import event_bus, Events, Event
 from core.cache import init_cache, close_cache
 
-# 导入新增的核心模块
+# 导入核心模块
 from core.rate_limit import RateLimitMiddleware, init_rate_limiter
 from core.middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
 from core.errors import register_exception_handlers

@@ -8,7 +8,7 @@ class TopBarComponent extends Component {
             time: this.getCurrentTime(),
             user: Store.get('user') || { nickname: 'Guest', username: 'guest' },
             unreadMessages: Store.get('unreadMessages') || 0,
-            hideTime: false,
+            showTime: false, // 默认为 false，只在有窗口时显示
 
             // 消息中心状态
             msgActiveTab: 'message', // message, announcement, todo
@@ -32,6 +32,10 @@ class TopBarComponent extends Component {
         Store.subscribe('unreadMessages', (count) => {
             this.setState({ unreadMessages: count || 0 });
         });
+
+        // 监听系统信息变更
+        Store.subscribe('appName', (name) => this.setState({ appName: name }));
+        Store.subscribe('version', (ver) => this.setState({ sysVersion: ver }));
 
         // 初始加载待办数量
         this.checkTodoCount();
@@ -105,18 +109,20 @@ class TopBarComponent extends Component {
     }
 
     render() {
-        const { time, user, msgActiveTab, msgList, msgLoading, unreadMessages, todoCount } = this.state;
+        const { time, user, msgActiveTab, msgList, msgLoading, unreadMessages, todoCount, appName, sysVersion } = this.state;
 
         // 计算总徽章数 (消息 + 待办)
         // 公告未读数暂时无法获取，忽略
         const totalBadge = unreadMessages + todoCount;
+        const displayAppName = appName || 'JeJe WebOS';
+        const displayVersion = sysVersion || '2.0.0';
 
         return `
-            <div class="top-bar ${this.state.hideTime ? 'hide-time' : ''}">
+            <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
                 <div class="top-bar-left">
                      <!-- Brand Title -->
-                    <div class="status-pill" style="border:none; background:none; box-shadow:none; padding:0; height:auto;">
-                        <span class="brand-title">JeJe WebOS</span>
+                    <div class="status-pill" id="brandPill" data-tooltip="${displayAppName} ${displayVersion}" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
+                        <span class="brand-title">${displayAppName}</span>
                     </div>
                 </div>
 
@@ -249,6 +255,12 @@ class TopBarComponent extends Component {
         this.unbindEvents();
 
         if (this.container) {
+            // Brand/Logo Click
+            const brandPill = this.container.querySelector('#brandPill');
+            if (brandPill) {
+                brandPill.onclick = () => this.showAboutModal();
+            }
+
             // 消息按钮
             const messageBtn = this.container.querySelector('#messageBtn');
             const messageDropdown = this.container.querySelector('#messageDropdown');
@@ -274,27 +286,13 @@ class TopBarComponent extends Component {
                 };
 
                 // Tab 切换
-                const tabs = messageDropdown.querySelectorAll('.msg-tab');
-                tabs.forEach(tab => {
-                    tab.onclick = (e) => {
-                        e.stopPropagation();
-                        const tabName = tab.dataset.tab;
-                        this.setState({ msgActiveTab: tabName }); // 这会触发重新渲染，dropdown可能会关闭?
-                        // setState 会导致 re-render，从而dom丢失。
-                        // 由于 Component 的 setState 默认是 innerHTML 替换，这会导致 Dropdown 关闭。
-                        // 我们需要在 re-render 后保持 Dropdown 打开状态。
-                        // 或者，我们手动更新 DOM 而不触发全量 render？
-                        // 鉴于 Component 框架限制，我们可以在 updated 后检查并恢复状态，或者手动处理 tab 切换。
-                    };
-                });
-
-                // 为了避免 re-render 导致闪烁/关闭，最佳实践是手动操作 DOM 类名和内容。
-                // 但这里为了使用 render 的模板能力，我们接受 re-render，并在 afterUpdate 中恢复 dropdown 状态。
-                // 可是 Component 框架太简单，可能没有 preserve state。
-                // 我们修改 onclick 逻辑：不 setState，而是手动更新 active 类和 list 内容。
+                // ... (Keep existing logic which I manually put in my previous file view)
+                // Wait, I see I should copy the existing logic or the improved logic.
+                // The previous file content had separate event binding block for Tabs.
             }
-            // 修正：上述 Tab 切换会导致 Dropdown 关闭。
-            // 更好的做法：Tab 切换时，手动更新 DOM，不调用 setState。
+            // ... (I need to ensure I don't lose the Tab logic I read earlier)
+
+            // Re-implementing Tab logic based on previous read:
             if (messageBtn && messageDropdown) {
                 const tabs = messageDropdown.querySelectorAll('.msg-tab');
                 const contentList = messageDropdown.querySelector('.msg-content-list');
@@ -303,35 +301,36 @@ class TopBarComponent extends Component {
                 tabs.forEach(tab => {
                     tab.onclick = async (e) => {
                         e.stopPropagation();
-                        // Update Tabs UI
                         tabs.forEach(t => t.classList.remove('active'));
                         tab.classList.add('active');
 
-                        // Update Data
                         const tabName = tab.dataset.tab;
-                        this.state.msgActiveTab = tabName; // Update state silently
+                        this.state.msgActiveTab = tabName;
 
-                        // Loading
                         contentList.innerHTML = '<div class="loading-spinner"></div>';
 
-                        // Load data
                         try {
                             let list = [];
                             if (tabName === 'message') {
                                 const res = await MessageApi.list({ page: 1, size: 5 });
                                 list = res.data.items || [];
-                                viewAllBtn.onclick = () => Router.push('/message/list');
+                                if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/message/list');
                             } else if (tabName === 'announcement') {
                                 const res = await AnnouncementApi.getPublished(5);
                                 list = res.data || [];
-                                viewAllBtn.onclick = () => Router.push('/announcement/list'); // Admin only? 
-                                // Clean desktop for users: maybe just stay here or modal?
-                                // If admin, go to list. If user... we removed the list page.
-                                // Just keep it simple.
+                                // Check admin perms again? this.state.user...
+                                const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
+                                if (viewAllBtn) {
+                                    viewAllBtn.onclick = isAdmin ? () => Router.push('/announcement/list') : null;
+                                    viewAllBtn.style.display = isAdmin ? 'block' : 'none';
+                                }
                             } else if (tabName === 'todo') {
                                 const res = await UserApi.getPendingUsers();
                                 list = res.data || [];
-                                viewAllBtn.onclick = () => Router.push('/users/pending');
+                                if (viewAllBtn) {
+                                    viewAllBtn.onclick = () => Router.push('/users/pending');
+                                    viewAllBtn.style.display = 'block';
+                                }
                             }
 
                             if (list.length === 0) {
@@ -339,21 +338,23 @@ class TopBarComponent extends Component {
                             } else {
                                 contentList.innerHTML = list.map(item => this.renderListItem(item, tabName)).join('');
                             }
-                            this.state.msgList = list; // Update state silently
+                            this.state.msgList = list;
                         } catch (err) {
                             contentList.innerHTML = '<div class="empty-text">加载失败</div>';
                         }
                     };
                 });
 
-                // 初始化 View All 按钮事件
+                // Initial View All Btn logic
                 const viewBtn = messageDropdown.querySelector('#viewAllBtn');
                 if (viewBtn) {
                     viewBtn.onclick = () => {
                         const tab = this.state.msgActiveTab;
+                        // ... logic
                         if (tab === 'message') Router.push('/message/list');
-                        else if (tab === 'announcement' && (this.state.user.role === 'admin' || this.state.user.role === 'manager')) {
-                            Router.push('/announcement/list');
+                        else if (tab === 'announcement') {
+                            const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
+                            if (isAdmin) Router.push('/announcement/list');
                         }
                         else if (tab === 'todo') Router.push('/users/pending');
                     };
@@ -417,5 +418,64 @@ class TopBarComponent extends Component {
                 window.location.reload();
             }
         }
+    }
+
+    showAboutModal() {
+        const { appName, sysVersion } = this.state;
+        const displayAppName = appName || 'JeJe WebOS';
+        const displayVersion = sysVersion || '2.0.0';
+        const browser = this.getBrowserInfo();
+
+        Modal.show({
+            title: '关于本机',
+            width: '400px',
+            content: `
+                <div style="text-align: center; padding: 20px 0;">
+                    <div style="font-size: 48px; margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color:var(--text-primary);">${displayAppName}</h2>
+                    <p style="color: var(--text-secondary); margin: 5px 0 25px;">Version ${displayVersion}</p>
+                    
+                    <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 15px 20px; text-align: left; font-size: 13px; line-height: 2;">
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">运行环境</span>
+                            <span style="font-family: monospace;">FastAPI + Vanilla JS</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">浏览器</span>
+                            <span>${browser}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">分辨率</span>
+                            <span>${window.screen.width} x ${window.screen.height}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color: var(--text-secondary);">内核架构</span>
+                            <span>JeJe Micro-Kernel</span>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 25px; font-size: 11px; color: var(--text-secondary); opacity: 0.7;">
+                        Copyright © 2025 JeJe WebOS Team.<br>All rights reserved.
+                    </p>
+                </div>
+                <style>
+                    @keyframes floatIcon {
+                        0% { transform: translateY(0px); }
+                        50% { transform: translateY(-10px); }
+                        100% { transform: translateY(0px); }
+                    }
+                </style>
+            `,
+            footer: false
+        });
+    }
+
+    getBrowserInfo() {
+        const ua = navigator.userAgent;
+        if (ua.includes('Edg')) return 'Microsoft Edge';
+        if (ua.includes('Chrome')) return 'Google Chrome';
+        if (ua.includes('Firefox')) return 'Mozilla Firefox';
+        if (ua.includes('Safari')) return 'Apple Safari';
+        return 'Unknown Browser';
     }
 }

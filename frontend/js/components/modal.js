@@ -84,7 +84,7 @@ class Modal {
                 this.overlay = null;
             }, { once: true });
 
-            // Fallback just in case transitionend never fires
+            // 如果 transitionend 事件未触发，执行兜底处理
             setTimeout(() => {
                 if (this.overlay) this.overlay.remove();
             }, 300);

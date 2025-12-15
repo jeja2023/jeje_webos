@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     
     # 应用信息
     app_name: str = "JeJe WebOS"
-    app_version: str = "2.0.0"
+    app_version: str
     debug: bool = False
     
     # 数据库配置
@@ -129,8 +129,8 @@ def get_settings() -> Settings:
         if not _settings_instance.debug and _settings_instance.jwt_secret == "your-secret-key-change-in-production":
             import logging
             logging.getLogger("core.config").warning(
-                "🚨 [SECURITY WARNING] You are using the default JWT_SECRET in production mode! "
-                "Please set JWT_SECRET in your .env file immediately."
+                "🚨 [安全警告] 您正在生产环境模式下使用默认的 JWT_SECRET！"
+                "请立即在 .env 文件中配置 JWT_SECRET。"
             )
     return _settings_instance
 

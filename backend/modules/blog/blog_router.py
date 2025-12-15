@@ -144,14 +144,8 @@ async def _enrich_post_data(service: BlogService, post, schema=PostListItem):
         if category:
             post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
 
-    # 处理详情特有字段（如果有），或者统一使用 PostInfo/PostListItem
-    # 这里为了通用性，post 参数是 ORM 对象，返回的是 dict
-    # 如果 post 是 PostInfo 类型需要的，上面的 model_validate 会自动处理多余字段吗？
-    # PostListItem 通常是 PostInfo 的子集。
-    # 为了严谨，我们检查一下是否需要完整详情。
-    # 因为 list 接口用 PostListItem, detail 接口用 PostInfo。
-    # 既然这是 python，我们可以让调用者决定 validate 哪种 model，或者简单地返回 dict
-    # 这里为了最大复用，我们只负责填充 tags 和 category 到 dict 中。
+    # 填充标签和分类等关联数据
+    # 返回字典格式，由调用者验证具体的 Schema (PostListItem 或 PostInfo)
     
     return post_dict
 

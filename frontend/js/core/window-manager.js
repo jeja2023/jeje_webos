@@ -1,6 +1,6 @@
 /**
- * Window Manager
- * Handles multi-window management, z-index stacking, and window lifecycle.
+ * 窗口管理器
+ * 处理多窗口管理、层级堆叠 (z-index) 和窗口生命周期。
  */
 const WindowManager = {
     windows: new Map(), // ID -> { id, element, component, zIndex, ... }
@@ -14,38 +14,38 @@ const WindowManager = {
     },
 
     /**
-     * Open a new window or focus existing one
-     * @param {class} ComponentClass - The Page Component class to mount
-     * @param {object} props - Arguments for the component constructor
+     * 打开新窗口或聚焦现有窗口
+     * @param {class} ComponentClass - 要挂载的页面组件类
+     * @param {object} props - 组件构造函数的参数
      * @param {object} options - { title, id, width, height, x, y }
      */
     open(ComponentClass, props = [], options = {}) {
         const id = options.id || `win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // If already exists (and is singleton type), focus it
+        // 如果已存在（且是单例类型），则聚焦它
         if (this.windows.has(id)) {
             this.focus(id);
             return id;
         }
 
-        // Create DOM
+        // 创建 DOM
         const winEl = this.createWindowDOM(id, options.title || 'Application');
         this.container.appendChild(winEl);
 
-        // Calculate Position & Size
+        // 计算位置和大小
         this.positionWindow(winEl, options);
 
-        // Mount Component
+        // 挂载组件
         const contentEl = winEl.querySelector('.window-body');
-        // Spread props if array, or trigger constructor
-        // Note: App.js passed `(this.content, ...args)`
-        // We need to pass `(contentEl, ...props)`
+        // 如果 props 是数组则展开，否则传给构造函数
+        // 注意：App.js 传递的是 `(this.content, ...args)`
+        // 我们需要传递 `(contentEl, ...props)`
         const componentInstance = new ComponentClass(contentEl, ...props);
         if (typeof componentInstance.mount === 'function') {
             componentInstance.mount();
         }
 
-        // Store record
+        // 保存记录
         this.windows.set(id, {
             id,
             element: winEl,
@@ -54,17 +54,17 @@ const WindowManager = {
             maximized: false
         });
 
-        // Focus the new window
+        // 聚焦新窗口
         this.focus(id);
 
-        // Bind Window specific events (Drag, Resize, Controls)
+        // 绑定窗口特定事件（拖拽、调整大小、控件）
         this.bindWindowEvents(id, winEl);
 
-        // Setup title binding if supported
-        // Some components might want to change title dynamically
-        // We can expose a method or hook if needed.
+        // 如果支持，设置标题绑定
+        // 某些组件可能需要动态更改标题
+        // 如果需要，我们可以暴露一个方法或钩子。
 
-        // Update Desktop State (blur background widgets if any window is open)
+        // 更新桌面状态（如果有窗口打开，模糊背景小部件）
         this.updateDesktopState();
 
         return id;
@@ -75,12 +75,12 @@ const WindowManager = {
 
         const win = this.windows.get(id);
 
-        // Destroy component
+        // 销毁组件
         if (win.component && typeof win.component.destroy === 'function') {
             win.component.destroy();
         }
 
-        // Remove DOM with animation
+        // 带动画移除 DOM
         win.element.classList.add('closing');
         win.element.addEventListener('animationend', () => {
             if (win.element.parentNode) {
@@ -88,14 +88,14 @@ const WindowManager = {
             }
         });
 
-        // Fallback if animation fails
+        // 如果动画失效则兜底处理
         setTimeout(() => {
             if (win.element.parentNode) win.element.parentNode.removeChild(win.element);
         }, 300);
 
         this.windows.delete(id);
 
-        // Focus next top window
+        // 聚焦下一个顶层窗口
         if (this.activeWindowId === id) {
             this.activeWindowId = null;
             this.focusLastActive();
@@ -103,9 +103,9 @@ const WindowManager = {
 
         this.updateDesktopState();
 
-        // If no windows left, maybe route to desktop?
-        // Actually, Router might still point to the closed app URL.
-        // We should ideally sync Router, but for now, let's keep visual multi-window.
+        // 如果没有剩余窗口，可能需要路由到桌面？
+        // 实际上，Router 可能仍然指向已关闭的应用 URL。
+        // 理想情况下应该同步 Router，但目前让我们保持视觉上的多窗口。
     },
 
     focus(id) {
@@ -113,15 +113,15 @@ const WindowManager = {
 
         const win = this.windows.get(id);
 
-        // Bring to front
+        // 置顶
         this.zIndexCounter++;
         win.element.style.zIndex = this.zIndexCounter;
 
-        // Update active class
+        // 更新激活类
         this.windows.forEach(w => w.element.classList.remove('active'));
         win.element.classList.add('active');
 
-        // Restore if minimized
+        // 如果已最小化则恢复
         if (win.minimized) {
             this.restore(id);
         }
@@ -135,10 +135,10 @@ const WindowManager = {
 
         win.minimized = true;
         win.element.classList.remove('active');
-        win.element.classList.add('minimized'); // CSS should hide it or animate to dock
-        // Ideally we animate to the Dock icon position.
+        win.element.classList.add('minimized'); // CSS 应该将其隐藏或动画到 Dock
+        // 理想情况下，我们会动画到 Dock 图标位置。
 
-        // If the minimized window was the active one, clear activeWindowId and focus another
+        // 如果最小化的窗口是当前激活的窗口，清除 activeWindowId 并聚焦另一个窗口
         if (this.activeWindowId === id) {
             this.activeWindowId = null;
             this.focusLastActive();
@@ -172,7 +172,7 @@ const WindowManager = {
     },
 
     focusLastActive() {
-        // Find window with highest z-index
+        // 查找 z-index 最高的窗口
         let maxZ = 0;
         let pId = null;
         this.windows.forEach((w, id) => {
@@ -193,11 +193,11 @@ const WindowManager = {
             else widgets.classList.remove('blur-out');
         }
 
-        // TopBar logic?
+        // TopBar 逻辑？
         // App.topbar.setState({ hideTime: !hasOpenWindows });
-        // We can emit an event or access App global if needed.
+        // 如果需要，我们可以发出事件或访问 App 全局对象。
         if (typeof App !== 'undefined' && App.topbar) {
-            App.topbar.setState({ hideTime: !hasOpenWindows });
+            App.topbar.setState({ showTime: hasOpenWindows });
         }
     },
 
@@ -205,7 +205,7 @@ const WindowManager = {
         const div = document.createElement('div');
         div.className = 'window-container';
         div.id = id;
-        div.style.position = 'absolute'; // Important for drag
+        div.style.position = 'absolute'; // 对拖拽很重要
 
         div.innerHTML = `
             <div class="window-header">
@@ -223,7 +223,7 @@ const WindowManager = {
                 <div class="window-title">${title}</div>
             </div>
             <div class="window-body"></div>
-            <!-- Resize Handles -->
+            <!-- 调整大小句柄 -->
             <div class="resize-handle n"></div>
             <div class="resize-handle e"></div>
             <div class="resize-handle s"></div>
@@ -237,69 +237,69 @@ const WindowManager = {
     },
 
     positionWindow(el, options) {
-        // Check for mobile logic in CSS, but here we set initial inline styles
+        // 检查 CSS 中的移动端逻辑，但这里我们设置初始内联样式
         const isMobile = window.innerWidth <= 768;
 
         if (isMobile) {
-            // CSS handles fullscreen
+            // CSS 处理全屏
             return;
         }
 
-        // Restore original size logic: 90% width (max 1400), 85% height
+        // 恢复原始大小逻辑：90% 宽度 (最大 1400)，85% 高度
         const defaultWidth = Math.min(window.innerWidth * 0.9, 1400);
         const defaultHeight = window.innerHeight * 0.85;
 
         const width = options.width || defaultWidth;
         const height = options.height || defaultHeight;
 
-        // Center position
+        // 居中位置
         const left = (window.innerWidth - width) / 2;
         const top = (window.innerHeight - height) / 2;
 
         el.style.width = `${width}px`;
         el.style.height = `${height}px`;
         el.style.left = `${Math.max(0, left)}px`;
-        el.style.top = `${Math.max(50, top)}px`; // Avoid topbar
+        el.style.top = `${Math.max(50, top)}px`; // 避开顶部栏
     },
 
     bindWindowEvents(id, winEl) {
         const header = winEl.querySelector('.window-header');
 
-        // --- Activation ---
+        // --- 激活 ---
         winEl.addEventListener('mousedown', () => {
             this.focus(id);
         });
 
-        // --- Dragging ---
+        // --- 拖拽 ---
         header.addEventListener('mousedown', (e) => {
-            // Ignore buttons
+            // 忽略按钮
             if (e.target.closest('.window-btn')) return;
-            // Ignore if maximized
+            // 如果已最大化则忽略
             if (this.windows.get(id).maximized) return;
 
             e.preventDefault();
             this.startDragging(e, winEl);
         });
 
-        // --- Controls ---
+        // --- 控件 ---
         const controls = winEl.querySelector('.window-controls');
         controls.querySelector('.close').onclick = (e) => { e.stopPropagation(); this.close(id); };
         controls.querySelector('.minimize').onclick = (e) => { e.stopPropagation(); this.minimize(id); };
         controls.querySelector('.maximize').onclick = (e) => { e.stopPropagation(); this.maximize(id); };
 
-        // --- Resizing ---
+        // --- 调整大小 ---
         const handles = winEl.querySelectorAll('.resize-handle');
         handles.forEach(handle => {
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Determine handle type from class
+                // 从类名确定句柄类型
                 const type = Array.from(handle.classList).find(c => ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].includes(c));
                 this.startResizing(e, winEl, type);
             });
         });
 
-        // Double click header to maximize
+        // 双击标题栏最大化
         header.addEventListener('dblclick', (e) => {
             if (e.target.closest('.window-btn')) return;
             this.maximize(id);
@@ -314,7 +314,7 @@ const WindowManager = {
         const initialTop = el.offsetTop;
         const width = el.offsetWidth;
 
-        // Bring to front
+        // 置顶
         this.focus(el.id);
 
         const onMouseMove = (ev) => {
@@ -325,7 +325,7 @@ const WindowManager = {
             let newLeft = initialLeft + dx;
             let newTop = initialTop + dy;
 
-            // --- 边界磁吸/限制 (Boundary Constraints) ---
+            // --- 边界磁吸/限制 ---
             const screenW = window.innerWidth;
             const screenH = window.innerHeight;
 
@@ -399,7 +399,7 @@ const WindowManager = {
 
             el.style.width = `${newW}px`;
             el.style.height = `${newH}px`;
-            // Only update pos if needed
+            // 仅在需要时更新位置
             if (type.includes('w')) el.style.left = `${newL}px`;
             if (type.includes('n')) el.style.top = `${newT}px`;
         };
@@ -415,10 +415,10 @@ const WindowManager = {
     },
 
     bindGlobalEvents() {
-        // Listen to window resize if needed
+        // 如果需要，监听窗口大小调整
     },
 
-    // --- Helper to clear all ---
+    // --- 辅助函数：清除所有 ---
     closeAll() {
         this.windows.forEach((val, key) => this.close(key));
     }
