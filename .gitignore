@@ -18,6 +18,7 @@ ENV/
 .env.local
 *.local
 docker/env_docker
+.agent/
 
 # IDE
 .idea/

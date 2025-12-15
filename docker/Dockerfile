@@ -31,6 +31,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制并安装 Python 依赖（利用 Docker 缓存层）
