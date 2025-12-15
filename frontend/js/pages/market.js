@@ -449,10 +449,13 @@ class AppCenterMarketPage extends Component {
                                  
                                  <h4>2. 后端开发</h4>
                                  <p>在 <code>backend/modules/{id}/</code> 中定义路由、模型和业务逻辑。</p>
+                                 <p><strong>⚠️ 注意：所有文件必须带有包含模块ID的前缀！</strong></p>
                                  <ul style="padding-left: 20px; color: var(--text-secondary);">
-                                     <li><code>{id}_router.py</code>: 注册 API 路由</li>
-                                     <li><code>{id}_service.py</code>: 业务逻辑</li>
-                                     <li><code>models.py</code>: 数据库模型</li>
+                                     <li><code>{id}_manifest.py</code>: 模块定义 (入口)</li>
+                                     <li><code>{id}_router.py</code>: API 路由入口</li>
+                                     <li><code>{id}_models.py</code>: 数据库模型</li>
+                                     <li><code>{id}_schemas.py</code>: Pydantic 数据验证</li>
+                                     <li><code>{id}_services.py</code>: 业务逻辑层</li>
                                  </ul>
 
                                  <h4>3. 前端开发</h4>
@@ -473,6 +476,7 @@ class AppCenterMarketPage extends Component {
                              <div class="markdown-body">
                                  <h4>命名规范</h4>
                                  <ul style="padding-left: 20px; color: var(--text-secondary);">
+                                     <li><strong>文件名</strong>: 必须使用 <code>{module_id}_</code> 前缀 (e.g., <code>todo_router.py</code>)</li>
                                      <li><strong>模块ID</strong>: 全小写英文，无空格 (e.g., <code>todo_list</code>)</li>
                                      <li><strong>类名</strong>: PascalCase (e.g., <code>TodoListPage</code>)</li>
                                      <li><strong>变量/函数</strong>: camelCase (JS), snake_case (Python)</li>
@@ -481,15 +485,15 @@ class AppCenterMarketPage extends Component {
                                  <h4>API 规范</h4>
                                  <ul style="padding-left: 20px; color: var(--text-secondary);">
                                      <li>前缀: <code>/api/v1/{module_id}</code></li>
-                                     <li>响应: 统一使用 <code>success(data)</code> 或抛出 <code>HTTPException</code></li>
+                                     <li>响应: 统一使用 <code>core.schemas.success()</code> 封装</li>
                                  </ul>
 
                                  <h4>最佳实践</h4>
                                  <ul style="padding-left: 20px; color: var(--text-secondary);">
-                                     <li>保持代码简洁，单一职责原则。</li>
-                                     <li>使用 <code>Store</code> 进行状态管理。</li>
-                                     <li>所有 UI 文本应支持国际化。</li>
-                                     <li>组件销毁时请清理事件监听 (<code>destroy()</code>)。</li>
+                                     <li>严禁跨模块 Import 代码，请使用事件总线解耦。</li>
+                                     <li>后端仅返回数据，严禁返回 HTML 片段。</li>
+                                     <li>所有 UI 文本应尽可能支持国际化。</li>
+                                     <li>组件销毁时请务必清理定时器和事件监听 (<code>destroy()</code>)。</li>
                                  </ul>
                              </div>
                         </div>

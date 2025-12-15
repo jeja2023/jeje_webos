@@ -6,6 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-2.2.1-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统（类 macOS）的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -241,11 +242,26 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 
 ## 🗺️ 未来规划 (Roadmap)
 
-- [ ] **多窗口并行**：真正支持多窗口同时操作（目前为单窗口模式）。
+- [x] **多窗口并行**：真正支持多窗口同时操作，支持拖拽、缩放、层叠管理。
 - [ ] **应用商店 (App Store)**：支持从云端一键安装第三方开发的 App 模块。
 - [ ] **文件管理器**：基于 WebDAV 的全功能云端文件管理。
 - [ ] **P2P 快传**：局域网内设备间高速文件传输。
 - [ ] **主题编辑器**：可视化编辑桌面主题和配色。
+
+---
+
+## 📅 更新日志 (Changelog)
+
+### v2.2.1 (2025-12-15)
+- ✨ **核心特性**：全新多窗口系统 (Multi-Window System)
+    - **真·多任务并行**：支持同时打开多个应用窗口，状态独立互不干扰。
+    - **窗口管理**：实现了原生的窗口体验，支持拖拽移动、8个方向自由缩放、最小化（隐藏至Dock）、最大化（全屏覆盖）。
+    - **智能层级**：重构 Z-Index 管理，确保当前操作窗口始终置顶，最大化窗口不遮挡新弹窗。
+    - **边界保护**：增加窗口拖拽边界限制，防止标题栏被拖出屏幕失效。
+- 🎨 **体验优化**：
+    - **Dock 栏升级**：修复移动端 Dock 文件夹菜单显示问题；层级提升至最高 (9999) 确保不被最大化窗口遮挡。
+    - **视觉规范**：恢复默认大窗口尺寸（90%宽），保持大气美观的桌面布局。
+    - **开发文档**：修正应用中心内置的模块开发指南，对齐最新的命名规范 (`{module_id}_*`)。
 
 ---
 

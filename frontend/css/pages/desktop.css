@@ -27,13 +27,9 @@ body {
 #desktop-content {
     flex: 1;
     position: relative;
-    padding: 20px;
-    padding-bottom: 100px;
-    /* 为 Dock 栏留出空间 */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    padding: 0;
     overflow: hidden;
+    /* 防止窗口拖出产生的滚动条 */
 }
 
 /* 窗口容器（包裹实际页面内容） */
@@ -46,19 +42,159 @@ body {
     /* 主题边框 */
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
-    width: 90%;
-    height: 85%;
-    max-width: 1400px;
+
+    /* 移除固定宽高，由 JS 控制 */
+    /* width: 90%; height: 85%; max-width: 1400px; */
+    min-width: 320px;
+    min-height: 200px;
+
+    position: absolute;
+    /* 关键：绝对定位 */
     display: flex;
     flex-direction: column;
-    animation: windowPopup 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
+
+    /* 动画 */
+    animation: windowPopup 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
     z-index: 50;
+    /* 默认层级 */
 
     /* 确保 backdrop filter 生效 */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* 移除通用 transition，因为它会干扰拖拽性能 */
+    /* transition: all 0.3s ...; */
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* 激活状态 */
+.window-container.active {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 最小化状态 */
+.window-container.minimized {
+    display: none !important;
+    /* 未来可以添加飞入Dock的动画 */
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 最大化状态 - 覆盖全屏（包括顶部状态栏） */
+.window-container.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    /* 使用 100% 避免 vw/vh 滚动条问题 */
+    height: 100% !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    border: none !important;
+    box-shadow: none !important;
+
+    /* 移除固定 Z-Index，由 JS 控制层级 */
+    /* z-index: 2000 !important; */
+}
+
+/* 最大化时禁用调整手柄 */
+.window-container.maximized .resize-handle {
+    display: none !important;
+}
+
+/* 关闭动画 */
+.window-container.closing {
+    animation: windowClose 0.2s ease forwards;
+}
+
+@keyframes windowClose {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+/* Resize Handles */
+.resize-handle {
+    position: absolute;
+    z-index: 100;
+}
+
+.resize-handle.n {
+    top: -5px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    cursor: ns-resize;
+}
+
+.resize-handle.s {
+    bottom: -5px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    cursor: ns-resize;
+}
+
+.resize-handle.e {
+    right: -5px;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    cursor: ew-resize;
+}
+
+.resize-handle.w {
+    left: -5px;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    cursor: ew-resize;
+}
+
+.resize-handle.ne {
+    top: -5px;
+    right: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: ne-resize;
+}
+
+.resize-handle.se {
+    bottom: -5px;
+    right: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: se-resize;
+}
+
+.resize-handle.sw {
+    bottom: -5px;
+    left: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: sw-resize;
+}
+
+.resize-handle.nw {
+    top: -5px;
+    left: -5px;
+    width: 15px;
+    height: 15px;
+    cursor: nw-resize;
+}
+
+/* 移动端全屏模式不需要 Resize Handle */
+@media (max-width: 768px) {
+    .resize-handle {
+        display: none;
+    }
 }
 
 .window-container.maximized {
@@ -342,12 +478,13 @@ body {
     .desktop-layout {
         /* 防止移动端地址栏导致的高度跳动 */
         height: 100vh;
-        height: 100dvh; 
+        height: 100dvh;
     }
 
     #desktop-content {
         padding: 0;
-        padding-bottom: 80px; /* Dock栏高度 */
+        padding-bottom: 80px;
+        /* Dock栏高度 */
     }
 
     /* 窗口强制全屏 */
@@ -363,13 +500,15 @@ body {
         bottom: 0 !important;
         margin: 0 !important;
         border: none !important;
-        z-index: 1500; /* 高于 TopBar，覆盖全屏 */
+        z-index: 1500;
+        /* 高于 TopBar，覆盖全屏 */
     }
 
     .window-header {
         border-radius: 0;
         padding: 0 12px;
-        height: 44px; /* 适合触摸的高度 */
+        height: 44px;
+        /* 适合触摸的高度 */
     }
 
     /* 隐藏最小化/最大化，只保留关闭 */
@@ -379,13 +518,16 @@ body {
     }
 
     .window-btn.close {
-        width: 24px; /* 加大触摸区域 */
+        width: 24px;
+        /* 加大触摸区域 */
         height: 24px;
-        border-radius: 12px; /* 圆角矩形或圆形 */
-        background-color: transparent; /* 变得更像原生返回按钮 */
+        border-radius: 12px;
+        /* 圆角矩形或圆形 */
+        background-color: transparent;
+        /* 变得更像原生返回按钮 */
         box-shadow: none;
     }
-    
+
     .window-btn.close::before {
         /* 自定义返回图标或保持红点，这里简化处理保持红点但变大 */
         content: '';
@@ -395,10 +537,11 @@ body {
         border-radius: 50%;
         background-color: #ff5f56;
     }
-    
+
     /* 也可以完全重写 close 按钮为返回箭头 */
     .window-btn.close .btn-icon {
-        opacity: 1; /* 始终显示图标 */
+        opacity: 1;
+        /* 始终显示图标 */
         width: 12px;
         height: 12px;
         color: #fff;
@@ -406,12 +549,15 @@ body {
 
     .window-title {
         font-size: 16px;
-        margin-right: 0; /* 修正居中 */
-        padding-right: 24px; /* 补偿左侧按钮空间 */
+        margin-right: 0;
+        /* 修正居中 */
+        padding-right: 24px;
+        /* 补偿左侧按钮空间 */
     }
 
     .window-body {
-        padding: 16px; /* 减小内边距 */
+        padding: 16px;
+        /* 减小内边距 */
         border-radius: 0;
     }
 
@@ -421,11 +567,11 @@ body {
         transform: translate(-50%, -50%) scale(0.8);
         width: 90%;
     }
-    
+
     .widget-clock-time {
         font-size: 80px;
     }
-    
+
     .widget-greeting {
         font-size: 18px;
     }
