@@ -115,7 +115,7 @@ class TopBarComponent extends Component {
         // 公告未读数暂时无法获取，忽略
         const totalBadge = unreadMessages + todoCount;
         const displayAppName = appName || 'JeJe WebOS';
-        const displayVersion = sysVersion || '2.0.0';
+        const displayVersion = sysVersion || '2.0.1';
 
         return `
             <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
@@ -423,7 +423,7 @@ class TopBarComponent extends Component {
     showAboutModal() {
         const { appName, sysVersion } = this.state;
         const displayAppName = appName || 'JeJe WebOS';
-        const displayVersion = sysVersion || '2.0.0';
+        const displayVersion = sysVersion || '2.0.1';
         const browser = this.getBrowserInfo();
 
         Modal.show({
