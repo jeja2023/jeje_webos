@@ -421,9 +421,9 @@ class TopBarComponent extends Component {
     }
 
     showAboutModal() {
-        const { appName, sysVersion } = this.state;
-        const displayAppName = appName || 'JeJe WebOS';
-        const displayVersion = sysVersion || '';
+        // 直接从 Store 获取最新值，确保数据准确
+        const displayAppName = Store.get('appName') || 'JeJe WebOS';
+        const displayVersion = Store.get('version') || '';
         const browser = this.getBrowserInfo();
 
         Modal.show({

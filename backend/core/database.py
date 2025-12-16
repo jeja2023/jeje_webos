@@ -85,8 +85,12 @@ async def ensure_database_exists():
 
     @event.listens_for(admin_engine.sync_engine, "connect")
     def _set_admin_time_zone(dbapi_connection, connection_record):
-        with dbapi_connection.cursor() as cursor:
+        try:
+            cursor = dbapi_connection.cursor()
             cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
+            cursor.close()
+        except Exception:
+            pass
     
     try:
         async with admin_engine.connect() as conn:
