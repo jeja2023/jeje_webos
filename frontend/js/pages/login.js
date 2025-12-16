@@ -85,6 +85,55 @@ class LoginPage extends Component {
                 // 重新获取系统信息（包含模块和菜单）
                 await Store.refreshSystemInfo();
 
+                // 同步本地固定应用到后端（如果后端没有但本地有）
+                // 等待一下确保 Store 已更新
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                const currentUser = Store.get('user');
+                console.log('[Login] 当前用户:', currentUser);
+                console.log('[Login] 本地固定应用:', localPinnedApps);
+                
+                if (localPinnedApps && currentUser) {
+                    try {
+                        const parsed = JSON.parse(localPinnedApps);
+                        // 如果后端没有 dock_pinned_apps 但本地有，则同步
+                        const backendHasPinnedApps = currentUser.settings?.dock_pinned_apps && 
+                                                     Array.isArray(currentUser.settings.dock_pinned_apps) && 
+                                                     currentUser.settings.dock_pinned_apps.length > 0;
+                        
+                        console.log('[Login] 后端是否有固定应用:', backendHasPinnedApps);
+                        console.log('[Login] 本地固定应用数量:', parsed.length);
+                        
+                        if (!backendHasPinnedApps && parsed.length > 0) {
+                            console.log('[Login] 开始同步本地固定应用到后端...');
+                            if (window.UserApi) {
+                                const res = await UserApi.updateProfile({
+                                    settings: { dock_pinned_apps: parsed }
+                                });
+                                console.log('[Login] 同步响应:', res);
+                                
+                                // 使用后端返回的数据更新 Store
+                                if (res && res.data) {
+                                    const updatedUser = { ...currentUser, ...res.data };
+                                    Store.set('user', updatedUser);
+                                    console.log('[Login] Store 用户已更新:', updatedUser);
+                                    console.log('[Login] 更新后的 settings:', updatedUser.settings);
+                                } else {
+                                    // 如果返回格式不同，手动更新 settings
+                                    const newSettings = { ...(currentUser.settings || {}), dock_pinned_apps: parsed };
+                                    Store.set('user', { ...currentUser, settings: newSettings });
+                                    console.log('[Login] Store 用户 settings 手动更新:', newSettings);
+                                }
+                            }
+                        } else {
+                            console.log('[Login] 跳过同步：后端已有固定应用或本地为空');
+                        }
+                    } catch (e) {
+                        console.warn('[Login] 同步本地固定应用失败:', e);
+                    }
+                }
+
                 Toast.success('登录成功');
                 Router.push('/desktop');
             } else {

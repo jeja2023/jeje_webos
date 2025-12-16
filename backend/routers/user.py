@@ -11,7 +11,7 @@ from sqlalchemy import select, or_, func
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin, require_manager
 from models import User
-from schemas import UserAudit, UserListItem, success, paginate
+from schemas import UserAudit, UserListItem, UserUpdate, success, paginate
 from schemas import success as _success
 from models import Role, ModuleConfig
 from core.security import require_permission
@@ -38,6 +38,9 @@ async def update_profile(
     # 只允许修改昵称和手机号
     if "nickname" in data and data["nickname"]:
         user.nickname = data["nickname"]
+        
+    if "avatar" in data:
+        user.avatar = data["avatar"]
     
     if "phone" in data:
         # 检查手机号是否被其他用户占用
@@ -48,16 +51,40 @@ async def update_profile(
             if existing.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
         user.phone = data["phone"] or None
-    
+
+    if "settings" in data:
+        # 允许增量更新或全量覆盖，这里选择合并更新
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"更新用户 {user.id} 的设置，当前 settings: {user.settings}, 新 settings: {data['settings']}")
+        
+        # 确保 user.settings 是字典
+        if user.settings is None:
+            user.settings = {}
+            
+        if isinstance(data["settings"], dict):
+            # 将新设置合并到旧设置
+            new_settings = user.settings.copy()
+            new_settings.update(data["settings"])
+            user.settings = new_settings
+            # 显式标记 JSON 字段为已修改，确保 SQLAlchemy 能够检测到变更
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(user, "settings")
+            logger.info(f"合并后的 settings: {user.settings}")
+
     await db.commit()
     await db.refresh(user)
+    
+    logger.info(f"返回用户 {user.id} 的 settings: {user.settings}")
     
     return success({
         "id": user.id,
         "username": user.username,
         "nickname": user.nickname,
+        "avatar": user.avatar,
         "phone": user.phone,
         "role": user.role,
+        "settings": user.settings,
         "is_active": user.is_active
     }, "资料更新成功")
 
@@ -128,6 +155,7 @@ async def list_users(
             role=u.role,
             role_ids=u.role_ids or [],
             permissions=u.permissions or [],
+            storage_quota=u.storage_quota,
             is_active=u.is_active,
             last_login=u.last_login,
             created_at=u.created_at
@@ -165,6 +193,7 @@ async def list_pending_users(
             nickname=u.nickname,
             avatar=u.avatar,
             role=u.role,
+            storage_quota=u.storage_quota,
             is_active=u.is_active,
             last_login=u.last_login,
             created_at=u.created_at
@@ -451,4 +480,64 @@ async def update_permissions(
 
     await db.commit()
     return success({"id": user.id, "permissions": perms}, "权限已更新")
+
+
+@router.put("/{user_id}")
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    更新用户信息（管理员）
+    可以修改用户的昵称、手机号、头像、存储配额等
+    """
+    # 检查是否为管理员
+    if current_user.role not in ("manager", "admin"):
+        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 业务管理员不能操作其他管理员
+    if current_user.role == "manager" and user.role in ("manager", "admin"):
+        raise HTTPException(status_code=403, detail="业务管理员不能操作其他管理员账户")
+    
+    # 更新字段
+    if data.nickname is not None:
+        user.nickname = data.nickname
+    
+    if data.phone is not None:
+        # 检查手机号是否被其他用户占用
+        if data.phone:
+            existing = await db.execute(
+                select(User).where(User.phone == data.phone, User.id != user.id)
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
+        user.phone = data.phone
+    
+    if data.avatar is not None:
+        user.avatar = data.avatar
+    
+    if data.storage_quota is not None:
+        user.storage_quota = data.storage_quota
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return success({
+        "id": user.id,
+        "username": user.username,
+        "nickname": user.nickname,
+        "phone": user.phone,
+        "avatar": user.avatar,
+        "storage_quota": user.storage_quota,
+        "role": user.role,
+        "is_active": user.is_active
+    }, "用户信息已更新")
 

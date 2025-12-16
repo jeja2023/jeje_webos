@@ -10,10 +10,6 @@ class TopBarComponent extends Component {
             unreadMessages: Store.get('unreadMessages') || 0,
             showTime: false, // 默认为 false，只在有窗口时显示
 
-            // 应用信息（从全局 Store 初始化，避免使用硬编码版本）
-            appName: Store.get('appName') || 'JeJe WebOS',
-            sysVersion: Store.get('version') || null,
-
             // 消息中心状态
             msgActiveTab: 'message', // message, announcement, todo
             msgList: [],
@@ -119,13 +115,13 @@ class TopBarComponent extends Component {
         // 公告未读数暂时无法获取，忽略
         const totalBadge = unreadMessages + todoCount;
         const displayAppName = appName || 'JeJe WebOS';
-        const displayVersion = sysVersion || Config.version || '';
+        const displayVersion = sysVersion || '2.0.0';
 
         return `
             <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
                 <div class="top-bar-left">
-                     <!-- Brand Title（点击打开关于本机，不再显示悬浮版本提示） -->
-                    <div class="status-pill" id="brandPill" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
+                     <!-- Brand Title -->
+                    <div class="status-pill" id="brandPill" data-tooltip="${displayAppName} ${displayVersion}" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
                         <span class="brand-title">${displayAppName}</span>
                     </div>
                 </div>
@@ -427,98 +423,50 @@ class TopBarComponent extends Component {
     showAboutModal() {
         const { appName, sysVersion } = this.state;
         const displayAppName = appName || 'JeJe WebOS';
-        const displayVersion = sysVersion || Config.version || '';
+        const displayVersion = sysVersion || '2.0.0';
         const browser = this.getBrowserInfo();
-        const screenRes = `${window.screen.width} x ${window.screen.height}`;
-
-        // 隐藏桌面小部件（时间/日期），避免视觉干扰
-        const widgets = document.getElementById('desktop-widgets');
-        if (widgets) widgets.classList.add('blur-out');
 
         Modal.show({
             title: '关于本机',
-            width: '420px',
+            width: '400px',
             content: `
-                <div class="about-modal-content" style="padding: 10px 5px;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <div style="
-                            font-size: 56px; 
-                            margin-bottom: 16px; 
-                            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-                            animation: floatIcon 3s ease-in-out infinite;
-                        ">🖥️</div>
-                        <h2 style="
-                            margin: 0; 
-                            font-size: 26px; 
-                            font-weight: 700; 
-                            color: var(--color-text-primary);
-                            letter-spacing: -0.5px;
-                        ">${displayAppName}</h2>
-                        <div style="
-                            margin-top: 8px; 
-                            display: inline-block;
-                            padding: 4px 12px;
-                            background: var(--color-bg-tertiary);
-                            border-radius: 20px;
-                            font-size: 13px; 
-                            font-weight: 500;
-                            color: var(--color-text-secondary);
-                        ">Version ${displayVersion}</div>
-                    </div>
+                <div style="text-align: center; padding: 20px 0;">
+                    <div style="font-size: 48px; margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color:var(--text-primary);">${displayAppName}</h2>
+                    <p style="color: var(--text-secondary); margin: 5px 0 25px;">Version ${displayVersion}</p>
                     
-                    <div style="
-                        background: var(--color-bg-tertiary); 
-                        border-radius: 16px; 
-                        padding: 20px; 
-                        display: flex;
-                        flex-direction: column;
-                        gap: 12px;
-                    ">
-                        <div style="display:flex; justify-content:space-between; align-items: center;">
-                            <span style="color: var(--color-text-secondary); font-size: 13px;">运行环境</span>
-                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;">FastAPI + Vanilla JS</span>
+                    <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 15px 20px; text-align: left; font-size: 13px; line-height: 2;">
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">运行环境</span>
+                            <span style="font-family: monospace;">FastAPI + Vanilla JS</span>
                         </div>
-                        <div style="width:100%; height:1px; background:var(--color-border-light); opacity:0.5;"></div>
-                        
-                        <div style="display:flex; justify-content:space-between; align-items: center;">
-                            <span style="color: var(--color-text-secondary); font-size: 13px;">浏览器</span>
-                            <span style="font-size: 13px; font-weight: 500;">${browser}</span>
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">浏览器</span>
+                            <span>${browser}</span>
                         </div>
-                        <div style="width:100%; height:1px; background:var(--color-border-light); opacity:0.5;"></div>
-
-                        <div style="display:flex; justify-content:space-between; align-items: center;">
-                            <span style="color: var(--color-text-secondary); font-size: 13px;">分辨率</span>
-                            <span style="font-size: 13px; font-weight: 500;">${screenRes}</span>
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                            <span style="color: var(--text-secondary);">分辨率</span>
+                            <span>${window.screen.width} x ${window.screen.height}</span>
                         </div>
-                        <div style="width:100%; height:1px; background:var(--color-border-light); opacity:0.5;"></div>
-
-                        <div style="display:flex; justify-content:space-between; align-items: center;">
-                            <span style="color: var(--color-text-secondary); font-size: 13px;">内核架构</span>
-                            <span style="font-size: 13px; font-weight: 500;">JeJe Micro-Kernel</span>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color: var(--text-secondary);">内核架构</span>
+                            <span>JeJe Micro-Kernel</span>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 30px; text-align: center;">
-                        <p style="font-size: 11px; color: var(--color-text-secondary); opacity: 0.6; line-height: 1.6;">
-                            Copyright © 2025 JeJe WebOS Team.<br>All rights reserved.
-                        </p>
-                    </div>
+                    <p style="margin-top: 25px; font-size: 11px; color: var(--text-secondary); opacity: 0.7;">
+                        Copyright © 2025 JeJe WebOS Team.<br>All rights reserved.
+                    </p>
                 </div>
                 <style>
                     @keyframes floatIcon {
                         0% { transform: translateY(0px); }
-                        50% { transform: translateY(-8px); }
+                        50% { transform: translateY(-10px); }
                         100% { transform: translateY(0px); }
                     }
                 </style>
             `,
-            footer: false,
-            // 当模态框关闭时（点击X或ESC），恢复桌面组件状态
-            onCancel: () => {
-                if (typeof WindowManager !== 'undefined') {
-                    WindowManager.updateDesktopState();
-                }
-            }
+            footer: false
         });
     }
 

@@ -75,12 +75,12 @@ class StartMenuComponent extends Component {
             });
         }
 
-        // 文件存储（所有人可见，直接进入）
+        // 文件管理（所有人可见）
         menuTree.push({
-            id: 'storage',
-            title: '文件存储',
+            id: 'filemanager',
+            title: '文件管理',
             icon: '📂',
-            path: '/storage/list'
+            path: '/filemanager'
         });
 
         // 信息（所有人可见，直接进入通知列表）
@@ -94,7 +94,7 @@ class StartMenuComponent extends Component {
         // 个性化
         menuTree.push({
             id: 'theme',
-            title: '主题美化',
+            title: '主题',
             icon: '🎨',
             path: '/theme/editor'
         });

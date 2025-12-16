@@ -30,8 +30,13 @@ engine = create_async_engine(
 @event.listens_for(engine.sync_engine, "connect")
 def _set_session_time_zone(dbapi_connection, connection_record):
     """确保每个连接会话时区一致"""
-    with dbapi_connection.cursor() as cursor:
+    try:
+        cursor = dbapi_connection.cursor()
         cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
+        cursor.close()
+    except Exception:
+        # 如果 cursor 不支持上下文管理器或执行失败，忽略
+        pass
 
 # 会话工厂
 async_session = async_sessionmaker(

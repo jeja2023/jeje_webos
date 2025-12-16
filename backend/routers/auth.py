@@ -165,7 +165,8 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
             "avatar": user.avatar,
             "role": user.role,
             "permissions": user.permissions or [],
-            "role_ids": user.role_ids or []
+            "role_ids": user.role_ids or [],
+            "settings": user.settings or {}
         }
     })
 
@@ -192,6 +193,7 @@ async def get_me(
         "permissions": user.permissions or [],
         "role_ids": user.role_ids or [],
         "is_active": user.is_active,
+        "settings": user.settings or {},
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "last_login": user.last_login.isoformat() if user.last_login else None
     })

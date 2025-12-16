@@ -49,7 +49,7 @@ const App = {
 
     async updateUnreadCount() {
         try {
-            const res = await NotificationApi.unreadCount();
+            const res = await MessageApi.unreadCount();
             const count = res.data?.count || res.count || 0;
             Store.set('unreadNotifications', count);
         } catch (e) {
@@ -195,7 +195,6 @@ const App = {
             '/help': { auth: true, handler: wrap(HelpPage, '帮助中心') },
             '/theme/editor': { auth: true, handler: wrap(ThemeEditorPage, '主题编辑器') },
 
-            '/storage/list': { auth: true, handler: wrap(StoragePage, '文件存储') },
             '/system/backup': { auth: true, handler: wrap(BackupPage, '数据备份') },
             '/system/roles': { auth: true, handler: wrap(RolesPage, '权限管理') },
 
@@ -203,6 +202,8 @@ const App = {
             '/announcement/edit': { auth: true, handler: wrap(AnnouncementEditPage, '发布公告') },
             '/announcement/edit/:id': { auth: true, handler: wrap(AnnouncementEditPage, '编辑公告') },
             '/announcement/view/:id': { auth: true, handler: wrap(AnnouncementViewPage, '查看公告') },
+
+            '/filemanager': { auth: true, handler: wrap(FileManagerPage, '文件管理') },
 
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
         });

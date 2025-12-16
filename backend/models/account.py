@@ -25,6 +25,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="guest")  # 角色：admin/guest/自定义
     permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
+    settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)  # 用户个性化设置
+    storage_quota: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 存储配额（字节），None 表示无限制
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)  # 默认未激活，需管理员审核
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

@@ -117,6 +117,14 @@ class HelpPage extends Component {
             icon: '🎨',
             content: this.getThemeEditorContent()
         });
+
+        // 添加文件管理器帮助
+        this.helpSections.push({
+            id: 'filemanager',
+            title: '文件管理',
+            icon: '📁',
+            content: this.getFileManagerContent()
+        });
     }
 
     getGettingStartedContent() {
@@ -541,6 +549,60 @@ class HelpPage extends Component {
                 <li>使用颜色选择器或直接输入 HEX 颜色值（如 #2563eb）</li>
                 <li>主题配置保存在浏览器本地，不同设备需要单独配置</li>
                 <li>如需在多设备间同步主题，可导出后通过其他方式传输并导入</li>
+            </ul>
+        `;
+    }
+
+    getFileManagerContent() {
+        return `
+            <h3>文件管理指南</h3>
+            <p>文件管理是一个功能完整的云端文件管理工具，让您可以轻松管理个人文件。</p>
+            
+            <h4>📁 基本功能</h4>
+            <ul>
+                <li><strong>浏览文件</strong> - 以网格或列表视图浏览文件和文件夹</li>
+                <li><strong>存储监控</strong> - 侧边栏实时显示存储配额进度条，颜色提示使用状态（绿/黄/红）</li>
+                <li><strong>创建文件夹</strong> - 点击「新建文件夹」按钮创建目录结构</li>
+                <li><strong>上传文件</strong> - 点击「上传文件」按钮或直接拖拽文件到窗口中</li>
+            </ul>
+            
+            <h4>🔧 快捷操作</h4>
+            <p>系统支持丰富的鼠标操作，提高管理效率：</p>
+            <ul>
+                <li><strong>右键菜单</strong> - 在文件或文件夹上点击右键，呼出快捷菜单进行操作</li>
+                <li><strong>拖拽移动</strong> - 将文件拖拽到文件夹图标或侧边栏树节点上，即可快速移动</li>
+                <li><strong>多选操作</strong> - 按住 Ctrl 或 Shift 键点击文件进行多选</li>
+            </ul>
+
+            <h4>👀 文件预览</h4>
+            <p>支持多种格式文件的在线预览，无需下载：</p>
+            <ul>
+                <li><strong>媒体文件</strong> - 直接播放图片、音频和视频文件</li>
+                <li><strong>文档预览</strong> - 支持 PDF 文档在线阅读</li>
+                <li><strong>代码文本</strong> - 支持预览 JSON、XML、JS、PY 等文本/代码文件</li>
+                <li><strong>其他格式</strong> - 不支持预览的文件将自动下载</li>
+            </ul>
+            
+            <h4>⚙️ 文件动作</h4>
+            <ul>
+                <li><strong>重命名</strong> - 右键选择或选中后点击重命名按钮</li>
+                <li><strong>移动到</strong> - 右键选择「移动到...」打开目录树选择目标位置</li>
+                <li><strong>删除</strong> - 支持批量删除文件/文件夹</li>
+                <li><strong>收藏</strong> - 将常用文件标记为星标，在「我的收藏」中快速访问</li>
+            </ul>
+            
+            <h4>🔍 搜索与导航</h4>
+            <ul>
+                <li><strong>面包屑导航</strong> - 点击路径中的任意层级快速跳转</li>
+                <li><strong>文件夹树</strong> - 左侧边栏显示完整的文件夹结构，支持拖拽投送</li>
+                <li><strong>全局搜索</strong> - 输入关键词搜索文件和文件夹</li>
+            </ul>
+            
+            <h4>💡 使用技巧</h4>
+            <ul>
+                <li>将文件直接拖入浏览器窗口即可上传</li>
+                <li>右键菜单会自动根据文件类型显示可用选项</li>
+                <li>存储空间不足 10% 时，进度条会变红示警</li>
             </ul>
         `;
     }

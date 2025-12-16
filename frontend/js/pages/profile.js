@@ -81,7 +81,16 @@ class ProfilePage extends Component {
                     <div class="profile-left">
                         <div class="card profile-card-compact">
                             <div class="profile-header-compact">
-                                <div class="profile-avatar-large">${initials}</div>
+                                <div class="profile-avatar-large" id="avatarUploadTrigger" style="position: relative; cursor: pointer; overflow: hidden;">
+                                    ${user.avatar ?
+                `<img src="${user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token')}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">` :
+                initials
+            }
+                                    <div class="avatar-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; opacity: 0; transition: opacity 0.2s;">
+                                        📷
+                                    </div>
+                                </div>
+                                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
                                 <div class="profile-basic">
                                     <h2>${Utils.escapeHtml(user.nickname || user.username)}</h2>
                                     <p class="profile-username">@${Utils.escapeHtml(user.username || '')}</p>
@@ -207,9 +216,74 @@ class ProfilePage extends Component {
         this.bindEvents();
     }
 
+    async uploadAvatar(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 显示加载状态
+        const avatarEl = this.$('.profile-avatar-large');
+        if (avatarEl) avatarEl.style.opacity = '0.5';
+
+        try {
+            // 1. 上传文件 (category=avatar)
+            const uploadRes = await Api.upload('/storage/upload?category=avatar', formData);
+            if (uploadRes.code === 200) {
+                const avatarUrl = uploadRes.data.url;
+
+                // 2. 更新用户资料
+                const updateRes = await UserApi.updateProfile({
+                    avatar: avatarUrl
+                });
+
+                if (updateRes.code === 200) {
+                    // 更新本地状态
+                    const newUser = { ...this.state.user, avatar: avatarUrl };
+                    this.setState({ user: newUser });
+                    Store.set('user', newUser);
+
+                    // 广播用户信息更新事件（如果有的话）
+                    Toast.success('头像更新成功');
+                }
+            } else {
+                Toast.error(uploadRes.message || '上传失败');
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.error('上传头像失败');
+        } finally {
+            if (avatarEl) avatarEl.style.opacity = '1';
+        }
+    }
+
     bindEvents() {
         if (this.container && !this.container._bindedProfile) {
             this.container._bindedProfile = true;
+
+            // 头像上传
+            this.delegate('click', '#avatarUploadTrigger', () => {
+                this.$('#avatarInput')?.click();
+            });
+
+            const avatarInput = this.$('#avatarInput');
+            if (avatarInput) {
+                avatarInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.uploadAvatar(e.target.files[0]);
+                        // 清空 input，允许重复选择同一文件
+                        e.target.value = '';
+                    }
+                });
+            }
+
+            // 头像 hover 效果 (JS 辅助)
+            this.delegate('mouseover', '#avatarUploadTrigger', (e, el) => {
+                const overlay = el.querySelector('.avatar-overlay');
+                if (overlay) overlay.style.opacity = '1';
+            });
+            this.delegate('mouseout', '#avatarUploadTrigger', (e, el) => {
+                const overlay = el.querySelector('.avatar-overlay');
+                if (overlay) overlay.style.opacity = '0';
+            });
 
             // 编辑按钮
             this.delegate('click', '#editBtn', () => {

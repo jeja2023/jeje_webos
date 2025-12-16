@@ -147,10 +147,17 @@ const Api = {
     /**
      * 上传文件
      */
-    async upload(url, file, fieldName = 'file') {
+    async upload(url, fileOrFormData, fieldName = 'file') {
         const token = localStorage.getItem(Config.storageKeys.token);
-        const formData = new FormData();
-        formData.append(fieldName, file);
+
+        let body;
+        if (fileOrFormData instanceof FormData) {
+            body = fileOrFormData;
+        } else {
+            const formData = new FormData();
+            formData.append(fieldName, fileOrFormData);
+            body = formData;
+        }
 
         const headers = {};
         if (token) {
@@ -166,7 +173,7 @@ const Api = {
         const response = await fetch(`${Config.apiBase}${url}`, {
             method: 'POST',
             headers,
-            body: formData
+            body
         });
 
         return response.json();
@@ -272,6 +279,8 @@ const UserApi = {
     updatePermissions: (id, payload) => Api.put(`/users/${id}/permissions`, payload),
     // 更新基础角色（仅 admin）
     updateRole: (id, role) => Api.put(`/users/${id}/role?role=${role}`),
+    // 更新用户信息（管理员）
+    updateUser: (id, data) => Api.put(`/users/${id}`, data),
     // 更新个人资料
     updateProfile: (data) => Api.put('/users/profile', data),
     // 修改密码
@@ -402,4 +411,21 @@ const AnnouncementApi = {
     view: (id) => Api.post(`/announcements/${id}/view`)
 };
 
+// 暴露到全局对象
+window.Api = Api;
+window.AuthApi = AuthApi;
+window.UserApi = UserApi;
+window.SystemApi = SystemApi;
+window.BlogApi = BlogApi;
+window.NotesApi = NotesApi;
+window.FeedbackApi = FeedbackApi;
+window.StorageApi = StorageApi;
+window.BackupApi = BackupApi;
+window.MonitorApi = MonitorApi;
+window.MessageApi = MessageApi;
+window.ExportApi = ExportApi;
+window.I18nApi = I18nApi;
+window.AnnouncementApi = AnnouncementApi;
+window.GroupApi = GroupApi;
+window.RoleApi = RoleApi;
 

@@ -321,6 +321,131 @@ class UserListPage extends Component {
         return { label: '普通用户', cls: 'tag-info' };
     }
 
+    // 格式化存储配额显示
+    formatStorageQuota(quota) {
+        if (quota === null || quota === undefined) return '无限制';
+        const gb = quota / (1024 * 1024 * 1024);
+        const mb = quota / (1024 * 1024);
+        if (gb >= 1) return `${gb.toFixed(2)} GB`;
+        return `${mb.toFixed(2)} MB`;
+    }
+
+    // 显示编辑用户弹窗
+    showEditModal(userId) {
+        const user = this.state.users.find(u => u.id === userId);
+        if (!user) {
+            Toast.error('用户不存在');
+            return;
+        }
+
+        // 计算当前存储使用情况（需要从文件管理模块获取，这里先显示配额）
+        const quotaGB = user.storage_quota ? (user.storage_quota / (1024 * 1024 * 1024)).toFixed(2) : '';
+        const quotaMB = user.storage_quota ? (user.storage_quota / (1024 * 1024)).toFixed(0) : '';
+
+        const content = `
+            <form id="editUserForm" style="display:grid;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-input" value="${Utils.escapeHtml(user.username)}" disabled style="background:var(--color-bg-secondary);">
+                    <small class="form-hint">用户名不可修改</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">昵称</label>
+                    <input type="text" name="nickname" class="form-input" value="${Utils.escapeHtml(user.nickname || '')}" placeholder="请输入昵称">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">手机号</label>
+                    <input type="tel" name="phone" class="form-input" value="${Utils.escapeHtml(user.phone || '')}" placeholder="请输入11位手机号" maxlength="11">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">头像URL</label>
+                    <input type="url" name="avatar" class="form-input" value="${Utils.escapeHtml(user.avatar || '')}" placeholder="请输入头像URL">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">存储配额</label>
+                    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+                        <div>
+                            <input type="number" name="quota_value" class="form-input" 
+                                   value="${quotaGB || quotaMB || ''}" 
+                                   placeholder="请输入配额" 
+                                   min="0" step="0.01">
+                        </div>
+                        <select name="quota_unit" class="form-input form-select" style="width:80px;">
+                            <option value="gb" ${quotaGB ? 'selected' : ''}>GB</option>
+                            <option value="mb" ${quotaMB && !quotaGB ? 'selected' : ''}>MB</option>
+                            <option value="unlimited" ${!user.storage_quota ? 'selected' : ''}>无限制</option>
+                        </select>
+                    </div>
+                    <small class="form-hint">
+                        当前配额: ${this.formatStorageQuota(user.storage_quota)} | 
+                        留空或选择"无限制"表示不限制存储空间
+                    </small>
+                </div>
+            </form>
+        `;
+
+        const { overlay, close } = Modal.show({
+            title: `编辑用户: ${Utils.escapeHtml(user.username)}`,
+            content: content,
+            footer: `
+                <button type="button" class="btn btn-secondary" data-close>取消</button>
+                <button type="button" class="btn btn-primary" id="saveEditUserBtn">保存</button>
+            `,
+            width: '500px'
+        });
+
+        // 绑定表单提交
+        const form = overlay.querySelector('#editUserForm');
+        const saveBtn = overlay.querySelector('#saveEditUserBtn');
+        
+        if (saveBtn && form) {
+            saveBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await this.handleEditUser(userId, form);
+                close();
+            });
+        }
+    }
+
+    // 处理编辑用户
+    async handleEditUser(userId, form) {
+        const nickname = form.querySelector('[name="nickname"]')?.value.trim() || null;
+        const phone = form.querySelector('[name="phone"]')?.value.trim() || null;
+        const avatar = form.querySelector('[name="avatar"]')?.value.trim() || null;
+        const quotaValue = form.querySelector('[name="quota_value"]')?.value;
+        const quotaUnit = form.querySelector('[name="quota_unit"]')?.value;
+
+        // 计算存储配额（字节）
+        let storage_quota = null;
+        if (quotaUnit !== 'unlimited' && quotaValue) {
+            const value = parseFloat(quotaValue);
+            if (!isNaN(value) && value > 0) {
+                if (quotaUnit === 'gb') {
+                    storage_quota = Math.round(value * 1024 * 1024 * 1024);
+                } else if (quotaUnit === 'mb') {
+                    storage_quota = Math.round(value * 1024 * 1024);
+                }
+            }
+        }
+
+        try {
+            await UserApi.updateUser(userId, {
+                nickname: nickname,
+                phone: phone,
+                avatar: avatar,
+                storage_quota: storage_quota
+            });
+            Toast.success('用户信息已更新');
+            this.loadData(); // 刷新列表
+        } catch (e) {
+            Toast.error(e.message || '更新失败');
+        }
+    }
+
     render() {
         const { users, total, page, size, loading, filters } = this.state;
         const pages = Math.ceil(total / size);
@@ -397,6 +522,7 @@ class UserListPage extends Component {
                                         <th>手机号</th>
                                         <th>昵称</th>
                                         <th>角色</th>
+                                        <th>存储配额</th>
                                         <th>状态</th>
                                         <th>注册时间</th>
                                         <th>操作</th>
@@ -416,6 +542,11 @@ class UserListPage extends Component {
             })()}
                                             </td>
                                             <td>
+                                                <span style="font-size:12px;color:var(--color-text-secondary);">
+                                                    ${this.formatStorageQuota(user.storage_quota)}
+                                                </span>
+                                            </td>
+                                            <td>
                                                 <span class="tag ${user.is_active ? 'tag-primary' : 'tag-danger'}">
                                                     ${user.is_active ? '已激活' : '待审核'}
                                                 </span>
@@ -431,6 +562,7 @@ class UserListPage extends Component {
                                                 ` : `
                                                     ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${user.id}">启用</button>` : ''}
                                                 `}
+                                                <button class="btn btn-ghost btn-sm" data-edit="${user.id}">编辑</button>
                                                 <button class="btn btn-ghost btn-sm" data-perms="${user.id}">权限</button>
                                                 ${user.role !== 'admin' ? `
                                                     <button class="btn btn-ghost btn-sm" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}">删除</button>
@@ -555,6 +687,15 @@ class UserListPage extends Component {
                     e.stopPropagation();
                     const userId = parseInt(disableBtn.dataset.disable);
                     if (userId) this.handleToggleStatus(userId, true);
+                    return;
+                }
+
+                // 编辑用户
+                const editBtn = e.target.closest('[data-edit]');
+                if (editBtn && this.container.contains(editBtn)) {
+                    e.stopPropagation();
+                    const userId = parseInt(editBtn.dataset.edit);
+                    if (userId) this.showEditModal(userId);
                     return;
                 }
 

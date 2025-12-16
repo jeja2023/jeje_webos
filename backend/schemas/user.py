@@ -33,10 +33,19 @@ class UserListItem(BaseModel):
     role: str
     role_ids: Optional[list[int]] = []
     permissions: list[str] = []
+    storage_quota: Optional[int] = None  # 存储配额（字节）
     is_active: bool
     last_login: Optional[datetime] = None
     created_at: datetime
     
     class Config:
         from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    """更新用户信息（管理员）"""
+    nickname: Optional[str] = Field(None, max_length=50, description="昵称")
+    phone: Optional[str] = Field(None, max_length=11, description="手机号")
+    avatar: Optional[str] = Field(None, max_length=255, description="头像URL")
+    storage_quota: Optional[int] = Field(None, ge=0, description="存储配额（字节），None 表示无限制")
 

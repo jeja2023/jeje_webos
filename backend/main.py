@@ -304,6 +304,7 @@ from routers import (
 from modules.blog.blog_router import router as blog_router
 from modules.notes.notes_router import router as notes_router
 from modules.feedback.feedback_router import router as feedback_router
+from modules.filemanager.filemanager_router import router as filemanager_router
 
 # 系统核心路由
 app.include_router(auth.router)
@@ -326,6 +327,7 @@ app.include_router(announcement.router)
 app.include_router(blog_router, prefix="/api/v1/blog", tags=["博客"])
 app.include_router(notes_router, prefix="/api/v1/notes", tags=["备忘录"])
 app.include_router(feedback_router, prefix="/api/v1/feedback", tags=["反馈"])
+app.include_router(filemanager_router, prefix="/api/v1/filemanager", tags=["文件管理"])
 
 # 健康检查路由
 from core.health import router as health_router

@@ -40,33 +40,108 @@ def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
 async def upload_file(
     file: UploadFile = File(...),
     description: Optional[str] = None,
+    category: str = Query("attachment", description="文件分类: avatar, blog, note, attachment"),
+    ref_id: Optional[int] = Query(None, description="关联业务ID"),
     current_user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     上传文件
     
-    需要权限：storage.upload
+    需要权限：storage.upload (或者特定业务权限)
+    category: 默认为 attachment。可选值: avatar, blog, note, attachment
     """
-    # 权限检查
-    if not (current_user.permissions and ("*" in current_user.permissions or "storage.upload" in current_user.permissions)):
-        raise HTTPException(status_code=403, detail="无权上传文件")
+    # 权限检查 - 细化权限控制
+    # 1. 头像上传：任何登录用户都可以上传自己的头像
+    # 2. 博客/笔记图片：需要相应模块的权限
+    # 3. 通用附件：需要 storage.upload 权限
+    
+    has_permission = False
+    
+    if category == "avatar":
+        has_permission = True  # 登录用户都可以上传头像
+    elif category == "blog":
+        has_permission = current_user.permissions and ("*" in current_user.permissions or "blog.create" in current_user.permissions or "blog.update" in current_user.permissions)
+    elif category == "note":
+        has_permission = current_user.permissions and ("*" in current_user.permissions or "notes.create" in current_user.permissions or "notes.update" in current_user.permissions)
+    else:
+        # 通用附件，需要 storage.upload
+        has_permission = current_user.permissions and ("*" in current_user.permissions or "storage.upload" in current_user.permissions)
+
+    if not has_permission:
+        raise HTTPException(status_code=403, detail=f"无权上传 {category} 类型的文件")
     
     storage = get_storage_manager()
+    max_size = storage.max_size
+    max_size_mb = max_size / 1024 / 1024
     
-    # 读取文件内容
-    content = await file.read()
+    # 1. 检查 Content-Length 头（如果可用）
+    content_length = None
+    if hasattr(file, 'headers'):
+        content_length_str = file.headers.get('content-length')
+        if content_length_str:
+            try:
+                content_length = int(content_length_str)
+                if content_length > max_size:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                    )
+            except (ValueError, TypeError):
+                pass
+    
+    # 2. 流式读取并检查大小
+    content_chunks = []
+    total_size = 0
+    chunk_size = 1024 * 1024  # 1MB 块大小
+    
+    try:
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            
+            total_size += len(chunk)
+            
+            # 实时检查大小
+            if total_size > max_size:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                )
+            
+            content_chunks.append(chunk)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+    
+    # 3. 合并所有块
+    content = b''.join(content_chunks)
     file_size = len(content)
     
-    # 验证文件（包括内容验证）
+    # 4. 最终验证
+    if file_size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {file_size / 1024 / 1024:.1f}MB）"
+        )
+    
+    # 5. 验证文件（包括内容验证）
     is_valid, error_msg = storage.validate_file(file.filename or "unknown", file_size, content)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
+    # 如果是头像，额外检查是否为图片
+    if category == "avatar":
+        if not (file.content_type and file.content_type.startswith("image/")):
+             raise HTTPException(status_code=400, detail="头像必须是图片格式")
+    
     # 生成存储路径
     relative_path, full_path = storage.generate_filename(
         file.filename or "unknown",
-        current_user.user_id
+        current_user.user_id,
+        category=category
     )
     
     # 保存文件
@@ -87,6 +162,8 @@ async def upload_file(
         file_size=file_size,
         mime_type=mime_type,
         uploader_id=current_user.user_id,
+        category=category,
+        ref_id=ref_id,
         description=description
     )
     db.add(file_record)

@@ -45,9 +45,10 @@ async def system_init(
                     "username": user.username,
                     "nickname": user.nickname,
                     "avatar": user.avatar,
-            "role": user.role,
-            "permissions": user.permissions or [],
-            "role_ids": user.role_ids or []
+                    "role": user.role,
+                    "permissions": user.permissions or [],
+                    "role_ids": user.role_ids or [],
+                    "settings": user.settings or {}
                 }
     
     # 获取已加载模块

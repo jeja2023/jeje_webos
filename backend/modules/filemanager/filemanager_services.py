@@ -1,0 +1,761 @@
+"""
+文件管理业务逻辑服务
+"""
+
+import os
+import logging
+from pathlib import Path
+from typing import Optional, List, Tuple
+from datetime import datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, delete, update, or_, and_
+from sqlalchemy.orm import selectinload
+
+from .filemanager_models import VirtualFolder, VirtualFile
+from models import User
+from .filemanager_schemas import (
+    FolderCreate, FolderUpdate, FolderInfo, FolderTreeNode,
+    FileUpdate, FileInfo, FileListItem, BreadcrumbItem, DirectoryContents, StorageStats
+)
+from utils.storage import get_storage_manager
+from core.config import get_settings
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+class FileManagerService:
+    """文件管理服务"""
+    
+    def __init__(self, db: AsyncSession, user_id: int):
+        self.db = db
+        self.user_id = user_id
+        self.storage = get_storage_manager()
+    
+    # ============ 文件夹操作 ============
+    
+    async def get_folder(self, folder_id: int) -> Optional[VirtualFolder]:
+        """获取文件夹"""
+        result = await self.db.execute(
+            select(VirtualFolder)
+            .where(VirtualFolder.id == folder_id, VirtualFolder.user_id == self.user_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def get_folder_by_path(self, path: str) -> Optional[VirtualFolder]:
+        """根据路径获取文件夹"""
+        result = await self.db.execute(
+            select(VirtualFolder)
+            .where(VirtualFolder.path == path, VirtualFolder.user_id == self.user_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create_folder(self, data: FolderCreate) -> VirtualFolder:
+        """创建文件夹"""
+        # 验证父文件夹
+        parent_path = "/"
+        if data.parent_id:
+            parent = await self.get_folder(data.parent_id)
+            if not parent:
+                raise ValueError("父文件夹不存在")
+            parent_path = parent.path
+        
+        # 检查同名文件夹
+        full_path = f"{parent_path.rstrip('/')}/{data.name}"
+        existing = await self.get_folder_by_path(full_path)
+        if existing:
+            raise ValueError("同名文件夹已存在")
+        
+        # 创建文件夹
+        folder = VirtualFolder(
+            name=data.name,
+            parent_id=data.parent_id,
+            user_id=self.user_id,
+            path=full_path
+        )
+        self.db.add(folder)
+        await self.db.commit()
+        await self.db.refresh(folder)
+        
+        logger.info(f"用户 {self.user_id} 创建文件夹: {full_path}")
+        return folder
+    
+    async def update_folder(self, folder_id: int, data: FolderUpdate) -> Optional[VirtualFolder]:
+        """更新文件夹（重命名）"""
+        folder = await self.get_folder(folder_id)
+        if not folder:
+            return None
+        
+        if data.name:
+            # 更新路径
+            old_path = folder.path
+            parent_path = "/".join(old_path.split("/")[:-1]) or "/"
+            new_path = f"{parent_path.rstrip('/')}/{data.name}"
+            
+            # 检查同名
+            existing = await self.get_folder_by_path(new_path)
+            if existing and existing.id != folder_id:
+                raise ValueError("同名文件夹已存在")
+            
+            folder.name = data.name
+            folder.path = new_path
+            
+            # 更新所有子文件夹的路径
+            await self._update_children_paths(folder_id, old_path, new_path)
+        
+        folder.updated_at = datetime.now()
+        await self.db.commit()
+        await self.db.refresh(folder)
+        
+        return folder
+    
+    async def _update_children_paths(self, parent_id: int, old_prefix: str, new_prefix: str):
+        """递归更新子文件夹路径"""
+        result = await self.db.execute(
+            select(VirtualFolder)
+            .where(VirtualFolder.parent_id == parent_id, VirtualFolder.user_id == self.user_id)
+        )
+        children = result.scalars().all()
+        
+        for child in children:
+            child.path = child.path.replace(old_prefix, new_prefix, 1)
+            await self._update_children_paths(child.id, old_prefix, new_prefix)
+    
+    async def move_folder(self, folder_id: int, target_parent_id: Optional[int]) -> Optional[VirtualFolder]:
+        """移动文件夹"""
+        folder = await self.get_folder(folder_id)
+        if not folder:
+            return None
+        
+        # 验证目标文件夹
+        new_parent_path = "/"
+        if target_parent_id:
+            # 不能移动到自己或子文件夹
+            if target_parent_id == folder_id:
+                raise ValueError("不能将文件夹移动到自己")
+            
+            target = await self.get_folder(target_parent_id)
+            if not target:
+                raise ValueError("目标文件夹不存在")
+            
+            # 检查是否是子文件夹
+            if target.path.startswith(folder.path + "/"):
+                raise ValueError("不能将文件夹移动到其子文件夹")
+            
+            new_parent_path = target.path
+        
+        # 计算新路径
+        old_path = folder.path
+        new_path = f"{new_parent_path.rstrip('/')}/{folder.name}"
+        
+        # 检查目标位置是否存在同名
+        existing = await self.get_folder_by_path(new_path)
+        if existing and existing.id != folder_id:
+            raise ValueError("目标位置已存在同名文件夹")
+        
+        # 更新
+        folder.parent_id = target_parent_id
+        folder.path = new_path
+        folder.updated_at = datetime.now()
+        
+        # 更新子文件夹路径
+        await self._update_children_paths(folder_id, old_path, new_path)
+        
+        await self.db.commit()
+        await self.db.refresh(folder)
+        
+        return folder
+    
+    async def delete_folder(self, folder_id: int) -> bool:
+        """删除文件夹（级联删除文件）"""
+        folder = await self.get_folder(folder_id)
+        if not folder:
+            return False
+        
+        # 删除文件夹下的物理文件
+        await self._delete_folder_files(folder_id)
+        
+        # 递归删除子文件夹
+        result = await self.db.execute(
+            select(VirtualFolder)
+            .where(VirtualFolder.parent_id == folder_id, VirtualFolder.user_id == self.user_id)
+        )
+        children = result.scalars().all()
+        for child in children:
+            await self.delete_folder(child.id)
+        
+        # 删除文件夹记录
+        await self.db.delete(folder)
+        await self.db.commit()
+        
+        logger.info(f"用户 {self.user_id} 删除文件夹: {folder.path}")
+        return True
+    
+    async def _delete_folder_files(self, folder_id: int):
+        """删除文件夹下的所有物理文件"""
+        result = await self.db.execute(
+            select(VirtualFile)
+            .where(VirtualFile.folder_id == folder_id, VirtualFile.user_id == self.user_id)
+        )
+        files = result.scalars().all()
+        
+        for file in files:
+            # 检查物理文件是否存在
+            file_path = self.storage.get_file_path(file.storage_path)
+            if file_path and file_path.exists():
+                self.storage.delete_file(file.storage_path)
+            else:
+                logger.warning(f"文件夹 {folder_id} 下的文件物理文件不存在: {file.storage_path}")
+    
+    async def get_folder_tree(self) -> List[FolderTreeNode]:
+        """获取完整文件夹树"""
+        result = await self.db.execute(
+            select(VirtualFolder)
+            .where(VirtualFolder.user_id == self.user_id)
+            .order_by(VirtualFolder.name)
+        )
+        folders = result.scalars().all()
+        
+        # 构建树
+        folder_map = {f.id: FolderTreeNode(id=f.id, name=f.name, path=f.path, children=[]) for f in folders}
+        root_nodes = []
+        
+        for folder in folders:
+            node = folder_map[folder.id]
+            if folder.parent_id and folder.parent_id in folder_map:
+                folder_map[folder.parent_id].children.append(node)
+            else:
+                root_nodes.append(node)
+        
+        return root_nodes
+    
+    # ============ 文件操作 ============
+    
+    async def get_file(self, file_id: int) -> Optional[VirtualFile]:
+        """获取文件"""
+        result = await self.db.execute(
+            select(VirtualFile)
+            .where(VirtualFile.id == file_id, VirtualFile.user_id == self.user_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def _check_storage_quota(self, additional_size: int) -> None:
+        """检查存储配额"""
+        # 获取用户信息
+        result = await self.db.execute(
+            select(User).where(User.id == self.user_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise ValueError("用户不存在")
+        
+        # 如果没有配额限制，直接通过
+        if user.storage_quota is None:
+            return
+        
+        # 计算当前已使用空间
+        size_result = await self.db.execute(
+            select(func.coalesce(func.sum(VirtualFile.file_size), 0))
+            .select_from(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id)
+        )
+        current_size = size_result.scalar_one()
+        
+        # 检查是否超过配额
+        if current_size + additional_size > user.storage_quota:
+            used_mb = current_size / 1024 / 1024
+            quota_mb = user.storage_quota / 1024 / 1024
+            additional_mb = additional_size / 1024 / 1024
+            raise ValueError(
+                f"存储空间不足：当前已使用 {used_mb:.2f}MB / {quota_mb:.2f}MB，"
+                f"本次上传需要 {additional_mb:.2f}MB，超出配额限制。"
+                f"请删除部分文件或联系管理员增加配额。"
+            )
+    
+    async def upload_file(
+        self,
+        filename: str,
+        content: bytes,
+        mime_type: str,
+        folder_id: Optional[int] = None,
+        description: Optional[str] = None
+    ) -> VirtualFile:
+        """上传文件"""
+        # 验证文件夹
+        if folder_id:
+            folder = await self.get_folder(folder_id)
+            if not folder:
+                raise ValueError("文件夹不存在")
+        
+        file_size = len(content)
+        
+        # 检查存储配额
+        await self._check_storage_quota(file_size)
+        
+        # 验证文件
+        is_valid, error_msg = self.storage.validate_file(filename, file_size, content)
+        if not is_valid:
+            raise ValueError(error_msg)
+        
+        # 生成存储路径
+        relative_path, full_path = self.storage.generate_filename(filename, self.user_id)
+        
+        # 保存物理文件
+        try:
+            Path(full_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(full_path, "wb") as f:
+                f.write(content)
+        except Exception as e:
+            raise ValueError(f"文件保存失败: {str(e)}")
+        
+        # 创建虚拟文件记录
+        file = VirtualFile(
+            name=filename,
+            folder_id=folder_id,
+            user_id=self.user_id,
+            storage_path=relative_path,
+            file_size=file_size,
+            mime_type=mime_type,
+            description=description
+        )
+        self.db.add(file)
+        await self.db.commit()
+        await self.db.refresh(file)
+        
+        logger.info(f"用户 {self.user_id} 上传文件: {filename}")
+        return file
+    
+    async def update_file(self, file_id: int, data: FileUpdate) -> Optional[VirtualFile]:
+        """更新文件信息"""
+        file = await self.get_file(file_id)
+        if not file:
+            return None
+        
+        if data.name is not None:
+            file.name = data.name
+        if data.description is not None:
+            file.description = data.description
+        if data.is_starred is not None:
+            file.is_starred = data.is_starred
+        
+        file.updated_at = datetime.now()
+        await self.db.commit()
+        await self.db.refresh(file)
+        
+        return file
+    
+    async def move_file(self, file_id: int, target_folder_id: Optional[int]) -> Optional[VirtualFile]:
+        """移动文件"""
+        file = await self.get_file(file_id)
+        if not file:
+            return None
+        
+        # 验证目标文件夹
+        if target_folder_id:
+            folder = await self.get_folder(target_folder_id)
+            if not folder:
+                raise ValueError("目标文件夹不存在")
+        
+        file.folder_id = target_folder_id
+        file.updated_at = datetime.now()
+        await self.db.commit()
+        await self.db.refresh(file)
+        
+        return file
+    
+    async def delete_file(self, file_id: int) -> bool:
+        """删除文件"""
+        try:
+            file = await self.get_file(file_id)
+            if not file:
+                return False
+            
+            # 检查物理文件是否存在
+            file_path = self.storage.get_file_path(file.storage_path)
+            if file_path and file_path.exists():
+                # 删除物理文件
+                deleted = self.storage.delete_file(file.storage_path)
+                if not deleted:
+                    logger.warning(f"用户 {self.user_id} 删除文件物理文件失败: {file.storage_path}")
+            else:
+                logger.warning(f"用户 {self.user_id} 删除的文件物理文件不存在: {file.storage_path}")
+            
+            # 删除记录（即使物理文件不存在也删除记录，保持数据一致性）
+            await self.db.delete(file)
+            await self.db.commit()
+            
+            logger.info(f"用户 {self.user_id} 删除文件: {file.name}")
+            return True
+        except Exception as e:
+            logger.error(f"删除文件 {file_id} 失败: {str(e)}")
+            try:
+                await self.db.rollback()
+            except:
+                pass
+            raise
+    
+    async def batch_delete(self, file_ids: List[int] = None, folder_ids: List[int] = None) -> dict:
+        """批量删除文件和文件夹"""
+        file_ids = file_ids or []
+        folder_ids = folder_ids or []
+        
+        deleted_files = []
+        deleted_folders = []
+        errors = []
+        
+        # 删除文件夹
+        for folder_id in folder_ids:
+            try:
+                # 每个删除操作使用独立的事务处理
+                if await self.delete_folder(folder_id):
+                    deleted_folders.append(folder_id)
+                else:
+                    errors.append({
+                        "type": "folder",
+                        "id": folder_id,
+                        "error": "文件夹不存在或删除失败"
+                    })
+            except Exception as e:
+                logger.error(f"批量删除文件夹 {folder_id} 失败: {str(e)}")
+                # 如果事务出错，尝试回滚
+                try:
+                    await self.db.rollback()
+                except:
+                    pass
+                errors.append({
+                    "type": "folder",
+                    "id": folder_id,
+                    "error": str(e)
+                })
+        
+        # 删除文件
+        for file_id in file_ids:
+            try:
+                # 每个删除操作使用独立的事务处理
+                if await self.delete_file(file_id):
+                    deleted_files.append(file_id)
+                else:
+                    errors.append({
+                        "type": "file",
+                        "id": file_id,
+                        "error": "文件不存在或删除失败"
+                    })
+            except Exception as e:
+                logger.error(f"批量删除文件 {file_id} 失败: {str(e)}")
+                # 如果事务出错，尝试回滚
+                try:
+                    await self.db.rollback()
+                except:
+                    pass
+                errors.append({
+                    "type": "file",
+                    "id": file_id,
+                    "error": str(e)
+                })
+        
+        return {
+            "success_count": len(deleted_files) + len(deleted_folders),
+            "failed_count": len(errors),
+            "deleted_files": deleted_files,
+            "deleted_folders": deleted_folders,
+            "errors": errors
+        }
+    
+    async def toggle_star(self, file_id: int) -> Optional[VirtualFile]:
+        """切换收藏状态"""
+        file = await self.get_file(file_id)
+        if not file:
+            return None
+        
+        file.is_starred = not file.is_starred
+        file.updated_at = datetime.now()
+        await self.db.commit()
+        await self.db.refresh(file)
+        
+        return file
+    
+    # ============ 目录浏览 ============
+    
+    async def browse_directory(
+        self,
+        folder_id: Optional[int] = None,
+        keyword: Optional[str] = None
+    ) -> DirectoryContents:
+        """浏览目录内容"""
+        current_folder = None
+        if folder_id:
+            current_folder = await self.get_folder(folder_id)
+            if not current_folder:
+                raise ValueError("文件夹不存在")
+        
+        # 获取面包屑
+        breadcrumbs = await self._get_breadcrumbs(folder_id)
+        
+        # 获取子文件夹
+        folder_query = select(VirtualFolder).where(
+            VirtualFolder.user_id == self.user_id,
+            VirtualFolder.parent_id == folder_id
+        )
+        if keyword:
+            folder_query = folder_query.where(VirtualFolder.name.ilike(f"%{keyword}%"))
+        folder_query = folder_query.order_by(VirtualFolder.name)
+        
+        result = await self.db.execute(folder_query)
+        folders = result.scalars().all()
+        
+        # 获取文件夹统计
+        folder_infos = []
+        for f in folders:
+            info = FolderInfo(
+                id=f.id,
+                name=f.name,
+                parent_id=f.parent_id,
+                path=f.path,
+                created_at=f.created_at,
+                updated_at=f.updated_at,
+                file_count=await self._count_folder_files(f.id),
+                folder_count=await self._count_subfolders(f.id)
+            )
+            folder_infos.append(info)
+        
+        # 获取文件
+        file_query = select(VirtualFile).where(
+            VirtualFile.user_id == self.user_id,
+            VirtualFile.folder_id == folder_id
+        )
+        if keyword:
+            file_query = file_query.where(VirtualFile.name.ilike(f"%{keyword}%"))
+        file_query = file_query.order_by(VirtualFile.name)
+        
+        result = await self.db.execute(file_query)
+        files = result.scalars().all()
+        
+        file_infos = [self._file_to_info(f) for f in files]
+        
+        return DirectoryContents(
+            current_folder=FolderInfo(
+                id=current_folder.id,
+                name=current_folder.name,
+                parent_id=current_folder.parent_id,
+                path=current_folder.path,
+                created_at=current_folder.created_at,
+                updated_at=current_folder.updated_at
+            ) if current_folder else None,
+            breadcrumbs=breadcrumbs,
+            folders=folder_infos,
+            files=file_infos,
+            total_folders=len(folder_infos),
+            total_files=len(file_infos)
+        )
+    
+    async def _get_breadcrumbs(self, folder_id: Optional[int]) -> List[BreadcrumbItem]:
+        """获取面包屑导航"""
+        breadcrumbs = [BreadcrumbItem(id=None, name="根目录", path="/")]
+        
+        if not folder_id:
+            return breadcrumbs
+        
+        # 递归获取父级
+        current_id = folder_id
+        path_parts = []
+        
+        while current_id:
+            folder = await self.get_folder(current_id)
+            if not folder:
+                break
+            path_parts.append(BreadcrumbItem(id=folder.id, name=folder.name, path=folder.path))
+            current_id = folder.parent_id
+        
+        # 反转顺序
+        path_parts.reverse()
+        breadcrumbs.extend(path_parts)
+        
+        return breadcrumbs
+    
+    async def _count_folder_files(self, folder_id: int) -> int:
+        """统计文件夹下的文件数"""
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(VirtualFile)
+            .where(VirtualFile.folder_id == folder_id, VirtualFile.user_id == self.user_id)
+        )
+        return result.scalar_one()
+    
+    async def _count_subfolders(self, folder_id: int) -> int:
+        """统计子文件夹数"""
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(VirtualFolder)
+            .where(VirtualFolder.parent_id == folder_id, VirtualFolder.user_id == self.user_id)
+        )
+        return result.scalar_one()
+    
+    def _file_to_info(self, file: VirtualFile) -> FileInfo:
+        """转换文件为信息对象"""
+        return FileInfo(
+            id=file.id,
+            name=file.name,
+            folder_id=file.folder_id,
+            storage_path=file.storage_path,
+            file_size=file.file_size,
+            mime_type=file.mime_type,
+            description=file.description,
+            is_starred=file.is_starred,
+            created_at=file.created_at,
+            updated_at=file.updated_at,
+            download_url=f"/api/v1/filemanager/download/{file.id}",
+            preview_url=f"/api/v1/filemanager/preview/{file.id}",
+            icon=self._get_file_icon(file.mime_type, file.name)
+        )
+    
+    def _get_file_icon(self, mime_type: Optional[str], filename: str) -> str:
+        """根据文件类型获取图标"""
+        if not mime_type:
+            ext = filename.split(".")[-1].lower() if "." in filename else ""
+            mime_map = {
+                "pdf": "📕", "doc": "📘", "docx": "📘", "xls": "📗", "xlsx": "📗",
+                "ppt": "📙", "pptx": "📙", "txt": "📄", "md": "📝",
+                "zip": "📦", "rar": "📦", "7z": "📦", "tar": "📦", "gz": "📦",
+                "py": "🐍", "js": "📜", "html": "🌐", "css": "🎨", "json": "📋",
+                "mp3": "🎵", "wav": "🎵", "flac": "🎵",
+                "mp4": "🎬", "avi": "🎬", "mkv": "🎬", "mov": "🎬",
+                "jpg": "🖼️", "jpeg": "🖼️", "png": "🖼️", "gif": "🖼️", "svg": "🖼️", "webp": "🖼️",
+            }
+            return mime_map.get(ext, "📄")
+        
+        if mime_type.startswith("image/"):
+            return "🖼️"
+        elif mime_type.startswith("video/"):
+            return "🎬"
+        elif mime_type.startswith("audio/"):
+            return "🎵"
+        elif mime_type.startswith("text/"):
+            return "📄"
+        elif "pdf" in mime_type:
+            return "📕"
+        elif "zip" in mime_type or "compressed" in mime_type:
+            return "📦"
+        else:
+            return "📄"
+    
+    # ============ 统计 ============
+    
+    async def get_storage_stats(self) -> StorageStats:
+        """获取存储统计"""
+        # 获取用户信息（包含配额）
+        user_result = await self.db.execute(
+            select(User).where(User.id == self.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        storage_quota = user.storage_quota if user else None
+        
+        # 文件数
+        file_count = await self.db.execute(
+            select(func.count())
+            .select_from(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id)
+        )
+        total_files = file_count.scalar_one()
+        
+        # 文件夹数
+        folder_count = await self.db.execute(
+            select(func.count())
+            .select_from(VirtualFolder)
+            .where(VirtualFolder.user_id == self.user_id)
+        )
+        total_folders = folder_count.scalar_one()
+        
+        # 总大小
+        size_result = await self.db.execute(
+            select(func.coalesce(func.sum(VirtualFile.file_size), 0))
+            .select_from(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id)
+        )
+        total_size = size_result.scalar_one()
+        
+        # 计算使用百分比
+        used_percentage = None
+        if storage_quota and storage_quota > 0:
+            used_percentage = (total_size / storage_quota) * 100
+            if used_percentage > 100:
+                used_percentage = 100
+        
+        # 收藏数
+        starred_result = await self.db.execute(
+            select(func.count())
+            .select_from(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id, VirtualFile.is_starred == True)
+        )
+        starred_count = starred_result.scalar_one()
+        
+        # 最近文件
+        recent_result = await self.db.execute(
+            select(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id)
+            .order_by(VirtualFile.updated_at.desc())
+            .limit(5)
+        )
+        recent_files = [self._file_to_info(f) for f in recent_result.scalars().all()]
+        
+        return StorageStats(
+            total_files=total_files,
+            total_folders=total_folders,
+            total_size=total_size,
+            storage_quota=storage_quota,
+            used_percentage=used_percentage,
+            starred_count=starred_count,
+            recent_files=recent_files
+        )
+    
+    async def search(self, keyword: str) -> DirectoryContents:
+        """全局搜索"""
+        # 搜索文件夹
+        folder_query = select(VirtualFolder).where(
+            VirtualFolder.user_id == self.user_id,
+            VirtualFolder.name.ilike(f"%{keyword}%")
+        ).order_by(VirtualFolder.name).limit(50)
+        
+        folder_result = await self.db.execute(folder_query)
+        folders = folder_result.scalars().all()
+        
+        folder_infos = [
+            FolderInfo(
+                id=f.id, name=f.name, parent_id=f.parent_id, path=f.path,
+                created_at=f.created_at, updated_at=f.updated_at
+            ) for f in folders
+        ]
+        
+        # 搜索文件
+        file_query = select(VirtualFile).where(
+            VirtualFile.user_id == self.user_id,
+            or_(
+                VirtualFile.name.ilike(f"%{keyword}%"),
+                VirtualFile.description.ilike(f"%{keyword}%")
+            )
+        ).order_by(VirtualFile.name).limit(50)
+        
+        file_result = await self.db.execute(file_query)
+        files = file_result.scalars().all()
+        
+        file_infos = [self._file_to_info(f) for f in files]
+        
+        return DirectoryContents(
+            current_folder=None,
+            breadcrumbs=[BreadcrumbItem(id=None, name=f"搜索: {keyword}", path="/search")],
+            folders=folder_infos,
+            files=file_infos,
+            total_folders=len(folder_infos),
+            total_files=len(file_infos)
+        )
+    
+    async def get_starred_files(self) -> List[FileInfo]:
+        """获取收藏的文件"""
+        result = await self.db.execute(
+            select(VirtualFile)
+            .where(VirtualFile.user_id == self.user_id, VirtualFile.is_starred == True)
+            .order_by(VirtualFile.updated_at.desc())
+        )
+        files = result.scalars().all()
+        return [self._file_to_info(f) for f in files]

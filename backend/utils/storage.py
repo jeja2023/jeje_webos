@@ -46,13 +46,14 @@ class StorageManager:
         # 确保上传目录存在
         self.upload_dir.mkdir(parents=True, exist_ok=True)
     
-    def generate_filename(self, original_filename: str, user_id: Optional[int] = None) -> Tuple[str, str]:
+    def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachment") -> Tuple[str, str]:
         """
         生成唯一文件名
         
         Args:
             original_filename: 原始文件名
             user_id: 用户ID（可选，用于目录分类）
+            category: 业务分类（avatar, blog, note, attachment 等）
         
         Returns:
             (相对路径, 完整路径)
@@ -64,22 +65,29 @@ class StorageManager:
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.{ext}" if ext else file_id
         
-        # 为不同业务留出空间，统一放在 files 子目录下
-        base_dir = self.upload_dir / "files"
+        # 确定基础目录名
+        # 头像放在 avatars 目录，其他按分类存放
+        dir_name = category if category else "files"
+        if dir_name == "avatar":
+            dir_name = "avatars"
+        
+        base_dir = self.upload_dir / dir_name
         base_dir.mkdir(parents=True, exist_ok=True)
         
-        # 如果提供了用户ID，按用户分类存储
-        if user_id:
-            user_dir = base_dir / str(user_id)
-            user_dir.mkdir(parents=True, exist_ok=True)
-            relative_path = f"files/{user_id}/{filename}"
-            full_path = user_dir / filename
+        # 对于头像，不需要按日期或用户分级，直接放在 avatars 目录下以便管理（或者按用户分级也可以）
+        # 这里选择：avatars 使用扁平结构或 user_id 结构，其他使用日期结构
+        
+        if category == "avatar" and user_id:
+            # 头像：avatars/{filename}
+            # 为了避免一个目录文件太多，还是可以用 hash 前缀或 user_id，但头像通常直接与用户关联，这里简单点
+            relative_path = f"{dir_name}/{filename}"
+            full_path = base_dir / filename
         else:
-            # 按日期分类存储
+            # 默认：{category}/YYYY/MM/{filename}
             date_dir = datetime.now().strftime("%Y/%m")
             date_path = base_dir / date_dir
             date_path.mkdir(parents=True, exist_ok=True)
-            relative_path = f"files/{date_dir}/{filename}"
+            relative_path = f"{dir_name}/{date_dir}/{filename}"
             full_path = date_path / filename
         
         return relative_path, str(full_path)

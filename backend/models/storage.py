@@ -20,6 +20,8 @@ class FileRecord(Base):
     file_size: Mapped[int] = mapped_column(Integer)  # 文件大小（字节）
     mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # MIME 类型
     uploader_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sys_users.id"), nullable=True)  # 上传者ID
+    category: Mapped[str] = mapped_column(String(50), default="attachment", server_default="attachment")  # 业务分类：avatar, blog, note, attachment
+    ref_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 关联业务ID（可选）
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 文件描述
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     

@@ -85,7 +85,8 @@ class UserUpdate(BaseModel):
     nickname: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=11)
     avatar: Optional[str] = None
-    
+    settings: Optional[dict] = None  # 用户设置
+
     @field_validator('phone')
     @classmethod
     def validate_phone(cls, v):
@@ -104,6 +105,7 @@ class UserInfo(BaseModel):
     nickname: Optional[str] = None
     avatar: Optional[str] = None
     role: str
+    settings: Optional[dict] = {}
     permissions: List[str] = []
     is_active: bool
     created_at: datetime

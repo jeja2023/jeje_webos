@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     jwt_rotate_check_minute: int = 0  # 每日检查时间（分钟，0-59）
     
     # 文件存储
-    upload_dir: str = "storage/uploads"
+    upload_dir: str = "storage"
     max_upload_size: int = 100 * 1024 * 1024  # 100MB
     
     # 模块配置

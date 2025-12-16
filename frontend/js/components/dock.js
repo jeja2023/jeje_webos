@@ -33,22 +33,102 @@ class DockComponent extends Component {
         Store.subscribe('pinnedApps', () => {
             this.updateCategories();
         });
+
+        // 监听用户信息变化（如设置同步完成后）
+        Store.subscribe('user', () => {
+            this.updateCategories();
+        });
     }
 
     // 获取用户固定的应用列表
     getPinnedApps() {
+        // 1. 优先从用户 Store 设置中读取（已同步后端）
+        const user = Store.get('user');
+        console.log('[Dock] getPinnedApps - user:', user);
+        console.log('[Dock] getPinnedApps - user.settings:', user?.settings);
+        console.log('[Dock] getPinnedApps - user.settings.dock_pinned_apps:', user?.settings?.dock_pinned_apps);
+        
+        if (user && user.settings && user.settings.dock_pinned_apps) {
+            const apps = Array.isArray(user.settings.dock_pinned_apps) 
+                ? user.settings.dock_pinned_apps 
+                : [];
+            console.log('[Dock] 从 user.settings 读取固定应用:', apps);
+            return apps;
+        }
+
+        // 2. 只有在未登录或无设置时降级读取本地缓存
         try {
             const saved = localStorage.getItem(this.PINNED_APPS_KEY);
-            return saved ? JSON.parse(saved) : [];
+            const apps = saved ? JSON.parse(saved) : [];
+            console.log('[Dock] 从 localStorage 读取固定应用:', apps);
+            return apps;
         } catch (e) {
+            console.warn('[Dock] 读取 localStorage 失败:', e);
             return [];
         }
     }
 
     // 保存固定的应用列表
-    savePinnedApps(apps) {
+    async savePinnedApps(apps) {
+        console.log('[Dock] 保存固定应用:', apps);
+        
+        // 1. 更新本地状态（乐观更新 UI）
         localStorage.setItem(this.PINNED_APPS_KEY, JSON.stringify(apps));
         Store.set('pinnedApps', apps);
+
+        // 2. 同步到后端用户设置
+        const user = Store.get('user');
+        if (user) {
+            try {
+                // 发送 API 请求
+                if (window.UserApi) {
+                    console.log('[Dock] 发送更新请求:', { settings: { dock_pinned_apps: apps } });
+                    const res = await UserApi.updateProfile({
+                        settings: { dock_pinned_apps: apps }
+                    });
+                    
+                    console.log('[Dock] 更新响应:', res);
+                    
+                    // 后端返回格式: {code: 200, message: "success", data: {...}}
+                    // 使用 res.data 获取实际数据（兼容 res.data || res）
+                    const updatedUser = res.data || res;
+                    
+                    if (updatedUser) {
+                        console.log('[Dock] 更新后的用户数据:', updatedUser);
+                        // 确保 settings 存在
+                        const finalSettings = updatedUser.settings || {};
+                        // 如果后端返回的 settings 中没有 dock_pinned_apps，手动添加
+                        if (!finalSettings.dock_pinned_apps) {
+                            finalSettings.dock_pinned_apps = apps;
+                        }
+                        // 使用后端返回的数据更新 Store（确保数据一致性）
+                        const finalUser = { 
+                            ...user, 
+                            ...updatedUser,
+                            settings: finalSettings
+                        };
+                        Store.set('user', finalUser);
+                        console.log('[Dock] Store 用户已更新，settings:', finalUser.settings);
+                    } else {
+                        console.warn('[Dock] 响应格式异常，手动更新 settings');
+                        // 如果返回格式不同，手动更新 settings
+                        const newSettings = { ...(user.settings || {}), dock_pinned_apps: apps };
+                        Store.set('user', { ...user, settings: newSettings });
+                        console.log('[Dock] Store 用户 settings 手动更新:', newSettings);
+                    }
+                } else {
+                    console.warn('[Dock] UserApi 不可用，只更新本地 Store');
+                    // 如果没有 UserApi，只更新本地 Store
+                    const newSettings = { ...(user.settings || {}), dock_pinned_apps: apps };
+                    Store.set('user', { ...user, settings: newSettings });
+                }
+            } catch (err) {
+                console.error('[Dock] 同步设置失败:', err);
+                // 即使失败也保持本地更新，避免 UI 闪烁
+            }
+        } else {
+            console.warn('[Dock] 用户未登录，无法同步到后端');
+        }
     }
 
     // 固定应用到 Dock
@@ -82,7 +162,8 @@ class DockComponent extends Component {
         const pinnedAppIds = this.getPinnedApps();
 
         // 系统应用ID（用于过滤固定应用，避免重复）
-        const SYSTEM_APP_IDS = ['feedback', 'announcement', 'notification'];
+        // feedback 已移除，现在由用户自由选择是否固定
+        const SYSTEM_APP_IDS = ['announcement', 'notification'];
 
         // 初始化分类（仪表盘已移除，登录后直接显示桌面）
         const categories = [];
@@ -101,17 +182,9 @@ class DockComponent extends Component {
             }
         }
 
-        // === 固定功能区：文件存储 → 通知 → 公告 → 交流意见 ===
+        // === 固定功能区：文件管理 → 通知 → 公告 ===
 
-        // 1. 文件存储（所有用户可见，直接跳转）
-        categories.push({
-            id: 'storage',
-            title: '文件存储',
-            icon: '📂',
-            isSystem: true,
-            path: '/storage/list',
-            children: null
-        });
+
 
         // 2. 信息（所有用户可见，直接进入通知列表）
         categories.push({
@@ -137,21 +210,7 @@ class DockComponent extends Component {
             });
         }
 
-        // 3. 交流意见/反馈（所有用户可见）
-        const feedbackModule = modules.find(m => m.id === 'feedback' && m.enabled);
-        if (feedbackModule) {
-            categories.push({
-                id: 'feedback',
-                title: '交流意见',
-                icon: '💬',
-                isSystem: true,
-                children: [
-                    { title: '我的反馈', icon: '📨', path: '/feedback/my' },
-                    { title: '提交反馈', icon: '➕', path: '/feedback/create' },
-                    ...(isAdmin || user?.role === 'manager' ? [{ title: '反馈管理', icon: '🗂️', path: '/feedback/list' }] : [])
-                ]
-            });
-        }
+        // feedback 模块现在由用户自由选择是否固定，不再强制显示
 
         // 系统管理（仅管理员/管理员可见）
         if (isAdmin || user?.role === 'manager') {

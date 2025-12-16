@@ -380,7 +380,7 @@ class SystemSettingsPage extends Component {
                                 <option value="spring" ${data.theme_mode === 'spring' ? 'selected' : ''}>春意盎然</option>
                                 <option value="autumn" ${data.theme_mode === 'autumn' ? 'selected' : ''}>秋日私语</option>
                             </select>
-                            <small class="form-hint">新用户或未设置个人偏好的用户将使用此主题。用户可通过「主题美化」自定义个人主题。</small>
+                            <small class="form-hint">新用户或未设置个人偏好的用户将使用此主题。用户可通过「主题」自定义个人主题。</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">密码最小长度</label>

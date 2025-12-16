@@ -186,8 +186,80 @@ const Store = {
 
         // 先落库用户，再基于用户过滤模块/菜单
         if (info.user) {
-            this.set('user', info.user);
+            // 合并用户设置，避免覆盖已有的 settings
+            const currentUser = this.state.user;
+            console.log('[Store] setSystemInfo - 当前用户 settings:', currentUser?.settings);
+            console.log('[Store] setSystemInfo - 后端返回 settings:', info.user.settings);
+            
+            // 深度合并 settings，确保 dock_pinned_apps 等设置不丢失
+            // 后端数据优先，但保留当前已有的设置（如果后端没有）
+            const backendSettings = info.user.settings || {};
+            const currentSettings = currentUser?.settings || {};
+            
+            // 合并策略：
+            // 1. 如果后端返回的 settings 是空对象，则保留当前的 settings
+            // 2. 否则合并：后端优先，但保留当前已有的设置（如果后端没有对应的键）
+            // 3. 特别处理 dock_pinned_apps：如果后端没有，尝试从当前 settings 或 localStorage 读取
+            let mergedSettings;
+            if (Object.keys(backendSettings).length === 0) {
+                // 后端返回空对象，保留当前的 settings
+                mergedSettings = currentSettings;
+                // 如果当前也没有，尝试从 localStorage 读取
+                if (!mergedSettings.dock_pinned_apps) {
+                    try {
+                        const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                        if (localPinnedApps) {
+                            const parsed = JSON.parse(localPinnedApps);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                mergedSettings = { ...mergedSettings, dock_pinned_apps: parsed };
+                                console.log('[Store] setSystemInfo - 从 localStorage 恢复 dock_pinned_apps:', parsed);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
+                    }
+                }
+            } else {
+                // 后端有 settings，合并：后端优先，但保留当前已有的设置（如果后端没有对应的键）
+                mergedSettings = {
+                    ...currentSettings,
+                    ...backendSettings
+                };
+                // 如果后端没有 dock_pinned_apps，尝试从当前 settings 或 localStorage 获取
+                if (!backendSettings.dock_pinned_apps) {
+                    if (currentSettings.dock_pinned_apps) {
+                        mergedSettings.dock_pinned_apps = currentSettings.dock_pinned_apps;
+                    } else {
+                        // 尝试从 localStorage 读取
+                        try {
+                            const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                            if (localPinnedApps) {
+                                const parsed = JSON.parse(localPinnedApps);
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                    mergedSettings.dock_pinned_apps = parsed;
+                                    console.log('[Store] setSystemInfo - 从 localStorage 恢复 dock_pinned_apps:', parsed);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
+                        }
+                    }
+                }
+            }
+            
+            console.log('[Store] setSystemInfo - 合并后的 settings:', mergedSettings);
+            console.log('[Store] setSystemInfo - dock_pinned_apps:', mergedSettings.dock_pinned_apps);
+            
+            const newUser = {
+                ...info.user,
+                // 使用合并后的 settings
+                settings: mergedSettings
+            };
+            this.set('user', newUser);
             this.set('isLoggedIn', true);
+            
+            // 触发 user 更新事件，通知 Dock 等组件更新
+            this.notify('user', newUser);
         }
         if (info.app_name) this.set('appName', info.app_name);
         if (info.version) this.set('version', info.version);

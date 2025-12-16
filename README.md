@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/Version-2.0.1-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -42,11 +42,17 @@
     - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）。
     - **系统监控**：CPU、内存、磁盘实时仪表盘。
     - **审计日志**：全量操作行为记录。
-- **🎨 主题编辑器**：
+- **🎨 主题**：
     - 8 套精美预设主题（浅色/深色/日出印象/星夜霓虹/仲夏之夜/冬日暖阳/春意盎然/秋日私语）。
     - 完全自定义模式：支持调整背景、强调色、文字、边框、状态色等 17+ 个 CSS 变量。
     - 支持导入/导出主题配置，方便分享和备份。
     - 实时预览区，调整颜色时即时查看效果。
+- **📁 文件管理**：
+    - **全功能管理**：支持网格/列表视图，虚拟目录系统，无限层级结构。
+    - **便捷操作**：支持 **右键菜单** (打开/预览/下载/重命名/移动/删除)，**拖拽移动**文件/文件夹。
+    - **增强预览**：支持图片、视频、音频、PDF、代码等多种格式在线预览。
+    - **资源监控**：侧边栏实时显示 **存储配额进度条**，直观掌握空间使用情况。
+    - **高效传输**：支持多文件拖拽上传、文件夹收藏、全局搜索。
 
 ---
 
@@ -248,8 +254,8 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 
 - [x] **多窗口并行**：真正支持多窗口同时操作，支持拖拽、缩放、层叠管理。
 - [x] **主题编辑器**：可视化编辑桌面主题和配色，支持 8 套预设主题 + 完全自定义。
+- [x] **文件管理器**：全功能云端文件管理，支持文件夹管理、上传下载、拖拽上传、文件搜索。
 - [ ] **应用商店 (App Store)**：支持从云端一键安装第三方开发的 App 模块。
-- [ ] **文件管理器**：基于 WebDAV 的全功能云端文件管理。
 - [ ] **P2P 快传**：局域网内设备间高速文件传输。
 
 ---
