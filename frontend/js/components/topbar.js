@@ -121,7 +121,7 @@ class TopBarComponent extends Component {
             <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
                 <div class="top-bar-left">
                      <!-- Brand Title -->
-                    <div class="status-pill" id="brandPill" data-tooltip="${displayAppName}" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
+                    <div class="status-pill" id="brandPill" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
                         <span class="brand-title">${displayAppName}</span>
                     </div>
                 </div>
