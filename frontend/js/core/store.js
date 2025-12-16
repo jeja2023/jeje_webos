@@ -13,7 +13,7 @@ const Store = {
 
         // 系统信息
         appName: 'JeJe WebOS',
-        version: '1.0.0',
+        version: '',
         modules: [],
         menus: [],
         systemSettings: null,
@@ -190,12 +190,12 @@ const Store = {
             const currentUser = this.state.user;
             console.log('[Store] setSystemInfo - 当前用户 settings:', currentUser?.settings);
             console.log('[Store] setSystemInfo - 后端返回 settings:', info.user.settings);
-            
+
             // 深度合并 settings，确保 dock_pinned_apps 等设置不丢失
             // 后端数据优先，但保留当前已有的设置（如果后端没有）
             const backendSettings = info.user.settings || {};
             const currentSettings = currentUser?.settings || {};
-            
+
             // 合并策略：
             // 1. 如果后端返回的 settings 是空对象，则保留当前的 settings
             // 2. 否则合并：后端优先，但保留当前已有的设置（如果后端没有对应的键）
@@ -246,10 +246,10 @@ const Store = {
                     }
                 }
             }
-            
+
             console.log('[Store] setSystemInfo - 合并后的 settings:', mergedSettings);
             console.log('[Store] setSystemInfo - dock_pinned_apps:', mergedSettings.dock_pinned_apps);
-            
+
             const newUser = {
                 ...info.user,
                 // 使用合并后的 settings
@@ -257,7 +257,7 @@ const Store = {
             };
             this.set('user', newUser);
             this.set('isLoggedIn', true);
-            
+
             // 触发 user 更新事件，通知 Dock 等组件更新
             this.notify('user', newUser);
         }
