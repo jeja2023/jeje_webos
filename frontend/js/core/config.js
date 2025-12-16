@@ -8,7 +8,7 @@ const Config = {
 
     // 应用信息（启动时从后端获取）
     appName: 'JeJe WebOS',
-    version: '2.0.1',
+    version: '',
 
     // 存储键名
     storageKeys: {
