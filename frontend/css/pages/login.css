@@ -1,5 +1,6 @@
 /**
- * Login Page Styles - macOS Aesthetic
+ * Login Page Styles - 主题自适应版
+ * 登录页面将根据系统主题自动切换样式
  */
 
 .login-page {
@@ -8,20 +9,16 @@
     align-items: center;
     justify-content: center;
     padding: var(--spacing-lg);
-    /* Match desktop variable.css deep background */
-    background:
-        radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.2) 0%, transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 25%),
-        linear-gradient(135deg, #111827 0%, #0B0F19 100%);
+    /* 使用主题背景 */
+    background: var(--color-bg-deep);
     background-attachment: fixed;
     background-size: cover;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
 }
 
 .login-box {
     width: 100%;
     max-width: 380px;
-    /* Slightly narrower for elegance */
     z-index: 10;
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -46,7 +43,7 @@
 .login-logo {
     font-size: 56px;
     margin-bottom: 16px;
-    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+    filter: drop-shadow(0 0 20px var(--color-accent-glow));
     animation: float 6s ease-in-out infinite;
 }
 
@@ -66,43 +63,51 @@
     font-size: 26px;
     font-weight: 600;
     margin-bottom: 8px;
-    color: #fff;
+    color: var(--color-text-primary);
     letter-spacing: -0.5px;
 }
 
+/* 渐变文字效果 - 使用主题强调色 */
+.login-title.gradient-text {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 50%, var(--color-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 .login-subtitle {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--color-text-secondary);
     font-size: 14px;
     font-weight: 400;
 }
 
-/* Glass Card */
+/* 毛玻璃卡片 - 主题自适应 */
 .login-form .card {
     padding: 32px;
-    background: rgba(30, 30, 35, 0.7);
+    background: var(--color-bg-primary);
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--color-border);
     border-radius: 18px;
-    box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.4),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow: var(--shadow-lg);
 }
 
-.form-label {
+/* 登录页表单标签 */
+.login-form .form-label {
     display: block;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--color-text-secondary);
     font-size: 13px;
     font-weight: 500;
     margin-bottom: 8px;
     margin-left: 2px;
 }
 
-.form-input {
+/* 登录页输入框 */
+.login-form .form-input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
     font-size: 14px;
     padding: 12px 14px;
     border-radius: 10px;
@@ -110,22 +115,33 @@
     outline: none;
 }
 
-.form-input:focus {
-    background: rgba(0, 0, 0, 0.35);
-    border-color: #0A84FF;
-    /* Apple Blue */
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+.login-form .form-input:focus {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
-.form-input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+.login-form .form-input::placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
 }
 
-.form-error {
-    background: rgba(255, 69, 58, 0.1);
-    /* Red background */
-    border: 1px solid rgba(255, 69, 58, 0.2);
-    color: #FF453A;
+/* 跨浏览器兼容 */
+.login-form .form-input::-webkit-input-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+.login-form .form-input::-moz-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+/* 错误提示 */
+.login-form .form-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--color-error);
     padding: 10px;
     border-radius: 10px;
     font-size: 13px;
@@ -135,31 +151,31 @@
     margin-bottom: 20px;
 }
 
-/* Button */
+/* 登录按钮 - 使用主题强调色 */
 .login-form .btn {
     width: 100%;
     margin-top: 10px;
     height: 44px;
     font-size: 14px;
     font-weight: 500;
-    background: #0A84FF;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     letter-spacing: 0.3px;
 }
 
 .login-form .btn:hover {
-    background: #0077ED;
+    background: var(--color-accent-dark);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 4px 12px var(--color-accent-glow);
 }
 
 .login-form .btn:active {
-    background: #006EDB;
+    background: var(--color-accent-dark);
     transform: translateY(0);
     box-shadow: none;
 }
@@ -168,14 +184,15 @@
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
-    background: #3a3a3c;
-    color: #888;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-tertiary);
 }
 
+/* 页脚 */
 .login-footer {
     text-align: center;
     margin-top: 24px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-text-tertiary);
     font-size: 13px;
     animation: fadeIn 1s 0.3s forwards ease;
     opacity: 0;
@@ -188,7 +205,7 @@
 }
 
 .login-footer a {
-    color: #0A84FF;
+    color: var(--color-accent);
     font-weight: 500;
     text-decoration: none;
     margin-left: 6px;
@@ -196,6 +213,6 @@
 }
 
 .login-footer a:hover {
-    color: #60A5FA;
+    color: var(--color-accent-light);
     text-decoration: underline;
 }

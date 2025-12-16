@@ -1,5 +1,5 @@
 /**
- * 桌面（MacOS风格）布局样式
+ * 桌面布局样式
  */
 
 /* 设置桌面背景 */
@@ -208,8 +208,8 @@ body {
     right: 0 !important;
     bottom: 0 !important;
     margin: 0 !important;
-    z-index: 9998;
-    /* 位于顶部栏和 Dock 栏上方，模态框下方 */
+    z-index: 9000;
+    /* 位于Modal(10000)下方 */
     box-shadow: none !important;
     border: none !important;
 }
@@ -500,8 +500,8 @@ body {
         bottom: 0 !important;
         margin: 0 !important;
         border: none !important;
-        z-index: 1500;
-        /* 高于 TopBar，覆盖全屏 */
+        z-index: 900;
+        /* 低于 Modal(10000)和 Toast(11000) */
     }
 
     .window-header {

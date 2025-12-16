@@ -60,7 +60,7 @@ const Store = {
             this.state.sidebarCollapsed = true;
         }
 
-        if (theme === 'light' || theme === 'dark' || theme === 'auto' || theme === 'sunrise') {
+        if (['light', 'dark', 'auto', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn', 'custom'].includes(theme)) {
             this.state.theme = theme;
         }
 
@@ -74,20 +74,28 @@ const Store = {
      */
     applyTheme(mode) {
         const root = document.documentElement;
-        root.classList.remove('theme-light', 'theme-dark', 'theme-auto', 'theme-sunrise');
+        root.classList.remove('theme-light', 'theme-dark', 'theme-auto', 'theme-sunrise', 'theme-neon', 'theme-summer', 'theme-winter', 'theme-spring', 'theme-autumn', 'theme-custom');
+        root.style = ''; // Reset inline styles
 
-        if (mode === 'light') {
+        if (['light', 'dark', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn'].includes(mode)) {
+            root.classList.add(`theme-${mode}`);
+        } else if (mode === 'custom') {
+            // 自定义主题：先添加 light 作为基础，再覆盖自定义变量
             root.classList.add('theme-light');
-        } else if (mode === 'dark') {
-            // 现在强制加上 theme-dark 类，确保手动切换时生效（覆盖 OS 浅色偏好）
-            root.classList.add('theme-dark');
-        } else if (mode === 'auto') {
-            // auto 模式下不加类，或者加 theme-auto 让媒体查询生效
-            // 通常 auto 就是移除所有 override 类，让 CSS @media 生效
-            // 但如果为了明确，可以加 theme-auto
+            // Load custom theme config
+            try {
+                const customConfig = JSON.parse(localStorage.getItem('user_theme_custom_config') || '{}');
+                Object.entries(customConfig).forEach(([key, value]) => {
+                    if (key.startsWith('--')) {
+                        root.style.setProperty(key, value);
+                    }
+                });
+            } catch (e) {
+                console.error('加载自定义主题失败', e);
+            }
+        } else {
+            // Auto/Default
             root.classList.add('theme-auto');
-        } else if (mode === 'sunrise') {
-            root.classList.add('theme-sunrise');
         }
     },
 
@@ -259,7 +267,7 @@ const Store = {
      * 设置主题
      */
     setTheme(mode) {
-        const themeMode = ['light', 'dark', 'auto', 'sunrise'].includes(mode) ? mode : 'auto';
+        const themeMode = ['light', 'dark', 'auto', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn', 'custom'].includes(mode) ? mode : 'auto';
         this.state.theme = themeMode;
         localStorage.setItem(Config.storageKeys.theme, themeMode);
         this.applyTheme(themeMode);

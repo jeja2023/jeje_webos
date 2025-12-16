@@ -1,6 +1,6 @@
 /**
- * Dock 栏组件
- * macOS 风格设计 - 显示系统入口 + 用户固定的应用
+ * Dock 底部快捷栏组件
+ * 精美的底部快捷入口设计 - 显示系统入口 + 用户固定的应用
  */
 class DockComponent extends Component {
     constructor(container) {

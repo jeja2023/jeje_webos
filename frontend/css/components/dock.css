@@ -1,12 +1,13 @@
 /**
- * Dock Styles - macOS 文件夹风格
+ * 底部快捷栏样式
  */
 .dock-container {
     position: absolute;
     bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9999;
+    z-index: 9500;
+    /* 低于 Modal(10000) */
 }
 
 .dock {

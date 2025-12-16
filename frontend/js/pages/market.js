@@ -1,5 +1,5 @@
 /**
- * 应用中心 - macOS Launchpad 风格
+ * 应用中心 - 应用市场风格
  */
 
 class AppCenterMarketPage extends Component {
@@ -246,7 +246,7 @@ class AppCenterMarketPage extends Component {
                                      ${isSystem ? `data-view-target="${item.viewTarget}"` : ''}
                                      ${entryPath ? `data-app-path="${entryPath}"` : ''}
                                      ${hasChildren ? `data-toggle-popup="${item.id}"` : ''}>
-                                    <div class="app-icon-large" style="${isSystem ? 'background: var(--bg-tertiary); box-shadow:none; border: 1px solid var(--border-color);' : ''}">
+                                    <div class="app-icon-large" style="${isSystem ? 'background: var(--color-bg-tertiary); box-shadow:none; border: 1px solid var(--color-border);' : ''}">
                                         ${item.icon || '📦'}
                                     </div>
                                     <div class="app-name">${Utils.escapeHtml(item.name)}</div>
@@ -349,19 +349,19 @@ class AppCenterMarketPage extends Component {
                 ${this.renderHeader('应用市场')}
                 
                 ${availableModules.length > 0 ? `
-                    <h3 style="margin-bottom: 16px; color: var(--text-secondary);">📦 可安装的应用</h3>
+                    <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">📦 可安装的应用</h3>
                     <div class="card-grid" style="margin-bottom: 32px;">
                         ${availableModules.map(app => `
                             <div class="card">
                                 <div class="card-body">
                                     <div class="module-header">
-                                        <div class="module-icon" style="background: var(--bg-tertiary);">${app.icon || '📦'}</div>
+                                        <div class="module-icon" style="background: var(--color-bg-tertiary);">${app.icon || '📦'}</div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
                                         </div>
                                     </div>
-                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--text-secondary);">
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-secondary);">
                                         <span>版本: ${app.version || '1.0.0'}</span>
                                         ${app.author ? `<span style="margin-left: 12px;">作者: ${Utils.escapeHtml(app.author)}</span>` : ''}
                                     </div>
@@ -377,7 +377,7 @@ class AppCenterMarketPage extends Component {
                 ` : ''}
 
                 ${installedModules.length > 0 ? `
-                    <h3 style="margin-bottom: 16px; color: var(--text-secondary);">✅ 已安装的应用</h3>
+                    <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">✅ 已安装的应用</h3>
                     <div class="card-grid">
                         ${installedModules.map(app => `
                             <div class="card">
@@ -389,9 +389,9 @@ class AppCenterMarketPage extends Component {
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
                                         </div>
                                     </div>
-                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--text-secondary);">
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-secondary);">
                                         <span>版本: ${app.version || '1.0.0'}</span>
-                                        <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--text-secondary)'};">
+                                        <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--color-text-secondary)'};">
                                             ${app.enabled ? '● 已启用' : '○ 未启用'}
                                         </span>
                                     </div>
@@ -450,7 +450,7 @@ class AppCenterMarketPage extends Component {
                                  <h4>2. 后端开发</h4>
                                  <p>在 <code>backend/modules/{id}/</code> 中定义路由、模型和业务逻辑。</p>
                                  <p><strong>⚠️ 注意：所有文件必须带有包含模块ID的前缀！</strong></p>
-                                 <ul style="padding-left: 20px; color: var(--text-secondary);">
+                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
                                      <li><code>{id}_manifest.py</code>: 模块定义 (入口)</li>
                                      <li><code>{id}_router.py</code>: API 路由入口</li>
                                      <li><code>{id}_models.py</code>: 数据库模型</li>
@@ -475,7 +475,7 @@ class AppCenterMarketPage extends Component {
                         <div class="card-body">
                              <div class="markdown-body">
                                  <h4>命名规范</h4>
-                                 <ul style="padding-left: 20px; color: var(--text-secondary);">
+                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
                                      <li><strong>文件名</strong>: 必须使用 <code>{module_id}_</code> 前缀 (e.g., <code>todo_router.py</code>)</li>
                                      <li><strong>模块ID</strong>: 全小写英文，无空格 (e.g., <code>todo_list</code>)</li>
                                      <li><strong>类名</strong>: PascalCase (e.g., <code>TodoListPage</code>)</li>
@@ -483,13 +483,13 @@ class AppCenterMarketPage extends Component {
                                  </ul>
                                  
                                  <h4>API 规范</h4>
-                                 <ul style="padding-left: 20px; color: var(--text-secondary);">
+                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
                                      <li>前缀: <code>/api/v1/{module_id}</code></li>
                                      <li>响应: 统一使用 <code>core.schemas.success()</code> 封装</li>
                                  </ul>
 
                                  <h4>最佳实践</h4>
-                                 <ul style="padding-left: 20px; color: var(--text-secondary);">
+                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
                                      <li>严禁跨模块 Import 代码，请使用事件总线解耦。</li>
                                      <li>后端仅返回数据，严禁返回 HTML 片段。</li>
                                      <li>所有 UI 文本应尽可能支持国际化。</li>
@@ -512,7 +512,7 @@ class AppCenterMarketPage extends Component {
                     <div class="form-group">
                         <label>模块ID (英文)</label>
                         <input type="text" class="form-input" name="id" placeholder="例如: todo_app" required pattern="^[a-z_][a-z0-9_]*$" title="只能包含小写字母、数字和下划线，且以字母或下划线开头">
-                        <small style="color: var(--text-secondary);">只能包含小写字母、数字和下划线</small>
+                        <small style="color: var(--color-text-secondary);">只能包含小写字母、数字和下划线</small>
                     </div>
                     <div class="form-group">
                         <label>应用名称 (中文)</label>
@@ -611,7 +611,7 @@ class AppCenterMarketPage extends Component {
                     ${warningHtml}
                     <div class="form-group">
                         <label>选择要删除的应用</label>
-                        <select class="form-select" name="module_id" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <select class="form-select" name="module_id" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);">
                             ${deletableModules.map(m => `<option value="${m.id}">${m.name} (${m.id})</option>`).join('')}
                         </select>
                     </div>
@@ -701,7 +701,7 @@ class AppCenterMarketPage extends Component {
                     width: 72px;
                     height: 72px;
                     margin-bottom: 12px;
-                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    background: linear-gradient(135deg, var(--color-info), var(--color-accent));
                     border-radius: 18px;
                     display: flex;
                     align-items: center;
@@ -714,7 +714,7 @@ class AppCenterMarketPage extends Component {
                 .app-name {
                     font-size: 14px;
                     font-weight: 500;
-                    color: var(--text-primary);
+                    color: var(--color-text-primary);
                 }
 
                 /* Pin Button */
@@ -741,14 +741,14 @@ class AppCenterMarketPage extends Component {
                     transform: scale(1.05);
                 }
                 .pin-btn:hover {
-                    background: var(--color-primary);
-                    border-color: var(--color-primary);
+                    background: var(--color-accent);
+                    border-color: var(--color-accent);
                     transform: scale(1.15);
-                    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.4);
+                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
                 }
                 .pin-btn.pinned {
                     opacity: 1;
-                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    background: linear-gradient(135deg, var(--color-info), var(--color-accent));
                     border-color: transparent;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
@@ -774,8 +774,8 @@ class AppCenterMarketPage extends Component {
                     top: 100%;
                     left: 50%;
                     transform: translateX(-50%) translateY(10px) scale(0.95);
-                    background: var(--bg-secondary);
-                    border: 1px solid var(--border-color);
+                    background: var(--color-bg-secondary);
+                    border: 1px solid var(--color-border);
                     border-radius: 12px;
                     padding: 6px;
                     min-width: 160px;

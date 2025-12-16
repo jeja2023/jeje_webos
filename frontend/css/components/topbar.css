@@ -31,7 +31,7 @@
     align-items: center;
 }
 
-/* macOS 风格文本按钮（帮助） */
+/* 顶部栏文本按钮（帮助） */
 .topbar-text-btn {
     pointer-events: auto;
     cursor: pointer;

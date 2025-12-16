@@ -1,0 +1,124 @@
+.theme-editor-page {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 24px;
+}
+
+.theme-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    background: var(--color-bg-primary);
+}
+
+.theme-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-accent);
+}
+
+.theme-card.active {
+    border: 2px solid var(--color-accent);
+    background: var(--color-bg-secondary);
+}
+
+.theme-card-preview {
+    height: 60px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Variable Editors */
+.var-group {
+    margin-bottom: 24px;
+    background: var(--color-bg-primary);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+}
+
+.var-group-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.var-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.var-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.var-label {
+    flex: 1;
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+}
+
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-bg-tertiary);
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.color-input {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.color-text {
+    width: 80px;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    border: none;
+    background: none;
+    color: var(--color-text-primary);
+}
+
+.preview-section {
+    position: sticky;
+    top: 20px;
+    z-index: 10;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background: var(--color-bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

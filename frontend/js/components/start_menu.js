@@ -91,6 +91,14 @@ class StartMenuComponent extends Component {
             path: '/message/list'
         });
 
+        // 个性化
+        menuTree.push({
+            id: 'theme',
+            title: '主题美化',
+            icon: '🎨',
+            path: '/theme/editor'
+        });
+
         // 公告（仅管理员/经理可见）
         if (isAdmin || isManager) {
             menuTree.push({

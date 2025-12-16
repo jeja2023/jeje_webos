@@ -128,7 +128,7 @@ class StoragePage extends Component {
                                 <button class="btn btn-secondary" id="searchBtn">搜索</button>
                             </div>
                         </div>
-                        <div style="margin-top: 12px; padding: 10px 12px; background: var(--bg-tertiary); border-radius: 8px; font-size: 13px; color: var(--text-secondary);">
+                        <div style="margin-top: 12px; padding: 10px 12px; background: var(--color-bg-tertiary); border-radius: 8px; font-size: 13px; color: var(--color-text-secondary);">
                             <span style="margin-right: 16px;">📋 <strong>支持的文件类型：</strong>图片(jpg/png/gif/webp)、文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt/md)、压缩包(zip/rar/7z)、数据文件(json/xml/csv)</span>
                             <span>📦 <strong>最大文件大小：</strong>100MB</span>
                         </div>

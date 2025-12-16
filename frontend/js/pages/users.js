@@ -68,26 +68,26 @@ class UserListPage extends Component {
             <div style="display:grid;gap:16px;">
                 <div>
                     <input type="file" id="importUserFile" accept=".xlsx,.xls" style="display:none;">
-                    <div class="upload-area-compact" id="uploadUserArea" style="padding:40px 20px;border:2px dashed var(--border-color);border-radius:12px;text-align:center;cursor:pointer;">
+                    <div class="upload-area-compact" id="uploadUserArea" style="padding:40px 20px;border:2px dashed var(--color-border);border-radius:12px;text-align:center;cursor:pointer;">
                         <div style="font-size:36px;margin-bottom:8px;">📄</div>
                         <div>点击或拖放 Excel 文件</div>
-                        <small style="color:var(--text-secondary);">支持 .xlsx, .xls 格式</small>
+                        <small style="color:var(--color-text-secondary);">支持 .xlsx, .xls 格式</small>
                     </div>
                 </div>
-                <div style="background:var(--bg-secondary);padding:12px 16px;border-radius:8px;">
+                <div style="background:var(--color-bg-secondary);padding:12px 16px;border-radius:8px;">
                     <div style="font-weight:500;margin-bottom:8px;">📋 导入说明</div>
-                    <ul style="margin:0;padding-left:20px;color:var(--text-secondary);font-size:13px;line-height:1.8;">
+                    <ul style="margin:0;padding-left:20px;color:var(--color-text-secondary);font-size:13px;line-height:1.8;">
                         <li><b>用户名</b>（必填）：username 或 用户名，需唯一</li>
                         <li><b>手机号</b>（必填）：phone 或 手机号，11位手机号码</li>
                         <li><b>昵称</b>（可选）：nickname 或 昵称</li>
                         <li><b>角色</b>（可选）：role 或 角色，默认 guest</li>
                         <li><b>是否激活</b>（可选）：is_active，默认未激活需审核</li>
-                        <li style="margin-top:8px;">💡 密码将使用默认密码 <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
+                        <li style="margin-top:8px;">💡 密码将使用默认密码 <code style="background:var(--color-bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
                         <li>已存在的用户名或手机号会被跳过</li>
                     </ul>
                 </div>
                 <div id="importProgress" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg-secondary);border-radius:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--color-bg-secondary);border-radius:8px;">
                         <div class="loading-sm"></div>
                         <span>正在导入...</span>
                     </div>
@@ -126,7 +126,7 @@ class UserListPage extends Component {
                             共 ${result.total || 0} 条，成功 ${result.imported || 0} 条，跳过 ${result.skipped || 0} 条
                         </div>
                         ${result.errors && result.errors.length > 0 ? `
-                            <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);max-height:100px;overflow-y:auto;">
+                            <div style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);max-height:100px;overflow-y:auto;">
                                 ${result.errors.slice(0, 10).map(e => `<div>• ${e}</div>`).join('')}
                                 ${result.errors.length > 10 ? `<div>... 等 ${result.errors.length} 条</div>` : ''}
                             </div>
@@ -155,18 +155,18 @@ class UserListPage extends Component {
 
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--color-primary)';
-            uploadArea.style.background = 'var(--bg-secondary)';
+            uploadArea.style.borderColor = 'var(--color-accent)';
+            uploadArea.style.background = 'var(--color-bg-secondary)';
         });
 
         uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = 'var(--border-color)';
+            uploadArea.style.borderColor = 'var(--color-border)';
             uploadArea.style.background = '';
         });
 
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--border-color)';
+            uploadArea.style.borderColor = 'var(--color-border)';
             uploadArea.style.background = '';
             handleFile(e.dataTransfer.files[0]);
         });
@@ -677,7 +677,7 @@ class UserListPage extends Component {
                     const { specific, wildcard } = computeAllowed(selectedGroupIds);
                     const allowedSpecific = Array.from(specific);
                     if (!wildcard && allowedSpecific.length === 0) {
-                        return '<div style="color:var(--text-secondary);">该用户组未暴露子功能权限</div>';
+                        return '<div style="color:var(--color-text-secondary);">该用户组未暴露子功能权限</div>';
                     }
 
                     // 如果是升级，默认选中所有允许的子功能
@@ -711,7 +711,7 @@ class UserListPage extends Component {
                     });
                     const moduleKeys = Object.keys(grouped);
                     if (moduleKeys.length === 0 && wildcard) {
-                        return '<div style="color:var(--text-secondary);">用户组为全权限，可通过不选来收紧。</div>';
+                        return '<div style="color:var(--color-text-secondary);">用户组为全权限，可通过不选来收紧。</div>';
                     }
                     return moduleKeys.map(mod => `
                         <div style="margin-bottom:8px;">
@@ -735,7 +735,7 @@ class UserListPage extends Component {
                         <div>
                             <div class="form-label" style="margin-bottom:6px;">用户组（单选）</div>
                             <div id="groupBox" style="display:flex;gap:12px;flex-wrap:wrap;">
-                                ${rolesHtml || '<span style="color:var(--text-secondary)">暂无用户组，请先创建</span>'}
+                                ${rolesHtml || '<span style="color:var(--color-text-secondary)">暂无用户组，请先创建</span>'}
                             </div>
                         </div>
                         <div>
@@ -743,7 +743,7 @@ class UserListPage extends Component {
                             <div id="moduleAccessBox" style="display:flex;gap:12px;flex-wrap:wrap;">
                                 ${renderModules(currentGroupIds, currentModules)}
                             </div>
-                            <div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+                            <div style="color:var(--color-text-secondary);font-size:12px;margin-top:4px;">
                                 用户组决定可见的模块范围，勾选后为该用户开放，未勾选则收紧为不可用。
                             </div>
                         </div>

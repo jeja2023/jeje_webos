@@ -193,6 +193,7 @@ const App = {
             '/profile': { auth: true, handler: wrap(ProfilePage, '个人中心') },
             '/profile/password': { auth: true, handler: wrap(ChangePasswordPage, '修改密码') },
             '/help': { auth: true, handler: wrap(HelpPage, '帮助中心') },
+            '/theme/editor': { auth: true, handler: wrap(ThemeEditorPage, '主题编辑器') },
 
             '/storage/list': { auth: true, handler: wrap(StoragePage, '文件存储') },
             '/system/backup': { auth: true, handler: wrap(BackupPage, '数据备份') },

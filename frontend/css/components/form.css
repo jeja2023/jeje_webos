@@ -32,6 +32,24 @@
 
 .form-input::placeholder {
     color: var(--color-text-tertiary);
+    opacity: 1;
+    /* 确保颜色不被浏览器默认透明度影响 */
+}
+
+/* 跨浏览器兼容 */
+.form-input::-webkit-input-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+.form-input::-moz-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+.form-input:-ms-input-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
 }
 
 textarea.form-input {
@@ -52,6 +70,3 @@ textarea.form-input {
     color: var(--color-error);
     margin-top: var(--spacing-xs);
 }
-
-
-

@@ -363,18 +363,24 @@ class SystemSettingsPage extends Component {
             <div class="page fade-in">
                 <div class="page-header">
                     <h1 class="page-title">系统设置</h1>
-                    <p class="page-desc">主题、安全策略、任务开关（系统策略优先于用户本地选择）</p>
+                    <p class="page-desc">安全策略、系统默认配置（仅管理员可修改）</p>
                 </div>
                 <div class="card">
                     <form id="systemSettingsForm" class="card-body">
                         <div class="form-group">
-                            <label class="form-label">主题模式</label>
+                            <label class="form-label">系统默认主题</label>
                             <select name="theme_mode" class="form-input form-select">
                                 <option value="auto" ${data.theme_mode === 'auto' ? 'selected' : ''}>跟随系统</option>
                                 <option value="light" ${data.theme_mode === 'light' ? 'selected' : ''}>浅色</option>
                                 <option value="dark" ${data.theme_mode === 'dark' ? 'selected' : ''}>深色</option>
-                                <option value="sunrise" ${data.theme_mode === 'sunrise' ? 'selected' : ''}>macOS 26 (概念版)</option>
+                                <option value="sunrise" ${data.theme_mode === 'sunrise' ? 'selected' : ''}>日出印象</option>
+                                <option value="neon" ${data.theme_mode === 'neon' ? 'selected' : ''}>星夜霓虹</option>
+                                <option value="summer" ${data.theme_mode === 'summer' ? 'selected' : ''}>仲夏之夜</option>
+                                <option value="winter" ${data.theme_mode === 'winter' ? 'selected' : ''}>冬日暖阳</option>
+                                <option value="spring" ${data.theme_mode === 'spring' ? 'selected' : ''}>春意盎然</option>
+                                <option value="autumn" ${data.theme_mode === 'autumn' ? 'selected' : ''}>秋日私语</option>
                             </select>
+                            <small class="form-hint">新用户或未设置个人偏好的用户将使用此主题。用户可通过「主题美化」自定义个人主题。</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">密码最小长度</label>

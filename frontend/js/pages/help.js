@@ -109,6 +109,14 @@ class HelpPage extends Component {
                 content: this.getFAQContent()
             }
         );
+
+        // 添加主题编辑器帮助
+        this.helpSections.push({
+            id: 'theme-editor',
+            title: '主题编辑器',
+            icon: '🎨',
+            content: this.getThemeEditorContent()
+        });
     }
 
     getGettingStartedContent() {
@@ -118,7 +126,7 @@ class HelpPage extends Component {
             
             <h4>🎯 核心特性</h4>
             <ul>
-                <li><strong>桌面化体验</strong> - 类 macOS 的桌面布局，直观易用</li>
+                <li><strong>桌面化体验</strong> - 精美的桌面布局，直观易用</li>
                 <li><strong>模块化设计</strong> - 按需加载功能模块，灵活扩展</li>
                 <li><strong>多任务处理</strong> - 支持应用窗口化运行（当前版本为单窗口模式）</li>
                 <li><strong>实时通知</strong> - WebSocket 实时消息推送</li>
@@ -264,7 +272,7 @@ class HelpPage extends Component {
             <h4>⚙️ 基础设置</h4>
             <p>位于「系统管理」->「系统设置」。</p>
             <ul>
-                <li><strong>主题模式</strong> - 切换系统显示风格（浅色/深色/自动/MacOS概念版）</li>
+                <li><strong>主题模式</strong> - 切换系统显示风格（浅色/深色/日出印象/星夜霓虹/仲夏之夜/冬日暖阳/春意盎然/秋日私语）</li>
                 <li><strong>安全策略</strong> - 配置密码长度、登录失败锁定等安全参数</li>
                 <li><strong>API 限制</strong> - 配置接口访问速率限制</li>
             </ul>
@@ -489,6 +497,50 @@ class HelpPage extends Component {
                 <li><strong>发布公告</strong> - 支持富文本公告内容</li>
                 <li><strong>置顶功能</strong> - 将重要公告置顶显示</li>
                 <li><strong>有效期</strong> - 设置公告的过期时间</li>
+            </ul>
+        `;
+    }
+
+    getThemeEditorContent() {
+        return `
+            <h3>主题编辑器指南</h3>
+            <p>主题编辑器让您可以个性化定制系统的外观。位于「系统管理」->「主题编辑器」。</p>
+            
+            <h4>🎨 预设主题</h4>
+            <p>系统提供 8 套精心设计的预设主题：</p>
+            <ul>
+                <li><strong>浅色模式</strong> - 经典白色背景，适合日间使用</li>
+                <li><strong>深色模式</strong> - 深灰黑色背景，护眼且沉浸</li>
+                <li><strong>日出印象</strong> - 温暖的晨曦渐变色调</li>
+                <li><strong>星夜霓虹</strong> - 赛博朋克风格的深蓝霓虹</li>
+                <li><strong>仲夏之夜</strong> - 神秘的星空与萤火虫效果</li>
+                <li><strong>冬日暖阳</strong> - 雪景背景配暖橙色强调</li>
+                <li><strong>春意盎然</strong> - 柳绿迎春的清新绿色</li>
+                <li><strong>秋日私语</strong> - 枫叶金黄的秋季色彩</li>
+            </ul>
+            
+            <h4>🔧 自定义主题</h4>
+            <p>选择「自定义」模式后，您可以调整以下颜色变量：</p>
+            <ul>
+                <li><strong>背景色彩</strong> - 全局背景、主要容器、次要容器、输入框背景、悬停背景</li>
+                <li><strong>强调色彩</strong> - 主色调、浅色调、深色调</li>
+                <li><strong>文字色彩</strong> - 主要文字、次要文字、提示文字、反色文字</li>
+                <li><strong>边框与状态</strong> - 边框颜色、成功/错误/警告状态色</li>
+            </ul>
+            
+            <h4>📤 导入/导出</h4>
+            <ul>
+                <li><strong>导出配置</strong> - 将当前自定义配置导出为 JSON 文件，方便备份或分享</li>
+                <li><strong>导入配置</strong> - 导入之前导出的 JSON 配置文件</li>
+                <li><strong>重置默认</strong> - 清除所有自定义配置，恢复默认值</li>
+            </ul>
+            
+            <h4>💡 使用技巧</h4>
+            <ul>
+                <li>调整颜色时，效果会实时预览在「效果预览」区域</li>
+                <li>使用颜色选择器或直接输入 HEX 颜色值（如 #2563eb）</li>
+                <li>主题配置保存在浏览器本地，不同设备需要单独配置</li>
+                <li>如需在多设备间同步主题，可导出后通过其他方式传输并导入</li>
             </ul>
         `;
     }
