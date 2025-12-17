@@ -85,7 +85,7 @@ class SidebarComponent extends Component {
             { module: 'dashboard', title: '仪表盘', icon: '📊', path: '/dashboard' }
         ];
 
-        // 将模块菜单中“意见建议”放到功能模块最下面，且排在“笔记”之后
+        // 将模块菜单中"反馈"放到功能模块最下面，且排在"笔记"之后
         const orderedMenus = [...menus].sort((a, b) => {
             const rank = (m, idx) => {
                 if (m?.module === 'feedback') return 10000; // 最底部

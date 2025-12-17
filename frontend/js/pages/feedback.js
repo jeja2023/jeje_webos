@@ -1,5 +1,5 @@
 /**
- * 意见建议模块前端页面
+ * 反馈模块前端页面
  */
 
 // 基础工具
@@ -17,7 +17,7 @@ const FeedbackUI = {
     typeTag(type) {
         const map = {
             suggestion: { text: '建议', cls: 'tag-primary' },
-            opinion: { text: '意见', cls: 'tag-info' },
+            opinion: { text: '建议', cls: 'tag-info' },
             bug: { text: '问题', cls: 'tag-danger' },
             feature: { text: '需求', cls: 'tag-success' },
             other: { text: '其他', cls: 'tag-default' }
@@ -38,7 +38,7 @@ const FeedbackUI = {
 };
 
 /**
- * 我的意见建议列表
+ * 我的反馈列表
  */
 class FeedbackListPage extends Component {
     constructor(container) {
@@ -135,7 +135,7 @@ class FeedbackListPage extends Component {
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <h1 class="page-title">我的意见建议</h1>
+                        <h1 class="page-title">我的反馈</h1>
                         <p class="page-desc">共 ${total} 条反馈</p>
                     </div>
                     <div style="display: flex; gap: 8px;">
@@ -161,7 +161,7 @@ class FeedbackListPage extends Component {
                             <select class="form-input form-select" id="filterType" value="${filters.type}">
                                 <option value="">全部</option>
                                 <option value="suggestion" ${filters.type === 'suggestion' ? 'selected' : ''}>建议</option>
-                                <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>意见</option>
+                                <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>建议</option>
                                 <option value="bug" ${filters.type === 'bug' ? 'selected' : ''}>问题</option>
                                 <option value="feature" ${filters.type === 'feature' ? 'selected' : ''}>需求</option>
                                 <option value="other" ${filters.type === 'other' ? 'selected' : ''}>其他</option>
@@ -272,7 +272,7 @@ class FeedbackListPage extends Component {
 }
 
 /**
- * 提交意见建议
+ * 提交反馈
  */
 class FeedbackCreatePage extends Component {
     constructor(container) {
@@ -287,7 +287,7 @@ class FeedbackCreatePage extends Component {
             <div class="page fade-in">
                 <div class="page-header">
                     <div>
-                        <h1 class="page-title">提交意见建议</h1>
+                        <h1 class="page-title">提交反馈</h1>
                         <p class="page-desc">请尽量描述清晰，以便快速处理</p>
                     </div>
                 </div>
@@ -303,7 +303,7 @@ class FeedbackCreatePage extends Component {
                                 <label class="form-label">类型</label>
                                 <select id="fbType" class="form-input form-select">
                                     <option value="suggestion">建议</option>
-                                    <option value="opinion">意见</option>
+                                    <option value="opinion">建议</option>
                                     <option value="bug">问题</option>
                                     <option value="feature">功能需求</option>
                                     <option value="other" selected>其他</option>
@@ -460,7 +460,7 @@ class FeedbackAdminPage extends Component {
 
     openReplyModal(item) {
         const modal = new Modal({
-            title: '回复意见建议',
+            title: '回复反馈',
             content: `
                 <div class="form-group">
                     <label class="form-label">回复内容</label>
@@ -558,7 +558,7 @@ class FeedbackAdminPage extends Component {
                             <select class="form-input form-select" id="adFilterType" value="${filters.type}">
                                 <option value="">全部</option>
                                 <option value="suggestion" ${filters.type === 'suggestion' ? 'selected' : ''}>建议</option>
-                                <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>意见</option>
+                                <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>建议</option>
                                 <option value="bug" ${filters.type === 'bug' ? 'selected' : ''}>问题</option>
                                 <option value="feature" ${filters.type === 'feature' ? 'selected' : ''}>需求</option>
                                 <option value="other" ${filters.type === 'other' ? 'selected' : ''}>其他</option>

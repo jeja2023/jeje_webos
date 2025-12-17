@@ -1,5 +1,5 @@
 """
-意见建议服务层
+反馈服务层
 """
 
 from typing import List, Optional, Tuple
@@ -14,13 +14,13 @@ from .feedback_schemas import (
 
 
 class FeedbackService:
-    """意见建议服务"""
+    """反馈服务"""
     
     def __init__(self, db: AsyncSession):
         self.db = db
     
     async def create_feedback(self, data: FeedbackCreate, user_id: int) -> Feedback:
-        """创建意见建议"""
+        """创建反馈"""
         feedback = Feedback(
             title=data.title,
             content=data.content,
@@ -37,7 +37,7 @@ class FeedbackService:
         return feedback
     
     async def get_feedback(self, feedback_id: int) -> Optional[Feedback]:
-        """获取意见建议详情"""
+        """获取反馈详情"""
         result = await self.db.execute(
             select(Feedback).where(Feedback.id == feedback_id)
         )
@@ -54,7 +54,7 @@ class FeedbackService:
         keyword: Optional[str] = None,
         handler_id: Optional[int] = None
     ) -> Tuple[List[Feedback], int]:
-        """获取意见建议列表"""
+        """获取反馈列表"""
         query = select(Feedback)
         conditions = []
         
@@ -116,7 +116,7 @@ class FeedbackService:
         data: FeedbackUpdate,
         user_id: int
     ) -> Optional[Feedback]:
-        """更新意见建议（用户）"""
+        """更新反馈（用户）"""
         result = await self.db.execute(
             select(Feedback).where(
                 and_(
@@ -144,7 +144,7 @@ class FeedbackService:
         data: FeedbackReply,
         handler_id: int
     ) -> Optional[Feedback]:
-        """回复意见建议（管理员）"""
+        """回复反馈（管理员）"""
         result = await self.db.execute(
             select(Feedback).where(Feedback.id == feedback_id)
         )
@@ -171,7 +171,7 @@ class FeedbackService:
         feedback_id: int,
         data: FeedbackAdminUpdate
     ) -> Optional[Feedback]:
-        """管理员更新意见建议"""
+        """管理员更新反馈"""
         result = await self.db.execute(
             select(Feedback).where(Feedback.id == feedback_id)
         )
@@ -192,7 +192,7 @@ class FeedbackService:
         return feedback
     
     async def delete_feedback(self, feedback_id: int, user_id: Optional[int] = None) -> bool:
-        """删除意见建议"""
+        """删除反馈"""
         conditions = [Feedback.id == feedback_id]
         
         # 如果不是管理员，只能删除自己的

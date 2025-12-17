@@ -1,5 +1,5 @@
 """
-意见建议模块
+反馈模块
 """
 
 from .feedback_manifest import manifest

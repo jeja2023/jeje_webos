@@ -480,8 +480,8 @@ class HelpPage extends Component {
 
     getFeedbackHelpContent() {
         return `
-            <h3>反馈中心指南</h3>
-            <p>连接用户与管理员的沟通桥梁。</p>
+            <h3>反馈指南</h3>
+            <p>用户与管理员沟通的桥梁。</p>
             <ul>
                 <li><strong>提交反馈</strong> - 用户可提交 Bug 报告或功能建议</li>
                 <li><strong>状态追踪</strong> - 查看反馈的处理进度（待处理、处理中、已完成）</li>

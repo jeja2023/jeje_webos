@@ -1,5 +1,5 @@
 """
-意见建议数据验证
+反馈数据验证
 """
 
 from typing import Optional, List
@@ -9,7 +9,7 @@ from .feedback_models import FeedbackStatus, FeedbackType, FeedbackPriority
 
 
 class FeedbackCreate(BaseModel):
-    """创建意见建议"""
+    """创建反馈"""
     title: str = Field(..., min_length=1, max_length=200, description="反馈标题")
     content: str = Field(..., min_length=1, description="反馈内容")
     type: FeedbackType = Field(FeedbackType.OTHER, description="反馈类型")
@@ -19,7 +19,7 @@ class FeedbackCreate(BaseModel):
 
 
 class FeedbackUpdate(BaseModel):
-    """更新意见建议（用户）"""
+    """更新反馈（用户）"""
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     content: Optional[str] = Field(None, min_length=1)
     type: Optional[FeedbackType] = None
@@ -28,13 +28,13 @@ class FeedbackUpdate(BaseModel):
 
 
 class FeedbackReply(BaseModel):
-    """回复意见建议（管理员）"""
+    """回复反馈（管理员）"""
     reply_content: str = Field(..., min_length=1, description="回复内容")
     status: Optional[FeedbackStatus] = Field(None, description="更新状态")
 
 
 class FeedbackAdminUpdate(BaseModel):
-    """管理员更新意见建议"""
+    """管理员更新反馈"""
     status: Optional[FeedbackStatus] = None
     priority: Optional[FeedbackPriority] = None
     handler_id: Optional[int] = Field(None, description="处理人ID")
@@ -43,7 +43,7 @@ class FeedbackAdminUpdate(BaseModel):
 
 
 class FeedbackInfo(BaseModel):
-    """意见建议详情"""
+    """反馈详情"""
     id: int
     title: str
     content: str
@@ -65,7 +65,7 @@ class FeedbackInfo(BaseModel):
 
 
 class FeedbackListItem(BaseModel):
-    """意见建议列表项"""
+    """反馈列表项"""
     id: int
     title: str
     type: FeedbackType

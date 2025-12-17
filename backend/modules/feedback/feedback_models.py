@@ -1,5 +1,5 @@
 """
-意见建议数据模型
+反馈数据模型
 表名遵循隔离协议：feedback_前缀
 """
 
@@ -23,7 +23,7 @@ class FeedbackStatus(str, enum.Enum):
 class FeedbackType(str, enum.Enum):
     """反馈类型枚举"""
     SUGGESTION = "suggestion"  # 建议
-    OPINION = "opinion"       # 意见
+    OPINION = "opinion"       # 建议
     BUG = "bug"              # 问题反馈
     FEATURE = "feature"       # 功能需求
     OTHER = "other"          # 其他
@@ -38,9 +38,9 @@ class FeedbackPriority(str, enum.Enum):
 
 
 class Feedback(Base):
-    """意见建议表"""
+    """反馈表"""
     __tablename__ = "feedback_feedbacks"
-    __table_args__ = {"extend_existing": True, "comment": "意见建议表"}
+    __table_args__ = {"extend_existing": True, "comment": "反馈表"}
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     

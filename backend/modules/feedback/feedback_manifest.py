@@ -1,5 +1,5 @@
 """
-意见建议模块清单
+反馈模块清单
 定义模块元信息、路由入口、权限声明等
 """
 
@@ -7,16 +7,16 @@ from core.loader import ModuleManifest
 
 manifest = ModuleManifest(
     id="feedback",
-    name="意见建议",
+    name="反馈",
     version="1.0.0",
-    description="用户意见建议反馈系统，支持提交、查看、回复和处理",
+    description="用户反馈系统，支持提交、查看、回复和处理",
     icon="💬",
     author="JeJe",
     
     router_prefix="/api/v1/feedback",
     
     menu={
-        "title": "意见建议",
+        "title": "反馈",
         "icon": "💬",
         "path": "/feedback",
         "order": 10,

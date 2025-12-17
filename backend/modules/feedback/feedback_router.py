@@ -1,5 +1,5 @@
 """
-意见建议API路由
+反馈API路由
 RESTful风格
 """
 
@@ -36,7 +36,7 @@ async def list_feedbacks(
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    获取意见建议列表
+    获取反馈列表
     普通用户只能查看自己的，管理员可以查看所有
     """
     service = FeedbackService(db)
@@ -67,7 +67,7 @@ async def list_my_feedbacks(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    """获取我的意见建议列表"""
+    """获取我的反馈列表"""
     service = FeedbackService(db)
     items, total = await service.get_feedbacks(
         page=page,
@@ -86,17 +86,17 @@ async def get_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    """获取意见建议详情"""
+    """获取反馈详情"""
     service = FeedbackService(db)
     feedback = await service.get_feedback(feedback_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="意见建议不存在")
+        raise HTTPException(status_code=404, detail="反馈不存在")
     
     # 权限检查：普通用户只能查看自己的
     is_admin = current_user.role == "admin" or current_user.role == "super_admin"
     if not is_admin and feedback.user_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="无权查看此意见建议")
+        raise HTTPException(status_code=403, detail="无权查看此反馈")
     
     return success(FeedbackInfo.model_validate(feedback).model_dump())
 
@@ -107,7 +107,7 @@ async def create_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    """提交意见建议"""
+    """提交反馈"""
     service = FeedbackService(db)
     feedback = await service.create_feedback(data, current_user.user_id)
     
@@ -128,12 +128,12 @@ async def update_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    """更新意见建议（只能更新自己的待处理反馈）"""
+    """更新反馈（只能更新自己的待处理反馈）"""
     service = FeedbackService(db)
     feedback = await service.update_feedback(feedback_id, data, current_user.user_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="意见建议不存在或无权修改")
+        raise HTTPException(status_code=404, detail="反馈不存在或无权修改")
     
     return success(FeedbackInfo.model_validate(feedback).model_dump(), "更新成功")
 
@@ -144,7 +144,7 @@ async def delete_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    """删除意见建议（只能删除自己的）"""
+    """删除反馈（只能删除自己的）"""
     service = FeedbackService(db)
     
     # 管理员可以删除任何反馈
@@ -154,7 +154,7 @@ async def delete_feedback(
     success_flag = await service.delete_feedback(feedback_id, user_id)
     
     if not success_flag:
-        raise HTTPException(status_code=404, detail="意见建议不存在或无权删除")
+        raise HTTPException(status_code=404, detail="反馈不存在或无权删除")
     
     return success(None, "删除成功")
 
@@ -173,7 +173,7 @@ async def list_all_feedbacks(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("feedback.admin"))
 ):
-    """获取所有意见建议列表（管理员）"""
+    """获取所有反馈列表（管理员）"""
     service = FeedbackService(db)
     items, total = await service.get_feedbacks(
         page=page,
@@ -196,12 +196,12 @@ async def reply_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("feedback.update"))
 ):
-    """回复意见建议（管理员）"""
+    """回复反馈（管理员）"""
     service = FeedbackService(db)
     feedback = await service.reply_feedback(feedback_id, data, current_user.user_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="意见建议不存在")
+        raise HTTPException(status_code=404, detail="反馈不存在")
     
     # 发布事件
     event_bus.emit(
@@ -220,12 +220,12 @@ async def admin_update_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("feedback.admin"))
 ):
-    """管理员更新意见建议"""
+    """管理员更新反馈"""
     service = FeedbackService(db)
     feedback = await service.admin_update_feedback(feedback_id, data)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="意见建议不存在")
+        raise HTTPException(status_code=404, detail="反馈不存在")
     
     return success(FeedbackInfo.model_validate(feedback).model_dump(), "更新成功")
 

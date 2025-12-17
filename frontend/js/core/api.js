@@ -297,7 +297,7 @@ const GroupApi = {
 // 兼容旧命名
 const RoleApi = GroupApi;
 
-// 意见建议
+// 反馈
 const FeedbackApi = {
     // 用户视角
     list: (params) => Api.get('/feedback', params),
