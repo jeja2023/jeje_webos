@@ -36,37 +36,12 @@ class HelpPage extends Component {
             }
         ];
 
-        // Dynamic module sections
+        // Dynamic module sections - 整合到"功能模块"章节中
         const modules = Store.get('modules') || [];
         const enabledIds = modules.filter(m => m.enabled && m.visible !== false).map(m => m.id);
+        this.enabledModuleIds = enabledIds; // 保存供 getModulesContent 使用
 
-        if (enabledIds.includes('notes')) {
-            this.helpSections.push({
-                id: 'notes-help',
-                title: '随手记指南',
-                icon: '📝',
-                content: this.getNotesHelpContent()
-            });
-        }
-
-        if (enabledIds.includes('blog') || enabledIds.includes('cms')) {
-            this.helpSections.push({
-                id: 'blog-help',
-                title: '博客指南',
-                icon: '📰',
-                content: this.getBlogHelpContent()
-            });
-        }
-
-        if (enabledIds.includes('feedback')) {
-            this.helpSections.push({
-                id: 'feedback-help',
-                title: '反馈中心',
-                icon: '💡',
-                content: this.getFeedbackHelpContent()
-            });
-        }
-
+        // 公告管理保留为独立章节（属于系统管理类）
         if (enabledIds.includes('announcement')) {
             this.helpSections.push({
                 id: 'announcement-help',
@@ -110,20 +85,12 @@ class HelpPage extends Component {
             }
         );
 
-        // 添加主题编辑器帮助
+        // 添加主题编辑器帮助（属于系统管理类）
         this.helpSections.push({
             id: 'theme-editor',
             title: '主题编辑器',
             icon: '🎨',
             content: this.getThemeEditorContent()
-        });
-
-        // 添加文件管理器帮助
-        this.helpSections.push({
-            id: 'filemanager',
-            title: '文件管理',
-            icon: '📁',
-            content: this.getFileManagerContent()
         });
     }
 
@@ -193,6 +160,7 @@ class HelpPage extends Component {
         // 动态获取已安装的模块信息
         const modules = Store.get('modules') || [];
         const enabledModules = modules.filter(m => m.enabled && m.visible !== false);
+        const enabledIds = this.enabledModuleIds || enabledModules.map(m => m.id);
 
         let modulesHtml = `
             <h3>功能模块</h3>
@@ -221,7 +189,32 @@ class HelpPage extends Component {
         modulesHtml += `
             <h4>💡 管理员提示</h4>
             <p>在「系统管理」->「应用中心」中可以管理所有功能模块。</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">
         `;
+
+        // 添加各模块详细使用指南
+        if (enabledIds.includes('notes')) {
+            modulesHtml += this.getNotesHelpContent();
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+        }
+
+        if (enabledIds.includes('blog') || enabledIds.includes('cms')) {
+            modulesHtml += this.getBlogHelpContent();
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+        }
+
+        if (enabledIds.includes('feedback')) {
+            modulesHtml += this.getFeedbackHelpContent();
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+        }
+
+        // 文件管理（内置模块，始终显示）
+        modulesHtml += this.getFileManagerContent();
+        modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+
+        if (enabledIds.includes('transfer')) {
+            modulesHtml += this.getTransferHelpContent();
+        }
 
         return modulesHtml;
     }
@@ -603,6 +596,47 @@ class HelpPage extends Component {
                 <li>将文件直接拖入浏览器窗口即可上传</li>
                 <li>右键菜单会自动根据文件类型显示可用选项</li>
                 <li>存储空间不足 10% 时，进度条会变红示警</li>
+            </ul>
+        `;
+    }
+
+    getTransferHelpContent() {
+        return `
+            <h3>快传指南</h3>
+            <p>快传是一个跨设备文件传输工具，让您可以在局域网内的不同设备间快速传输文件。</p>
+            
+            <h4>📤 发送文件</h4>
+            <ol>
+                <li><strong>选择文件</strong> - 点击拖拽区域或直接将文件拖入窗口</li>
+                <li><strong>生成传输码</strong> - 点击「生成传输码」按钮，系统会生成 6 位数字码</li>
+                <li><strong>分享传输码</strong> - 将传输码告知接收方（有效期 10 分钟）</li>
+                <li><strong>等待连接</strong> - 接收方输入传输码后，点击「开始传输」</li>
+                <li><strong>完成</strong> - 传输完成后会收到提示</li>
+            </ol>
+            
+            <h4>📥 接收文件</h4>
+            <ol>
+                <li><strong>切换到接收</strong> - 点击顶部「接收」标签</li>
+                <li><strong>输入传输码</strong> - 输入发送方提供的 6 位数字码</li>
+                <li><strong>连接</strong> - 点击「连接」按钮等待发送方开始传输</li>
+                <li><strong>自动下载</strong> - 传输完成后，文件会自动下载到本地</li>
+            </ol>
+            
+            <h4>📊 传输历史</h4>
+            <ul>
+                <li><strong>查看记录</strong> - 点击「历史」标签查看所有传输记录</li>
+                <li><strong>筛选</strong> - 可按「全部/发送/接收」筛选记录</li>
+                <li><strong>统计信息</strong> - 右上角显示发送/接收次数和成功率</li>
+                <li><strong>删除记录</strong> - 鼠标悬停在记录上，点击删除按钮清除</li>
+            </ul>
+            
+            <h4>💡 注意事项</h4>
+            <ul>
+                <li>传输码有效期为 <strong>10 分钟</strong>，过期需重新生成</li>
+                <li>单个文件最大支持 <strong>1GB</strong></li>
+                <li>发送方和接收方需在同一网络环境下</li>
+                <li>传输过程中请保持页面打开，避免刷新或关闭</li>
+                <li>如遇连接问题，可尝试刷新页面重新操作</li>
             </ul>
         `;
     }

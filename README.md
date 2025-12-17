@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.1-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/Version-2.0.2-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -53,6 +53,11 @@
     - **增强预览**：支持图片、视频、音频、PDF、代码等多种格式在线预览。
     - **资源监控**：侧边栏实时显示 **存储配额进度条**，直观掌握空间使用情况。
     - **高效传输**：支持多文件拖拽上传、文件夹收藏、全局搜索。
+- **⚡ 快传**：
+    - **跨设备传输**：局域网内设备间高速文件传输，无需第三方服务。
+    - **传输码机制**：发送方生成 6 位传输码，接收方输入即可连接。
+    - **实时同步**：WebSocket 实时进度推送，传输完成自动下载。
+    - **历史记录**：完整的传输历史和统计数据。
 
 ---
 
@@ -255,8 +260,8 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 - [x] **多窗口并行**：真正支持多窗口同时操作，支持拖拽、缩放、层叠管理。
 - [x] **主题编辑器**：可视化编辑桌面主题和配色，支持 8 套预设主题 + 完全自定义。
 - [x] **文件管理器**：全功能云端文件管理，支持文件夹管理、上传下载、拖拽上传、文件搜索。
+- [x] **快传功能**：局域网内设备间高速文件传输，支持传输码连接和实时进度。
 - [ ] **应用商店 (App Store)**：支持从云端一键安装第三方开发的 App 模块。
-- [ ] **P2P 快传**：局域网内设备间高速文件传输。
 
 ---
 
@@ -264,8 +269,8 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
 
-### 最新版本 v2.0.0 (2025-12-15)
-- ✨ **统一发布**：整合多窗口系统、Dock 优化、地址栏同步等核心特性，作为 2.0.0 稳定版发布。查看 [更新日志.md](./更新日志.md) 获取详情。
+### 最新版本 v2.0.2 (2025-12-17)
+- ⚡ **快传上线**：全新的跨设备文件传输功能，支持传输码连接、实时进度同步、自动下载。查看 [更新日志.md](./更新日志.md) 获取详情。
 
 ---
 

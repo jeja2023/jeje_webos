@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 
-from core.websocket import manager
+from core.ws_manager import manager
 from core.security import decode_token, TokenData
 
 router = APIRouter()
@@ -87,6 +87,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             "type": "pong",
                             "timestamp": datetime.now().isoformat()
                         }, ensure_ascii=False))
+                    
+                    # 处理快传相关消息
+                    elif message_type.startswith("transfer_"):
+                        await handle_transfer_message(websocket, user_id, message_type, message.get("data", {}))
+                    
                     else:
                         # 其他消息类型可以在这里处理
                         logger.debug(f"收到消息: {message}")
@@ -127,3 +132,111 @@ async def get_online_users():
         "connection_count": connection_count
     })
 
+
+# ==================== 快传消息处理 ====================
+
+# 传输会话映射：session_code -> {sender_id, receiver_id}
+transfer_sessions: dict = {}
+
+
+async def handle_transfer_message(websocket: WebSocket, user_id: int, message_type: str, data: dict):
+    """
+    处理快传相关的WebSocket消息
+    
+    消息类型：
+    - transfer_create: 创建传输会话（发送方进入等待）
+    - transfer_join: 加入传输会话（接收方连接）
+    - transfer_start: 开始传输
+    - transfer_progress: 传输进度更新
+    - transfer_complete: 传输完成
+    - transfer_cancel: 取消传输
+    - transfer_close: 关闭会话
+    """
+    session_code = data.get("session_code")
+    
+    if message_type == "transfer_create":
+        # 发送方创建会话，进入等待状态
+        if session_code:
+            transfer_sessions[session_code] = {
+                "sender_id": user_id,
+                "receiver_id": None,
+                "status": "waiting"
+            }
+            logger.info(f"快传会话已创建: {session_code}, 发送方: {user_id}")
+    
+    elif message_type == "transfer_join":
+        # 接收方加入会话
+        if session_code and session_code in transfer_sessions:
+            session = transfer_sessions[session_code]
+            session["receiver_id"] = user_id
+            session["status"] = "connected"
+            
+            # 通知发送方：接收方已连接
+            sender_id = session["sender_id"]
+            await manager.send_personal_message({
+                "type": "transfer_peer_connected",
+                "data": {"session_code": session_code, "peer_id": user_id},
+                "timestamp": datetime.now().isoformat()
+            }, sender_id)
+            
+            logger.info(f"快传会话已连接: {session_code}, 接收方: {user_id}")
+    
+    elif message_type == "transfer_start":
+        # 开始传输
+        if session_code and session_code in transfer_sessions:
+            session = transfer_sessions[session_code]
+            session["status"] = "transferring"
+            
+            # 通知对方传输开始
+            peer_id = session["receiver_id"] if user_id == session["sender_id"] else session["sender_id"]
+            if peer_id:
+                await manager.send_personal_message({
+                    "type": "transfer_started",
+                    "data": {"session_code": session_code},
+                    "timestamp": datetime.now().isoformat()
+                }, peer_id)
+    
+    elif message_type == "transfer_progress":
+        # 传输进度更新，通知双方
+        if session_code and session_code in transfer_sessions:
+            session = transfer_sessions[session_code]
+            # 广播给会话中的双方
+            for uid in [session["sender_id"], session["receiver_id"]]:
+                if uid:
+                    await manager.send_personal_message({
+                        "type": "transfer_progress",
+                        "data": data,
+                        "timestamp": datetime.now().isoformat()
+                    }, uid)
+    
+    elif message_type == "transfer_complete":
+        # 传输完成
+        if session_code and session_code in transfer_sessions:
+            session = transfer_sessions[session_code]
+            # 通知双方
+            for uid in [session["sender_id"], session["receiver_id"]]:
+                if uid:
+                    await manager.send_personal_message({
+                        "type": "transfer_completed",
+                        "data": {"session_code": session_code},
+                        "timestamp": datetime.now().isoformat()
+                    }, uid)
+            # 清理会话
+            del transfer_sessions[session_code]
+            logger.info(f"快传会话已完成: {session_code}")
+    
+    elif message_type == "transfer_cancel" or message_type == "transfer_close":
+        # 取消或关闭传输
+        if session_code and session_code in transfer_sessions:
+            session = transfer_sessions[session_code]
+            # 通知对方
+            peer_id = session["receiver_id"] if user_id == session["sender_id"] else session["sender_id"]
+            if peer_id:
+                await manager.send_personal_message({
+                    "type": "transfer_cancelled",
+                    "data": {"session_code": session_code, "cancelled_by": user_id},
+                    "timestamp": datetime.now().isoformat()
+                }, peer_id)
+            # 清理会话
+            del transfer_sessions[session_code]
+            logger.info(f"快传会话已取消: {session_code}")

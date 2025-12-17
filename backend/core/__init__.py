@@ -74,7 +74,7 @@ from .errors import (
 )
 
 # 健康检查
-from .health import health_checker, HealthStatus
+from .health_checker import health_checker, HealthStatus
 
 # 速率限制
 from .rate_limit import rate_limiter, limit, init_rate_limiter, RateLimitMiddleware

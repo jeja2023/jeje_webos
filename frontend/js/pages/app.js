@@ -204,6 +204,7 @@ const App = {
             '/announcement/view/:id': { auth: true, handler: wrap(AnnouncementViewPage, '查看公告') },
 
             '/filemanager': { auth: true, handler: wrap(FileManagerPage, '文件管理') },
+            '/transfer': { auth: true, handler: wrap(TransferPage, '快传') },
 
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
         });

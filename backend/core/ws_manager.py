@@ -51,6 +51,8 @@ class ConnectionManager:
             # 清理断开的连接
             for conn in disconnected:
                 self.disconnect(conn, user_id)
+        else:
+            logger.warning(f"尝试发送消息给离线用户: {user_id}")
     
     async def broadcast(self, message: dict, exclude_user_ids: Set[int] = None):
         """广播消息给所有用户"""

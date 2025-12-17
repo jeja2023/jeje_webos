@@ -83,6 +83,14 @@ class StartMenuComponent extends Component {
             path: '/filemanager'
         });
 
+        // 快传（所有人可见）
+        menuTree.push({
+            id: 'transfer',
+            title: '快传',
+            icon: '⚡',
+            path: '/transfer'
+        });
+
         // 信息（所有人可见，直接进入通知列表）
         menuTree.push({
             id: 'message',

@@ -480,7 +480,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         if response.status_code < 400:
             # 异步记录审计日志
             try:
-                from core.audit import log_audit
+                from core.audit_utils import log_audit
                 import asyncio
                 
                 # 构建日志消息
