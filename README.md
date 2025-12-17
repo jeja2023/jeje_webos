@@ -29,7 +29,7 @@
 
 ### 🧩 模块化生态系统 (Modular Ecosystem)
 系统采用 **微内核 (Micro-Kernel)** 架构，所有业务功能均以 **App (模块)** 形式存在。
-- **📝 随手记 (Notes)**：
+- **📝 笔记 (Notes)**：
     - 支持 Markdown 实时预览、代码高亮。
     - 无限层级文件夹树、标签管理、收藏置顶。
 - **📰 博客中心 (Blog)**：
@@ -121,7 +121,7 @@ jeje_webos/
 │   │   └── events.py             # 事件总线 (Event Bus)
 │   ├── modules/                  # --- 业务模块 (Pluggable Apps) ---
 │   │   ├── _template/            # 模块生成模板
-│   │   ├── notes/                # [示例] 随手记模块
+│   │   ├── notes/                # [示例] 笔记模块
 │   │   ├── blog/                 # [示例] 博客模块
 │   │   └── feedback/             # [示例] 反馈模块
 │   ├── routers/                  # 系统级路由 (System API)

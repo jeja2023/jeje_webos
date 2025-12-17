@@ -155,7 +155,7 @@ const App = {
             '/blog/view/:id': { auth: true, handler: wrap(BlogViewPage, '查看文章') },
             '/blog/category': { auth: true, handler: wrap(BlogCategoryPage, '分类管理') },
 
-            '/notes/list': { auth: true, handler: wrap(NotesListPage, '随手记') },
+            '/notes/list': { auth: true, handler: wrap(NotesListPage, '笔记') },
             '/notes/list/:id': { auth: true, handler: wrap(NotesListPage, '笔记文件夹') },
             '/notes/starred': { auth: true, handler: wrap(NotesStarredPage, '我的收藏') },
             '/notes/tags': { auth: true, handler: wrap(NotesTagsPage, '标签管理') },
