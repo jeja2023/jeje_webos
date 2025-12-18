@@ -312,14 +312,12 @@ const Spotlight = {
                 }, 500);
                 break;
             case 'profile':
-                // 实现个人资料弹窗 (可以复用 Topbar 的逻辑)
-                // 暂时跳转
-                Toast.info('功能开发中...');
+                // 跳转到个人中心
+                Router.push('/profile');
                 break;
             case 'changePassword':
-                // 可以直接调用 API 修改密码的弹窗逻辑，如果封装好了
-                // 这里简单提示，或者跳转到个人中心
-                Toast.info('请在个人中心修改密码');
+                // 跳转到修改密码页面
+                Router.push('/profile/password');
                 break;
             case 'about':
                 // 触发 Topbar 的关于弹窗
