@@ -3,6 +3,7 @@
 用户列表、审核、管理
 """
 
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from schemas import UserAudit, UserListItem, UserUpdate, success, paginate
 from schemas import success as _success
 from models import Role, ModuleConfig
 from core.security import require_permission
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 
@@ -54,8 +57,6 @@ async def update_profile(
 
     if "settings" in data:
         # 允许增量更新或全量覆盖，这里选择合并更新
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info(f"更新用户 {user.id} 的设置，当前 settings: {user.settings}, 新 settings: {data['settings']}")
         
         # 确保 user.settings 是字典
