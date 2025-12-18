@@ -118,7 +118,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     安全响应头中间件
-    添加常见的安全响应头
+    添加常见的安全响应头和缓存控制
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -133,6 +133,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # API 路径禁用缓存，防止浏览器缓存导致数据不更新
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         
         # 移除敏感信息头
         if "Server" in response.headers:

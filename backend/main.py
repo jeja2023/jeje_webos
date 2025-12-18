@@ -297,7 +297,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 from routers import (
     auth, boot, user, system_settings, audit, roles,
     storage, backup, monitor, message, websocket,
-    import_export, announcement
+    import_export, announcement, market
 )
 
 # 手动导入核心模块（绕过动态加载器以提高稳定性）
@@ -323,6 +323,7 @@ app.include_router(message.router)
 app.include_router(websocket.router)
 app.include_router(import_export.router)
 app.include_router(announcement.router)
+app.include_router(market.router)
 
 # 核心业务模块（手动挂载）
 app.include_router(blog_router, prefix="/api/v1/blog", tags=["博客"])
@@ -426,6 +427,9 @@ app.add_api_route(
 # ==================== 启动入口 ====================
 if __name__ == "__main__":
     import uvicorn
+    
+    # 开发模式启用热重载（监控 .py 文件变化自动重启）
+    # 注意：修改 .env 文件后需要手动重启服务生效
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
