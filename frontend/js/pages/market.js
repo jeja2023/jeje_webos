@@ -569,6 +569,16 @@ class AppCenterMarketPage extends Component {
                                      <li>所有 UI 文本应尽可能支持国际化。</li>
                                      <li>组件销毁时请务必清理定时器和事件监听 (<code>destroy()</code>)。</li>
                                  </ul>
+                                 
+                                 <h4>📦 模块打包发布</h4>
+                                 <div style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px; border-radius: 8px; font-size: 13px;">
+                                    <p style="margin-bottom: 8px;">开发完成后，可以使用提供的工具生成 <strong>.jwapp</strong> 离线安装包：</p>
+                                    <code style="display: block; background: var(--color-bg-tertiary); padding: 8px; border-radius: 4px; user-select: text;">
+                                        cd backend<br>
+                                        python scripts/pack_module.py <模块ID>
+                                    </code>
+                                    <p style="margin-top: 8px; color: var(--color-text-secondary);">生成的安装包位于项目根目录的 <code>dist/</code> 文件夹中，可在<a onclick="document.querySelector('.tab-btn[data-tab=market]').click()" style="cursor: pointer; color: var(--color-primary); text-decoration: underline;">应用市场</a>上传安装。</p>
+                                 </div>
                              </div>
                         </div>
                     </div>
