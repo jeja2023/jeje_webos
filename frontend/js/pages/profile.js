@@ -473,17 +473,14 @@ class ProfilePage extends Component {
                 this.$('#avatarInput')?.click();
             });
 
-            const avatarInput = this.$('#avatarInput');
-            if (avatarInput) {
-                avatarInput.addEventListener('change', (e) => {
-                    if (e.target.files.length > 0) {
-                        // 改为调用裁剪弹窗
-                        this.showCropModal(e.target.files[0]);
-                        // 清空 input，允许重复选择同一文件
-                        e.target.value = '';
-                    }
-                });
-            }
+            // 使用 delegate 绑定 change 事件，解决组件重渲染后事件丢失问题
+            this.delegate('change', '#avatarInput', (e) => {
+                if (e.target.files.length > 0) {
+                    this.showCropModal(e.target.files[0]);
+                    // 清空 input，允许重复选择同一文件
+                    e.target.value = '';
+                }
+            });
 
             // 头像 hover 效果 (JS 辅助)
             this.delegate('mouseover', '#avatarUploadTrigger', (e, el) => {
