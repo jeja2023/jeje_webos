@@ -312,7 +312,11 @@ const UserApi = {
     // 更新个人资料
     updateProfile: (data) => Api.put('/users/profile', data),
     // 修改密码
-    changePassword: (data) => Api.put('/auth/password', data)
+    changePassword: (data) => Api.put('/auth/password', data),
+    // 管理员创建用户
+    createUser: (data) => Api.post('/users', data),
+    // 管理员重置用户密码
+    resetPassword: (id, password) => Api.put(`/users/${id}/password`, { password })
 };
 
 const GroupApi = {

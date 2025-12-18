@@ -541,3 +541,111 @@ async def update_user(
         "is_active": user.is_active
     }, "用户信息已更新")
 
+
+@router.post("")
+async def create_user(
+    data: dict,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    管理员快速创建用户
+    无需注册审核流程，直接创建已激活的用户
+    """
+    from core.security import hash_password
+    import re
+    
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    phone = data.get("phone", "").strip() or None
+    nickname = data.get("nickname", "").strip() or username
+    role = data.get("role", "user")
+    
+    # 参数验证
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="用户名至少3个字符")
+    
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]{2,19}$', username):
+        raise HTTPException(status_code=400, detail="用户名只能包含字母、数字和下划线，且以字母开头")
+    
+    if not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="密码至少6个字符")
+    
+    if role not in ("admin", "manager", "user", "guest"):
+        raise HTTPException(status_code=400, detail="无效的角色")
+    
+    # 检查用户名是否已存在
+    existing = await db.execute(select(User).where(User.username == username))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    
+    # 检查手机号是否已存在
+    if phone:
+        existing_phone = await db.execute(select(User).where(User.phone == phone))
+        if existing_phone.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="手机号已被使用")
+    
+    # 创建用户
+    user = User(
+        username=username,
+        password_hash=hash_password(password),
+        phone=phone,
+        nickname=nickname,
+        role=role,
+        is_active=True,  # 管理员创建的用户直接激活
+        permissions=["*"] if role in ("admin", "manager") else []
+    )
+    
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    
+    return success({
+        "id": user.id,
+        "username": user.username,
+        "nickname": user.nickname,
+        "role": user.role,
+        "is_active": user.is_active
+    }, "用户创建成功")
+
+
+@router.put("/{user_id}/password")
+async def reset_password(
+    user_id: int,
+    data: dict,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    管理员重置用户密码
+    仅系统管理员可执行
+    """
+    from core.security import hash_password
+    
+    new_password = data.get("password", "").strip()
+    
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码至少6个字符")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 不能重置超级管理员的密码（除非是自己）
+    if user.role == "admin" and user.id != current_user.user_id:
+        # 检查是否只有一个管理员（保护最后一个管理员）
+        admin_count = await db.execute(
+            select(func.count()).select_from(User).where(User.role == "admin")
+        )
+        if admin_count.scalar() <= 1:
+            raise HTTPException(status_code=400, detail="不能重置唯一系统管理员的密码")
+    
+    user.password_hash = hash_password(new_password)
+    await db.commit()
+    
+    return success({
+        "id": user.id,
+        "username": user.username
+    }, f"用户 {user.username} 的密码已重置")

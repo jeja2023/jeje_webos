@@ -16,29 +16,25 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+    background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
     color: var(--color-text-inverse);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid transparent;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent));
-    box-shadow: 0 0 15px var(--color-accent-glow);
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+    box-shadow: var(--shadow-glow);
 }
 
 .btn-secondary {
     background: var(--color-bg-secondary);
     color: var(--color-text-primary);
     border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
     background: var(--color-bg-hover);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
+    border-color: var(--color-border-light);
 }
 
 .btn-ghost {
@@ -73,4 +69,18 @@
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* 深色主题下的按钮增强 */
+:root.theme-dark .btn-secondary,
+:root.theme-neon .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+:root.theme-dark .btn-secondary:hover,
+:root.theme-neon .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--color-text-primary);
 }

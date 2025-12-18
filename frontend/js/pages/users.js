@@ -401,7 +401,7 @@ class UserListPage extends Component {
         // 绑定表单提交
         const form = overlay.querySelector('#editUserForm');
         const saveBtn = overlay.querySelector('#saveEditUserBtn');
-        
+
         if (saveBtn && form) {
             saveBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -446,6 +446,172 @@ class UserListPage extends Component {
         }
     }
 
+    // 显示创建用户弹窗
+    showCreateUserModal() {
+        const content = `
+            <form id="createUserForm" style="display:grid;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">用户名 <span style="color:var(--color-error);">*</span></label>
+                    <input type="text" name="username" class="form-input" placeholder="3-20位字母开头，可含数字下划线" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">密码 <span style="color:var(--color-error);">*</span></label>
+                    <input type="password" name="password" class="form-input" placeholder="至少6位" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">昵称</label>
+                    <input type="text" name="nickname" class="form-input" placeholder="可选，默认使用用户名">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">手机号</label>
+                    <input type="tel" name="phone" class="form-input" placeholder="可选，11位手机号" maxlength="11">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">角色</label>
+                    <select name="role" class="form-input form-select">
+                        <option value="user" selected>普通用户</option>
+                        <option value="guest">访客</option>
+                        <option value="manager">管理员</option>
+                        <option value="admin">系统管理员</option>
+                    </select>
+                    <small class="form-hint">管理员及以上将自动获得全部权限</small>
+                </div>
+            </form>
+        `;
+
+        const { overlay, close } = Modal.show({
+            title: '➕ 添加用户',
+            content: content,
+            footer: `
+                <button type="button" class="btn btn-secondary" data-close>取消</button>
+                <button type="button" class="btn btn-primary" id="submitCreateUserBtn">创建</button>
+            `,
+            width: '450px'
+        });
+
+        const form = overlay.querySelector('#createUserForm');
+        const submitBtn = overlay.querySelector('#submitCreateUserBtn');
+
+        if (submitBtn && form) {
+            submitBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+
+                const username = form.querySelector('[name="username"]')?.value.trim();
+                const password = form.querySelector('[name="password"]')?.value;
+                const nickname = form.querySelector('[name="nickname"]')?.value.trim() || '';
+                const phone = form.querySelector('[name="phone"]')?.value.trim() || '';
+                const role = form.querySelector('[name="role"]')?.value || 'user';
+
+                if (!username || username.length < 3) {
+                    Toast.error('用户名至少3个字符');
+                    return;
+                }
+
+                if (!password || password.length < 6) {
+                    Toast.error('密码至少6个字符');
+                    return;
+                }
+
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '创建中...';
+
+                    await UserApi.createUser({
+                        username,
+                        password,
+                        nickname,
+                        phone,
+                        role
+                    });
+
+                    Toast.success(`用户 ${username} 创建成功`);
+                    close();
+                    this.loadData();
+                } catch (err) {
+                    Toast.error(err.message || '创建失败');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '创建';
+                }
+            });
+        }
+    }
+
+    // 显示重置密码弹窗
+    showResetPasswordModal(userId, username) {
+        const content = `
+            <form id="resetPasswordForm" style="display:grid;gap:16px;">
+                <div style="padding:12px;background:var(--color-bg-tertiary);border-radius:8px;margin-bottom:8px;">
+                    <div style="font-size:14px;color:var(--color-text-secondary);">即将为以下用户重置密码：</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--color-text-primary);margin-top:4px;">${Utils.escapeHtml(username)}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">新密码 <span style="color:var(--color-error);">*</span></label>
+                    <input type="password" name="newPassword" class="form-input" placeholder="至少6位" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">确认密码 <span style="color:var(--color-error);">*</span></label>
+                    <input type="password" name="confirmPassword" class="form-input" placeholder="再次输入新密码" required>
+                </div>
+                
+                <div style="padding:10px;background:rgba(255,193,7,0.1);border-radius:8px;color:var(--color-warning);font-size:13px;">
+                    ⚠️ 重置密码后，用户需要使用新密码重新登录
+                </div>
+            </form>
+        `;
+
+        const { overlay, close } = Modal.show({
+            title: '🔐 重置密码',
+            content: content,
+            footer: `
+                <button type="button" class="btn btn-secondary" data-close>取消</button>
+                <button type="button" class="btn btn-danger" id="submitResetPwdBtn">重置密码</button>
+            `,
+            width: '400px'
+        });
+
+        const form = overlay.querySelector('#resetPasswordForm');
+        const submitBtn = overlay.querySelector('#submitResetPwdBtn');
+
+        if (submitBtn && form) {
+            submitBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+
+                const newPassword = form.querySelector('[name="newPassword"]')?.value;
+                const confirmPassword = form.querySelector('[name="confirmPassword"]')?.value;
+
+                if (!newPassword || newPassword.length < 6) {
+                    Toast.error('新密码至少6个字符');
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    Toast.error('两次输入的密码不一致');
+                    return;
+                }
+
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '重置中...';
+
+                    await UserApi.resetPassword(userId, newPassword);
+
+                    Toast.success(`用户 ${username} 的密码已重置`);
+                    close();
+                } catch (err) {
+                    Toast.error(err.message || '重置失败');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '重置密码';
+                }
+            });
+        }
+    }
+
     render() {
         const { users, total, page, size, loading, filters } = this.state;
         const pages = Math.ceil(total / size);
@@ -462,10 +628,13 @@ class UserListPage extends Component {
                         <p class="page-desc">共 ${total} 个用户</p>
                     </div>
                     <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" id="createUserBtn">
+                            ➕ 添加用户
+                        </button>
                         <button class="btn btn-secondary" id="downloadTemplateBtn">
                             📋 下载模板
                         </button>
-                        <button class="btn btn-primary" id="importUsersBtn">
+                        <button class="btn btn-secondary" id="importUsersBtn">
                             📥 批量导入
                         </button>
                         <button class="btn btn-secondary" id="exportUsersBtn">
@@ -563,6 +732,7 @@ class UserListPage extends Component {
                                                     ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${user.id}">启用</button>` : ''}
                                                 `}
                                                 <button class="btn btn-ghost btn-sm" data-edit="${user.id}">编辑</button>
+                                                <button class="btn btn-ghost btn-sm" data-reset-pwd="${user.id}" data-username="${Utils.escapeHtml(user.username)}">重置密码</button>
                                                 <button class="btn btn-ghost btn-sm" data-perms="${user.id}">权限</button>
                                                 ${user.role !== 'admin' ? `
                                                     <button class="btn btn-ghost btn-sm" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}">删除</button>
@@ -619,6 +789,11 @@ class UserListPage extends Component {
             // 批量导入按钮 - 使用事件委托
             this.delegate('click', '#importUsersBtn', () => {
                 this.showImportModal();
+            });
+
+            // 添加用户按钮
+            this.delegate('click', '#createUserBtn', () => {
+                this.showCreateUserModal();
             });
 
             // 下载导入模板按钮
@@ -696,6 +871,16 @@ class UserListPage extends Component {
                     e.stopPropagation();
                     const userId = parseInt(editBtn.dataset.edit);
                     if (userId) this.showEditModal(userId);
+                    return;
+                }
+
+                // 重置密码
+                const resetPwdBtn = e.target.closest('[data-reset-pwd]');
+                if (resetPwdBtn && this.container.contains(resetPwdBtn)) {
+                    e.stopPropagation();
+                    const userId = parseInt(resetPwdBtn.dataset.resetPwd);
+                    const username = resetPwdBtn.dataset.username;
+                    if (userId && username) this.showResetPasswordModal(userId, username);
                     return;
                 }
 
