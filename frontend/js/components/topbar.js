@@ -197,9 +197,19 @@ class TopBarComponent extends Component {
 
     renderListItem(item, tab) {
         if (tab === 'message') {
+            // 根据类型显示不同图标
+            let icon = '✉️';
+            let iconColor = ''; // 既然是 web component，直接用 style 或 class 吧
+
+            // 兼容 notification.js 中的类型：info, success, warning, error
+            if (item.type === 'success') { icon = '✅'; iconColor = 'color: var(--color-success);'; }
+            else if (item.type === 'warning') { icon = '⚠️'; iconColor = 'color: var(--color-warning);'; }
+            else if (item.type === 'error') { icon = '❌'; iconColor = 'color: var(--color-error);'; }
+            else if (item.type === 'info' && item.sender_id === item.user_id) { icon = '🔔'; }
+
             return `
                 <div class="msg-item ${item.is_read ? '' : 'unread'}" onclick="Router.push('/message/list')">
-                    <div class="msg-icon">✉️</div>
+                    <div class="msg-icon" style="${iconColor}">${icon}</div>
                     <div class="msg-body">
                         <div class="msg-title">${Utils.escapeHtml(item.title)}</div>
                         <div class="msg-time">${Utils.timeAgo(item.created_at)}</div>

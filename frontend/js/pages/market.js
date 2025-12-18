@@ -54,13 +54,27 @@ class AppCenterMarketPage extends Component {
     }
 
     async handleInstall(moduleId) {
+        // 先获取应用详情用于通知
+        const module = this.state.marketModules?.find(m => m.id === moduleId);
+        const appName = module ? module.name : '应用';
+
         try {
             await Api.post(`/system/market/install/${moduleId}`);
-            Toast.success('安装成功！');
+
+            if (window.SystemNotification) {
+                SystemNotification.notifyAppInstall(appName, true);
+            } else {
+                Toast.success('安装成功！');
+            }
+
             await this.loadMarketData();
             await this.loadData();
         } catch (error) {
-            Toast.error('安装失败: ' + (error.message || '未知错误'));
+            if (window.SystemNotification) {
+                SystemNotification.error('应用安装失败', `${appName}: ${error.message}`);
+            } else {
+                Toast.error('安装失败: ' + (error.message || '未知错误'));
+            }
         }
     }
 
