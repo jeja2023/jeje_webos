@@ -278,10 +278,16 @@ if settings.csrf_enabled:
 # ==================== 异常处理器 ====================
 register_exception_handlers(app)
 
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+
 # 全局未捕获异常处理
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """全局异常捕获"""
+    # 如果是 HTTPException，不在这里处理，让 FastAPI 默认处理器处理（保留原来的 detail 结构）
+    if isinstance(exc, StarletteHTTPException):
+        raise exc
+        
     logger.error(f"未处理异常: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,

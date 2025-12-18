@@ -701,80 +701,19 @@ async def get_latest_changelog():
     })
 
 
-@router.get("/market/list")
-async def list_market_modules(
-    current_user: TokenData = Depends(get_current_user)
-):
-    """获取市场所有模块（包括未安装）"""
-    loader = get_module_loader()
-    if not loader:
-        return success([])
+@router.get("/changelog/latest")
+async def get_latest_changelog():
+    """获取最新版本信息和更新提示"""
+    latest = get_latest_version()
+    if not latest:
+        return success(None)
     
-    market_list = []
-    module_ids = loader.scan_modules()
+    settings = get_settings()
+    changes = get_version_changes(settings.app_version)
     
-    for mid in module_ids:
-        manifest = loader.load_manifest(mid)
-        if not manifest:
-            continue
-        
-        # 过滤核心模块
-        if mid in CORE_MODULES:
-            continue
-            
-        state = loader.get_module_state(mid)
-        is_installed = state is not None
-        
-        market_list.append({
-            "id": mid,
-            "name": manifest.name,
-            "description": manifest.description,
-            "icon": manifest.icon,
-            "version": manifest.version,
-            "author": manifest.author,
-            "installed": is_installed,
-            "enabled": state.enabled if state else False,
-            "isSystem": mid in SYSTEM_MODULES  # 系统应用标记
-        })
-        
-    return success(market_list)
-
-
-@router.post("/market/install/{module_id}")
-async def install_market_module(
-    module_id: str,
-    current_user: TokenData = Depends(require_admin())
-):
-    """安装市场模块"""
-    loader = get_module_loader()
-    if not loader:
-        raise HTTPException(status_code=500, detail="加载器未初始化")
-        
-    try:
-        success_flag = await loader.install_module(module_id)
-        if success_flag:
-            return success(None, f"模块 {module_id} 安装成功")
-        else:
-            raise HTTPException(status_code=400, detail="安装失败，请检查日志")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"安装异常: {str(e)}")
-
-
-@router.post("/market/uninstall/{module_id}")
-async def uninstall_market_module(
-    module_id: str,
-    current_user: TokenData = Depends(require_admin())
-):
-    """卸载市场模块（移除状态）"""
-    loader = get_module_loader()
-    if not loader:
-        raise HTTPException(status_code=500, detail="加载器未初始化")
-        
-    try:
-        success_flag = await loader.uninstall_module(module_id)
-        if success_flag:
-            return success(None, f"模块 {module_id} 卸载成功")
-        else:
-            raise HTTPException(status_code=400, detail="卸载失败")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"卸载异常: {str(e)}")
+    return success({
+        "latest": latest,
+        "current": settings.app_version,
+        "has_updates": changes.get("has_updates", False),
+        "changes": changes.get("changes", {})
+    })

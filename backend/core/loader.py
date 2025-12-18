@@ -135,13 +135,26 @@ class ModuleLoader:
     - 模块状态持久化
     """
     
-    def __init__(self, app: FastAPI):
+    def __init__(
+        self, 
+        app: Optional[FastAPI] = None, 
+        modules_dir: Optional[str] = None,
+        state_file: Optional[str] = None
+    ):
         self.app = app
         self.modules: Dict[str, LoadedModule] = {}
-        # 使用绝对路径，确保模块目录相对于backend目录
-        self.modules_path = Path(_backend_path) / settings.modules_dir
-        # 模块状态文件
-        self._state_file = Path(_backend_path) / "state" / "module_states.json"
+        # 允许显式指定目录，否则使用配置
+        if modules_dir:
+            self.modules_path = Path(modules_dir)
+        else:
+            self.modules_path = Path(_backend_path) / settings.modules_dir
+            
+        # 允许显式指定状态文件
+        if state_file:
+            self._state_file = Path(state_file)
+        else:
+            self._state_file = Path(_backend_path) / "state" / "module_states.json"
+            
         self._states: Dict[str, ModuleState] = {}
         # 加载持久化状态
         self._load_states()
@@ -539,6 +552,12 @@ class ModuleLoader:
 
     def get_module_state(self, module_id: str) -> Optional[ModuleState]:
         return self._states.get(module_id)
+    
+    def set_module_enabled(self, module_id: str, enabled: bool):
+        """设置模块启用状态并保存"""
+        if module_id in self._states:
+            self._states[module_id].enabled = enabled
+            self._save_states()
     
     async def unload_module(self, module_id: str) -> bool:
         """卸载模块"""

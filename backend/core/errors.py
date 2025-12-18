@@ -338,14 +338,23 @@ def register_exception_handlers(app):
         }
         
         code = code_mapping.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
-        message = str(exc.detail) if exc.detail else ERROR_MESSAGES.get(code, "请求失败")
+        
+        # 处理 detail 为字典的情况（用于冲突等需要返回额外数据的场景）
+        if isinstance(exc.detail, dict):
+            detail_dict = exc.detail
+            message = detail_dict.get("message", ERROR_MESSAGES.get(code, "请求失败"))
+            # 将字典中的其它字段作为 data 返回，或者直接合并
+            data = {k: v for k, v in detail_dict.items() if k != "message"}
+        else:
+            message = str(exc.detail) if exc.detail else ERROR_MESSAGES.get(code, "请求失败")
+            data = None
         
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "code": code,
                 "message": message,
-                "data": None
+                "data": data
             }
         )
 

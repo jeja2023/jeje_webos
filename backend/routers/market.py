@@ -10,6 +10,7 @@ import tempfile
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 
@@ -129,10 +130,16 @@ async def upload_package(
     if not file.filename.endswith(('.jwapp', '.zip')):
         raise HTTPException(status_code=400, detail="无效的文件格式，仅支持 .jwapp 或 .zip")
     
+    # 获取最新配置（支持测试环境动态切换）
+    current_settings = get_settings()
+    
     # 模块存放路径
-    modules_dir = Path(settings.modules_dir)
+    modules_dir = Path(current_settings.modules_dir)
     if not modules_dir.is_absolute():
-        modules_dir = Path(__file__).parent.parent / settings.modules_dir
+        modules_dir = Path(__file__).parent.parent / current_settings.modules_dir
+    
+    # 确保目录存在
+    modules_dir.mkdir(parents=True, exist_ok=True)
 
     temp_dir = Path(tempfile.mkdtemp())
     try:
@@ -222,7 +229,7 @@ async def upload_package(
 
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="压缩包损坏")
-    except HTTPException:
+    except StarletteHTTPException:
         # 让 HTTPException（如 409 冲突）正确传递
         raise
     except Exception as e:
