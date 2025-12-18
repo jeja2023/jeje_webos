@@ -45,6 +45,11 @@ const App = {
                 console.error('WebSocket 连接失败', e);
             }
         }
+
+        // 初始化全局搜索
+        if (typeof Spotlight !== 'undefined') {
+            Spotlight.init();
+        }
     },
 
     async updateUnreadCount() {

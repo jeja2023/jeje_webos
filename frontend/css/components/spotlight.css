@@ -1,0 +1,231 @@
+/**
+ * 全局搜索 Spotlight 样式
+ */
+
+.spotlight-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 20vh;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.spotlight-overlay.active {
+    display: flex;
+}
+
+.spotlight-container {
+    width: 600px;
+    max-width: 90%;
+    background: var(--color-bg-secondary);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 搜索头部 */
+.spotlight-header {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border-light);
+    gap: 12px;
+}
+
+.spotlight-icon {
+    font-size: 20px;
+    color: var(--color-text-secondary);
+}
+
+.spotlight-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    color: var(--color-text-primary);
+    outline: none;
+    padding: 0;
+}
+
+.spotlight-input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.spotlight-badge {
+    padding: 2px 6px;
+    background: var(--color-bg-tertiary);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    border: 1px solid var(--color-border);
+}
+
+/* 搜索结果 */
+.spotlight-results {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.spotlight-empty {
+    padding: 40px;
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+}
+
+.spotlight-group {
+    margin-bottom: 8px;
+}
+
+.spotlight-group-title {
+    padding: 8px 12px 4px;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    font-weight: 500;
+}
+
+.spotlight-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.1s;
+    color: var(--color-text-primary);
+    text-decoration: none;
+}
+
+.spotlight-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.spotlight-item.active {
+    background: var(--color-accent);
+    color: white;
+}
+
+.spotlight-item-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border-radius: 6px;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.spotlight-item.active .spotlight-item-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.spotlight-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.spotlight-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotlight-item-desc {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotlight-item.active .spotlight-item-desc {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.spotlight-item-action {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.spotlight-item.active .spotlight-item-action {
+    opacity: 1;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 底部提示 */
+.spotlight-footer {
+    padding: 8px 16px;
+    background: var(--color-bg-tertiary);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.spotlight-key {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.spotlight-key kbd {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: inherit;
+    min-width: 16px;
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* 滚动条美化 */
+.spotlight-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+.spotlight-results::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+.spotlight-results::-webkit-scrollbar-track {
+    background: transparent;
+}
