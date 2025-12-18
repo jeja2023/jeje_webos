@@ -199,51 +199,34 @@ class AppCenterMarketPage extends Component {
 
     // 获取应用的入口路径
     getAppEntryPath(module) {
+        if (!module) return null;
+
+        // 1. 优先使用显式定义的路径映射（针对已整合成单一入口的应用）
         const pathMap = {
             'blog': '/blog/list',
             'notes': '/notes/list',
-            'feedback': '/feedback/my'
+            'feedback': '/feedback/my',
+            'announcement': '/announcement/list',
+            'users': '/users/list',
+            'filemanager': '/filemanager'
         };
-        if (module.menu && module.menu.path) return module.menu.path;
-        return pathMap[module.id] || null;
+
+        if (pathMap[module.id]) {
+            return pathMap[module.id];
+        }
+
+        // 2. 其次使用模块菜单配置中定义的路径
+        if (module.menu && module.menu.path) {
+            return module.menu.path;
+        }
+
+        // 3. 最后使用默认约定路径
+        return `/${module.id}`;
     }
 
-    // 获取应用的子功能菜单（与 Dock 保持一致）
+    // 获取应用的子功能菜单（已简化，配合单一入口整合）
     getChildLinks(module) {
-        const links = [];
-        const user = Store.get('user');
-        const isAdmin = user?.role === 'admin';
-
-        if (module.id === 'blog') {
-            return [
-                { title: '文章列表', icon: '📄', path: '/blog/list' },
-                { title: '发布文章', icon: '✏️', path: '/blog/edit' },
-                { title: '分类管理', icon: '📁', path: '/blog/category' }
-            ];
-        }
-        if (module.id === 'notes') {
-            return [
-                { title: '所有笔记', icon: '📋', path: '/notes/list' },
-                { title: '我的收藏', icon: '⭐', path: '/notes/starred' },
-                { title: '标签管理', icon: '🏷️', path: '/notes/tags' }
-            ];
-        }
-        if (module.id === 'feedback') {
-            const list = [
-                { title: '我的反馈', icon: '📨', path: '/feedback/my' },
-                { title: '提交反馈', icon: '➕', path: '/feedback/create' }
-            ];
-            if (isAdmin || user?.role === 'manager') {
-                list.push({ title: '反馈管理', icon: '🗂️', path: '/feedback/list' });
-            }
-            return list;
-        }
-
-        // 如果模块定义了 menu.children
-        if (module.menu && module.menu.children && module.menu.children.length > 0) {
-            return module.menu.children;
-        }
-
+        // 全面简化：所有应用均通过单一主入口访问，不再提供子菜单弹出
         return null;
     }
 

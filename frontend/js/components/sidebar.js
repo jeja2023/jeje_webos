@@ -85,15 +85,17 @@ class SidebarComponent extends Component {
             { module: 'dashboard', title: '仪表盘', icon: '📊', path: '/dashboard' }
         ];
 
-        // 将模块菜单中"反馈"放到功能模块最下面，且排在"笔记"之后
-        const orderedMenus = [...menus].sort((a, b) => {
-            const rank = (m, idx) => {
-                if (m?.module === 'feedback') return 10000; // 最底部
-                if (m?.module === 'notes') return 9000;     // 保证在反馈之上
-                return idx; // 其他保持原有顺序（相对稳定）
-            };
-            return rank(a, menus.indexOf(a)) - rank(b, menus.indexOf(b));
-        });
+        // 处理模块菜单：强制清空子菜单以符合“单一入口”策略，并排序
+        const orderedMenus = [...menus]
+            .map(m => ({ ...m, children: null })) // 移除子菜单
+            .sort((a, b) => {
+                const rank = (m, idx) => {
+                    if (m?.module === 'feedback') return 10000; // 最底部
+                    if (m?.module === 'notes') return 9000;     // 保证在反馈之上
+                    return idx; // 其他保持原有顺序
+                };
+                return rank(a, menus.indexOf(a)) - rank(b, menus.indexOf(b));
+            });
 
         // 简化：返回完整菜单列表用于查找
         return [...defaultMenus, ...orderedMenus, ...this.getAdminMenus(isSuperAdmin, isManager)];
@@ -106,35 +108,9 @@ class SidebarComponent extends Component {
                 title: '系统管理',
                 icon: '🧰',
                 children: [
-                    {
-                        title: '用户与权限',
-                        icon: '👥',
-                        children: [
-                            { title: '用户列表', icon: '📋', path: '/users/list' },
-                            { title: '待审核用户', icon: '⏳', path: '/users/pending' },
-                            { title: '用户组', icon: '🛡️', path: '/system/roles' },
-                        ]
-                    },
-                    {
-                        title: '系统与运维',
-                        icon: '🖥️',
-                        children: [
-                            { title: '系统设置', icon: '⚙️', path: '/system/settings' },
-                            { title: '系统日志', icon: '📜', path: '/system/audit' },
-                            { title: '系统监控', icon: '📈', path: '/system/monitor' },
-                            { title: '数据备份', icon: '💾', path: '/system/backup' },
-                            { title: '文件存储', icon: '📁', path: '/system/storage' },
-                        ]
-                    },
-                    {
-                        title: '通知与公告',
-                        icon: '📬',
-                        children: [
-                            { title: '通知管理', icon: '🔔', path: '/notifications' },
-                            { title: '公告管理', icon: '📢', path: '/announcement/list' },
-                        ]
-                    },
-
+                    { title: '用户管理', icon: '👥', path: '/users/list' },
+                    { title: '系统运维', icon: '🖥️', path: '/system/settings' },
+                    { title: '通知公告', icon: '📬', path: '/announcement/list' },
                     { title: '应用中心', icon: '🧩', path: '/system/apps' },
                 ]
             }];
@@ -146,23 +122,8 @@ class SidebarComponent extends Component {
                 title: '系统管理',
                 icon: '🧰',
                 children: [
-                    {
-                        title: '用户与权限',
-                        icon: '👥',
-                        children: [
-                            { title: '用户列表', icon: '📋', path: '/users/list' },
-                            { title: '待审核用户', icon: '⏳', path: '/users/pending' },
-                            { title: '用户组', icon: '🛡️', path: '/system/roles' },
-                        ]
-                    },
-                    {
-                        title: '通知与公告',
-                        icon: '📬',
-                        children: [
-                            { title: '通知管理', icon: '🔔', path: '/notifications' },
-                            { title: '公告管理', icon: '📢', path: '/announcement/list' },
-                        ]
-                    },
+                    { title: '用户管理', icon: '👥', path: '/users/list' },
+                    { title: '通知公告', icon: '📬', path: '/announcement/list' },
                     { title: '系统日志', icon: '📜', path: '/system/audit' },
                 ]
             }];

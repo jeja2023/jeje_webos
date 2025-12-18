@@ -86,19 +86,20 @@ class NotesListPage extends Component {
         return `
             <div class="notes-page fade-in">
                 <div class="notes-sidebar">
-                    <div class="notes-sidebar-header">
-                        <button class="btn btn-primary btn-sm btn-block" id="newNote">
-                            ➕ 新建笔记
-                        </button>
-                        <button class="btn btn-secondary btn-sm btn-block" id="newFolder" style="margin-top: 8px;">
-                            📁 新建文件夹
-                        </button>
-                    </div>
                     <div class="notes-nav">
                         <div class="folder-item ${!this.folderId ? 'active' : ''}" data-folder="">
                             <span class="folder-icon">📋</span>
                             <span class="folder-name">所有笔记</span>
                         </div>
+                        <div class="folder-item" onclick="Router.push('/notes/starred')">
+                            <span class="folder-icon">⭐</span>
+                            <span class="folder-name">我的收藏</span>
+                        </div>
+                        <div class="folder-item" onclick="Router.push('/notes/tags')">
+                            <span class="folder-icon">🏷️</span>
+                            <span class="folder-name">标签管理</span>
+                        </div>
+                        <div class="divider" style="margin: 8px 16px; border-top: 1px solid var(--color-border); opacity: 0.5;"></div>
                         ${this.renderFolderTree(folderTree)}
                     </div>
                 </div>
@@ -109,11 +110,21 @@ class NotesListPage extends Component {
                             <h2>${currentFolder ? Utils.escapeHtml(currentFolder.name) : '所有笔记'}</h2>
                             <span class="notes-count">${total} 条笔记</span>
                         </div>
-                        <div class="notes-search">
-                            <input type="text" class="form-input" 
-                                   placeholder="搜索笔记..." 
-                                   value="${Utils.escapeHtml(keyword)}"
-                                   id="searchInput">
+                        
+                        <div class="notes-actions" style="display: flex; gap: 8px; align-items: center;">
+                            <div class="notes-search" style="margin-right: 8px;">
+                                <input type="text" class="form-input" 
+                                       style="width: 200px;"
+                                       placeholder="搜索笔记..." 
+                                       value="${Utils.escapeHtml(keyword)}"
+                                       id="searchInput">
+                            </div>
+                            <button class="btn btn-primary" id="newNote">
+                                ➕ 新建笔记
+                            </button>
+                            <button class="btn btn-secondary" id="newFolder">
+                                📁 新建文件夹
+                            </button>
                         </div>
                     </div>
                     
@@ -428,9 +439,8 @@ class NotesEditPage extends Component {
                         <p class="page-desc">${saving ? '保存中...' : '自动保存已启用'}</p>
                     </div>
                     <div style="display: flex; gap: var(--spacing-md)">
-                        <button class="btn btn-secondary" onclick="Router.back()">返回</button>
                         <button class="btn btn-primary" id="saveNote" ${saving ? 'disabled' : ''}>
-                            ${saving ? '保存中...' : '保存'}
+                            ${saving ? '保存中...' : '立即保存'}
                         </button>
                     </div>
                 </div>

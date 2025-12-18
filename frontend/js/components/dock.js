@@ -175,14 +175,12 @@ class DockComponent extends Component {
         // 3. 公告（仅管理员/经理可见）
         if (isAdmin || user?.role === 'manager') {
             categories.push({
-                id: 'announcement',
-                title: '公告',
+                id: 'sys_announcement',
+                title: '公告管理',
                 icon: '📢',
                 isSystem: true,
-                children: [
-                    { title: '公告管理', icon: '📋', path: '/announcement/list' },
-                    { title: '发布公告', icon: '✏️', path: '/announcement/edit' }
-                ]
+                path: '/announcement/list',
+                children: null
             });
         }
 
@@ -190,32 +188,25 @@ class DockComponent extends Component {
 
         // 系统管理（仅管理员/管理员可见）
         if (isAdmin || user?.role === 'manager') {
-            // 1. 用户管理
+            // 1. 用户管理（单一入口，内部可切换到待审核和用户组）
             categories.push({
                 id: 'sys_users',
                 title: '用户管理',
                 icon: '👥',
                 isSystem: true,
-                children: [
-                    { title: '用户列表', icon: '📄', path: '/users/list' },
-                    { title: '待审核用户', icon: '⏳', path: '/users/pending' },
-                    isAdmin ? { title: '用户组', icon: '🛡️', path: '/system/roles' } : null
-                ].filter(Boolean)
+                path: '/users/list',
+                children: null
             });
 
-            // 2. 系统运维（仅系统管理员）
+            // 2. 系统管理（仅系统管理员，单一入口，内部可切换到日志、监控、备份）
             if (isAdmin) {
                 categories.push({
                     id: 'sys_ops',
-                    title: '系统运维',
+                    title: '系统管理',
                     icon: '🖥️',
                     isSystem: true,
-                    children: [
-                        { title: '系统设置', icon: '⚙️', path: '/system/settings' },
-                        { title: '系统日志', icon: '📜', path: '/system/audit' },
-                        { title: '系统监控', icon: '📈', path: '/system/monitor' },
-                        { title: '数据备份', icon: '💾', path: '/system/backup' }
-                    ]
+                    path: '/system/settings',
+                    children: null
                 });
             }
         }
@@ -227,37 +218,41 @@ class DockComponent extends Component {
     buildDockItem(module, isAdmin, user) {
         const menuConfig = {
             'blog': {
-                children: [
-                    { title: '文章列表', icon: '📄', path: '/blog/list' },
-                    { title: '发布文章', icon: '✏️', path: '/blog/edit' },
-                    { title: '分类管理', icon: '📁', path: '/blog/category' }
-                ]
+                singleEntry: true,
+                path: '/blog/list'
             },
+            // 笔记：单一入口，侧边栏已整合收藏和标签
             'notes': {
-                children: [
-                    { title: '所有笔记', icon: '📋', path: '/notes/list' },
-                    { title: '我的收藏', icon: '⭐', path: '/notes/starred' },
-                    { title: '标签管理', icon: '🏷️', path: '/notes/tags' }
-                ]
+                singleEntry: true,
+                path: '/notes/list'
             },
+            // 反馈：单一入口，主页面已有提交和管理按钮
             'feedback': {
-                children: [
-                    { title: '我的反馈', icon: '📨', path: '/feedback/my' },
-                    { title: '提交反馈', icon: '➕', path: '/feedback/create' },
-                    ...(isAdmin || user?.role === 'manager' ? [{ title: '反馈管理', icon: '🗂️', path: '/feedback/list' }] : [])
-                ]
+                singleEntry: true,
+                path: '/feedback/my'
             },
+            // 公告：单一入口，主页面已有发布按钮
             'announcement': {
-                children: [
-                    { title: '公告列表', icon: '📢', path: '/announcement/list' },
-                    isAdmin ? { title: '发布公告', icon: '✏️', path: '/announcement/edit' } : null
-                ].filter(Boolean)
+                singleEntry: true,
+                path: '/announcement/list'
             }
         };
 
         const config = menuConfig[module.id];
 
         if (config) {
+            // 单一入口模式：直接跳转，不显示子菜单
+            if (config.singleEntry) {
+                return {
+                    id: module.id,
+                    title: module.name,
+                    icon: module.icon || '📦',
+                    path: config.path,
+                    children: null,
+                    isPinned: true
+                };
+            }
+            // 有子菜单的模式
             return {
                 id: module.id,
                 title: module.name,
@@ -274,7 +269,7 @@ class DockComponent extends Component {
                 title: module.name,
                 icon: module.icon || '📦',
                 path: module.menu.path || `/${module.id}`,
-                children: module.menu.children || null,
+                children: null, // 强制移除通用模块的子菜单，保持 Dock 简洁
                 isPinned: true
             };
         }

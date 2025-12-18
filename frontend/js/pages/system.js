@@ -27,9 +27,16 @@ class SystemSettingsPage extends Component {
         if (loading) return '<div class="loading"></div>';
         return `
             <div class="page system-page fade-in">
-                <div class="page-header">
-                    <h1 class="page-title">系统设置</h1>
-                    <p class="page-desc">安全策略、系统默认配置（仅管理员可修改）</p>
+                <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <h1 class="page-title">系统设置</h1>
+                        <p class="page-desc">安全策略、系统默认配置（仅管理员可修改）</p>
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <a href="#/system/audit" class="btn btn-secondary">📜 系统日志</a>
+                        <a href="#/system/monitor" class="btn btn-secondary">📈 系统监控</a>
+                        <a href="#/system/backup" class="btn btn-secondary">💾 数据备份</a>
+                    </div>
                 </div>
                 <div class="card">
                     <form id="systemSettingsForm" class="card-body">

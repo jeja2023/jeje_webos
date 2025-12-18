@@ -627,7 +627,7 @@ class UserListPage extends Component {
                         <h1 class="page-title">用户管理</h1>
                         <p class="page-desc">共 ${total} 个用户</p>
                     </div>
-                    <div style="display:flex;gap:10px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
                         <button class="btn btn-primary" id="createUserBtn">
                             ➕ 添加用户
                         </button>
@@ -642,6 +642,9 @@ class UserListPage extends Component {
                         </button>
                         <a href="#/users/pending" class="btn btn-secondary" style="color:var(--color-warning);">
                             ⏳ 待审核
+                        </a>
+                        <a href="#/system/roles" class="btn btn-secondary" style="color:var(--color-info);">
+                            🛡️ 用户组
                         </a>
                     </div>
                 </div>
@@ -1339,14 +1342,9 @@ class PendingUsersPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
-                    <div>
-                        <h1 class="page-title">待审核用户</h1>
-                        <p class="page-desc">共 ${users.length} 个待审核用户</p>
-                    </div>
-                    <a href="#/users/list" class="btn btn-secondary">
-                        ← 返回用户列表
-                    </a>
+                <div class="page-header">
+                    <h1 class="page-title">待审核用户</h1>
+                    <p class="page-desc">共 ${users.length} 个待审核用户</p>
                 </div>
                 
                 ${users.length > 0 ? `

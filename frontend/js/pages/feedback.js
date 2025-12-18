@@ -332,8 +332,7 @@ class FeedbackCreatePage extends Component {
                             <input id="fbAttachments" class="form-input" placeholder="如需，可粘贴截图链接或文件路径，多条用逗号分隔">
                         </div>
                         <div style="margin-top: var(--spacing-lg); display: flex; gap: 8px;">
-                            <button class="btn btn-primary" id="submitFeedback">提交</button>
-                            <button class="btn btn-ghost" onclick="Router.back()">返回</button>
+                            <button class="btn btn-primary" id="submitFeedback">提交反馈</button>
                         </div>
                     </div>
                 </div>
@@ -718,7 +717,6 @@ class FeedbackDetailPage extends Component {
                         <p class="page-desc">编号：${item.id}</p>
                     </div>
                     <div>
-                        <button class="btn btn-ghost" onclick="Router.back()">返回</button>
                     </div>
                 </div>
 

@@ -27,51 +27,25 @@ class StartMenuComponent extends Component {
 
         // 仪表盘已移除，登录后直接显示桌面
 
-        // 预定义的菜单配置
+        // 预定义的菜单配置（已简化为单一入口，直接重定向到主路径）
         const menuConfigs = {
-            'blog': [
-                { title: '文章列表', icon: '📄', path: '/blog/list' },
-                { title: '发布文章', icon: '✏️', path: '/blog/edit' },
-                { title: '分类管理', icon: '📁', path: '/blog/category' }
-            ],
-            'notes': [
-                { title: '所有笔记', icon: '📋', path: '/notes/list' },
-                { title: '我的收藏', icon: '⭐', path: '/notes/starred' },
-                { title: '标签管理', icon: '🏷️', path: '/notes/tags' }
-            ],
-            'feedback': () => {
-                const items = [
-                    { title: '我的反馈', icon: '📨', path: '/feedback/my' },
-                    { title: '提交反馈', icon: '➕', path: '/feedback/create' }
-                ];
-                if (isAdmin || isManager) {
-                    items.push({ title: '反馈管理', icon: '🗂️', path: '/feedback/list' });
-                }
-                return items;
-            }
+            'blog': '/blog/list',
+            'notes': '/notes/list',
+            'feedback': '/feedback/my'
         };
 
         // 遍历所有已启用的模块，直接显示
         for (const mod of modules) {
             if (!mod.enabled) continue;
 
-            const config = menuConfigs[mod.id];
-            let children = null;
-
-            if (typeof config === 'function') {
-                children = config();
-            } else if (config) {
-                children = config;
-            } else if (mod.menu && mod.menu.children) {
-                children = mod.menu.children;
-            }
+            const targetPath = menuConfigs[mod.id];
 
             menuTree.push({
                 id: mod.id,
                 title: mod.name,
                 icon: mod.icon || '📦',
-                children: children,
-                path: children ? null : (mod.menu?.path || `/${mod.id}`)
+                children: null,
+                path: targetPath || (mod.menu?.path || `/${mod.id}`)
             });
         }
 
@@ -107,52 +81,33 @@ class StartMenuComponent extends Component {
             path: '/theme/editor'
         });
 
-        // 公告（仅管理员/经理可见）
+        // 公告（仅管理员/经理可见，单一入口）
         if (isAdmin || isManager) {
             menuTree.push({
                 id: 'announcement',
                 title: '公告',
                 icon: '📢',
-                children: [
-                    { title: '公告管理', icon: '📋', path: '/announcement/list' },
-                    { title: '发布公告', icon: '✏️', path: '/announcement/edit' }
-                ]
+                path: '/announcement/list'
             });
         }
 
-        // 系统管理（管理员/经理可见）
+        // 用户管理（管理员/经理可见，单一入口）
         if (isAdmin || isManager) {
-            const sysChildren = [];
+            menuTree.push({
+                id: 'users',
+                title: '用户管理',
+                icon: '👥',
+                path: '/users/list'
+            });
+        }
 
-            // 用户管理
-            const userChildren = [
-                { title: '用户列表', icon: '📄', path: '/users/list' },
-                { title: '待审核用户', icon: '⏳', path: '/users/pending' }
-            ];
-            if (isAdmin) {
-                userChildren.push({ title: '用户组', icon: '🛡️', path: '/system/roles' });
-            }
-            sysChildren.push({ title: '用户管理', icon: '👥', children: userChildren });
-
-            // 系统运维（仅管理员）
-            if (isAdmin) {
-                sysChildren.push({
-                    title: '系统运维',
-                    icon: '🖥️',
-                    children: [
-                        { title: '系统设置', icon: '⚙️', path: '/system/settings' },
-                        { title: '系统日志', icon: '📜', path: '/system/audit' },
-                        { title: '系统监控', icon: '📈', path: '/system/monitor' },
-                        { title: '数据备份', icon: '💾', path: '/system/backup' }
-                    ]
-                });
-            }
-
+        // 系统管理（仅管理员可见，单一入口）
+        if (isAdmin) {
             menuTree.push({
                 id: 'system',
                 title: '系统管理',
-                icon: '💼',
-                children: sysChildren
+                icon: '🖥️',
+                path: '/system/settings'
             });
         }
 

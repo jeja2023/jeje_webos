@@ -395,9 +395,6 @@ class AnnouncementEditPage extends Component {
                             <button type="submit" class="btn btn-primary" ${saving ? 'disabled' : ''}>
                                 ${saving ? '保存中...' : (isEdit ? '更新公告' : '发布公告')}
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="Router.back()">
-                                取消
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -490,8 +487,7 @@ class AnnouncementViewPage extends Component {
                         </p>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-secondary" id="backBtn">返回</button>
-                        <button class="btn btn-primary" id="editBtn">编辑</button>
+                        <button class="btn btn-primary" id="editBtn">编辑公告</button>
                     </div>
                 </div>
                 

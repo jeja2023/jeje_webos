@@ -14,17 +14,17 @@ class BlogListPage extends Component {
             loading: true
         };
     }
-    
+
     async loadData() {
         this.setState({ loading: true });
-        
+
         try {
             // 获取文章列表（管理员可查看所有，普通用户只能查看自己的）
             const res = await BlogApi.getMyPosts({
                 page: this.state.page,
                 size: this.state.size
             });
-            
+
             this.setState({
                 posts: res.data.items,
                 total: res.data.total,
@@ -35,20 +35,20 @@ class BlogListPage extends Component {
             this.setState({ loading: false });
         }
     }
-    
+
     changePage(page) {
         this.state.page = page;
         this.loadData();
     }
-    
+
     render() {
         const { posts, total, page, size, loading } = this.state;
         const pages = Math.ceil(total / size);
-        
+
         if (loading) {
             return '<div class="loading"></div>';
         }
-        
+
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
@@ -56,9 +56,12 @@ class BlogListPage extends Component {
                         <h1 class="page-title">文章列表</h1>
                         <p class="page-desc">共 ${total} 篇文章</p>
                     </div>
-                    <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
-                        ✏️ 发布文章
-                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="#/blog/category" class="btn btn-secondary">📁 分类管理</a>
+                        <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
+                            ✏️ 发布文章
+                        </button>
+                    </div>
                 </div>
                 
                 ${posts.length > 0 ? `
@@ -115,32 +118,32 @@ class BlogListPage extends Component {
             </div>
         `;
     }
-    
+
     afterMount() {
         this.loadData();
         this.bindEvents();
     }
-    
+
     afterUpdate() {
         this.bindEvents();
     }
-    
+
     bindEvents() {
         // 使用事件委托，只需绑定一次
         if (this.container && !this.container._bindedBlogList) {
             this.container._bindedBlogList = true;
-            
+
             // 分页
             this.delegate('click', '[data-page]', (e, target) => {
                 const page = parseInt(target.dataset.page);
                 if (page > 0) this.changePage(page);
             });
-            
+
             // 编辑
             this.delegate('click', '[data-edit]', (e, target) => {
                 Router.push(`/blog/edit/${target.dataset.edit}`);
             });
-            
+
             // 删除
             this.delegate('click', '[data-delete]', (e, target) => {
                 const id = target.dataset.delete;
@@ -171,32 +174,32 @@ class BlogEditPage extends Component {
             saving: false
         };
     }
-    
+
     async loadData() {
         try {
             const [categoriesRes, tagsRes] = await Promise.all([
                 BlogApi.getCategories(),
                 BlogApi.getTags()
             ]);
-            
+
             this.state.categories = categoriesRes.data;
             this.state.tags = tagsRes.data;
-            
+
             if (this.postId) {
                 const postRes = await BlogApi.getPost(this.postId);
                 this.state.post = postRes.data;
             }
-            
+
             this.setState({ loading: false });
         } catch (error) {
             Toast.error('加载数据失败');
             this.setState({ loading: false });
         }
     }
-    
+
     async handleSubmit(e) {
         e.preventDefault();
-        
+
         const form = e.target;
         const data = {
             title: form.title.value.trim(),
@@ -207,14 +210,14 @@ class BlogEditPage extends Component {
             status: form.status.value,
             is_top: form.is_top.checked
         };
-        
+
         if (!data.title || !data.content) {
             Toast.error('请填写标题和内容');
             return;
         }
-        
+
         this.setState({ saving: true });
-        
+
         try {
             if (this.postId) {
                 await BlogApi.updatePost(this.postId, data);
@@ -232,21 +235,21 @@ class BlogEditPage extends Component {
             this.setState({ saving: false });
         }
     }
-    
+
     generateSlug(title) {
         return title.toLowerCase()
             .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
             .replace(/^-+|-+$/g, '') + '-' + Date.now().toString(36);
     }
-    
+
     render() {
         const { post, categories, loading, saving } = this.state;
         const isEdit = !!this.postId;
-        
+
         if (loading) {
             return '<div class="loading"></div>';
         }
-        
+
         return `
             <div class="page fade-in">
                 <div class="page-header">
@@ -314,25 +317,22 @@ class BlogEditPage extends Component {
                             <button type="submit" class="btn btn-primary" ${saving ? 'disabled' : ''}>
                                 ${saving ? '保存中...' : (isEdit ? '更新文章' : '发布文章')}
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="Router.back()">
-                                取消
-                            </button>
                         </div>
                     </form>
                 </div>
             </div>
         `;
     }
-    
+
     afterMount() {
         this.loadData();
         this.bindEvents();
     }
-    
+
     afterUpdate() {
         this.bindEvents();
     }
-    
+
     bindEvents() {
         const form = this.$('#postForm');
         if (form && !form._bindedBlogEdit) {
@@ -351,7 +351,7 @@ class BlogCategoryPage extends Component {
             loading: true
         };
     }
-    
+
     async loadData() {
         try {
             const res = await BlogApi.getCategories();
@@ -361,7 +361,7 @@ class BlogCategoryPage extends Component {
             this.setState({ loading: false });
         }
     }
-    
+
     showAddModal() {
         Modal.show({
             title: '添加分类',
@@ -386,18 +386,18 @@ class BlogCategoryPage extends Component {
                 <button class="btn btn-primary" id="saveCategory">保存</button>
             `
         });
-        
+
         document.getElementById('saveCategory')?.addEventListener('click', async () => {
             const form = document.getElementById('categoryForm');
             const name = form.name.value.trim();
             const slug = form.slug.value.trim() || name.toLowerCase().replace(/\s+/g, '-');
             const description = form.description.value.trim();
-            
+
             if (!name) {
                 Toast.error('请输入分类名称');
                 return;
             }
-            
+
             try {
                 await BlogApi.createCategory({ name, slug, description });
                 Toast.success('添加成功');
@@ -408,14 +408,14 @@ class BlogCategoryPage extends Component {
             }
         });
     }
-    
+
     render() {
         const { categories, loading } = this.state;
-        
+
         if (loading) {
             return '<div class="loading"></div>';
         }
-        
+
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
@@ -466,16 +466,16 @@ class BlogCategoryPage extends Component {
             </div>
         `;
     }
-    
+
     afterMount() {
         this.loadData();
         this.bindEvents();
     }
-    
+
     afterUpdate() {
         this.bindEvents();
     }
-    
+
     bindEvents() {
         // 添加分类按钮
         const addBtn = this.$('#addCategory');
@@ -483,7 +483,7 @@ class BlogCategoryPage extends Component {
             addBtn._bindedCategory = true;
             addBtn.addEventListener('click', () => this.showAddModal());
         }
-        
+
         // 删除按钮使用事件委托
         if (this.container && !this.container._bindedCategoryDelete) {
             this.container._bindedCategoryDelete = true;
@@ -556,8 +556,7 @@ class BlogViewPage extends Component {
                         </p>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-secondary" id="backBlog">返回</button>
-                        <button class="btn btn-primary" id="editBlog">编辑</button>
+                        <button class="btn btn-primary" id="editBlog">编辑文章</button>
                     </div>
                 </div>
 

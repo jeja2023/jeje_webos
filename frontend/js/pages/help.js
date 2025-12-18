@@ -482,10 +482,10 @@ class HelpPage extends Component {
             
             <h4>📝 核心功能</h4>
             <ul>
-                <li><strong>笔记编辑</strong> - 支持 Markdown 语法、代码高亮、实时预览</li>
-                <li><strong>文件夹</strong> - 创建多层级文件夹来整理笔记</li>
-                <li><strong>标签</strong> - 为笔记添加标签，方便交叉索引</li>
-                <li><strong>收藏</strong> - 将常用笔记标记为星标，在「我的收藏」中快速访问</li>
+                <li><strong>新建笔记与文件夹</strong> - 位于页面头部右侧的操作按钮，可快速创建内容。</li>
+                <li><strong>高效导航</strong> - 左侧边栏集成「所有笔记」、「我的收藏」与「标签管理」，下方显示文件夹目录树。</li>
+                <li><strong>Markdown 编辑</strong> - 支持语法高亮与实时预览，支持自动保存。</li>
+                <li><strong>文件夹列表</strong> - 支持多级目录整理，通过右键或头部按钮管理文件夹。</li>
             </ul>
         `;
     }
