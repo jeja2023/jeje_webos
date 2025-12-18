@@ -12,16 +12,16 @@ const Spotlight = {
 
     // 预定义的系统设置索引
     settingsIndex: [
-        { title: '系统设置', desc: '主题、安全策略、全局配置', icon: '⚙️', path: '/system' },
+        { title: '系统设置', desc: '主题、安全策略、全局配置', icon: '⚙️', path: '/system/settings' },
         { title: '用户管理', desc: '添加用户、重置密码、角色管理', icon: '👥', path: '/users/list', permission: 'admin' },
         { title: '添加用户', desc: '快速创建新用户账户', icon: '➕', action: 'createUser', permission: 'admin' },
         { title: '个人资料', desc: '修改昵称、头像', icon: '👤', action: 'profile' },
         { title: '修改密码', desc: '修改当前登录密码', icon: '🔐', action: 'changePassword' },
         { title: '文件管理', desc: '浏览、上传、下载文件', icon: '📁', path: '/filemanager' },
-        { title: '应用中心', desc: '安装、管理应用模块', icon: 'qy', path: '/market' },
-        { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/market' },
+        { title: '应用中心', desc: '安装、管理应用模块', icon: 'qy', path: '/apps' },
+        { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/apps' },
         { title: '待审核用户', desc: '查看等待审核的新注册用户', icon: '⏳', path: '/users/pending', permission: 'admin' },
-        { title: '系统监控', desc: '查看系统运行状态', icon: '📊', path: '/system' },
+        { title: '系统监控', desc: '查看系统运行状态', icon: '📊', path: '/system/monitor' },
         { title: '关于系统', desc: '查看版本信息', icon: 'ℹ️', action: 'about' }
     ],
 
