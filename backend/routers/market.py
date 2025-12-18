@@ -1,0 +1,234 @@
+"""
+应用市场路由
+处理模块的在线/离线安装、卸载和列表
+"""
+
+import os
+import shutil
+import zipfile
+import tempfile
+import logging
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy.ext.asyncio import AsyncSession
+from pathlib import Path
+
+from core.database import get_db
+from core.security import TokenData, require_admin, get_current_user
+from core.loader import get_module_loader, CORE_MODULES, SYSTEM_MODULES
+from core.config import get_settings
+from schemas import success
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+router = APIRouter(prefix="/api/v1/system/market", tags=["应用市场"])
+
+@router.get("/list")
+async def list_market_modules(
+    current_user: TokenData = Depends(get_current_user)
+):
+    """获取所有模块列表（及安装状态）"""
+    loader = get_module_loader()
+    if not loader:
+        return success([])
+    
+    market_list = []
+    # 扫描磁盘上的所有模块
+    module_ids = loader.scan_modules()
+    
+    for mid in module_ids:
+        # 如果已加载，直接用内存中的清单，否则加载清单获取信息
+        loaded = loader.modules.get(mid)
+        if loaded:
+            manifest = loaded.manifest
+        else:
+            manifest = loader.load_manifest(mid)
+            
+        if not manifest:
+            continue
+        
+        # 过滤核心模块
+        if mid in CORE_MODULES:
+            continue
+            
+        state = loader.get_module_state(mid)
+        is_installed = state is not None
+        
+        market_list.append({
+            "id": mid,
+            "name": manifest.name,
+            "description": manifest.description,
+            "icon": manifest.icon,
+            "version": manifest.version,
+            "author": manifest.author,
+            "installed": is_installed,
+            "enabled": state.enabled if state else False,
+            "isSystem": mid in SYSTEM_MODULES
+        })
+        
+    return success(market_list)
+
+@router.post("/install/{module_id}")
+async def install_module(
+    module_id: str,
+    current_user: TokenData = Depends(require_admin())
+):
+    """安装模块（标记为已安装并运行初始化钩子）"""
+    loader = get_module_loader()
+    if not loader:
+        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+        
+    try:
+        success_flag = await loader.install_module(module_id)
+        if success_flag:
+            return success(None, f"模块 {module_id} 安装成功")
+        else:
+            raise HTTPException(status_code=400, detail="安装失败，可能模块已安装或不存在")
+    except Exception as e:
+        logger.error(f"安装模块失败 {module_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"安装异常: {str(e)}")
+
+@router.post("/uninstall/{module_id}")
+async def uninstall_module(
+    module_id: str,
+    current_user: TokenData = Depends(require_admin())
+):
+    """卸载模块（从状态列表中移除，但不删除代码）"""
+    loader = get_module_loader()
+    if not loader:
+        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+        
+    try:
+        success_flag = await loader.uninstall_module(module_id)
+        if success_flag:
+            return success(None, f"模块 {module_id} 卸载成功")
+        else:
+            raise HTTPException(status_code=400, detail="卸载未成功")
+    except Exception as e:
+        logger.error(f"卸载模块失败 {module_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"卸载异常: {str(e)}")
+
+@router.post("/upload")
+async def upload_package(
+    file: UploadFile = File(...),
+    force: bool = False,
+    current_user: TokenData = Depends(require_admin())
+):
+    """
+    通过 .jwapp 离线包上传模块
+    1. 接收 zip 文件
+    2. 校验文件结构
+    3. 解压到 modules 目录
+    注意：上传后模块处于"待安装"状态，需要管理员在应用市场中手动安装
+    
+    Args:
+        file: 上传的 .jwapp 或 .zip 文件
+        force: 是否强制覆盖已存在的模块（默认 False）
+    """
+    if not file.filename.endswith(('.jwapp', '.zip')):
+        raise HTTPException(status_code=400, detail="无效的文件格式，仅支持 .jwapp 或 .zip")
+    
+    # 模块存放路径
+    modules_dir = Path(settings.modules_dir)
+    if not modules_dir.is_absolute():
+        modules_dir = Path(__file__).parent.parent / settings.modules_dir
+
+    temp_dir = Path(tempfile.mkdtemp())
+    try:
+        # 1. 保存临时文件
+        temp_zip = temp_dir / file.filename
+        with open(temp_zip, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # 2. 预检查 zip 内容
+        with zipfile.ZipFile(temp_zip, 'r') as zf:
+            namelist = zf.namelist()
+            # 找到根目录（通常是模块ID）
+            root_dirs = set()
+            for name in namelist:
+                parts = Path(name).parts
+                if parts:
+                    root_dirs.add(parts[0])
+            
+            if len(root_dirs) != 1:
+                raise HTTPException(status_code=400, detail="离线包结构不规范：必须包含且仅包含一个根目录（模块ID）")
+            
+            module_id = list(root_dirs)[0]
+            
+            # 校验核心结构：必须有 {module_id}_manifest.py
+            manifest_file = f"{module_id}/{module_id}_manifest.py"
+            if manifest_file not in namelist:
+                # 尝试检查没有父目录的情况（虽然规范是带父目录）
+                if f"{module_id}_manifest.py" in namelist:
+                    # 这说明 zip 直接把文件打包在根了，不支持这种，必须带一层文件夹
+                    raise HTTPException(status_code=400, detail=f"离线包结构不规范：应为 {module_id}/ 文件夹结构")
+                raise HTTPException(status_code=400, detail=f"离线包缺少清单文件: {manifest_file}")
+
+            # 3. 解压到临时目录后再移动
+            extract_path = temp_dir / "extract"
+            zf.extractall(extract_path)
+            
+            target_module_path = modules_dir / module_id
+            
+            # 如果模块已存在，检查是否强制覆盖
+            is_overwrite = target_module_path.exists()
+            if is_overwrite:
+                if not force:
+                    # 读取已存在模块的信息
+                    loader = get_module_loader()
+                    existing_manifest = loader.load_manifest(module_id) if loader else None
+                    existing_name = existing_manifest.name if existing_manifest else module_id
+                    existing_version = existing_manifest.version if existing_manifest else "未知"
+                    
+                    # 返回 409 Conflict，让前端弹窗确认
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "message": f"模块 \"{existing_name}\" 已存在，是否覆盖？",
+                            "module_id": module_id,
+                            "module_name": existing_name,
+                            "existing_version": existing_version
+                        }
+                    )
+                
+                logger.warning(f"模块 {module_id} 已存在，强制覆盖...")
+                shutil.rmtree(target_module_path)
+            
+            # 4. 移动到正式目录
+            shutil.move(str(extract_path / module_id), str(modules_dir))
+            
+            # 5. 清除导入缓存，确保后续能识别新模块
+            import importlib
+            importlib.invalidate_caches()
+            
+            # 读取模块清单获取名称（用于前端显示）
+            loader = get_module_loader()
+            manifest = loader.load_manifest(module_id) if loader else None
+            module_name = manifest.name if manifest else module_id
+            
+            logger.info(f"离线包解压成功: {module_id} ({module_name})")
+            
+            # 返回成功，提示用户去应用市场安装
+            msg = f"模块 \"{module_name}\" 已上传成功！请在「应用市场」中点击安装，然后在「应用管理」中启用。"
+            if is_overwrite:
+                msg = f"模块 \"{module_name}\" 已覆盖更新！请在「应用市场」中重新安装。"
+            
+            return success({
+                "module_id": module_id,
+                "module_name": module_name,
+                "is_overwrite": is_overwrite
+            }, msg)
+
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="压缩包损坏")
+    except HTTPException:
+        # 让 HTTPException（如 409 冲突）正确传递
+        raise
+    except Exception as e:
+        logger.error(f"离线包上传失败: {e}")
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+    finally:
+        # 清理临时文件
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)

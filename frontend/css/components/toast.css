@@ -53,3 +53,22 @@
         transform: translateX(0);
     }
 }
+
+/* Loading 类型 Toast */
+.toast.loading {
+    border-left: 4px solid var(--color-primary);
+}
+
+.toast-icon.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

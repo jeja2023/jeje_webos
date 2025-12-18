@@ -176,7 +176,20 @@ const Api = {
             body
         });
 
-        return response.json();
+        const data = await response.json();
+
+        // 对于 409 冲突，返回包含状态码的响应，让调用方处理
+        if (response.status === 409) {
+            return { status: 409, ...data };
+        }
+
+        // 其他非 200 状态，抛出错误
+        if (!response.ok && response.status !== 409) {
+            const errorMsg = data.detail?.message || data.detail || data.message || '上传失败';
+            throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+        }
+
+        return data;
     },
 
     /**
@@ -241,6 +254,21 @@ const SystemApi = {
     getAuditLogs: (params) => Api.get('/audit', params),
     createModule: (data) => Api.post('/system/modules', data),
     deleteModule: (id, params) => Api.delete(`/system/modules/${id}` + (params ? '?' + new URLSearchParams(params).toString() : ''))
+};
+
+const MarketApi = {
+    list: () => Api.get('/system/market/list'),
+    install: (id) => Api.post(`/system/market/install/${id}`),
+    uninstall: (id) => Api.post(`/system/market/uninstall/${id}`),
+    /**
+     * 上传离线包
+     * @param {File} file - 要上传的文件
+     * @param {boolean} force - 是否强制覆盖已存在的模块
+     */
+    upload: (file, force = false) => {
+        const url = force ? '/system/market/upload?force=true' : '/system/market/upload';
+        return Api.upload(url, file);
+    }
 };
 
 const BlogApi = {
@@ -428,4 +456,5 @@ window.I18nApi = I18nApi;
 window.AnnouncementApi = AnnouncementApi;
 window.GroupApi = GroupApi;
 window.RoleApi = RoleApi;
+window.MarketApi = MarketApi;
 

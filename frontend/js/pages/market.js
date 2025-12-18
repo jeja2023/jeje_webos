@@ -101,7 +101,7 @@ class AppCenterMarketPage extends Component {
 
     async savePinnedApps(apps) {
         console.log('[Market] 保存固定应用:', apps);
-        
+
         // 1. 更新本地状态（乐观更新 UI）
         localStorage.setItem('jeje_pinned_apps', JSON.stringify(apps));
         Store.set('pinnedApps', apps);
@@ -116,13 +116,13 @@ class AppCenterMarketPage extends Component {
                     const res = await UserApi.updateProfile({
                         settings: { dock_pinned_apps: apps }
                     });
-                    
+
                     console.log('[Market] 更新响应:', res);
-                    
+
                     // 后端返回格式: {code: 200, message: "success", data: {...}}
                     // 使用 res.data 获取实际数据（兼容 res.data || res）
                     const updatedUser = res.data || res;
-                    
+
                     if (updatedUser) {
                         console.log('[Market] 更新后的用户数据:', updatedUser);
                         // 确保 settings 存在
@@ -132,8 +132,8 @@ class AppCenterMarketPage extends Component {
                             finalSettings.dock_pinned_apps = apps;
                         }
                         // 使用后端返回的数据更新 Store（确保数据一致性）
-                        const finalUser = { 
-                            ...user, 
+                        const finalUser = {
+                            ...user,
                             ...updatedUser,
                             settings: finalSettings
                         };
@@ -496,13 +496,18 @@ class AppCenterMarketPage extends Component {
                 <div class="wrapper" style="margin-bottom: 24px;">
                      <div class="btn-group">
                          <button class="btn btn-primary" data-action="create-app">
-                             <span class="icon">➕</span> 一键创建应用
+                             <span class="icon">➕</span> 创建应用
+                         </button>
+                         <button class="btn btn-secondary" data-action="upload-app" title="上传 .jwapp 离线包安装">
+                             <span class="icon">📦</span> 离线安装
                          </button>
                          <button class="btn btn-danger" data-action="delete-app">
-                             <span class="icon">🗑️</span> 一键删除应用
+                             <span class="icon">🗑️</span> 删除应用
                          </button>
                      </div>
+                     <input type="file" id="jwappPackageInput" accept=".jwapp,.zip" style="display:none;">
                 </div>
+
 
                 <!-- Documentation -->
                 <div class="dev-grid">
@@ -718,7 +723,88 @@ class AppCenterMarketPage extends Component {
         }).show();
     }
 
+    async handleUploadPackage() {
+        // 触发文件选择
+        const input = document.getElementById('jwappPackageInput');
+        if (!input) return;
+
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            await this._doUploadPackage(file, false);
+            input.value = ''; // 清空选择
+        };
+
+        input.click();
+    }
+
+    /**
+     * 执行上传离线包
+     * @param {File} file - 要上传的文件
+     * @param {boolean} force - 是否强制覆盖
+     */
+    async _doUploadPackage(file, force = false) {
+        const loading = Toast.loading('正在上传离线包...');
+        try {
+            const res = await MarketApi.upload(file, force);
+            loading.close();
+
+            console.log('[Market] 上传响应:', res);
+
+            // 检查是否是 409 冲突响应（已存在的模块）
+            if (res.status === 409) {
+                const detail = res.detail || {};
+                const moduleName = detail.module_name || detail.module_id || '未知';
+                const existingVersion = detail.existing_version || '未知';
+
+                const confirmed = await Modal.confirm('模块已存在', `
+                    <div style="line-height: 1.6;">
+                        <p>模块 <strong>${moduleName}</strong> 已存在于系统中。</p>
+                        <p style="margin-top: 8px; color: var(--color-text-secondary);">当前版本: ${existingVersion}</p>
+                        <p style="margin-top: 12px;">是否要覆盖现有模块？</p>
+                    </div>
+                `);
+
+                if (confirmed) {
+                    // 用户确认覆盖，带 force=true 重新上传
+                    await this._doUploadPackage(file, true);
+                }
+                return;
+            }
+
+            // 上传成功
+            const moduleName = res.data?.module_name || res.data?.module_id || '未知';
+            const isOverwrite = res.data?.is_overwrite;
+
+            console.log('[Market] 上传成功:', moduleName, '覆盖:', isOverwrite);
+
+            // 显示成功提示
+            Toast.success(isOverwrite ? `模块 "${moduleName}" 已覆盖更新！` : `模块 "${moduleName}" 上传成功！`);
+
+            await Modal.alert('上传成功', `
+                <div class="alert alert-success" style="background: rgba(52,199,89,0.1); color: #34c759; padding: 16px; border-radius: 8px;">
+                    <p>模块 <strong>${moduleName}</strong> ${isOverwrite ? '已覆盖更新' : '已上传成功'}！</p>
+                    <p style="margin-top:10px;">接下来请：</p>
+                    <ol style="margin: 10px 0 0 20px;">
+                        <li>进入「<strong>应用市场</strong>」，找到该模块并点击「<strong>安装</strong>」</li>
+                        <li>安装后进入「<strong>应用管理</strong>」，开启该模块</li>
+                        <li>刷新浏览器页面</li>
+                    </ol>
+                </div>
+            `);
+
+            // 刷新市场数据
+            this.loadMarketData();
+        } catch (err) {
+            loading.close();
+            console.error('[Market] 上传失败:', err);
+            Toast.error(err.message || '离线包上传失败');
+        }
+    }
+
     render() {
+
         const { loading, view } = this.state;
         if (loading) return '<div class="loading"></div>';
 
@@ -976,7 +1062,7 @@ class AppCenterMarketPage extends Component {
                 e.stopPropagation();
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                
+
                 const moduleId = t.dataset.pinApp;
                 if (moduleId) {
                     await this.togglePinApp(moduleId);
@@ -1019,6 +1105,9 @@ class AppCenterMarketPage extends Component {
             this.delegate('click', '[data-action="delete-app"]', (e) => {
                 this.handleDeleteApp();
             });
+            this.delegate('click', '[data-action="upload-app"]', (e) => {
+                this.handleUploadPackage();
+            });
 
             // Toggle Module
             this.delegate('change', '[data-toggle]', (e, t) => {
@@ -1036,7 +1125,7 @@ class AppCenterMarketPage extends Component {
                 if (e.target.closest('[data-pin-app]') || e.target.closest('.pin-btn')) {
                     return;
                 }
-                
+
                 e.stopPropagation();
                 // 如果是 popup item，关闭所有 popup
                 if (t.classList.contains('app-popup-item')) {
@@ -1055,7 +1144,7 @@ class AppCenterMarketPage extends Component {
                 if (e.target.closest('[data-pin-app]') || e.target.closest('.pin-btn')) {
                     return;
                 }
-                
+
                 e.stopPropagation();
                 const id = t.dataset.togglePopup;
                 this.togglePopup(id);

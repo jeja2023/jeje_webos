@@ -4,7 +4,7 @@
 
 const Toast = {
     container: null,
-    
+
     /**
      * 初始化容器
      */
@@ -15,13 +15,13 @@ const Toast = {
             document.body.appendChild(this.container);
         }
     },
-    
+
     /**
      * 显示消息
      */
     show(message, type = 'info', duration = 3000) {
         this.init();
-        
+
         const id = Utils.uniqueId('toast-');
         const icons = {
             success: '✓',
@@ -29,18 +29,18 @@ const Toast = {
             warning: '⚠',
             info: 'ℹ'
         };
-        
+
         const html = `
             <div class="toast ${type}" id="${id}">
                 <span class="toast-icon">${icons[type]}</span>
                 <span class="toast-message">${Utils.escapeHtml(message)}</span>
             </div>
         `;
-        
+
         this.container.insertAdjacentHTML('beforeend', html);
-        
+
         const toast = document.getElementById(id);
-        
+
         // 自动关闭
         if (duration > 0) {
             setTimeout(() => {
@@ -49,44 +49,79 @@ const Toast = {
                 setTimeout(() => toast.remove(), 300);
             }, duration);
         }
-        
+
         // 点击关闭
         toast.addEventListener('click', () => {
             toast.style.opacity = '0';
             setTimeout(() => toast.remove(), 300);
         });
-        
+
         return id;
     },
-    
+
     /**
      * 成功消息
      */
     success(message, duration) {
         return this.show(message, 'success', duration);
     },
-    
+
     /**
      * 错误消息
      */
     error(message, duration) {
         return this.show(message, 'error', duration);
     },
-    
+
     /**
      * 警告消息
      */
     warning(message, duration) {
         return this.show(message, 'warning', duration);
     },
-    
+
     /**
      * 信息消息
      */
     info(message, duration) {
         return this.show(message, 'info', duration);
     },
-    
+
+    /**
+     * 加载中提示（需手动关闭）
+     * @param {string} message - 提示信息
+     * @returns {{ close: Function }} 返回包含 close 方法的对象
+     */
+    loading(message = '加载中...') {
+        this.init();
+
+        const id = Utils.uniqueId('toast-');
+        const html = `
+            <div class="toast loading" id="${id}">
+                <span class="toast-icon spinner">⟳</span>
+                <span class="toast-message">${Utils.escapeHtml(message)}</span>
+            </div>
+        `;
+
+        this.container.insertAdjacentHTML('beforeend', html);
+        const toast = document.getElementById(id);
+
+        return {
+            close: () => {
+                if (toast) {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            },
+            // 更新消息文本
+            update: (newMessage) => {
+                const msgEl = toast?.querySelector('.toast-message');
+                if (msgEl) msgEl.textContent = newMessage;
+            }
+        };
+    },
+
     /**
      * 清除所有消息
      */
