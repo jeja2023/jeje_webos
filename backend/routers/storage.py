@@ -199,10 +199,6 @@ async def download_file(
     # 验证 Token
     current_user = get_user_from_token(token)
 
-    # 权限检查
-    if not (current_user.permissions and ("*" in current_user.permissions or "storage.download" in current_user.permissions)):
-        raise HTTPException(status_code=403, detail="无权下载文件")
-    
     # 查询文件记录
     result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
     file_record = result.scalar_one_or_none()
@@ -210,6 +206,19 @@ async def download_file(
     if not file_record:
         raise HTTPException(status_code=404, detail="文件不存在")
     
+    # 权限检查
+    # 1. 管理员可以直接访问
+    is_admin = current_user.role in ("admin", "manager")
+    # 2. 上传者本人可以直接访问
+    is_owner = file_record.uploader_id == current_user.user_id
+    # 3. 头像文件对所有登录用户可见
+    is_avatar = file_record.category == "avatar"
+    # 4. 拥有 storage.download 权限的用户
+    has_perm = current_user.permissions and ("*" in current_user.permissions or "storage.download" in current_user.permissions)
+
+    if not (is_admin or is_owner or is_avatar or has_perm):
+        raise HTTPException(status_code=403, detail="无权下载文件")
+
     # 获取文件路径
     storage = get_storage_manager()
     file_path = storage.get_file_path(file_record.storage_path)

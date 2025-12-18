@@ -321,7 +321,7 @@ const Spotlight = {
                 break;
             case 'about':
                 // 触发 Topbar 的关于弹窗
-                const brand = document.querySelector('.navbar-brand');
+                const brand = document.querySelector('#brandPill');
                 if (brand) brand.click();
                 break;
         }
