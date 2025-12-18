@@ -255,11 +255,220 @@ class ProfilePage extends Component {
         }
     }
 
+    showCropModal(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageUrl = e.target.result;
+
+            // 裁剪状态
+            const state = {
+                scale: 1,
+                x: 0,
+                y: 0,
+                isDragging: false,
+                startX: 0,
+                startY: 0,
+                initialX: 0,
+                initialY: 0
+            };
+
+            const content = `
+                <div class="crop-container" style="display: flex; flex-direction: column; align-items: center; gap: 16px; user-select: none;">
+                    <div class="crop-viewport" style="
+                        width: 250px; 
+                        height: 250px; 
+                        border-radius: 50%;
+                        border: 2px solid var(--color-accent);
+                        overflow: hidden; 
+                        position: relative; 
+                        background: #111;
+                        cursor: grab;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                        /* 增加棋盘格背景表示透明 */
+                        background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+                        background-size: 20px 20px;
+                        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+                    ">
+                        <img id="cropImage" src="${imageUrl}" style="
+                            position: absolute; 
+                            top: 0; 
+                            left: 0; 
+                            transform-origin: 0 0; 
+                            will-change: transform;
+                            pointer-events: none;
+                            max-width: none;
+                        " draggable="false">
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; width: 100%; gap: 12px; padding: 0 20px;">
+                        <span style="font-size: 14px;">➖</span>
+                        <input type="range" id="cropZoom" min="0.1" max="5" step="0.05" value="1" style="flex: 1; cursor: pointer;">
+                        <span style="font-size: 14px;">➕</span>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; width: 100%; margin-top: 8px;">
+                        <button class="btn btn-secondary" style="flex: 1;" data-close>取消</button>
+                        <button class="btn btn-primary" style="flex: 1;" id="cropConfirmBtn">确认并上传</button>
+                    </div>
+                </div>
+            `;
+
+            // 事件清理函数引用
+            let cleanupEvents = null;
+
+            const modal = Modal.show({
+                title: '调整头像',
+                content,
+                footer: false, // 自定义底部
+                width: '360px',
+                onCancel: () => {
+                    if (cleanupEvents) cleanupEvents();
+                }
+            });
+
+            const overlay = modal.overlay;
+            const img = overlay.querySelector('#cropImage');
+            const viewport = overlay.querySelector('.crop-viewport');
+            const zoomInput = overlay.querySelector('#cropZoom');
+            const confirmBtn = overlay.querySelector('#cropConfirmBtn');
+
+            // 更新变换
+            const updateTransform = () => {
+                img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+            };
+
+            // 初始化图片位置（居中适应）
+            const initImage = () => {
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                if (!w || !h) return;
+
+                // 初始适应：短边填满250px
+                const s = Math.max(250 / w, 250 / h);
+                state.scale = s;
+                state.x = (250 - w * s) / 2;
+                state.y = (250 - h * s) / 2;
+
+                zoomInput.value = s;
+                updateTransform();
+            };
+
+            if (img.complete) {
+                initImage();
+            } else {
+                img.onload = initImage;
+            }
+
+            // 缩放控制
+            zoomInput.oninput = (e) => {
+                const newScale = parseFloat(e.target.value);
+                if (newScale <= 0) return;
+
+                // 以视口中心为基准缩放
+                // 中心点在图片上的相对坐标: cx, cy
+                // 125 = state.x + cx * state.scale  =>  cx = (125 - state.x) / state.scale
+                const cx = (125 - state.x) / state.scale;
+                const cy = (125 - state.y) / state.scale;
+
+                state.scale = newScale;
+                // 新位置: 125 - cx * newScale
+                state.x = 125 - cx * newScale;
+                state.y = 125 - cy * newScale;
+
+                updateTransform();
+            };
+
+            // 拖拽逻辑
+            const onMouseDown = (e) => {
+                state.isDragging = true;
+                state.startX = e.clientX;
+                state.startY = e.clientY;
+                state.initialX = state.x;
+                state.initialY = state.y;
+                viewport.style.cursor = 'grabbing';
+            };
+
+            const onMouseMove = (e) => {
+                if (!state.isDragging) return;
+                e.preventDefault();
+                const dx = e.clientX - state.startX;
+                const dy = e.clientY - state.startY;
+                state.x = state.initialX + dx;
+                state.y = state.initialY + dy;
+                updateTransform();
+            };
+
+            const onMouseUp = () => {
+                state.isDragging = false;
+                viewport.style.cursor = 'grab';
+            };
+
+            // 绑定事件
+            viewport.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+
+            cleanupEvents = () => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+
+            // 确认上传
+            confirmBtn.onclick = async () => {
+                confirmBtn.disabled = true;
+                confirmBtn.innerText = '正在处理...';
+
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 250;
+                    canvas.height = 250;
+                    const ctx = canvas.getContext('2d');
+
+                    // 填充白色背景（避免透明图变成黑色）
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, 250, 250);
+
+                    // 绘制变换后的图片
+                    ctx.translate(state.x, state.y);
+                    ctx.scale(state.scale, state.scale);
+                    ctx.drawImage(img, 0, 0);
+
+                    // 导出并上传
+                    canvas.toBlob(async (blob) => {
+                        if (blob) {
+                            // 调用现有的上传方法
+                            // 构造一个新的 File 对象
+                            const newFile = new File([blob], file.name || 'avatar.png', { type: file.type || 'image/png' });
+
+                            // 移除事件监听
+                            cleanupEvents();
+
+                            // 执行上传
+                            await this.uploadAvatar(newFile);
+
+                            // 关闭弹窗
+                            modal.close();
+                        } else {
+                            throw new Error('Canvas 导出失败');
+                        }
+                    }, file.type || 'image/png', 0.9);
+
+                } catch (err) {
+                    console.error(err);
+                    Toast.error('裁切失败: ' + err.message);
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerText = '确认并上传';
+                }
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+
     bindEvents() {
         if (this.container && !this.container._bindedProfile) {
             this.container._bindedProfile = true;
 
-            // 头像上传
+            // 头像上传触发
             this.delegate('click', '#avatarUploadTrigger', () => {
                 this.$('#avatarInput')?.click();
             });
@@ -268,7 +477,8 @@ class ProfilePage extends Component {
             if (avatarInput) {
                 avatarInput.addEventListener('change', (e) => {
                     if (e.target.files.length > 0) {
-                        this.uploadAvatar(e.target.files[0]);
+                        // 改为调用裁剪弹窗
+                        this.showCropModal(e.target.files[0]);
                         // 清空 input，允许重复选择同一文件
                         e.target.value = '';
                     }
