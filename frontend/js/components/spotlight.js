@@ -156,13 +156,8 @@ const Spotlight = {
         results = [...results, ...settingsMatches];
 
         // 3. 搜索文件 (调用后端 API)
-        // 只有当关键词长度 > 1 时才搜索文件，避免请求过多
         if (keyword.length > 1) {
             try {
-                // 假设 Api.getFileList 支持 keyword 参数
-                // 这里需要确认 Api 是否有 searchFiles 或者 use list?keyword
-                // 暂时模拟，或者如果 Api.js 没有暴露 searchFiles，则跳过或添加 TODO
-                // 根据之前的分析，Api.js 中没有直接暴露 search 文件的方法，但 storage list 支持 keyword
                 const res = await Api.get('/storage/list', {
                     keyword: keyword,
                     page: 1,
@@ -320,9 +315,14 @@ const Spotlight = {
                 Router.push('/profile/password');
                 break;
             case 'about':
-                // 触发 Topbar 的关于弹窗
-                const brand = document.querySelector('#brandPill');
-                if (brand) brand.click();
+                // 直接调用 TopBar 的关于弹窗方法
+                if (window.App && App.topbar && typeof App.topbar.showAboutModal === 'function') {
+                    App.topbar.showAboutModal();
+                } else {
+                    // 降级处理：如果 TopBar 实例不可用，尝试 DOM 点击
+                    const brand = document.querySelector('#brandPill');
+                    if (brand) brand.click();
+                }
                 break;
         }
     }

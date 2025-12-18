@@ -101,7 +101,6 @@ class SystemSettingsPage extends Component {
     }
 
     afterMount() {
-        console.log('SystemSettingsPage: afterMount called');
         this.loadData();
         this.bindGlobalEvents();
     }
@@ -111,23 +110,16 @@ class SystemSettingsPage extends Component {
     }
 
     bindGlobalEvents() {
-        console.log('SystemSettingsPage: bindGlobalEvents called');
-
         // 使用一个统一的 click 事件处理器
         if (!this._clickHandler) {
-            console.log('SystemSettingsPage: creating click handler');
             this._clickHandler = (e) => {
                 const target = e.target;
                 if (!target) return;
-
-                // 调试：记录所有点击的元素
-                console.log('Click detected:', target.tagName, target.id, target.className, 'text:', target.textContent?.substring(0, 20));
 
                 // 保存按钮 - 检查按钮文本
                 if (target.id === 'saveSettings' ||
                     target.closest('#saveSettings') ||
                     (target.tagName === 'BUTTON' && target.textContent?.includes('保存'))) {
-                    console.log('SystemSettingsPage: save button clicked');
                     e.preventDefault();
                     this.handleSave();
                     return;
@@ -135,7 +127,6 @@ class SystemSettingsPage extends Component {
 
                 // 刷新按钮
                 if (target.id === 'reloadSettings' || target.closest('#reloadSettings')) {
-                    console.log('SystemSettingsPage: reload button clicked');
                     this.loadData();
                 }
             };
@@ -175,11 +166,8 @@ class SystemSettingsPage extends Component {
         this.setState({ saving: true });
         try {
             const result = await SystemApi.updateSettings(payload);
-            console.log('保存结果:', result);
             Toast.success('保存成功');
-            console.log('应用主题:', payload.theme_mode);
             Store.setTheme(payload.theme_mode);
-            console.log('当前 HTML 类:', document.documentElement.className);
             this.loadData();
         } catch (err) {
             console.error('保存失败:', err);

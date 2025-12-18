@@ -1,0 +1,270 @@
+/**
+ * 移动端全局适配样式
+ * 通过媒体查询增强各核心组件在小屏幕上的体验
+ */
+
+/* ===== 基础移动端适配 ===== */
+@media (max-width: 768px) {
+
+    /* 禁用桌面端的悬停效果，改用触摸友好的交互 */
+    * {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* 确保视口正确处理软键盘 */
+    html {
+        height: 100%;
+        height: -webkit-fill-available;
+    }
+
+    body {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+    }
+
+    /* ===== 全局按钮触摸优化 ===== */
+    .btn {
+        min-height: 44px;
+        /* iOS 推荐的最小触摸目标 */
+        padding: 12px 16px;
+    }
+
+    .btn-sm {
+        min-height: 36px;
+        padding: 8px 12px;
+    }
+
+    /* ===== 表单控件优化 ===== */
+    .form-input,
+    .form-select,
+    .form-textarea {
+        font-size: 16px;
+        /* 防止 iOS 自动缩放 */
+        min-height: 44px;
+        padding: 12px;
+    }
+
+    /* ===== 表格移动端适配 ===== */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 600px;
+        /* 确保表格内容不被压缩 */
+    }
+
+    /* 简化表格显示：隐藏次要列 */
+    .table .hide-mobile {
+        display: none !important;
+    }
+
+    /* ===== 卡片布局适配 ===== */
+    .card {
+        margin-bottom: 12px;
+        border-radius: 12px !important;
+    }
+
+    .card-header {
+        padding: 12px 16px;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    /* ===== 模态框全屏适配 ===== */
+    .modal-content {
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: inherit;
+    }
+
+    .modal-body {
+        padding: 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background: inherit;
+        padding: 12px 16px;
+        border-top: 1px solid var(--color-border-light);
+    }
+
+    /* ===== 分页组件适配 ===== */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .pagination .page-btn {
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    /* ===== Toast 位置调整 ===== */
+    .toast-container {
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 80px !important;
+        /* 避开 Dock */
+        transform: none !important;
+    }
+
+    .toast {
+        width: 100%;
+        max-width: none;
+    }
+
+    /* ===== Spotlight 搜索框适配 ===== */
+    .spotlight-overlay .spotlight-container {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 10% auto 0 !important;
+    }
+
+    .spotlight-input {
+        font-size: 18px !important;
+        padding: 16px !important;
+    }
+
+    .spotlight-results {
+        max-height: 50vh !important;
+    }
+}
+
+/* ===== 超小屏幕（手机竖屏）适配 ===== */
+@media (max-width: 480px) {
+
+    /* 进一步简化 UI */
+    .page-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
+    /* 按钮组垂直排列 */
+    .btn-group,
+    .action-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn,
+    .action-buttons .btn {
+        width: 100%;
+    }
+
+    /* 隐藏非关键信息 */
+    .hide-xs {
+        display: none !important;
+    }
+
+    /* 网格布局调整 */
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ===== 平板横屏适配 ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+    /* 中等屏幕的窗口大小调整 */
+    .window-container:not(.maximized) {
+        width: 85% !important;
+        max-width: 900px;
+    }
+}
+
+/* ===== 触摸设备检测 ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* 触摸设备特定优化 */
+
+    /* 禁用 hover 状态的 transform 效果 */
+    .dock-item:hover,
+    .btn:hover,
+    .card:hover {
+        transform: none;
+    }
+
+    /* 增加可点击区域 */
+    .clickable,
+    [role="button"],
+    [onclick] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* 为列表项添加触摸反馈 */
+    .list-item:active,
+    .menu-item:active,
+    .msg-item:active {
+        background: rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* ===== 安全区域适配（iPhone X 及以上） ===== */
+@supports (padding: max(0px)) {
+    @media (max-width: 768px) {
+        .dock-container {
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+
+        .window-body {
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+
+        .modal-footer {
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+    }
+}
+
+/* ===== 横屏移动设备适配 ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+
+    /* 横屏时隐藏桌面小部件 */
+    .desktop-widgets {
+        display: none;
+    }
+
+    /* 缩小 Dock */
+    .dock {
+        padding: 6px 12px;
+    }
+
+    .dock-item {
+        width: 40px;
+        height: 40px;
+    }
+
+    .dock-icon {
+        font-size: 20px;
+    }
+
+    /* 窗口标题栏缩小 */
+    .window-header {
+        height: 36px;
+        min-height: 36px;
+    }
+}

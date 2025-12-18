@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.3-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/Version-2.0.4-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -260,8 +260,8 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
 
-### 最新版本 v2.0.3 (2025-12-18)
-- 🏪 **应用市场**：支持离线安装第三方模块、覆盖确认、规范化的安装->启用流程。查看 [更新日志.md](./更新日志.md) 获取详情。
+### 最新版本 v2.0.4 (2025-12-18)
+- 🎛️ **控制面板**：快速创建用户、重置密码、全局搜索（Spotlight）、通知中心增强、头像裁切等。查看 [更新日志.md](./更新日志.md) 获取详情。
 
 ---
 

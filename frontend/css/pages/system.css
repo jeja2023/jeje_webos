@@ -82,3 +82,30 @@
 }
 
 /* 系统设置按钮已移除特殊样式，使用全局 button.css */
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+    .form-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-inline .form-input,
+    .form-inline .form-select {
+        min-width: 100%;
+        width: 100%;
+    }
+
+    .settings-footer {
+        flex-direction: column-reverse;
+        gap: var(--spacing-sm);
+    }
+
+    .settings-footer .btn {
+        width: 100%;
+    }
+
+    .section-title {
+        font-size: 1rem;
+    }
+}

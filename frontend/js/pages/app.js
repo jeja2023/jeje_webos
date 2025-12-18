@@ -50,6 +50,11 @@ const App = {
         if (typeof Spotlight !== 'undefined') {
             Spotlight.init();
         }
+
+        // 初始化快捷键帮助面板
+        if (typeof ShortcutsHelp !== 'undefined') {
+            ShortcutsHelp.init();
+        }
     },
 
     async updateUnreadCount() {
@@ -98,7 +103,7 @@ const App = {
         Router.beforeEach = async (path) => {
             const publicRoutes = ['/login', '/register'];
             if (publicRoutes.includes(path)) {
-                if (Store.get('isLoggedIn')) return '/dashboard';
+                if (Store.get('isLoggedIn')) return '/desktop';
                 return true;
             }
             if (!Store.get('isLoggedIn')) return '/login';

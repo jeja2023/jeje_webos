@@ -193,3 +193,60 @@
     line-height: 1.6;
     color: var(--text-primary);
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-md);
+    }
+
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .stat-card {
+        padding: var(--spacing-md);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .stat-value {
+        font-size: 22px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+    }
+
+    .notice-item {
+        padding: 10px 12px;
+    }
+
+    .notice-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .notice-title {
+        font-size: 13px;
+    }
+
+    .notice-preview {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+}

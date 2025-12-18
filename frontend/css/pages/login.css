@@ -216,3 +216,54 @@
     color: var(--color-accent-light);
     text-decoration: underline;
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+    .login-page {
+        padding: var(--spacing-md);
+        align-items: flex-start;
+        padding-top: 15vh;
+    }
+
+    .login-box {
+        max-width: 100%;
+    }
+
+    .login-header {
+        margin-bottom: 24px;
+    }
+
+    .login-logo {
+        font-size: 48px;
+    }
+
+    .login-title {
+        font-size: 22px;
+    }
+
+    .login-form .card {
+        padding: 24px 20px;
+        border-radius: 14px;
+    }
+
+    .login-form .form-input {
+        padding: 14px;
+        font-size: 16px;
+        /* 防止 iOS 缩放 */
+    }
+
+    .login-form .btn {
+        height: 48px;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-page {
+        padding-top: 10vh;
+    }
+
+    .login-form .card {
+        padding: 20px 16px;
+    }
+}

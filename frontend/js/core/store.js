@@ -93,9 +93,24 @@ const Store = {
             } catch (e) {
                 console.error('加载自定义主题失败', e);
             }
+        } else if (mode === 'auto') {
+            // Auto 模式：根据系统偏好自动切换
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.classList.add(prefersDark ? 'theme-dark' : 'theme-light');
+
+            // 监听系统主题变化
+            if (!this._themeMediaListener) {
+                this._themeMediaListener = (e) => {
+                    if (this.state.theme === 'auto') {
+                        root.classList.remove('theme-light', 'theme-dark');
+                        root.classList.add(e.matches ? 'theme-dark' : 'theme-light');
+                    }
+                };
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this._themeMediaListener);
+            }
         } else {
-            // Auto/Default
-            root.classList.add('theme-auto');
+            // Default fallback
+            root.classList.add('theme-dark');
         }
     },
 
@@ -188,8 +203,6 @@ const Store = {
         if (info.user) {
             // 合并用户设置，避免覆盖已有的 settings
             const currentUser = this.state.user;
-            console.log('[Store] setSystemInfo - 当前用户 settings:', currentUser?.settings);
-            console.log('[Store] setSystemInfo - 后端返回 settings:', info.user.settings);
 
             // 深度合并 settings，确保 dock_pinned_apps 等设置不丢失
             // 后端数据优先，但保留当前已有的设置（如果后端没有）
@@ -212,7 +225,6 @@ const Store = {
                             const parsed = JSON.parse(localPinnedApps);
                             if (Array.isArray(parsed) && parsed.length > 0) {
                                 mergedSettings = { ...mergedSettings, dock_pinned_apps: parsed };
-                                console.log('[Store] setSystemInfo - 从 localStorage 恢复 dock_pinned_apps:', parsed);
                             }
                         }
                     } catch (e) {
@@ -237,7 +249,6 @@ const Store = {
                                 const parsed = JSON.parse(localPinnedApps);
                                 if (Array.isArray(parsed) && parsed.length > 0) {
                                     mergedSettings.dock_pinned_apps = parsed;
-                                    console.log('[Store] setSystemInfo - 从 localStorage 恢复 dock_pinned_apps:', parsed);
                                 }
                             }
                         } catch (e) {
@@ -246,9 +257,6 @@ const Store = {
                     }
                 }
             }
-
-            console.log('[Store] setSystemInfo - 合并后的 settings:', mergedSettings);
-            console.log('[Store] setSystemInfo - dock_pinned_apps:', mergedSettings.dock_pinned_apps);
 
             const newUser = {
                 ...info.user,

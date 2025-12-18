@@ -459,7 +459,6 @@ class FileManagerPage extends Component {
 
             // 文件选择（使用委托，支持重新渲染）
             this.delegate('change', '#fileInput', (e) => {
-                console.log('文件选择触发', e.target.files);
                 if (e.target.files.length > 0) {
                     this.uploadFiles(e.target.files);
                     e.target.value = '';
@@ -840,7 +839,7 @@ class FileManagerPage extends Component {
 
         if (!id) return;
 
-        const token = Store.get('token') || localStorage.getItem('token') || localStorage.getItem(Config.storageKeys.token);
+        const token = Utils.getToken();
         const url = `${Config.apiBase}/filemanager/download/${id}?token=${token}`;
 
         // 创建隐藏的 iframe 进行下载，避免弹出新窗口被拦截
@@ -855,7 +854,7 @@ class FileManagerPage extends Component {
         const file = this.state.files.find(f => f.id == id);
         if (!file) return;
 
-        const token = Store.get('token') || localStorage.getItem('token') || localStorage.getItem(Config.storageKeys.token);
+        const token = Utils.getToken();
         const url = `${Config.apiBase}/filemanager/preview/${id}?token=${token}`;
         const mime = file.mime_type || '';
 

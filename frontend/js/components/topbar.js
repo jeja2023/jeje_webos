@@ -11,10 +11,10 @@ class TopBarComponent extends Component {
             showTime: false, // 默认为 false，只在有窗口时显示
 
             // 消息中心状态
-            msgActiveTab: 'message', // message, announcement, todo
+            msgActiveTab: 'message', // message, announcement, pending
             msgList: [],
             msgLoading: false,
-            todoCount: 0
+            pendingCount: 0  // 待审核用户数
         };
 
         // 每分钟更新一次时间
@@ -25,7 +25,7 @@ class TopBarComponent extends Component {
         // 监听用户变更
         Store.subscribe('user', (user) => {
             this.setState({ user });
-            this.checkTodoCount();
+            this.checkPendingCount();
         });
 
         // 监听未读消息变更
@@ -37,18 +37,18 @@ class TopBarComponent extends Component {
         Store.subscribe('appName', (name) => this.setState({ appName: name }));
         Store.subscribe('version', (ver) => this.setState({ sysVersion: ver }));
 
-        // 初始加载待办数量
-        this.checkTodoCount();
+        // 初始加载待审核用户数量
+        this.checkPendingCount();
     }
 
-    async checkTodoCount() {
+    async checkPendingCount() {
         const user = this.state.user;
         if (user.role === 'admin' || user.role === 'manager') {
             try {
                 // 如果有获取待审核数量的接口
                 const res = await UserApi.getPendingUsers().catch(() => ({ data: [] }));
                 const count = Array.isArray(res.data) ? res.data.length : 0;
-                this.setState({ todoCount: count });
+                this.setState({ pendingCount: count });
             } catch (e) {
                 // ignore
             }
@@ -89,7 +89,7 @@ class TopBarComponent extends Component {
                     viewAllBtn.onclick = isAdmin ? () => Router.push('/announcement/list') : null;
                     viewAllBtn.style.display = isAdmin ? 'block' : 'none';
                 }
-            } else if (tab === 'todo') {
+            } else if (tab === 'pending') {
                 const res = await UserApi.getPendingUsers();
                 list = res.data || [];
                 if (viewAllBtn) {
@@ -109,11 +109,11 @@ class TopBarComponent extends Component {
     }
 
     render() {
-        const { time, user, msgActiveTab, msgList, msgLoading, unreadMessages, todoCount, appName, sysVersion } = this.state;
+        const { time, user, msgActiveTab, msgList, msgLoading, unreadMessages, pendingCount, appName, sysVersion } = this.state;
 
-        // 计算总徽章数 (消息 + 待办)
+        // 计算总徽章数 (消息 + 待审核)
         // 公告未读数暂时无法获取，忽略
-        const totalBadge = unreadMessages + todoCount;
+        const totalBadge = unreadMessages + pendingCount;
         const displayAppName = appName || 'JeJe WebOS';
         const displayVersion = sysVersion || '';
 
@@ -151,8 +151,8 @@ class TopBarComponent extends Component {
                                     公告
                                 </div>
                                 ${(user.role === 'admin' || user.role === 'manager') ? `
-                                    <div class="msg-tab ${msgActiveTab === 'todo' ? 'active' : ''}" data-tab="todo">
-                                        待办 ${todoCount > 0 ? `<span class="badge-dot"></span>` : ''}
+                                    <div class="msg-tab ${msgActiveTab === 'pending' ? 'active' : ''}" data-tab="pending">
+                                        审核 ${pendingCount > 0 ? `<span class="badge-dot"></span>` : ''}
                                     </div>
                                 ` : ''}
                             </div>
@@ -226,7 +226,7 @@ class TopBarComponent extends Component {
                     </div>
                 </div>
             `;
-        } else if (tab === 'todo') {
+        } else if (tab === 'pending') {
             return `
                 <div class="msg-item" onclick="Router.push('/users/pending')">
                     <div class="msg-icon">👤</div>
@@ -334,7 +334,7 @@ class TopBarComponent extends Component {
                                     viewAllBtn.onclick = isAdmin ? () => Router.push('/announcement/list') : null;
                                     viewAllBtn.style.display = isAdmin ? 'block' : 'none';
                                 }
-                            } else if (tabName === 'todo') {
+                            } else if (tabName === 'pending') {
                                 const res = await UserApi.getPendingUsers();
                                 list = res.data || [];
                                 if (viewAllBtn) {
@@ -366,7 +366,7 @@ class TopBarComponent extends Component {
                             const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
                             if (isAdmin) Router.push('/announcement/list');
                         }
-                        else if (tab === 'todo') Router.push('/users/pending');
+                        else if (tab === 'pending') Router.push('/users/pending');
                     };
                 }
             }

@@ -317,5 +317,28 @@ const Utils = {
         }
 
         return `<div class="pagination">${buttons.join('')}</div>`;
+    },
+
+    /**
+     * 统一获取认证 Token
+     * 优先从 Store 获取，其次从 localStorage
+     * @returns {string|null} Token 或 null
+     */
+    getToken() {
+        return Store.get('token')
+            || localStorage.getItem(Config.storageKeys.token)
+            || null;
+    },
+
+    /**
+     * 格式化文件大小
+     * @param {number} bytes - 字节数
+     * @returns {string} 格式化后的大小
+     */
+    formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
     }
 };

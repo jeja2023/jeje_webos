@@ -56,9 +56,7 @@ async def update_profile(
         user.phone = data["phone"] or None
 
     if "settings" in data:
-        # 允许增量更新或全量覆盖，这里选择合并更新
-        logger.info(f"更新用户 {user.id} 的设置，当前 settings: {user.settings}, 新 settings: {data['settings']}")
-        
+        # 合并更新用户设置
         # 确保 user.settings 是字典
         if user.settings is None:
             user.settings = {}
@@ -71,12 +69,9 @@ async def update_profile(
             # 显式标记 JSON 字段为已修改，确保 SQLAlchemy 能够检测到变更
             from sqlalchemy.orm.attributes import flag_modified
             flag_modified(user, "settings")
-            logger.info(f"合并后的 settings: {user.settings}")
 
     await db.commit()
     await db.refresh(user)
-    
-    logger.info(f"返回用户 {user.id} 的 settings: {user.settings}")
     
     return success({
         "id": user.id,

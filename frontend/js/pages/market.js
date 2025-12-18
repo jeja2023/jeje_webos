@@ -97,7 +97,6 @@ class AppCenterMarketPage extends Component {
         // 1. 优先从用户 Store 设置中读取（已同步后端）
         const user = Store.get('user');
         if (user && user.settings && user.settings.dock_pinned_apps) {
-            console.log('[Market] 从 user.settings 读取固定应用:', user.settings.dock_pinned_apps);
             return user.settings.dock_pinned_apps;
         }
 
@@ -105,17 +104,13 @@ class AppCenterMarketPage extends Component {
         try {
             const saved = localStorage.getItem('jeje_pinned_apps');
             const apps = saved ? JSON.parse(saved) : [];
-            console.log('[Market] 从 localStorage 读取固定应用:', apps);
             return apps;
         } catch (e) {
-            console.warn('[Market] 读取 localStorage 失败:', e);
             return [];
         }
     }
 
     async savePinnedApps(apps) {
-        console.log('[Market] 保存固定应用:', apps);
-
         // 1. 更新本地状态（乐观更新 UI）
         localStorage.setItem('jeje_pinned_apps', JSON.stringify(apps));
         Store.set('pinnedApps', apps);
@@ -126,48 +121,34 @@ class AppCenterMarketPage extends Component {
             try {
                 // 发送 API 请求
                 if (window.UserApi) {
-                    console.log('[Market] 发送更新请求:', { settings: { dock_pinned_apps: apps } });
                     const res = await UserApi.updateProfile({
                         settings: { dock_pinned_apps: apps }
                     });
-
-                    console.log('[Market] 更新响应:', res);
 
                     // 后端返回格式: {code: 200, message: "success", data: {...}}
                     // 使用 res.data 获取实际数据（兼容 res.data || res）
                     const updatedUser = res.data || res;
 
                     if (updatedUser) {
-                        console.log('[Market] 更新后的用户数据:', updatedUser);
-                        // 确保 settings 存在
                         const finalSettings = updatedUser.settings || {};
-                        // 如果后端返回的 settings 中没有 dock_pinned_apps，手动添加
                         if (!finalSettings.dock_pinned_apps) {
                             finalSettings.dock_pinned_apps = apps;
                         }
-                        // 使用后端返回的数据更新 Store（确保数据一致性）
                         const finalUser = {
                             ...user,
                             ...updatedUser,
                             settings: finalSettings
                         };
                         Store.set('user', finalUser);
-                        console.log('[Market] Store 用户已更新，settings:', finalUser.settings);
                     } else {
-                        console.warn('[Market] 响应格式异常，手动更新 settings');
-                        // 如果返回格式不同，手动更新 settings
                         const newSettings = { ...(user.settings || {}), dock_pinned_apps: apps };
                         Store.set('user', { ...user, settings: newSettings });
-                        console.log('[Market] Store 用户 settings 手动更新:', newSettings);
                     }
                 } else {
-                    console.warn('[Market] UserApi 不可用，只更新本地 Store');
-                    // 如果没有 UserApi，只更新本地 Store
                     const newSettings = { ...(user.settings || {}), dock_pinned_apps: apps };
                     Store.set('user', { ...user, settings: newSettings });
                 }
             } catch (err) {
-                console.error('[Market] 同步设置失败:', err);
                 // 即使失败也保持本地更新，避免 UI 闪烁
             }
         } else {
@@ -774,8 +755,6 @@ class AppCenterMarketPage extends Component {
             const res = await MarketApi.upload(file, force);
             loading.close();
 
-            console.log('[Market] 上传响应:', res);
-
             // 检查是否是 409 冲突响应（已存在的模块）
             if (res.status === 409) {
                 const detail = res.detail || {};
@@ -800,8 +779,6 @@ class AppCenterMarketPage extends Component {
             // 上传成功
             const moduleName = res.data?.module_name || res.data?.module_id || '未知';
             const isOverwrite = res.data?.is_overwrite;
-
-            console.log('[Market] 上传成功:', moduleName, '覆盖:', isOverwrite);
 
             // 显示成功提示
             Toast.success(isOverwrite ? `模块 "${moduleName}" 已覆盖更新！` : `模块 "${moduleName}" 上传成功！`);
