@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============ 文件夹 ============
@@ -32,8 +32,7 @@ class FolderInfo(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FolderTree(BaseModel):
@@ -45,8 +44,7 @@ class FolderTree(BaseModel):
     children: List["FolderTree"] = []
     note_count: int = 0
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ 标签 ============
@@ -69,8 +67,7 @@ class TagInfo(BaseModel):
     name: str
     color: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ 笔记 ============
@@ -109,8 +106,7 @@ class NoteInfo(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NoteListItem(BaseModel):
@@ -126,8 +122,7 @@ class NoteListItem(BaseModel):
     # 摘要（前100字符）
     summary: str = ""
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NoteMove(BaseModel):

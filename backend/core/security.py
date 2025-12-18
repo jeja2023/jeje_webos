@@ -3,7 +3,7 @@
 提供JWT令牌生成、验证和密码处理功能
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 from jose import JWTError, jwt
@@ -82,14 +82,14 @@ def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, tok
     to_encode = data.model_dump()
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
         if token_type == "refresh":
             # 刷新令牌有效期：30天
-            expire = datetime.utcnow() + timedelta(days=30)
+            expire = datetime.now(timezone.utc) + timedelta(days=30)
         else:
             # 访问令牌有效期：7天（或配置值）
-            expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
+            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     
     to_encode.update({
         "exp": expire,

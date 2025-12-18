@@ -39,11 +39,11 @@
     border-radius: 50%;
 }
 
-.switch input:checked + .slider {
+.switch input:checked+.slider {
     background: var(--color-accent);
 }
 
-.switch input:checked + .slider:before {
+.switch input:checked+.slider:before {
     transform: translateX(20px);
 }
 
@@ -56,3 +56,153 @@
     min-width: 64px;
 }
 
+/* 系统设置页面 */
+.section-divider {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: var(--spacing-xl) 0;
+    opacity: 0.6;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.settings-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.settings-footer .btn {
+    min-width: 100px;
+    height: 40px;
+    font-size: 0.95rem;
+}
+
+/* 系统设置按钮 - 主按钮使用更醒目的样式 */
+.settings-footer .btn-primary {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 4px 12px var(--color-accent-glow);
+}
+
+.settings-footer .btn-primary:hover {
+    background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent));
+    box-shadow: 0 6px 20px var(--color-accent-glow);
+}
+
+/* 次要按钮使用边框样式 */
+.settings-footer .btn-secondary {
+    background: transparent;
+    color: var(--color-text-primary);
+    border: 2px solid var(--color-border);
+    font-weight: 500;
+}
+
+.settings-footer .btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: rgba(var(--color-accent), 0.1);
+}
+
+/* ==================== 针对不同主题的按钮颜色调整 ==================== */
+
+/* 深色主题 */
+:root.theme-dark .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+:root.theme-dark .settings-footer .btn-secondary {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+:root.theme-dark .settings-footer .btn-secondary:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* 星夜霓虹主题 */
+:root.theme-neon .settings-footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+:root.theme-neon .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+    box-shadow: 0 4px 20px rgba(10, 132, 255, 0.5);
+}
+
+:root.theme-neon .settings-footer .btn-secondary {
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+:root.theme-neon .settings-footer .btn-secondary:hover {
+    border-color: #0A84FF;
+    color: #0A84FF;
+}
+
+/* 日出印象主题 */
+:root.theme-sunrise .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #E76F51, #D62828);
+    box-shadow: 0 4px 15px rgba(231, 111, 81, 0.4);
+}
+
+:root.theme-sunrise .settings-footer .btn-secondary {
+    border-color: rgba(38, 70, 83, 0.4);
+    color: #1D3540;
+}
+
+/* 仲夏之夜主题 */
+:root.theme-summer .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #7c4dff, #651fff);
+    box-shadow: 0 4px 20px rgba(124, 77, 255, 0.5);
+}
+
+:root.theme-summer .settings-footer .btn-secondary {
+    border-color: rgba(124, 77, 255, 0.4);
+    color: #e8e0ff;
+}
+
+/* 冬日暖阳主题 */
+:root.theme-winter .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #ff6f00, #e65100);
+    box-shadow: 0 4px 15px rgba(255, 111, 0, 0.35);
+}
+
+:root.theme-winter .settings-footer .btn-secondary {
+    border-color: rgba(144, 202, 249, 0.6);
+    color: #263238;
+}
+
+/* 春意盎然主题 */
+:root.theme-spring .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    box-shadow: 0 4px 15px rgba(233, 30, 99, 0.35);
+}
+
+:root.theme-spring .settings-footer .btn-secondary {
+    border-color: rgba(129, 199, 132, 0.5);
+    color: #1b5e20;
+}
+
+/* 秋日私语主题 */
+:root.theme-autumn .settings-footer .btn-primary {
+    background: linear-gradient(135deg, #d84315, #bf360c);
+    box-shadow: 0 4px 15px rgba(216, 67, 21, 0.35);
+}
+
+:root.theme-autumn .settings-footer .btn-secondary {
+    border-color: rgba(188, 143, 87, 0.5);
+    color: #3e2723;
+}

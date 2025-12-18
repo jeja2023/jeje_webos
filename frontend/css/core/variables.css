@@ -152,6 +152,12 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+
+    /* 明确定义深色模式的主题色 - 使用更鲜艳的蓝色 */
+    --color-accent: #007aff;
+    --color-accent-light: #409cff;
+    --color-accent-dark: #0051a8;
+    --color-accent-glow: rgba(0, 122, 255, 0.5);
 }
 
 /* 日出印象主题（温暖晨曦风格） */

@@ -26,7 +26,7 @@ class SystemSettingsPage extends Component {
         const { data, saving, loading } = this.state;
         if (loading) return '<div class="loading"></div>';
         return `
-            <div class="page fade-in">
+            <div class="page system-page fade-in">
                 <div class="page-header">
                     <h1 class="page-title">系统设置</h1>
                     <p class="page-desc">安全策略、系统默认配置（仅管理员可修改）</p>
@@ -68,8 +68,8 @@ class SystemSettingsPage extends Component {
                             </label>
                         </div>
 
-                        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border-color);">
-                        <h3 style="margin-bottom: 20px; font-size: 1.1em;">API 速率限制</h3>
+                        <div class="section-divider"></div>
+                        <h3 class="section-title">API 速率限制</h3>
                         
                         <div class="form-group">
                             <label class="form-label">请求速率限制 (次)</label>
@@ -86,14 +86,18 @@ class SystemSettingsPage extends Component {
                             <small class="form-hint">触发限制后 IP 将被封禁的时间</small>
                         </div>
 
-                        <div style="display:flex;gap:12px;margin-top:20px;">
-                            <button type="button" class="btn btn-primary" id="saveSettings" ${saving ? 'disabled' : ''}>${saving ? '保存中...' : '保存设置'}</button>
-                            <button type="button" class="btn btn-secondary" id="reloadSettings">刷新</button>
+                        <div class="settings-footer">
+                            <button type="button" class="btn btn-secondary" id="reloadSettings" title="重新加载配置">
+                                <span>↺</span> 刷新
+                            </button>
+                            <button type="button" class="btn btn-primary" id="saveSettings" ${saving ? 'disabled' : ''}>
+                                ${saving ? '<span class="spin">↻</span> 保存中...' : '<span>💾</span> 保存设置'}
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
-        `;
+            `;
     }
 
     afterMount() {
@@ -250,12 +254,12 @@ class AuditLogsPage extends Component {
                             <option value="ERROR" ${level === 'ERROR' ? 'selected' : ''}>ERROR</option>
                         </select>
                         <input type="text" id="filterModule" class="form-input" placeholder="模块" value="${Utils.escapeHtml(module)}">
-                        <input type="text" id="filterAction" class="form-input" placeholder="动作" value="${Utils.escapeHtml(action)}">
-                        <button class="btn btn-primary" id="filterSubmit">筛选</button>
+                            <input type="text" id="filterAction" class="form-input" placeholder="动作" value="${Utils.escapeHtml(action)}">
+                                <button class="btn btn-primary" id="filterSubmit">筛选</button>
+                            </div>
                     </div>
-                </div>
-                <div class="card">
-                    ${loading ? '<div class="loading"></div>' : items.length === 0 ? `
+                    <div class="card">
+                        ${loading ? '<div class="loading"></div>' : items.length === 0 ? `
                         <div class="empty-state" style="padding: 40px 0;">
                             <div class="empty-icon">📜</div>
                             <p class="empty-text">暂无审计记录</p>
@@ -291,8 +295,8 @@ class AuditLogsPage extends Component {
                     </div>
                     ${Utils.renderPagination(page, pages)}
                     `}
+                    </div>
                 </div>
-            </div>
         `;
     }
 

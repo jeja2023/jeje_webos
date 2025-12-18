@@ -7,7 +7,7 @@ import time
 import uuid
 import logging
 from typing import Callable, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -193,7 +193,7 @@ class RequestStats:
         self.total_duration = 0.0
         self.path_stats: dict = {}
         self.status_stats: dict = {}
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
     
     def record(
         self,
@@ -230,7 +230,7 @@ class RequestStats:
     
     def get_summary(self) -> dict:
         """获取统计摘要"""
-        uptime = (datetime.utcnow() - self.start_time).total_seconds()
+        uptime = (datetime.now(timezone.utc) - self.start_time).total_seconds()
         avg_duration = (
             self.total_duration / self.total_requests 
             if self.total_requests > 0 else 0

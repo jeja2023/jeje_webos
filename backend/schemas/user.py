@@ -5,7 +5,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserListQuery(BaseModel):
@@ -38,8 +38,7 @@ class UserListItem(BaseModel):
     last_login: Optional[datetime] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):

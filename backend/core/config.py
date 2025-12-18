@@ -5,7 +5,7 @@
 
 import os
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 from urllib.parse import quote_plus
@@ -108,10 +108,11 @@ class Settings(BaseSettings):
     admin_phone: str = "13800138000"  # 管理员手机号（必填）
     admin_nickname: str = "系统管理员"
     
-    class Config:
-        env_file = str(ENV_FILE)
-        env_file_encoding = "utf-8"
-        extra = "ignore"  # 忽略 .env 中多余的字段（如自动生成的动态配置）
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
 _settings_instance: Optional[Settings] = None

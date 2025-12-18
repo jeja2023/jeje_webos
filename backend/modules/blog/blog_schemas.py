@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============ 分类 ============
@@ -34,8 +34,7 @@ class CategoryInfo(BaseModel):
     order: int
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ 标签 ============
@@ -52,8 +51,7 @@ class TagInfo(BaseModel):
     name: str
     slug: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ 文章 ============
@@ -104,8 +102,7 @@ class PostInfo(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostListItem(BaseModel):
@@ -125,8 +122,7 @@ class PostListItem(BaseModel):
     published_at: Optional[datetime]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostQuery(BaseModel):

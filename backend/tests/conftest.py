@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 # 确保可以导入项目模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.database import Base
+from core.database import Base, engine as global_engine
 from core.config import get_settings, reload_settings
 from main import app
 
@@ -51,12 +51,13 @@ TestSessionLocal = async_sessionmaker(
 
 # ==================== Fixtures ====================
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """创建事件循环"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def cleanup_global_engine():
+    """清理全局数据库引擎，防止 Event loop is closed 错误"""
+    yield
+    await global_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")

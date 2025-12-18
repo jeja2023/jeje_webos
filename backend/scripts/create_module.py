@@ -129,7 +129,7 @@ MODELS_TEMPLATE = '''"""
 定义数据库表结构
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -155,8 +155,8 @@ class {ModelClass}(Base):
     is_active = Column(Boolean, default=True, comment="是否启用")
     
     # 时间戳
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
     
     def __repr__(self):
         return f"<{ModelClass}(id={{self.id}}, title={{self.title}})>"
@@ -169,7 +169,7 @@ SCHEMAS_TEMPLATE = '''"""
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ==================== 基础模型 ====================
@@ -200,8 +200,7 @@ class {ModelClass}Response({ModelClass}Base):
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class {ModelClass}ListResponse(BaseModel):

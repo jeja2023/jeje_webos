@@ -6,7 +6,7 @@
 import re
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def validate_password_complexity(password: str) -> None:
@@ -110,8 +110,7 @@ class UserInfo(BaseModel):
     is_active: bool
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PasswordChange(BaseModel):

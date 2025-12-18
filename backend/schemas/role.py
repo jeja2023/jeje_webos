@@ -2,7 +2,7 @@
 用户组（权限模板） Schema
 """
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserGroupCreate(BaseModel):
@@ -21,8 +21,7 @@ class UserGroupInfo(BaseModel):
     permissions: List[str] = []
     user_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # 兼容旧命名
 RoleCreate = UserGroupCreate

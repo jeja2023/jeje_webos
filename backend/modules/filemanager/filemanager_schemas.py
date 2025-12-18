@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============ 文件夹相关 ============
@@ -38,8 +38,7 @@ class FolderInfo(BaseModel):
     file_count: int = 0
     folder_count: int = 0
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FolderTreeNode(BaseModel):
@@ -49,8 +48,7 @@ class FolderTreeNode(BaseModel):
     path: str
     children: List["FolderTreeNode"] = []
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ 文件相关 ============
@@ -91,8 +89,7 @@ class FileInfo(BaseModel):
     preview_url: str = ""
     icon: str = "📄"
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FileListItem(BaseModel):

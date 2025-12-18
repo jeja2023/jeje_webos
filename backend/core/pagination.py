@@ -6,7 +6,7 @@
 import math
 from typing import TypeVar, Generic, List, Optional, Any, Callable
 from dataclasses import dataclass, field
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,8 +45,7 @@ class PageResult(BaseModel, Generic[T]):
     has_next: bool = Field(description="是否有下一页")
     has_prev: bool = Field(description="是否有上一页")
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     @classmethod
     def create(

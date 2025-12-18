@@ -3,7 +3,7 @@
 定义API请求和响应的数据结构
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -64,8 +64,7 @@ class SessionResponse(BaseModel):
     expires_at: datetime
     progress_percent: float = 0.0
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionStatus(BaseModel):
@@ -125,8 +124,7 @@ class HistoryItem(BaseModel):
     # 计算字段
     speed_bps: Optional[float] = None  # 传输速度 (字节/秒)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HistoryListResponse(BaseModel):

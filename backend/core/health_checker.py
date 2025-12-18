@@ -6,7 +6,7 @@
 import time
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -221,7 +221,7 @@ class HealthChecker:
             "status": overall_status,
             "version": settings.app_version,
             "uptime_seconds": self.uptime_seconds,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "components": {
                 c.name: {
                     "status": c.status,
@@ -307,7 +307,7 @@ async def liveness_check():
     """
     return {
         "status": "alive",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

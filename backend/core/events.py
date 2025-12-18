@@ -5,7 +5,7 @@
 
 from typing import Callable, Dict, List, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import logging
 
@@ -18,7 +18,7 @@ class Event:
     name: str
     source: str  # 发送模块ID
     data: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # 事件处理器类型

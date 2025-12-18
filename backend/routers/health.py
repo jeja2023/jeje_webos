@@ -4,7 +4,7 @@
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -40,7 +40,7 @@ class ComponentHealth(BaseModel):
 
 
 # 系统启动时间
-_start_time = datetime.utcnow()
+_start_time = datetime.now(timezone.utc)
 
 
 async def check_database() -> ComponentHealth:
@@ -199,12 +199,12 @@ async def health_check():
         overall_status = "healthy"
     
     # 计算运行时间
-    uptime = (datetime.utcnow() - _start_time).total_seconds()
+    uptime = (datetime.now(timezone.utc) - _start_time).total_seconds()
     
     return HealthStatus(
         status=overall_status,
         version=settings.app_version,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         uptime_seconds=round(uptime, 2),
         components=components
     )

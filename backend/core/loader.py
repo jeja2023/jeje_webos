@@ -19,7 +19,7 @@ import logging
 from typing import Dict, List, Optional, Any, Callable, Awaitable
 from dataclasses import dataclass, field
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, APIRouter
 
@@ -109,7 +109,7 @@ class LoadedModule:
     manifest: ModuleManifest
     path: Path
     module: Any  # 模块对象
-    loaded_at: datetime = field(default_factory=datetime.utcnow)
+    loaded_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     installed_version: Optional[str] = None  # 已安装的版本（用于升级检测）
 
 
@@ -445,13 +445,13 @@ class ModuleLoader:
                 module_id=module_id,
                 version=manifest.version,
                 enabled=False,
-                installed_at=datetime.utcnow(),
+                installed_at=datetime.now(timezone.utc),
                 last_enabled_at=None
             )
         else:
             self._states[module_id].version = manifest.version
             self._states[module_id].enabled = True
-            self._states[module_id].last_enabled_at = datetime.utcnow()
+            self._states[module_id].last_enabled_at = datetime.now(timezone.utc)
         
         self._save_states()
         
@@ -522,7 +522,7 @@ class ModuleLoader:
             module_id=module_id,
             version=manifest.version,
             enabled=False,
-            installed_at=datetime.utcnow(),
+            installed_at=datetime.now(timezone.utc),
             last_enabled_at=None
         )
         self._save_states()
