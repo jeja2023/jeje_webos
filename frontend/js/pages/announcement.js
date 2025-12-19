@@ -100,7 +100,7 @@ class AnnouncementListPage extends Component {
                         <p class="page-desc">共 ${total} 条公告</p>
                     </div>
                     <button class="btn btn-primary" onclick="Router.push('/announcement/edit')">
-                        ✏️ 发布公告
+                        ➕ 发布公告
                     </button>
                 </div>
                 

@@ -59,6 +59,15 @@ class BlogPost(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+    # 关联关系
+    category: Mapped[Optional["BlogCategory"]] = relationship("BlogCategory", lazy="selectin", viewonly=True)
+    tags: Mapped[list["BlogTag"]] = relationship(
+        "BlogTag",
+        secondary="blog_post_tags",
+        lazy="selectin",
+        viewonly=True
+    )
+
 
 class BlogTag(Base):
     """博客标签"""

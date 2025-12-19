@@ -36,6 +36,7 @@ class AnnouncementInfo(BaseModel):
     content: str
     type: str
     author_id: int
+    author_name: Optional[str] = None
     is_published: bool
     is_top: bool
     start_at: Optional[datetime]
@@ -53,6 +54,7 @@ class AnnouncementListItem(BaseModel):
     title: str
     type: str
     author_id: int
+    author_name: Optional[str] = None
     is_published: bool
     is_top: bool
     start_at: Optional[datetime]

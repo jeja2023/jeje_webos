@@ -6,10 +6,11 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey, Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
 from core.database import Base
+from models.account import User
 
 
 class FeedbackStatus(str, enum.Enum):
@@ -89,4 +90,8 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="解决时间")
+    
+    # 关联
+    user: Mapped["User"] = relationship(User, foreign_keys="Feedback.user_id", lazy="selectin", viewonly=True)
+    handler: Mapped[Optional["User"]] = relationship(User, foreign_keys="Feedback.handler_id", lazy="selectin", viewonly=True)
 

@@ -266,69 +266,6 @@
     line-height: 1.6;
 }
 
-/* ========== 语言设置样式 ========== */
-
-.i18n-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-lg);
-    max-width: 1000px;
-}
-
-.language-list-compact {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.language-item-compact {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 18px;
-    background: var(--bg-secondary);
-    border: 2px solid transparent;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.language-item-compact:hover {
-    background: var(--bg-tertiary);
-}
-
-.language-item-compact.active {
-    border-color: var(--color-primary);
-    background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.1);
-}
-
-.language-flag {
-    font-size: 26px;
-}
-
-.language-name {
-    flex: 1;
-    font-size: 15px;
-    font-weight: 500;
-}
-
-.language-check {
-    color: var(--color-primary);
-    font-weight: 600;
-    font-size: 16px;
-}
-
-.i18n-tip {
-    margin-top: 16px;
-    padding: 12px 16px;
-    background: var(--bg-secondary);
-    border-radius: 10px;
-}
-
-.i18n-tip small {
-    font-size: 13px;
-    color: var(--text-secondary);
-}
 
 /* 短语预览紧凑版 */
 .phrase-list-compact {
@@ -797,5 +734,3 @@
         justify-content: flex-end;
     }
 }
-
-

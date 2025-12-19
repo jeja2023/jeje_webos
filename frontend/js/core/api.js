@@ -425,12 +425,6 @@ const ExportApi = {
     importUsers: (file) => Api.upload('/export/import/users', file)
 };
 
-// 国际化 API
-const I18nApi = {
-    getLanguages: () => Api.get('/i18n/languages'),
-    translate: (key, lang) => Api.get('/i18n/translate', { key, lang }),
-    setLanguage: (lang) => Api.post('/i18n/set-language', { language: lang })
-};
 
 // 公告 API
 const AnnouncementApi = {
@@ -456,7 +450,6 @@ window.BackupApi = BackupApi;
 window.MonitorApi = MonitorApi;
 window.MessageApi = MessageApi;
 window.ExportApi = ExportApi;
-window.I18nApi = I18nApi;
 window.AnnouncementApi = AnnouncementApi;
 window.GroupApi = GroupApi;
 window.RoleApi = RoleApi;

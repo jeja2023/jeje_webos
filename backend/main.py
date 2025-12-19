@@ -306,12 +306,7 @@ from routers import (
     import_export, announcement, market
 )
 
-# 手动导入核心模块（绕过动态加载器以提高稳定性）
-from modules.blog.blog_router import router as blog_router
-from modules.notes.notes_router import router as notes_router
-from modules.feedback.feedback_router import router as feedback_router
-from modules.filemanager.filemanager_router import router as filemanager_router
-from modules.transfer.transfer_router import router as transfer_router
+# 核心业务模块已由 loader.py 自动加载
 
 # 系统核心路由
 app.include_router(auth.router)
@@ -331,12 +326,7 @@ app.include_router(import_export.router)
 app.include_router(announcement.router)
 app.include_router(market.router)
 
-# 核心业务模块（手动挂载）
-app.include_router(blog_router, prefix="/api/v1/blog", tags=["博客"])
-app.include_router(notes_router, prefix="/api/v1/notes", tags=["备忘录"])
-app.include_router(feedback_router, prefix="/api/v1/feedback", tags=["反馈"])
-app.include_router(filemanager_router, prefix="/api/v1/filemanager", tags=["文件管理"])
-app.include_router(transfer_router, prefix="/api/v1/transfer", tags=["快传"])
+# 核心业务模块（由加载器处理）
 
 # 健康检查路由
 from core.health_checker import router as health_router
@@ -357,6 +347,11 @@ if os.path.exists(frontend_path):
     js_path = os.path.join(frontend_path, "js")
     if os.path.exists(js_path):
         app.mount("/static/js", CachedStaticFiles(directory=js_path), name="js")
+    
+    # 挂载 images（带缓存控制）
+    images_path = os.path.join(frontend_path, "images")
+    if os.path.exists(images_path):
+        app.mount("/static/images", CachedStaticFiles(directory=images_path), name="images")
 
 # 模块静态资源（挂载到 /static/{module_name}/）
 modules_path = os.path.join(os.path.dirname(__file__), "modules")

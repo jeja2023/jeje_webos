@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy.orm import selectinload
 
 from core.database import get_db
 from core.security import get_current_user, require_admin, TokenData
@@ -32,7 +33,7 @@ async def list_announcements(
     current_user: TokenData = Depends(get_current_user)
 ):
     """获取公告列表"""
-    query = select(Announcement)
+    query = select(Announcement).options(selectinload(Announcement.author))
     conditions = []
     
     # 筛选条件
@@ -85,8 +86,19 @@ async def list_announcements(
     result = await db.execute(query)
     announcements = result.scalars().all()
     
-    items = [AnnouncementListItem.model_validate(a).model_dump() for a in announcements]
+    items = [_enrich_announcement(a, AnnouncementListItem) for a in announcements]
     return paginate(items, total, page, size)
+
+
+def _enrich_announcement(a: Announcement, schema):
+    """填充公告的作者名称等关联数据"""
+    data = schema.model_validate(a).model_dump()
+    if a.author:
+        data["author_name"] = a.author.nickname or a.author.username
+    else:
+        # 如果是作者 ID 为 0 或 1(通常是系统管理员)，或者作者被删除了
+        data["author_name"] = "管理员"
+    return data
 
 
 @router.get("/published")
@@ -96,7 +108,7 @@ async def list_published_announcements(
 ):
     """获取已发布的公告（公开接口，无需登录）"""
     now = datetime.now(timezone.utc)
-    query = select(Announcement).where(
+    query = select(Announcement).options(selectinload(Announcement.author)).where(
         and_(
             Announcement.is_published == True,
             or_(Announcement.start_at.is_(None), Announcement.start_at <= now),
@@ -106,7 +118,7 @@ async def list_published_announcements(
     
     result = await db.execute(query)
     announcements = result.scalars().all()
-    items = [AnnouncementInfo.model_validate(a).model_dump() for a in announcements]
+    items = [_enrich_announcement(a, AnnouncementInfo) for a in announcements]
     return success(items)
 
 
@@ -118,12 +130,12 @@ async def get_announcement(
 ):
     """获取公告详情"""
     result = await db.execute(
-        select(Announcement).where(Announcement.id == announcement_id)
+        select(Announcement).options(selectinload(Announcement.author)).where(Announcement.id == announcement_id)
     )
     announcement = result.scalar_one_or_none()
     if not announcement:
         raise HTTPException(status_code=404, detail="公告不存在")
-    return success(AnnouncementInfo.model_validate(announcement).model_dump())
+    return success(_enrich_announcement(announcement, AnnouncementInfo))
 
 
 @router.post("")
@@ -146,7 +158,7 @@ async def create_announcement(
     db.add(announcement)
     await db.commit()
     await db.refresh(announcement)
-    return success(AnnouncementInfo.model_validate(announcement).model_dump())
+    return success(_enrich_announcement(announcement, AnnouncementInfo))
 
 
 @router.put("/{announcement_id}")
@@ -158,7 +170,7 @@ async def update_announcement(
 ):
     """更新公告（仅系统管理员）"""
     result = await db.execute(
-        select(Announcement).where(Announcement.id == announcement_id)
+        select(Announcement).options(selectinload(Announcement.author)).where(Announcement.id == announcement_id)
     )
     announcement = result.scalar_one_or_none()
     if not announcement:
@@ -170,7 +182,7 @@ async def update_announcement(
     
     await db.commit()
     await db.refresh(announcement)
-    return success(AnnouncementInfo.model_validate(announcement).model_dump())
+    return success(_enrich_announcement(announcement, AnnouncementInfo))
 
 
 @router.delete("/{announcement_id}")

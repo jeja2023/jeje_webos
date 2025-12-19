@@ -44,7 +44,9 @@ async def backup_db_tables(module_id: str):
         return False
         
     print(f"\n[备份数据] 正在检查模块 {module_id} 的数据表...")
-    backup_dir = BACKEND_DIR / "module_db_backups" / f"module_{module_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    # 备份目录放在根目录的 storage/backups/modules 下
+    storage_dir = BACKEND_DIR.parent / "storage" / "backups" / "modules"
+    backup_dir = storage_dir / f"module_{module_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     backup_dir.mkdir(parents=True, exist_ok=True)
     
     table_pattern = f"{module_id}_%"

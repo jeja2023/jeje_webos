@@ -213,35 +213,45 @@ class ModuleLoader:
         
         return module_ids
     
+    def _import_module(self, module_name: str, file_path: Path) -> Optional[Any]:
+        """安全导入模块（优先使用标准导入，失败则回退到路径加载）"""
+        try:
+            # 尝试标准导入（如果已在 sys.path 中）
+            return importlib.import_module(module_name)
+        except ImportError:
+            # 如果标准导入失败，尝试从文件路径加载
+            if not file_path.exists():
+                return None
+            try:
+                spec = importlib.util.spec_from_file_location(module_name, file_path)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[module_name] = module
+                    spec.loader.exec_module(module)
+                    return module
+            except Exception as e:
+                logger.error(f"路径加载模块失败 {module_name} ({file_path}): {e}")
+                return None
+        return None
+
     def load_manifest(self, module_id: str) -> Optional[ModuleManifest]:
         """加载模块清单"""
         module_path = self.modules_path / module_id
         # 按命名规范，清单文件为 {module_id}_manifest.py
         manifest_file = module_path / f"{module_id}_manifest.py"
+        module_name = f"modules.{module_id}.{module_id}_manifest"
         
-        if not manifest_file.exists():
-            logger.error(f"清单文件不存在: {manifest_file}")
+        module = self._import_module(module_name, manifest_file)
+        if not module:
             return None
         
-        try:
-            spec = importlib.util.spec_from_file_location(
-                f"modules.{module_id}.{module_id}_manifest",
-                manifest_file
-            )
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            
-            if hasattr(module, "manifest"):
-                manifest = module.manifest
-                # 自动发现前端资源
-                self._discover_assets(module_id, manifest)
-                return manifest
-            else:
-                logger.error(f"清单文件缺少manifest对象: {module_id}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"加载清单失败 {module_id}: {e}")
+        if hasattr(module, "manifest"):
+            manifest = module.manifest
+            # 自动发现前端资源
+            self._discover_assets(module_id, manifest)
+            return manifest
+        else:
+            logger.error(f"清单文件缺少manifest对象: {module_id}")
             return None
     
     def _discover_assets(self, module_id: str, manifest: ModuleManifest):
@@ -384,46 +394,30 @@ class ModuleLoader:
         # 3. 加载模型（确保数据库表能被创建）
         # 按命名规范，模型文件为 {module_id}_models.py
         models_file = module_path / f"{module_id}_models.py"
-        if models_file.exists():
-            try:
-                spec = importlib.util.spec_from_file_location(
-                    f"modules.{module_id}.{module_id}_models",
-                    models_file
-                )
-                models_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(models_module)
-                logger.debug(f"加载模型: {module_id}")
-            except Exception as e:
-                logger.error(f"加载模型失败 {module_id}: {e}")
-                # 模型加载失败不阻止模块加载，但记录警告
+        models_module_name = f"modules.{module_id}.{module_id}_models"
+        if self._import_module(models_module_name, models_file):
+            logger.debug(f"加载模型成功: {module_id}")
         
         # 4. 加载路由
         # 按命名规范，路由文件为 {module_id}_router.py
         router_file = module_path / f"{module_id}_router.py"
-        if router_file.exists():
-            try:
-                spec = importlib.util.spec_from_file_location(
-                    f"modules.{module_id}.{module_id}_router",
-                    router_file
-                )
-                router_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(router_module)
-                
-                if hasattr(router_module, "router"):
-                    manifest.router = router_module.router
-                    
-                    # 注册路由到FastAPI
-                    prefix = manifest.router_prefix or f"/api/v1/{module_id}"
-                    self.app.include_router(
-                        manifest.router,
-                        prefix=prefix,
-                        tags=[manifest.name]
-                    )
-                    logger.debug(f"注册路由: {prefix}")
-                    
-            except Exception as e:
-                logger.error(f"加载路由失败 {module_id}: {e}")
-                return False
+        router_module_name = f"modules.{module_id}.{module_id}_router"
+        router_module = self._import_module(router_module_name, router_file)
+        
+        if router_module and hasattr(router_module, "router"):
+            manifest.router = router_module.router
+            
+            # 注册路由到FastAPI
+            prefix = manifest.router_prefix or f"/api/v1/{module_id}"
+            self.app.include_router(
+                manifest.router,
+                prefix=prefix,
+                tags=[manifest.name]
+            )
+            logger.debug(f"注册路由成功: {prefix}")
+        elif router_file.exists():
+            logger.error(f"加载路由失败 {module_id}: 无法找到 router 对象")
+            return False
         
         # 5. 确定是否首次安装或升级
         state = self._states.get(module_id)

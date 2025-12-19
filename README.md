@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.5-brightgreen.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/version-2.0.7-blue.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -260,7 +260,19 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
 
-### 最新版本 v2.0.5 (2025-12-18)
+### v2.0.7 (2025-12-19)
+- 🚀 **N+1 全面修复**：公告、反馈模块查询性能深度优化。
+- 📂 **存储规范化**：数据库备份目录迁移至根目录 `storage` 下。
+- 🎨 **视觉识别**：全站同步 🌐 品牌图标，登录页支持图片 Logo。
+- 🐛 **完美兼容**：修复 Windows 环境下离线包上传的文件锁 bug。
+
+### v2.0.6 (2025-12-18)
+- 🚀 后端 N+1 查询优化，笔记与博客列表加载速度大幅提升。
+- 🛡️ 增加 Zip Slip 安全加固，防止非法路径遍历。
+- 🎨 统一系统图标风格，优化笔记页面布局兼容性。
+- 🧹 清理 I18n 冗余代码，提升核心组件加载性能。
+
+### v2.0.5 (2025-12-18)
 - 🧭 **导航整合**：全系统应用单一入口化，简化侧边栏、开始菜单与 Dock 栏。
 - 📝 **笔记体验优化**：重构笔记列表布局，功能按钮移至主视图头部，专注高效导航。
 - 🎛️ **控制面板**：快速创建用户、重置密码、全局搜索（Spotlight）、通知中心增强、头像裁切等。查看 [更新日志.md](./更新日志.md) 获取详情。

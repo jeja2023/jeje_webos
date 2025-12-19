@@ -4,10 +4,11 @@
 
 from typing import Optional
 from datetime import datetime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
 
 from core.database import Base
+from models.account import User
 
 
 class Announcement(Base):
@@ -20,7 +21,7 @@ class Announcement(Base):
     type: Mapped[str] = mapped_column(String(20), default="info")  # 类型：info, success, warning, error
     
     # 作者
-    author_id: Mapped[int] = mapped_column(Integer, index=True)  # 创建者ID
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id"), index=True)  # 创建者ID
     
     # 状态
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否发布
@@ -37,6 +38,9 @@ class Announcement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     
+    # 关联
+    author: Mapped["User"] = relationship(User, foreign_keys="Announcement.author_id", lazy="selectin", viewonly=True)
+
     # 索引
     __table_args__ = (
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统公告表'},

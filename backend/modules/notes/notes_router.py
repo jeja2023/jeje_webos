@@ -135,12 +135,12 @@ async def list_notes(
         size=size
     )
     
-    # 获取每个笔记的标签并生成摘要
+    # 现在的 notes 对象已经包含了预加载的 tags
     items = []
     for note in notes:
         note_dict = NoteListItem.model_validate(note).model_dump()
-        tags = await service.get_note_tags(note.id)
-        note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
+        # 直接使用预加载的 tags 关系，无需 await service.get_note_tags
+        note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in note.tags]
         # 生成摘要
         note_dict["summary"] = note.content[:100] if note.content else ""
         items.append(note_dict)
@@ -162,8 +162,7 @@ async def list_starred_notes(
     items = []
     for note in notes:
         note_dict = NoteListItem.model_validate(note).model_dump()
-        tags = await service.get_note_tags(note.id)
-        note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
+        note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in note.tags]
         note_dict["summary"] = note.content[:100] if note.content else ""
         items.append(note_dict)
     
@@ -183,8 +182,7 @@ async def get_note(
         raise HTTPException(status_code=404, detail="笔记不存在")
     
     note_dict = NoteInfo.model_validate(note).model_dump()
-    tags = await service.get_note_tags(note.id)
-    note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
+    note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in note.tags]
     
     return success(note_dict)
 

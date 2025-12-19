@@ -5,8 +5,9 @@
 /* 笔记页面布局 */
 .notes-page {
     display: flex;
-    height: calc(100vh - 60px);
-    margin: calc(-1 * var(--spacing-xl));
+    height: 100%;
+    margin: calc(-1 * var(--spacing-md));
+    /* 抵消 window-body 的默认 padding (24px) */
 }
 
 /* 侧边栏 */
@@ -158,6 +159,7 @@
     margin: 0 0 var(--spacing-sm) 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -266,7 +268,7 @@
     .notes-page {
         flex-direction: column;
     }
-    
+
     .notes-sidebar {
         width: 100%;
         height: auto;
@@ -274,16 +276,14 @@
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
-    
+
     .notes-header {
         flex-direction: column;
         gap: var(--spacing-md);
         align-items: stretch;
     }
-    
+
     .notes-search {
         width: 100%;
     }
 }
-
-

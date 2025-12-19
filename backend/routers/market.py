@@ -151,11 +151,18 @@ async def upload_package(
         # 2. 预检查 zip 内容
         with zipfile.ZipFile(temp_zip, 'r') as zf:
             namelist = zf.namelist()
+            
+            # 安全检查：防止路径遍历 (Zip Slip)
+            for name in namelist:
+                if ".." in name or name.startswith("/") or name.startswith("\\"):
+                    raise HTTPException(status_code=400, detail=f"离线包包含非法路径元素: {name}")
+            
             # 找到根目录（通常是模块ID）
             root_dirs = set()
             for name in namelist:
-                parts = Path(name).parts
-                if parts:
+                # 获取第一层级
+                parts = name.replace('\\', '/').split('/')
+                if parts and parts[0]:
                     root_dirs.add(parts[0])
             
             if len(root_dirs) != 1:
@@ -176,56 +183,56 @@ async def upload_package(
             extract_path = temp_dir / "extract"
             zf.extractall(extract_path)
             
-            target_module_path = modules_dir / module_id
-            
-            # 如果模块已存在，检查是否强制覆盖
-            is_overwrite = target_module_path.exists()
-            if is_overwrite:
-                if not force:
-                    # 读取已存在模块的信息
-                    loader = get_module_loader()
-                    existing_manifest = loader.load_manifest(module_id) if loader else None
-                    existing_name = existing_manifest.name if existing_manifest else module_id
-                    existing_version = existing_manifest.version if existing_manifest else "未知"
-                    
-                    # 返回 409 Conflict，让前端弹窗确认
-                    raise HTTPException(
-                        status_code=409,
-                        detail={
-                            "message": f"模块 \"{existing_name}\" 已存在，是否覆盖？",
-                            "module_id": module_id,
-                            "module_name": existing_name,
-                            "existing_version": existing_version
-                        }
-                    )
+        target_module_path = modules_dir / module_id
+        
+        # 如果模块已存在，检查是否强制覆盖
+        is_overwrite = target_module_path.exists()
+        if is_overwrite:
+            if not force:
+                # 读取已存在模块的信息
+                loader = get_module_loader()
+                existing_manifest = loader.load_manifest(module_id) if loader else None
+                existing_name = existing_manifest.name if existing_manifest else module_id
+                existing_version = existing_manifest.version if existing_manifest else "未知"
                 
-                logger.warning(f"模块 {module_id} 已存在，强制覆盖...")
-                shutil.rmtree(target_module_path)
+                # 返回 409 Conflict，让前端弹窗确认
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": f"模块 \"{existing_name}\" 已存在，是否覆盖？",
+                        "module_id": module_id,
+                        "module_name": existing_name,
+                        "existing_version": existing_version
+                    }
+                )
             
-            # 4. 移动到正式目录
-            shutil.move(str(extract_path / module_id), str(modules_dir))
-            
-            # 5. 清除导入缓存，确保后续能识别新模块
-            import importlib
-            importlib.invalidate_caches()
-            
-            # 读取模块清单获取名称（用于前端显示）
-            loader = get_module_loader()
-            manifest = loader.load_manifest(module_id) if loader else None
-            module_name = manifest.name if manifest else module_id
-            
-            logger.info(f"离线包解压成功: {module_id} ({module_name})")
-            
-            # 返回成功，提示用户去应用市场安装
-            msg = f"模块 \"{module_name}\" 已上传成功！请在「应用市场」中点击安装，然后在「应用管理」中启用。"
-            if is_overwrite:
-                msg = f"模块 \"{module_name}\" 已覆盖更新！请在「应用市场」中重新安装。"
-            
-            return success({
-                "module_id": module_id,
-                "module_name": module_name,
-                "is_overwrite": is_overwrite
-            }, msg)
+            logger.warning(f"模块 {module_id} 已存在，强制覆盖...")
+            shutil.rmtree(target_module_path)
+        
+        # 4. 移动到正式目录
+        shutil.move(str(extract_path / module_id), str(modules_dir))
+        
+        # 5. 清除导入缓存，确保后续能识别新模块
+        import importlib
+        importlib.invalidate_caches()
+        
+        # 读取模块清单获取名称（用于前端显示）
+        loader = get_module_loader()
+        manifest = loader.load_manifest(module_id) if loader else None
+        module_name = manifest.name if manifest else module_id
+        
+        logger.info(f"离线包解压成功: {module_id} ({module_name})")
+        
+        # 返回成功，提示用户去应用市场安装
+        msg = f"模块 \"{module_name}\" 已上传成功！请在「应用市场」中点击安装，然后在「应用管理」中启用。"
+        if is_overwrite:
+            msg = f"模块 \"{module_name}\" 已覆盖更新！请在「应用市场」中重新安装。"
+        
+        return success({
+            "module_id": module_id,
+            "module_name": module_name,
+            "is_overwrite": is_overwrite
+        }, msg)
 
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="压缩包损坏")

@@ -50,8 +50,10 @@ class FeedbackInfo(BaseModel):
     type: FeedbackType
     priority: FeedbackPriority
     user_id: int
+    user_name: Optional[str] = None
     status: FeedbackStatus
     handler_id: Optional[int]
+    handler_name: Optional[str] = None
     reply_content: Optional[str]
     reply_at: Optional[datetime]
     contact: Optional[str]
@@ -70,8 +72,10 @@ class FeedbackListItem(BaseModel):
     type: FeedbackType
     priority: FeedbackPriority
     user_id: int
+    user_name: Optional[str] = None
     status: FeedbackStatus
     handler_id: Optional[int]
+    handler_name: Optional[str] = None
     reply_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime

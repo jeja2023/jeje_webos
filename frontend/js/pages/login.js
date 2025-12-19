@@ -153,7 +153,7 @@ class LoginPage extends Component {
             <div class="login-page">
                 <div class="login-box">
                     <div class="login-header">
-                        <div class="login-logo">🌐</div>
+                        <div class="login-logo"><img src="/static/images/logo.jpg" alt="Logo" class="login-logo-img"></div>
                         <h1 class="login-title gradient-text">${Store.get('appName')}</h1>
                         <p class="login-subtitle">${isLogin ? '欢迎回来' : '创建新账户'}</p>
                     </div>

@@ -72,6 +72,15 @@ class NotesNote(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+    # 关联关系
+    from sqlalchemy.orm import relationship
+    tags: Mapped[list["NotesTag"]] = relationship(
+        "NotesTag",
+        secondary="notes_note_tags",
+        lazy="selectin",
+        viewonly=True
+    )
+
 
 class NotesTag(Base):
     """笔记标签"""

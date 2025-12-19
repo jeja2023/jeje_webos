@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy.orm import selectinload
 
 from .feedback_models import Feedback, FeedbackStatus, FeedbackType, FeedbackPriority
 from .feedback_schemas import (
@@ -39,7 +40,10 @@ class FeedbackService:
     async def get_feedback(self, feedback_id: int) -> Optional[Feedback]:
         """获取反馈详情"""
         result = await self.db.execute(
-            select(Feedback).where(Feedback.id == feedback_id)
+            select(Feedback).options(
+                selectinload(Feedback.user),
+                selectinload(Feedback.handler)
+            ).where(Feedback.id == feedback_id)
         )
         return result.scalar_one_or_none()
     
@@ -55,7 +59,10 @@ class FeedbackService:
         handler_id: Optional[int] = None
     ) -> Tuple[List[Feedback], int]:
         """获取反馈列表"""
-        query = select(Feedback)
+        query = select(Feedback).options(
+            selectinload(Feedback.user),
+            selectinload(Feedback.handler)
+        )
         conditions = []
         
         # 用户筛选（普通用户只能看自己的）
@@ -118,7 +125,10 @@ class FeedbackService:
     ) -> Optional[Feedback]:
         """更新反馈（用户）"""
         result = await self.db.execute(
-            select(Feedback).where(
+            select(Feedback).options(
+                selectinload(Feedback.user),
+                selectinload(Feedback.handler)
+            ).where(
                 and_(
                     Feedback.id == feedback_id,
                     Feedback.user_id == user_id,
@@ -146,7 +156,10 @@ class FeedbackService:
     ) -> Optional[Feedback]:
         """回复反馈（管理员）"""
         result = await self.db.execute(
-            select(Feedback).where(Feedback.id == feedback_id)
+            select(Feedback).options(
+                selectinload(Feedback.user),
+                selectinload(Feedback.handler)
+            ).where(Feedback.id == feedback_id)
         )
         feedback = result.scalar_one_or_none()
         if not feedback:
@@ -173,7 +186,10 @@ class FeedbackService:
     ) -> Optional[Feedback]:
         """管理员更新反馈"""
         result = await self.db.execute(
-            select(Feedback).where(Feedback.id == feedback_id)
+            select(Feedback).options(
+                selectinload(Feedback.user),
+                selectinload(Feedback.handler)
+            ).where(Feedback.id == feedback_id)
         )
         feedback = result.scalar_one_or_none()
         if not feedback:

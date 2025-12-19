@@ -50,7 +50,9 @@ storage/uploads/*
 !storage/uploads/.gitkeep
 storage/backups/*
 !storage/backups/.gitkeep
-module_db_backups/
+!storage/backups/modules/
+storage/backups/modules/*
+!storage/backups/modules/.gitkeep
 assets/
 
 # 数据库

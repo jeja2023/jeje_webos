@@ -114,9 +114,8 @@ class Component {
         elements.forEach(el => {
             if (el) {
                 el.addEventListener(event, handler);
-                // 记录非委托的直接绑定（如果在 destroy 前元素被移除也没关系，removeEventListener 不会报错）
-                // 但通常组件内元素在 destroy 时会被 innerHTML='' 清除，所以手动移除主要是为了避免内存泄漏（如果元素还引用着）
-                // 对于组件内部元素，直接绑定可能不需要太担心，主要问题在 delegate 绑定在 container 上
+                // 记录监听器以便销毁
+                this._listeners.push({ element: el, event, handler });
             }
         });
     }

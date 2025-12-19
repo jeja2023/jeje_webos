@@ -55,8 +55,18 @@ async def list_feedbacks(
         keyword=keyword
     )
     
-    items_data = [FeedbackListItem.model_validate(item).model_dump() for item in items]
+    items_data = [_enrich_feedback(item, FeedbackListItem) for item in items]
     return paginate(items_data, total, page, size)
+
+
+def _enrich_feedback(item, schema):
+    """填充反馈的关联数据（用户名等）"""
+    data = schema.model_validate(item).model_dump()
+    if hasattr(item, "user") and item.user:
+        data["user_name"] = item.user.nickname or item.user.username
+    if hasattr(item, "handler") and item.handler:
+        data["handler_name"] = item.handler.nickname or item.handler.username
+    return data
 
 
 @router.get("/my")
@@ -76,7 +86,7 @@ async def list_my_feedbacks(
         status=status
     )
     
-    items_data = [FeedbackListItem.model_validate(item).model_dump() for item in items]
+    items_data = [_enrich_feedback(item, FeedbackListItem) for item in items]
     return paginate(items_data, total, page, size)
 
 
@@ -98,7 +108,7 @@ async def get_feedback(
     if not is_admin and feedback.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="无权查看此反馈")
     
-    return success(FeedbackInfo.model_validate(feedback).model_dump())
+    return success(_enrich_feedback(feedback, FeedbackInfo))
 
 
 @router.post("")
@@ -118,7 +128,7 @@ async def create_feedback(
         {"type": "feedback", "id": feedback.id, "user_id": current_user.user_id}
     )
     
-    return success(FeedbackInfo.model_validate(feedback).model_dump(), "提交成功")
+    return success(_enrich_feedback(feedback, FeedbackInfo), "提交成功")
 
 
 @router.put("/{feedback_id}")
@@ -135,7 +145,7 @@ async def update_feedback(
     if not feedback:
         raise HTTPException(status_code=404, detail="反馈不存在或无权修改")
     
-    return success(FeedbackInfo.model_validate(feedback).model_dump(), "更新成功")
+    return success(_enrich_feedback(feedback, FeedbackInfo), "更新成功")
 
 
 @router.delete("/{feedback_id}")
@@ -185,7 +195,7 @@ async def list_all_feedbacks(
         handler_id=handler_id
     )
     
-    items_data = [FeedbackListItem.model_validate(item).model_dump() for item in items]
+    items_data = [_enrich_feedback(item, FeedbackListItem) for item in items]
     return paginate(items_data, total, page, size)
 
 
@@ -210,7 +220,7 @@ async def reply_feedback(
         {"type": "feedback", "id": feedback_id, "handler_id": current_user.user_id}
     )
     
-    return success(FeedbackInfo.model_validate(feedback).model_dump(), "回复成功")
+    return success(_enrich_feedback(feedback, FeedbackInfo), "回复成功")
 
 
 @router.put("/{feedback_id}/admin")
@@ -227,7 +237,7 @@ async def admin_update_feedback(
     if not feedback:
         raise HTTPException(status_code=404, detail="反馈不存在")
     
-    return success(FeedbackInfo.model_validate(feedback).model_dump(), "更新成功")
+    return success(_enrich_feedback(feedback, FeedbackInfo), "更新成功")
 
 
 @router.get("/admin/statistics")

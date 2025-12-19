@@ -134,19 +134,13 @@ async def _enrich_post_data(service: BlogService, post, schema=PostListItem):
     """辅助函数：填充文章的关联数据（标签、分类）"""
     post_dict = schema.model_validate(post).model_dump()
     
-    # 获取标签
-    tags = await service.get_post_tags(post.id)
-    post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in tags]
+    # 获取标签（已预加载）
+    post_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in post.tags]
     
-    # 获取分类
-    if post.category_id:
-        category = await service.get_category(post.category_id)
-        if category:
-            post_dict["category"] = CategoryInfo.model_validate(category).model_dump()
+    # 获取分类（已预加载）
+    if post.category:
+        post_dict["category"] = CategoryInfo.model_validate(post.category).model_dump()
 
-    # 填充标签和分类等关联数据
-    # 返回字典格式，由调用者验证具体的 Schema (PostListItem 或 PostInfo)
-    
     return post_dict
 
 

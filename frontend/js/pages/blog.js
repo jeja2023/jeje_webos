@@ -59,7 +59,7 @@ class BlogListPage extends Component {
                     <div style="display: flex; gap: 10px;">
                         <a href="#/blog/category" class="btn btn-secondary">📁 分类管理</a>
                         <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
-                            ✏️ 发布文章
+                            ➕ 发布文章
                         </button>
                     </div>
                 </div>
