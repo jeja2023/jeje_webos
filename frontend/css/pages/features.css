@@ -16,7 +16,7 @@
 }
 
 .notification-bell:hover {
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
 }
 
 .notification-badge {
@@ -26,7 +26,7 @@
     min-width: 18px;
     height: 18px;
     background: var(--color-error);
-    color: white;
+    color: var(--color-text-inverse);
     font-size: 11px;
     font-weight: 600;
     border-radius: 9px;
@@ -46,7 +46,7 @@
     display: flex;
     gap: 16px;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
     transition: background 0.2s;
 }
 
@@ -55,11 +55,11 @@
 }
 
 .notification-item:hover {
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
 }
 
 .notification-item.unread {
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
 }
 
 .notification-item.unread .notification-title {
@@ -88,7 +88,7 @@
 }
 
 .notification-message {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 14px;
     margin: 0;
     line-height: 1.5;
@@ -97,7 +97,7 @@
 .notification-meta {
     margin-top: 8px;
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .notification-actions {
@@ -177,7 +177,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 10px;
 }
 
@@ -197,7 +197,7 @@
     align-items: center;
     gap: 8px;
     padding: 32px 20px;
-    border: 2px dashed var(--border-color);
+    border: 2px dashed var(--color-border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -207,7 +207,7 @@
 .upload-area-compact:hover,
 .upload-area-compact.dragover {
     border-color: var(--color-primary);
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
 }
 
 .upload-icon-sm {
@@ -220,7 +220,7 @@
 
 .upload-area-compact small {
     font-size: 13px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .import-status {
@@ -230,7 +230,7 @@
     padding: 12px 16px;
     margin-top: 12px;
     border-radius: 10px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     font-size: 14px;
 }
 
@@ -247,7 +247,7 @@
 .loading-sm {
     width: 16px;
     height: 16px;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--color-border);
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -256,13 +256,13 @@
 .import-tips {
     margin-top: 16px;
     padding: 12px 16px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 10px;
 }
 
 .import-tips small {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     line-height: 1.6;
 }
 
@@ -279,14 +279,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 10px;
 }
 
 .phrase-key {
     font-family: monospace;
     font-size: 13px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .phrase-value {
@@ -313,7 +313,7 @@
 }
 
 .stat-card .stat-label {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 14px;
 }
 
@@ -385,7 +385,7 @@
     height: 80px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary, #8b5cf6) 100%);
-    color: white;
+    color: var(--color-text-inverse);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -402,7 +402,7 @@
 .profile-username {
     margin: 0 0 10px 0;
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .profile-stats-inline {
@@ -410,7 +410,7 @@
     justify-content: center;
     gap: 24px;
     padding-top: 16px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .stat-inline {
@@ -429,7 +429,7 @@
 
 .stat-inline .stat-label {
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .stat-inline .stat-value {
@@ -441,7 +441,7 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--text-tertiary);
+    background: var(--color-text-tertiary);
 }
 
 .status-dot.active {
@@ -472,7 +472,7 @@
 
 .security-item-compact .security-desc {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .role-badge {
@@ -499,8 +499,8 @@
 }
 
 .role-badge.role-guest {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
 }
 
 /* 信息列表 */
@@ -513,7 +513,7 @@
     display: flex;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
     font-size: 14px;
 }
 
@@ -522,7 +522,7 @@
 }
 
 .info-label {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .info-value {
@@ -535,7 +535,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .security-info {
@@ -549,7 +549,7 @@
 
 .security-desc {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 /* 状态徽章 */
@@ -586,7 +586,7 @@
 
 .stat-item .stat-label {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 /* 表单动作 */
@@ -596,7 +596,7 @@
     gap: 12px;
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .required {
@@ -605,7 +605,7 @@
 
 .form-hint {
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
     margin-top: 4px;
 }
 
@@ -631,12 +631,12 @@
 }
 
 .user-info:hover {
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
 }
 
 .dropdown-arrow {
     font-size: 10px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     transition: transform 0.2s;
 }
 
@@ -678,7 +678,7 @@
 }
 
 .dropdown-item:hover {
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
 }
 
 .dropdown-item.dropdown-item-danger {
@@ -695,7 +695,7 @@
 
 .dropdown-divider {
     height: 1px;
-    background: var(--border-color);
+    background: var(--color-border);
     margin: 0;
 }
 

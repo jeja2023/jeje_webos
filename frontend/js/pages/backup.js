@@ -177,7 +177,7 @@ class BackupPage extends Component {
                                 📁 仅文件
                             </button>
                         </div>
-                        <p style="margin-top: 12px; color: var(--text-secondary); font-size: 14px;">
+                        <p style="margin-top: 12px; color: var(--color-text-secondary); font-size: 14px;">
                             💡 提示：全量备份包含数据库和所有上传的文件
                         </p>
                     </div>
@@ -192,7 +192,7 @@ class BackupPage extends Component {
                         <div class="empty-state" style="padding: 60px 0;">
                             <div class="empty-icon">💾</div>
                             <p class="empty-text">暂无备份记录</p>
-                            <p style="color: var(--text-secondary);">点击上方按钮创建第一个备份</p>
+                            <p style="color: var(--color-text-secondary);">点击上方按钮创建第一个备份</p>
                         </div>
                     ` : `
                         <div class="table-wrapper">

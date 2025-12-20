@@ -37,7 +37,7 @@
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-secondary);
     padding: 6px 12px;
     border-radius: 6px;
     transition: all 0.15s ease;
@@ -45,8 +45,8 @@
 }
 
 .topbar-text-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: white;
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
 }
 
 .topbar-text-btn:active {
@@ -58,7 +58,7 @@
 .brand-title {
     font-size: 18px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.95);
+    color: var(--color-text-primary);
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
     letter-spacing: -0.5px;
@@ -84,7 +84,7 @@
     margin-top: 8px;
     padding: 6px 10px;
     background: rgba(0, 0, 0, 0.75);
-    color: #fff;
+    color: var(--color-text-inverse);
     font-size: 12px;
     line-height: 1.4;
     font-weight: 500;
@@ -98,7 +98,7 @@
     z-index: 2000;
     backdrop-filter: blur(5px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-border);
 }
 
 #brandPill:hover::after {
@@ -127,8 +127,8 @@
     -webkit-backdrop-filter: blur(20px) saturate(180%);
 
     /* 玻璃边缘的精致边框 */
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(125, 125, 125, 0.2);
+    border-bottom: 1px solid rgba(125, 125, 125, 0.1);
 
     /* 内部光亮和柔和的阴影 */
     box-shadow:
@@ -139,7 +139,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    color: var(--color-text-primary);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 38px;
     /* 略高以显优雅 */
@@ -197,7 +197,7 @@
     top: 4px;
     right: 8px;
     background-color: #ff3b30;
-    color: white;
+    color: var(--color-text-inverse);
     font-size: 10px;
     font-weight: 700;
     height: 16px;
@@ -208,7 +208,7 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--color-border);
     z-index: 10;
     pointer-events: none;
     animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -248,7 +248,7 @@
 .user-name-text {
     font-size: 14px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     letter-spacing: -0.2px;
 }
@@ -263,7 +263,7 @@
     /*深色玻璃 */
     backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--color-border);
     border-radius: 16px;
     padding: 8px;
     display: none;
@@ -280,24 +280,24 @@
 
 .menu-header {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--color-border);
     margin-bottom: 4px;
 }
 
 .menu-user-name {
-    color: #fff;
+    color: var(--color-text-primary);
     font-weight: 600;
     font-size: 14px;
 }
 
 .menu-user-role {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--color-text-secondary);
     font-size: 12px;
 }
 
 .menu-item {
     padding: 10px 16px;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-primary);
     font-size: 13px;
     cursor: pointer;
     border-radius: 8px;
@@ -309,8 +309,8 @@
 }
 
 .menu-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
 }
 
 .menu-item.danger {
@@ -323,7 +323,7 @@
 
 .menu-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-border);
     margin: 6px 8px;
 }
 
@@ -411,8 +411,8 @@
 
 .msg-tabs {
     display: flex;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
 }
 
 .msg-tab {
@@ -420,19 +420,19 @@
     text-align: center;
     padding: 12px 0;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--color-text-tertiary);
     cursor: pointer;
     position: relative;
     transition: all 0.2s;
 }
 
 .msg-tab:hover {
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
 }
 
 .msg-tab.active {
-    color: #fff;
+    color: var(--color-text-primary);
     font-weight: 600;
 }
 
@@ -474,7 +474,7 @@
 }
 
 .msg-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-bg-hover);
 }
 
 .msg-item.unread {
@@ -497,7 +497,7 @@
 
 .msg-title {
     font-size: 13px;
-    color: #fff;
+    color: var(--color-text-primary);
     margin-bottom: 4px;
     line-height: 1.4;
     display: -webkit-box;
@@ -509,22 +509,21 @@
 
 .msg-time {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-text-tertiary);
 }
 
 .msg-footer {
     padding: 10px;
     text-align: center;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    background: rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+    border-top: 1px solid var(--color-border);
 }
 
 .msg-footer:hover {
-    color: #fff;
-    background: rgba(0, 0, 0, 0.2);
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
 }
 
 .loading-spinner {
@@ -538,8 +537,8 @@
     content: '';
     width: 20px;
     height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-top-color: #fff;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -553,7 +552,7 @@
 .empty-text {
     padding: 30px;
     text-align: center;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--color-text-tertiary);
     font-size: 13px;
 }
 
@@ -578,7 +577,7 @@
 
     /* 隐藏顶部时间（手机自带状态栏时间） */
     .time-pill {
-        display: none !important;
+        color: var(--color-text-inverse) !important;
     }
 
     /* 隐藏帮助按钮 */

@@ -8,7 +8,7 @@
     height: 100%;
     padding: 20px;
     gap: 20px;
-    background: var(--bg-primary);
+    background: var(--color-bg-primary);
 }
 
 /* 头部 */
@@ -17,7 +17,7 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .transfer-header .header-title {
@@ -26,11 +26,11 @@
     gap: 10px;
     font-size: 24px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
 }
 
 .transfer-header .header-title i {
-    color: var(--accent-color);
+    color: var(--color-primary);
     font-size: 28px;
 }
 
@@ -44,7 +44,7 @@
     align-items: center;
     gap: 6px;
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .transfer-header .header-stats span i {
@@ -56,7 +56,7 @@
     display: flex;
     gap: 10px;
     padding: 5px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
     width: fit-content;
 }
@@ -68,7 +68,7 @@
     padding: 10px 20px;
     border: none;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 14px;
     cursor: pointer;
     border-radius: 8px;
@@ -76,13 +76,13 @@
 }
 
 .transfer-tabs .tab-btn:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
 }
 
 .transfer-tabs .tab-btn.active {
-    background: var(--accent-color);
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
 }
 
 /* 内容区 */
@@ -107,9 +107,9 @@
 .drop-zone {
     width: 100%;
     padding: 50px 40px;
-    border: 2px dashed var(--border-color);
+    border: 2px dashed var(--color-border);
     border-radius: 16px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -121,8 +121,8 @@
 
 .drop-zone:hover,
 .drop-zone.dragover {
-    border-color: var(--accent-color);
-    background: rgba(var(--accent-color-rgb), 0.05);
+    border-color: var(--color-primary);
+    background: var(--color-bg-hover);
     transform: translateY(-2px);
 }
 
@@ -132,26 +132,26 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
     border-radius: 50%;
     margin-bottom: 5px;
 }
 
 .drop-zone .drop-icon i {
     font-size: 36px;
-    color: white;
+    color: var(--color-text-inverse);
 }
 
 .drop-zone .drop-title {
     font-size: 16px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     margin: 0;
 }
 
 .drop-zone .drop-hint {
     font-size: 13px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
     margin: 0;
 }
 
@@ -161,15 +161,15 @@
     gap: 15px;
     width: 100%;
     padding: 16px 20px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
-    border: 1px solid var(--accent-color);
-    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.15);
+    border: 1px solid var(--color-primary);
+    box-shadow: var(--shadow-md);
 }
 
 .selected-file>i {
     font-size: 28px;
-    color: var(--accent-color);
+    color: var(--color-primary);
 }
 
 .selected-file .file-details {
@@ -182,35 +182,35 @@
 .selected-file .file-name {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     word-break: break-all;
 }
 
 .selected-file .file-size {
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .selected-file button {
     padding: 8px 12px;
     border: none;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     cursor: pointer;
     border-radius: 8px;
     transition: all 0.2s;
 }
 
 .selected-file button:hover {
-    background: var(--bg-hover);
-    color: var(--error-color);
+    background: var(--color-bg-hover);
+    color: var(--color-error);
 }
 
 .tip {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
     font-size: 13px;
 }
 
@@ -224,9 +224,9 @@
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     font-size: 14px;
     border-radius: 10px;
     cursor: pointer;
@@ -234,13 +234,13 @@
 }
 
 .btn:hover {
-    background: var(--bg-hover);
+    background: var(--color-bg-hover);
 }
 
 .btn.primary {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary-dark);
+    color: var(--color-text-inverse);
 }
 
 .btn.primary:hover {
@@ -248,12 +248,12 @@
 }
 
 .btn.cancel {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .btn.cancel:hover {
-    color: var(--error-color);
-    border-color: var(--error-color);
+    color: var(--color-error);
+    border-color: var(--color-error);
 }
 
 .btn.disabled {
@@ -284,10 +284,10 @@
     font-size: 28px;
     font-weight: 700;
     font-family: 'Courier New', monospace;
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+    color: var(--color-text-inverse);
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
+    box-shadow: 0 4px 12px var(--color-primary-glow);
 }
 
 .send-waiting .file-info {
@@ -295,13 +295,13 @@
     align-items: center;
     gap: 10px;
     padding: 12px 20px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 10px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .send-waiting .waiting {
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
     font-style: italic;
 }
 
@@ -315,7 +315,7 @@
 }
 
 .receive-input p {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 16px;
 }
 
@@ -326,16 +326,16 @@
     font-family: 'Courier New', monospace;
     letter-spacing: 8px;
     text-align: center;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--color-border);
     border-radius: 12px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     outline: none;
     transition: border-color 0.2s;
 }
 
 .code-input:focus {
-    border-color: var(--accent-color);
+    border-color: var(--color-primary);
 }
 
 .receive-joined {
@@ -348,14 +348,14 @@
 
 .receive-joined>i {
     font-size: 48px;
-    color: var(--success-color);
+    color: var(--color-success);
 }
 
 .receive-joined .file-info {
     padding: 15px 25px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
 }
 
 /* 传输进度 */
@@ -376,8 +376,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+    color: var(--color-text-inverse);
     font-size: 32px;
     animation: pulse 2s infinite;
 }
@@ -397,20 +397,20 @@
 .transfer-progress .progress-bar {
     width: 100%;
     height: 12px;
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
     border-radius: 6px;
     overflow: hidden;
 }
 
 .transfer-progress .progress-bar .fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent-color), var(--success-color));
+    background: linear-gradient(90deg, var(--color-primary), var(--color-success));
     border-radius: 6px;
     transition: width 0.3s ease;
 }
 
 .transfer-progress p {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 /* 历史记录视图 */
@@ -427,22 +427,22 @@
 
 .history-view .filter button {
     padding: 8px 16px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .history-view .filter button:hover {
-    background: var(--bg-hover);
+    background: var(--color-bg-hover);
 }
 
 .history-view .filter button.active {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary-dark);
+    color: var(--color-text-inverse);
 }
 
 .history-view .empty {
@@ -452,7 +452,7 @@
     justify-content: center;
     gap: 12px;
     padding: 60px 20px;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .history-view .empty i {
@@ -476,15 +476,15 @@
     align-items: center;
     gap: 15px;
     padding: 15px 20px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     transition: all 0.2s;
 }
 
 .history-view .item:hover {
-    background: var(--bg-hover);
-    border-color: var(--accent-color);
+    background: var(--color-bg-hover);
+    border-color: var(--color-primary);
 }
 
 .history-view .item .item-icon {
@@ -499,13 +499,13 @@
 }
 
 .history-view .item .item-icon.send {
-    background: linear-gradient(135deg, rgba(var(--success-color-rgb), 0.2), rgba(var(--success-color-rgb), 0.1));
-    color: var(--success-color);
+    background: var(--color-bg-tertiary);
+    color: var(--color-success);
 }
 
 .history-view .item .item-icon.receive {
-    background: linear-gradient(135deg, rgba(var(--info-color-rgb), 0.2), rgba(var(--info-color-rgb), 0.1));
-    color: var(--info-color);
+    background: var(--color-bg-tertiary);
+    color: var(--color-info);
 }
 
 .history-view .item .item-info {
@@ -519,7 +519,7 @@
 .history-view .item .item-name {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -527,14 +527,14 @@
 
 .history-view .item .item-meta {
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .history-view .item .del {
     padding: 8px 12px;
     border: none;
     background: transparent;
-    color: var(--text-tertiary);
+    color: var(--color-text-tertiary);
     cursor: pointer;
     border-radius: 8px;
     opacity: 0;
@@ -546,8 +546,8 @@
 }
 
 .history-view .item .del:hover {
-    background: var(--bg-hover);
-    color: var(--error-color);
+    background: var(--color-bg-hover);
+    color: var(--color-error);
 }
 
 .history-view .pagination {
@@ -560,16 +560,16 @@
 
 .history-view .pagination button {
     padding: 8px 16px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .history-view .pagination button:hover:not(:disabled) {
-    background: var(--bg-hover);
+    background: var(--color-bg-hover);
 }
 
 .history-view .pagination button:disabled {
@@ -578,6 +578,6 @@
 }
 
 .history-view .pagination span {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 14px;
 }

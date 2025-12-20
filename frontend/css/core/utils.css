@@ -46,7 +46,7 @@
 
 /* 渐变文字 */
 .gradient-text {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-info));
+    background: linear-gradient(135deg, var(--color-primary), var(--color-info));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -74,7 +74,7 @@
     width: 48px;
     height: 48px;
     border: 3px solid var(--color-border);
-    border-top-color: var(--color-accent);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -103,7 +103,7 @@
     width: 24px;
     height: 24px;
     border: 2px solid var(--color-border);
-    border-top-color: var(--color-accent);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -124,4 +124,46 @@
 .empty-state .empty-text {
     font-size: 1rem;
     margin-bottom: var(--spacing-lg);
+}
+
+/* ================= 通用组件样式 ================= */
+
+/* 表单输入 */
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+    outline: none;
+    font-size: 0.95rem;
+}
+
+.form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+    background: var(--color-bg-primary);
+    /* 聚焦时背景稍亮 */
+}
+
+.form-control::placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 0.7;
+}
+
+/* 卡片容器 */
+.card {
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+    padding: var(--spacing-lg);
+    transition: box-shadow var(--transition-normal);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border);
 }

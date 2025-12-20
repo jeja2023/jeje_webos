@@ -43,7 +43,7 @@
 .login-logo {
     font-size: 56px;
     margin-bottom: 16px;
-    filter: drop-shadow(0 0 20px var(--color-accent-glow));
+    filter: drop-shadow(0 0 20px var(--color-primary-glow));
     animation: float 6s ease-in-out infinite;
 }
 
@@ -77,7 +77,7 @@
 
 /* 渐变文字效果 - 使用主题强调色 */
 .login-title.gradient-text {
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 50%, var(--color-accent) 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 50%, var(--color-primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -125,8 +125,8 @@
 
 .login-form .form-input:focus {
     background: var(--color-bg-tertiary);
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-glow);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 
 .login-form .form-input::placeholder {
@@ -166,7 +166,7 @@
     height: 44px;
     font-size: 14px;
     font-weight: 500;
-    background: var(--color-accent);
+    background: var(--color-primary);
     color: var(--color-text-inverse);
     border: none;
     border-radius: 10px;
@@ -177,13 +177,13 @@
 }
 
 .login-form .btn:hover {
-    background: var(--color-accent-dark);
+    background: var(--color-primary-dark);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--color-accent-glow);
+    box-shadow: 0 4px 12px var(--color-primary-glow);
 }
 
 .login-form .btn:active {
-    background: var(--color-accent-dark);
+    background: var(--color-primary-dark);
     transform: translateY(0);
     box-shadow: none;
 }
@@ -213,7 +213,7 @@
 }
 
 .login-footer a {
-    color: var(--color-accent);
+    color: var(--color-primary);
     font-weight: 500;
     text-decoration: none;
     margin-left: 6px;
@@ -221,7 +221,7 @@
 }
 
 .login-footer a:hover {
-    color: var(--color-accent-light);
+    color: var(--color-primary-hover);
     text-decoration: underline;
 }
 

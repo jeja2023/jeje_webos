@@ -100,6 +100,7 @@ async def export_users(
             media_type="application/json",
             headers={"Content-Disposition": f'attachment; filename="users_{timestamp}.json"'}
         )
+@router.get("/message")
 async def export_messages(
     format: str = "csv",
     user_id: Optional[int] = None,

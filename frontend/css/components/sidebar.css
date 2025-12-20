@@ -68,7 +68,7 @@
 }
 
 .nav-item.active {
-    background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
     color: var(--color-text-inverse);
     font-weight: 500;
 }
@@ -162,7 +162,7 @@
 }
 
 .sidebar-footer .help-link.active {
-    background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
     color: var(--color-text-inverse);
 }
 

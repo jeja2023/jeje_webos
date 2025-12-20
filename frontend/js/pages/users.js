@@ -155,7 +155,7 @@ class UserListPage extends Component {
 
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--color-accent)';
+            uploadArea.style.borderColor = 'var(--color-primary)';
             uploadArea.style.background = 'var(--color-bg-secondary)';
         });
 
@@ -673,7 +673,7 @@ class UserListPage extends Component {
                         <div class="form-group" style="display:flex; gap:8px; align-items:flex-end;">
                             <div style="flex:1;">
                                 <label class="form-label">搜索</label>
-                                <input type="text" class="form-input" id="filterKeyword" 
+                                <input type="text" class="form-input" id="usersFilterKeyword" 
                                        placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
                             </div>
                             <div style="padding-bottom: 0;">
@@ -736,7 +736,7 @@ class UserListPage extends Component {
                                                 `}
                                                 <button class="btn btn-ghost btn-sm" data-edit="${user.id}">编辑</button>
                                                 <button class="btn btn-ghost btn-sm" data-reset-pwd="${user.id}" data-username="${Utils.escapeHtml(user.username)}">重置密码</button>
-                                                <button class="btn btn-ghost btn-sm" data-perms="${user.id}">权限</button>
+                                                ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${user.id}">权限</button>` : ''}
                                                 ${user.role !== 'admin' ? `
                                                     <button class="btn btn-ghost btn-sm" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}">删除</button>
                                                 ` : ''}
@@ -809,13 +809,13 @@ class UserListPage extends Component {
             this.delegate('change', '#filterRole', (e) => this.handleFilter('role', e.target.value));
             this.delegate('change', '#filterStatus', (e) => this.handleFilter('is_active', e.target.value));
             this.delegate('click', '#searchBtn', () => {
-                const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             });
-            this.delegate('keydown', '#filterKeyword', (e) => {
+            this.delegate('keydown', '#usersFilterKeyword', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                    const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
                     this.handleFilter('keyword', keyword);
                 }
             });
@@ -1211,13 +1211,13 @@ class UserListPage extends Component {
         bind('#filterRole', 'change', 'roleChange', (e) => this.handleFilter('role', e.target.value));
         bind('#filterStatus', 'change', 'statusChange', (e) => this.handleFilter('is_active', e.target.value));
         bind('#searchBtn', 'click', 'searchClick', () => {
-            const keyword = this.$('#filterKeyword')?.value.trim() || '';
+            const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
             this.handleFilter('keyword', keyword);
         });
-        bind('#filterKeyword', 'keydown', 'searchEnter', (e) => {
+        bind('#usersFilterKeyword', 'keydown', 'searchEnter', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             }
         });

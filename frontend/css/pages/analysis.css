@@ -1,0 +1,386 @@
+/* 数据分析模块专属样式 */
+.analysis-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg-secondary);
+}
+
+.analysis-sidebar {
+    width: 260px;
+    background: var(--color-bg-primary);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.analysis-menu {
+    padding: 15px;
+    flex: 1;
+}
+
+.analysis-menu-item {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    color: var(--color-text-secondary);
+}
+
+.analysis-menu-item:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.analysis-menu-item.active {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.analysis-menu-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 10px 15px;
+}
+
+.analysis-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bi-wrapper {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 数据表格样式 */
+.data-table-container {
+    padding: 20px;
+    flex: 1;
+    overflow: auto;
+}
+
+.premium-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.premium-table th {
+    background: var(--color-bg-secondary);
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+}
+
+.premium-table th:hover {
+    background: var(--color-bg-hover);
+}
+
+.premium-table th .sort-icon {
+    margin-left: 5px;
+    opacity: 0.5;
+}
+
+.premium-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    vertical-align: middle;
+}
+
+.premium-table tr:hover td {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+/* 图片渲染 */
+.cell-image {
+    max-width: 60px;
+    max-height: 40px;
+    border-radius: 4px;
+    cursor: zoom-in;
+    transition: transform 0.2s;
+    object-fit: cover;
+}
+
+.cell-image:hover {
+    transform: scale(1.1);
+}
+
+/* 导入表单 */
+.import-form {
+    max-width: 600px;
+    margin: 40px auto;
+    background: var(--color-bg-primary);
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.text-sm code {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+/* 比对面板 */
+.compare-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.compare-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: flex-start;
+    background: var(--color-bg-primary);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+}
+
+/* 建模与清洗网格 */
+.modeling-grid,
+.cleaning-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.modeling-card,
+.cleaning-panel {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.modeling-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.result-card {
+    background: var(--color-bg-primary) !important;
+    border: 1px solid var(--color-border);
+}
+
+.diff-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.badge-danger {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.badge-warning {
+    background: rgba(255, 152, 0, 0.1);
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.diff-card {
+    background: var(--color-bg-secondary);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid var(--color-border);
+}
+
+/* ==================== 图表分析样式 ==================== */
+.charts-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.charts-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 配置面板 */
+.chart-config-panel {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.config-section {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 16px;
+}
+
+.config-section:last-of-type {
+    border-bottom: none;
+}
+
+.config-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 图表类型选择器 */
+.chart-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.chart-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 6px;
+    background: var(--color-bg-secondary);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--color-text-secondary);
+}
+
+.chart-type-btn:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-primary);
+    color: var(--color-text-primary);
+}
+
+.chart-type-btn.active {
+    background: rgba(var(--color-primary-rgb, 99, 102, 241), 0.15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.chart-type-btn .chart-icon {
+    font-size: 20px;
+}
+
+.chart-type-btn span:last-child {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* 图表展示区 */
+.chart-display-area {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chart-container {
+    flex: 1;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-placeholder {
+    text-align: center;
+    color: var(--color-text-tertiary);
+}
+
+.chart-placeholder .placeholder-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+}
+
+.chart-placeholder p {
+    font-size: 14px;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    .charts-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-config-panel {
+        order: 1;
+    }
+
+    .chart-display-area {
+        order: 0;
+        min-height: 350px;
+    }
+}

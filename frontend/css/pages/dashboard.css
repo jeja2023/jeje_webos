@@ -45,47 +45,47 @@
 }
 
 .stat-icon.primary {
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary-color);
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
 }
 
 .stat-icon.info {
-    background: rgba(var(--info-rgb), 0.1);
-    color: var(--info-color);
+    background: rgba(var(--color-info-rgb), 0.1);
+    color: var(--color-info);
 }
 
 .stat-icon.warning {
-    background: rgba(var(--warning-rgb), 0.1);
-    color: var(--warning-color);
+    background: rgba(var(--color-warning-rgb), 0.1);
+    color: var(--color-warning);
 }
 
 .stat-icon.success {
-    background: rgba(var(--success-rgb), 0.1);
-    color: var(--success-color);
+    background: rgba(var(--color-success-rgb), 0.1);
+    color: var(--color-success);
 }
 
 .stat-icon.danger {
-    background: rgba(var(--danger-rgb), 0.1);
-    color: var(--danger-color);
+    background: rgba(var(--color-error-rgb), 0.1);
+    color: var(--color-error);
 }
 
 .stat-value {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     line-height: 1.2;
     margin-bottom: 4px;
 }
 
 .stat-label {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 /* 警告状态的统计卡片 */
 .stat-card-warning {
-    border: 1px solid rgba(var(--warning-rgb), 0.3);
-    background: rgba(var(--warning-rgb), 0.05);
+    border: 1px solid rgba(var(--color-warning-rgb), 0.3);
+    background: rgba(var(--color-warning-rgb), 0.05);
 }
 
 /* 统计卡片快捷链接 */
@@ -93,13 +93,13 @@
     display: inline-block;
     margin-top: 8px;
     font-size: 12px;
-    color: var(--primary-color);
+    color: var(--color-primary);
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .stat-link:hover {
-    color: var(--primary-hover);
+    color: var(--color-primary-hover);
     text-decoration: underline;
 }
 
@@ -113,7 +113,7 @@
     display: flex;
     gap: 12px;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     transition: background-color 0.2s;
     align-items: flex-start;
@@ -124,15 +124,15 @@
 }
 
 .notice-item:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--color-bg-hover);
 }
 
 .notice-icon {
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: var(--bg-secondary);
-    color: var(--primary-color);
+    background: var(--color-bg-secondary);
+    color: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -152,7 +152,7 @@
 
 .notice-title {
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
@@ -163,7 +163,7 @@
 
 .notice-preview {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
@@ -173,7 +173,7 @@
 }
 
 .notice-meta {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 12px;
     display: flex;
     justify-content: space-between;
@@ -182,7 +182,7 @@
 
 /* 公告详情弹窗内容 */
 .announcement-detail .meta {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     margin-bottom: 16px;
     font-size: 14px;
     display: flex;
@@ -191,7 +191,7 @@
 
 .announcement-detail .content {
     line-height: 1.6;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
 }
 
 /* ===== 移动端适配 ===== */

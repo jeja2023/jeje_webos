@@ -189,28 +189,28 @@ class HelpPage extends Component {
         modulesHtml += `
             <h4>💡 管理员提示</h4>
             <p>在「系统管理」->「应用中心」中可以管理所有功能模块。</p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">
         `;
 
         // 添加各模块详细使用指南
         if (enabledIds.includes('notes')) {
             modulesHtml += this.getNotesHelpContent();
-            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
         }
 
         if (enabledIds.includes('blog') || enabledIds.includes('cms')) {
             modulesHtml += this.getBlogHelpContent();
-            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
         }
 
         if (enabledIds.includes('feedback')) {
             modulesHtml += this.getFeedbackHelpContent();
-            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
         }
 
         // 文件管理（内置模块，始终显示）
         modulesHtml += this.getFileManagerContent();
-        modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border-color);">';
+        modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
 
         if (enabledIds.includes('transfer')) {
             modulesHtml += this.getTransferHelpContent();

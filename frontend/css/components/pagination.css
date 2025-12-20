@@ -34,8 +34,8 @@
 }
 
 .pagination-btn.active {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
     color: var(--color-text-inverse);
     font-weight: 500;
 }

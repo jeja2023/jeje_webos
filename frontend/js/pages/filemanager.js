@@ -110,7 +110,7 @@ class FileManagerPage extends Component {
                             <span class="fm-search-icon">🔍</span>
                             <input type="text" class="fm-search-input" 
                                    placeholder="搜索文件..." 
-                                   id="searchInput"
+                                   id="fmSearchInput"
                                    value="${Utils.escapeHtml(searchKeyword)}">
                         </div>
                         
@@ -405,7 +405,7 @@ class FileManagerPage extends Component {
             });
 
             // 搜索
-            const searchInput = this.$('#searchInput');
+            const searchInput = this.$('#fmSearchInput');
             if (searchInput && !searchInput._bindedSearch) {
                 searchInput._bindedSearch = true;
                 let searchTimer;

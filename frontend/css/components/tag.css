@@ -15,7 +15,7 @@
 
 .tag-primary {
     background: rgba(0, 212, 170, 0.15);
-    color: var(--color-accent);
+    color: var(--color-primary);
 }
 
 .tag-warning {

@@ -701,19 +701,3 @@ async def get_latest_changelog():
     })
 
 
-@router.get("/changelog/latest")
-async def get_latest_changelog():
-    """获取最新版本信息和更新提示"""
-    latest = get_latest_version()
-    if not latest:
-        return success(None)
-    
-    settings = get_settings()
-    changes = get_version_changes(settings.app_version)
-    
-    return success({
-        "latest": latest,
-        "current": settings.app_version,
-        "has_updates": changes.get("has_updates", False),
-        "changes": changes.get("changes", {})
-    })

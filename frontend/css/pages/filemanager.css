@@ -115,7 +115,7 @@
 
 .fm-search-input:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--color-primary);
     width: 260px;
 }
 
@@ -177,8 +177,8 @@
 }
 
 .fm-sidebar-item.active {
-    background: var(--color-accent-light);
-    color: var(--color-accent);
+    background: var(--color-primary-hover);
+    color: var(--color-primary);
 }
 
 .fm-sidebar-item .icon {
@@ -207,8 +207,8 @@
 }
 
 .fm-tree-item.active {
-    background: var(--color-accent-light);
-    color: var(--color-accent);
+    background: var(--color-primary-hover);
+    color: var(--color-primary);
 }
 
 .fm-tree-toggle {
@@ -285,7 +285,7 @@
 }
 
 .fm-list-item.selected {
-    background: var(--color-accent-light);
+    background: var(--color-primary-hover);
 }
 
 /* 文件卡片 */
@@ -305,8 +305,8 @@
 }
 
 .fm-item.selected {
-    background: var(--color-accent-light);
-    border: 2px solid var(--color-accent);
+    background: var(--color-primary-hover);
+    border: 2px solid var(--color-primary);
 }
 
 .fm-item-icon {
@@ -387,7 +387,7 @@
     position: absolute;
     inset: 0;
     background: rgba(var(--color-accent-rgb), 0.1);
-    border: 3px dashed var(--color-accent);
+    border: 3px dashed var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -403,7 +403,7 @@
 
 .fm-dropzone-content {
     text-align: center;
-    color: var(--color-accent);
+    color: var(--color-primary);
 }
 
 .fm-dropzone-icon {
@@ -661,8 +661,8 @@
 
 .fm-item.drag-over,
 .fm-tree-item.drag-over {
-    background: var(--color-accent-light) !important;
-    border: 2px dashed var(--color-accent) !important;
+    background: var(--color-primary-hover) !important;
+    border: 2px dashed var(--color-primary) !important;
     border-radius: var(--radius-md);
 }
 

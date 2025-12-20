@@ -421,6 +421,7 @@ const MessageApi = {
 const ExportApi = {
     exportUsers: (format = 'csv') => `${Config.apiBase}/export/users?format=${format}`,
     exportMessages: (format = 'csv') => `${Config.apiBase}/export/message?format=${format}`,
+    exportNotifications: (format = 'csv') => `${Config.apiBase}/export/message?format=${format}`,
     exportFiles: (format = 'csv') => `${Config.apiBase}/export/files?format=${format}`,
     importUsers: (file) => Api.upload('/export/import/users', file)
 };

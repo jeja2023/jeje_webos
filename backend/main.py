@@ -62,6 +62,15 @@ async def lifespan(app: FastAPI):
     current_settings = get_settings()
     logger.info(f"🚀 正在启动 {current_settings.app_name} v{current_settings.app_version}...")
     
+    # 记录已加载的模块数量（模块已在应用创建后注册）
+    from core.loader import get_module_loader
+    loader = get_module_loader()
+    if loader:
+        loaded_count = len(loader.modules)
+        logger.info(f"📦 已加载 {loaded_count} 个模块")
+
+
+    
     # 0. 检查并自动生成 JWT 密钥（如果使用默认密钥）
     try:
         from utils.jwt_rotate import get_jwt_rotator
@@ -100,12 +109,6 @@ async def lifespan(app: FastAPI):
     if current_settings.csrf_enabled:
         logger.info("✅ CSRF 防护中间件已启用")
     
-    # 2. 初始化模块加载器（加载模型和路由）
-    loader = init_loader(app)
-    results = loader.load_all()
-    loaded_count = sum(1 for v in results.values() if v)
-    logger.info(f"✅ 已加载 {loaded_count} 个模块")
-    
     # 3. 初始化数据库
     await init_db()
     
@@ -118,7 +121,9 @@ async def lifespan(app: FastAPI):
     
     # 4. 运行模块安装钩子
     try:
-        await loader.run_install_hooks()
+        module_loader = get_module_loader()
+        if module_loader:
+            await module_loader.run_install_hooks()
     except Exception as e:
         logger.error(f"❌ 模块钩子执行失败: {e}")
     
@@ -204,12 +209,7 @@ async def lifespan(app: FastAPI):
     # 10. 发布启动事件
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
     
-    current_settings = get_settings()  # 获取最新配置
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")
-    
-    # yield 已存在于下方
-    
-    # [此处已移除动态路由注册逻辑]
     
     yield
 
@@ -299,6 +299,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ==================== 加载模块路由 ====================
+from core.loader import init_loader
+
+_module_loader = init_loader(app)
+_module_results = _module_loader.load_all()
+
 # ==================== 注册系统路由 ====================
 from routers import (
     auth, boot, user, system_settings, audit, roles,
@@ -326,54 +332,56 @@ app.include_router(import_export.router)
 app.include_router(announcement.router)
 app.include_router(market.router)
 
-# 核心业务模块（由加载器处理）
-
 # 健康检查路由
 from core.health_checker import router as health_router
 app.include_router(health_router)
 
 
-# ==================== 静态文件配置 ====================
-# 前端路径可通过环境变量 FRONTEND_PATH 配置，默认使用相对路径（本地开发）
-frontend_path = os.environ.get("FRONTEND_PATH", os.path.join(os.path.dirname(__file__), "..", "frontend"))
+# 前端路径配置
+FRONTEND_PATH = os.environ.get("FRONTEND_PATH", os.path.join(os.path.dirname(__file__), "..", "frontend"))
 
-if os.path.exists(frontend_path):
-    # 挂载 CSS（带缓存控制）
-    css_path = os.path.join(frontend_path, "css")
-    if os.path.exists(css_path):
-        app.mount("/static/css", CachedStaticFiles(directory=css_path), name="css")
-    
-    # 挂载 JS（带缓存控制）
-    js_path = os.path.join(frontend_path, "js")
-    if os.path.exists(js_path):
-        app.mount("/static/js", CachedStaticFiles(directory=js_path), name="js")
-    
-    # 挂载 images（带缓存控制）
-    images_path = os.path.join(frontend_path, "images")
-    if os.path.exists(images_path):
-        app.mount("/static/images", CachedStaticFiles(directory=images_path), name="images")
+def _mount_static_resources(app: FastAPI):
+    """挂载静态资源逻辑函数"""
+    if os.path.exists(FRONTEND_PATH):
+        # 挂载 CSS（带缓存控制）
+        css_path = os.path.join(FRONTEND_PATH, "css")
+        if os.path.exists(css_path):
+            app.mount("/static/css", CachedStaticFiles(directory=css_path), name="css")
+        
+        # 挂载 JS（带缓存控制）
+        js_path = os.path.join(FRONTEND_PATH, "js")
+        if os.path.exists(js_path):
+            app.mount("/static/js", CachedStaticFiles(directory=js_path), name="js")
+        
+        # 挂载 images（带缓存控制）
+        images_path = os.path.join(FRONTEND_PATH, "images")
+        if os.path.exists(images_path):
+            app.mount("/static/images", CachedStaticFiles(directory=images_path), name="images")
 
-# 模块静态资源（挂载到 /static/{module_name}/）
-modules_path = os.path.join(os.path.dirname(__file__), "modules")
-if os.path.exists(modules_path):
-    for module_name in os.listdir(modules_path):
-        if module_name.startswith("_"):
-            continue
-        module_static = os.path.join(modules_path, module_name, "static")
-        if os.path.isdir(module_static):
-            app.mount(
-                f"/static/{module_name}",
-                CachedStaticFiles(directory=module_static),
-                name=f"static_{module_name}"
-            )
-            logger.info(f"📁 挂载模块静态资源: /static/{module_name}/")
+    # 模块静态资源（挂载到 /static/{module_name}/）
+    modules_path = os.path.join(os.path.dirname(__file__), "modules")
+    if os.path.exists(modules_path):
+        for module_name in os.listdir(modules_path):
+            if module_name.startswith("_"):
+                continue
+            module_static = os.path.join(modules_path, module_name, "static")
+            if os.path.isdir(module_static):
+                app.mount(
+                    f"/static/{module_name}",
+                    CachedStaticFiles(directory=module_static),
+                    name=f"static_{module_name}"
+                )
+                logger.info(f"📁 挂载模块静态资源: /static/{module_name}/")
+
+# 挂载静态资源（必须在 SPA 回退路由之前）
+_mount_static_resources(app)
 
 
 # ==================== 根路由 ====================
 @app.get("/", include_in_schema=False)
 async def root():
     """根路径返回前端页面"""
-    index_path = os.path.join(frontend_path, "index.html")
+    index_path = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {
@@ -412,8 +420,7 @@ async def spa_history_fallback(full_path: str):
     if full_path.startswith(ignore_prefixes):
         raise HTTPException(status_code=404, detail="Not Found")
     
-    # 使用之前定义的 global frontend_path
-    index_path_local = os.path.join(frontend_path, "index.html")
+    index_path_local = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path_local):
         return FileResponse(index_path_local)
     raise HTTPException(status_code=404, detail="Not Found")
@@ -431,9 +438,13 @@ if __name__ == "__main__":
     
     # 开发模式启用热重载（监控 .py 文件变化自动重启）
     # 注意：修改 .env 文件后需要手动重启服务生效
+    # uvicorn.run 参数说明:
+    # reload: 仅在 debug 模式下开启
+    # reload_dirs: 仅监控 backend 目录代码变化，忽略 storage, state 等数据的变动
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.debug
+        reload=settings.debug,
+        reload_dirs=["backend"] if settings.debug else None
     )

@@ -55,7 +55,7 @@ class DataReportPage extends Component {
                             <h3 class="card-title">👥 用户数据</h3>
                         </div>
                         <div class="card-body">
-                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px;">
+                            <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
                                 导出所有用户的账号信息，包含用户名、手机号、角色、状态等。
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -78,7 +78,7 @@ class DataReportPage extends Component {
                             <h3 class="card-title">🔔 通知数据</h3>
                         </div>
                         <div class="card-body">
-                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px;">
+                            <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
                                 导出系统通知记录，包含标题、内容、类型、已读状态等。
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -101,7 +101,7 @@ class DataReportPage extends Component {
                             <h3 class="card-title">📁 文件记录</h3>
                         </div>
                         <div class="card-body">
-                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px;">
+                            <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
                                 导出所有上传文件的记录，包含文件名、大小、类型、上传时间等。
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -124,7 +124,7 @@ class DataReportPage extends Component {
                         <span style="font-size:24px;">💡</span>
                         <div>
                             <div style="font-weight:500;">提示</div>
-                            <div style="color:var(--text-secondary);font-size:14px;">
+                            <div style="color:var(--color-text-secondary);font-size:14px;">
                                 数据报表用于导出可读格式的数据，便于分析和查看。如需完整系统备份用于恢复，请使用 
                                 <a href="#/system/backup" style="color:var(--color-primary);">数据备份</a> 功能。
                             </div>

@@ -278,7 +278,7 @@ class ProfilePage extends Component {
                         width: 250px; 
                         height: 250px; 
                         border-radius: 50%;
-                        border: 2px solid var(--color-accent);
+                        border: 2px solid var(--color-primary);
                         overflow: hidden; 
                         position: relative; 
                         background: #111;

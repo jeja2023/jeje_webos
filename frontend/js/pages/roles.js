@@ -64,29 +64,29 @@ class RolesPage extends Component {
         let featuresHtml = '';
         if (isAdmin) {
             featuresHtml = `
-                <div style="padding:12px;background:var(--bg-secondary);border-radius:4px;margin-bottom:12px;">
-                    <div style="color:var(--text-primary);font-weight:500;margin-bottom:4px;">
+                <div style="padding:12px;background:var(--color-bg-secondary);border-radius:4px;margin-bottom:12px;">
+                    <div style="color:var(--color-text-primary);font-weight:500;margin-bottom:4px;">
                         ⚠️ 系统管理员用户组默认拥有所有功能模块的所有权限
                     </div>
-                    <div style="color:var(--text-secondary);font-size:13px;">
+                    <div style="color:var(--color-text-secondary);font-size:13px;">
                         无需手动设置权限，系统已自动分配全部权限
                     </div>
                 </div>
-                <div style="color:var(--text-secondary);font-size:13px;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                <div style="color:var(--color-text-secondary);font-size:13px;padding:8px;background:var(--color-bg-tertiary);border-radius:4px;">
                     权限列表：<code style="background:transparent;padding:0;">["*"]</code>（全权限）
                 </div>
             `;
         } else if (isManager) {
             featuresHtml = `
-                <div style="padding:12px;background:var(--bg-secondary);border-radius:4px;margin-bottom:12px;">
-                    <div style="color:var(--text-primary);font-weight:500;margin-bottom:4px;">
+                <div style="padding:12px;background:var(--color-bg-secondary);border-radius:4px;margin-bottom:12px;">
+                    <div style="color:var(--color-text-primary);font-weight:500;margin-bottom:4px;">
                         ⚠️ 管理员用户组拥有受限的全部权限
                     </div>
-                    <div style="color:var(--text-secondary);font-size:13px;">
+                    <div style="color:var(--color-text-secondary);font-size:13px;">
                         管理员可以管理普通用户和访客，但无法管理系统管理员和其他管理员。部分系统级权限（如备份、日志审计）不可用。
                     </div>
                 </div>
-                <div style="color:var(--text-secondary);font-size:13px;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                <div style="color:var(--color-text-secondary);font-size:13px;padding:8px;background:var(--color-bg-tertiary);border-radius:4px;">
                     权限列表：<code style="background:transparent;padding:0;">["*"]</code>（受限全权限）
                 </div>
             `;
@@ -104,7 +104,7 @@ class RolesPage extends Component {
                         `).join('')}
                     </div>
                 </div>
-            `).join('') : '<div style="color:var(--text-secondary);">暂无可配置的模块功能，请先在应用中心加载模块</div>';
+            `).join('') : '<div style="color:var(--color-text-secondary);">暂无可配置的模块功能，请先在应用中心加载模块</div>';
         }
 
         Modal.show({
@@ -114,11 +114,11 @@ class RolesPage extends Component {
                     <div class="form-group">
                         <label class="form-label">名称</label>
                         ${isSystemRole ?
-                    `<div class="form-input" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);">${this.getRoleDisplayName(role?.name)} <span style="color:var(--text-secondary)">(${role?.name})</span></div>
+                    `<div class="form-input" style="background:var(--color-bg-secondary);color:var(--color-text-primary);border:1px solid var(--color-border);">${this.getRoleDisplayName(role?.name)} <span style="color:var(--color-text-secondary)">(${role?.name})</span></div>
                              <input type="hidden" name="name" value="${role?.name}">`
                     : `<input type="text" class="form-input" name="name" value="${Utils.escapeHtml(role?.name || '')}" placeholder="用户组名称" required>`
                 }
-                        ${isSystemRole ? '<div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">系统预置用户组名称不可修改</div>' : ''}
+                        ${isSystemRole ? '<div style="color:var(--color-text-secondary);font-size:12px;margin-top:4px;">系统预置用户组名称不可修改</div>' : ''}
                     </div>
                     <div class="form-group">
                         <label class="form-label">功能权限（模块与子权限）</label>
@@ -128,7 +128,7 @@ class RolesPage extends Component {
             `,
             footer: `
                 <button class="btn btn-secondary" data-close>取消</button>
-                <button class="btn btn-primary" id="saveRole">保存</button>
+                ${isAdmin ? '' : '<button class="btn btn-primary" id="saveRole">保存</button>'}
             `
         });
 
@@ -219,12 +219,12 @@ class RolesPage extends Component {
             return `
                                         <tr>
                                             <td>${r.id}</td>
-                                            <td>${Utils.escapeHtml(this.getRoleDisplayName(r.name))} <span style="color:var(--text-secondary);font-size:12px;">(${r.name})</span></td>
+                                            <td>${Utils.escapeHtml(this.getRoleDisplayName(r.name))} <span style="color:var(--color-text-secondary);font-size:12px;">(${r.name})</span></td>
                                             <td>${r.user_count || 0}</td>
                                             <td>${permCount}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-edit-role="${r.id}">编辑</button>
-                                                <button class="btn btn-ghost btn-sm" data-del-role="${r.id}">删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-edit-role="${r.id}">${r.name === 'admin' ? '查看' : '编辑'}</button>
+                                                ${r.name === 'admin' ? '' : `<button class="btn btn-ghost btn-sm" data-del-role="${r.id}">删除</button>`}
                                                 <button class="btn btn-ghost btn-sm" data-view-users="${r.id}">查看用户</button>
                                             </td>
                                         </tr>
@@ -291,7 +291,7 @@ class RolesPage extends Component {
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div style="color:var(--text-secondary);">暂无用户</div>';
+                    ` : '<div style="color:var(--color-text-secondary);">暂无用户</div>';
                     Modal.show({
                         title: `用户组成员 - ID ${id}`,
                         content,

@@ -185,7 +185,6 @@ class TopBarComponent extends Component {
                                 <div class="menu-user-role">${user.role === 'admin' ? '系统管理员' : '普通用户'}</div>
                             </div>
                             <div class="menu-item" onclick="Router.push('/profile')">👤 个人中心</div>
-                            ${user.role === 'admin' ? `<div class="menu-item" onclick="Router.push('/system/settings')">⚙️ 系统设置</div>` : ''}
                             <div class="menu-item" onclick="Router.push('/help')">❓ 帮助中心</div>
                             <div class="menu-divider"></div>
                             <div class="menu-item danger" id="btnLogout">🚪 退出登录</div>
@@ -443,29 +442,29 @@ class TopBarComponent extends Component {
             content: `
                 <div style="text-align: center; padding: 20px 0;">
                     <div style="font-size: 48px; margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
-                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color:var(--text-primary);">${displayAppName}</h2>
-                    <p style="color: var(--text-secondary); margin: 5px 0 25px;">Version ${displayVersion}</p>
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color:var(--color-text-primary);">${displayAppName}</h2>
+                    <p style="color: var(--color-text-secondary); margin: 5px 0 25px;">Version ${displayVersion}</p>
                     
                     <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 15px 20px; text-align: left; font-size: 13px; line-height: 2;">
                         <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
-                            <span style="color: var(--text-secondary);">运行环境</span>
+                            <span style="color: var(--color-text-secondary);">运行环境</span>
                             <span style="font-family: monospace;">FastAPI + Vanilla JS</span>
                         </div>
                         <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
-                            <span style="color: var(--text-secondary);">浏览器</span>
+                            <span style="color: var(--color-text-secondary);">浏览器</span>
                             <span>${browser}</span>
                         </div>
                         <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
-                            <span style="color: var(--text-secondary);">分辨率</span>
+                            <span style="color: var(--color-text-secondary);">分辨率</span>
                             <span>${window.screen.width} x ${window.screen.height}</span>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
-                            <span style="color: var(--text-secondary);">内核架构</span>
+                            <span style="color: var(--color-text-secondary);">内核架构</span>
                             <span>JeJe Micro-Kernel</span>
                         </div>
                     </div>
                     
-                    <p style="margin-top: 25px; font-size: 11px; color: var(--text-secondary); opacity: 0.7;">
+                    <p style="margin-top: 25px; font-size: 11px; color: var(--color-text-secondary); opacity: 0.7;">
                         Copyright © 2025 JeJe WebOS Team.<br>All rights reserved.
                     </p>
                 </div>

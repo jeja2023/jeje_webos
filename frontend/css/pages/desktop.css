@@ -355,7 +355,7 @@ body {
 }
 
 .form-input:focus {
-    border-color: var(--color-accent);
+    border-color: var(--color-primary);
     background: var(--color-bg-primary);
     /* 聚焦时变亮 */
 }
@@ -363,13 +363,13 @@ body {
 /* 下拉菜单选项主题修复 */
 :root.theme-dark option,
 :root.theme-sunrise option {
-    background-color: #2c2c2e;
-    color: #ffffff;
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
 }
 
 :root.theme-light option {
-    background-color: #ffffff;
-    color: #000000;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
 }
 
 /* ===== 桌面小部件样式 ===== */
@@ -523,7 +523,7 @@ body {
         height: 24px;
         border-radius: 12px;
         /* 圆角矩形或圆形 */
-        background-color: transparent;
+        background-color: var(--color-bg-primary);
         /* 变得更像原生返回按钮 */
         box-shadow: none;
     }
@@ -544,7 +544,7 @@ body {
         /* 始终显示图标 */
         width: 12px;
         height: 12px;
-        color: #fff;
+        color: var(--color-text-inverse);
     }
 
     .window-title {

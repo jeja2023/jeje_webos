@@ -841,7 +841,7 @@ class AppCenterMarketPage extends Component {
                     width: 72px;
                     height: 72px;
                     margin-bottom: 12px;
-                    background: linear-gradient(135deg, var(--color-info), var(--color-accent));
+                    background: linear-gradient(135deg, var(--color-info), var(--color-primary));
                     border-radius: 18px;
                     display: flex;
                     align-items: center;
@@ -883,14 +883,14 @@ class AppCenterMarketPage extends Component {
                     transform: scale(1.05);
                 }
                 .pin-btn:hover {
-                    background: var(--color-accent);
-                    border-color: var(--color-accent);
+                    background: var(--color-primary);
+                    border-color: var(--color-primary);
                     transform: scale(1.15);
                     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
                 }
                 .pin-btn.pinned {
                     opacity: 1;
-                    background: linear-gradient(135deg, var(--color-info), var(--color-accent));
+                    background: linear-gradient(135deg, var(--color-info), var(--color-primary));
                     border-color: transparent;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
@@ -941,15 +941,15 @@ class AppCenterMarketPage extends Component {
                     transform: translateX(-50%) rotate(45deg);
                     width: 12px;
                     height: 12px;
-                    background: var(--bg-secondary);
-                    border-left: 1px solid var(--border-color);
-                    border-top: 1px solid var(--border-color);
+                    background: var(--color-bg-secondary);
+                    border-left: 1px solid var(--color-border);
+                    border-top: 1px solid var(--color-border);
                 }
 
                 .app-popup-content {
                     position: relative;
                     z-index: 1;
-                    background: var(--bg-secondary);
+                    background: var(--color-bg-secondary);
                     border-radius: 8px;
                 }
 
@@ -958,7 +958,7 @@ class AppCenterMarketPage extends Component {
                     align-items: center;
                     gap: 10px;
                     padding: 10px 12px;
-                    color: var(--text-primary);
+                    color: var(--color-text-primary);
                     border-radius: 8px;
                     cursor: pointer;
                     transition: all 0.2s;
@@ -966,7 +966,7 @@ class AppCenterMarketPage extends Component {
                 }
 
                 .app-popup-item:hover {
-                    background: var(--bg-tertiary);
+                    background: var(--color-bg-tertiary);
                 }
 
                 .popup-icon { font-size: 16px; }
@@ -978,12 +978,12 @@ class AppCenterMarketPage extends Component {
                     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
                     gap: 20px;
                 }
-                .module-card { border: 1px solid var(--border-color); }
-                .module-icon { width: 48px; height: 48px; background: var(--bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+                .module-card { border: 1px solid var(--color-border); }
+                .module-icon { width: 48px; height: 48px; background: var(--color-bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
                 .module-header { display: flex; gap: 16px; margin-bottom: 16px; }
                 .module-info { flex: 1; min-width: 0; }
                 .module-title { font-size: 16px; font-weight: 600; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px; }
-                .module-desc { font-size: 13px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+                .module-desc { font-size: 13px; color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
                 .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
                 .switch input { opacity: 0; width: 0; height: 0; }
                 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
@@ -1004,7 +1004,7 @@ class AppCenterMarketPage extends Component {
                 .markdown-body h4 {
                     margin-top: 16px;
                     margin-bottom: 8px;
-                    color: var(--text-primary);
+                    color: var(--color-text-primary);
                     font-size: 15px;
                 }
                 .markdown-body p, .markdown-body ul {
@@ -1017,7 +1017,7 @@ class AppCenterMarketPage extends Component {
                     padding: 2px 6px;
                     border-radius: 4px;
                     font-family: monospace;
-                    color: var(--color-accent);
+                    color: var(--color-primary);
                 }
             </style>
         `;

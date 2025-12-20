@@ -24,7 +24,7 @@
 }
 
 .stat-card {
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     padding: var(--spacing-md);
     border-radius: var(--radius-md);
     text-align: center;
@@ -33,19 +33,19 @@
 .stat-value {
     font-size: 2rem;
     font-weight: 600;
-    color: var(--primary);
+    color: var(--color-primary);
     margin: var(--spacing-sm) 0;
 }
 
 .stat-label {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 0.875rem;
 }
 
 /* 待审核用户卡片 */
 .pending-user-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-md);
@@ -53,7 +53,7 @@
 }
 
 .pending-user-card:hover {
-    border-color: var(--primary);
+    border-color: var(--color-primary);
     box-shadow: var(--shadow-sm);
 }
 
@@ -72,7 +72,7 @@
 .pending-user-meta {
     display: flex;
     gap: var(--spacing-md);
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 0.875rem;
 }
 
@@ -92,15 +92,15 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--text-tertiary);
+    background: var(--color-text-tertiary);
 }
 
 .user-status-dot.active {
-    background: var(--success);
+    background: var(--color-success);
 }
 
 .user-status-dot.inactive {
-    background: var(--danger);
+    background: var(--color-error);
 }
 
 /* 响应式 */
@@ -108,23 +108,21 @@
     .users-filters {
         flex-direction: column;
     }
-    
+
     .users-filters .form-group {
         width: 100%;
     }
-    
+
     .pending-user-header {
         flex-direction: column;
         gap: var(--spacing-md);
     }
-    
+
     .pending-user-actions {
         width: 100%;
     }
-    
+
     .pending-user-actions .btn {
         flex: 1;
     }
 }
-
-

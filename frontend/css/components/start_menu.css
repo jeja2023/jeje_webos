@@ -46,13 +46,13 @@
     --sm-badge-text: rgba(255, 255, 255, 0.9);
 
     --sm-item-hover-bg: rgba(255, 255, 255, 0.08);
-    --sm-item-hover-text: white;
+    --sm-item-hover-text: var(--color-text-inverse);
 
     --sm-footer-bg: rgba(0, 0, 0, 0.2);
     --sm-footer-border: 1px solid rgba(255, 255, 255, 0.06);
 
     --sm-btn-hover-bg: rgba(255, 255, 255, 0.1);
-    --sm-btn-hover-text: white;
+    --sm-btn-hover-text: var(--color-text-inverse);
 
     --sm-scroll-thumb: rgba(255, 255, 255, 0.15);
 }
@@ -72,16 +72,16 @@
     --sm-header-border: 1px solid rgba(255, 255, 255, 0.1);
 
     --sm-badge-bg: rgba(255, 255, 255, 0.2);
-    --sm-badge-text: #ffffff;
+    --sm-badge-text: var(--color-text-inverse);
 
     --sm-item-hover-bg: rgba(255, 255, 255, 0.15);
-    --sm-item-hover-text: white;
+    --sm-item-hover-text: var(--color-text-inverse);
 
     --sm-footer-bg: rgba(0, 0, 0, 0.3);
     --sm-footer-border: 1px solid rgba(255, 255, 255, 0.1);
 
     --sm-btn-hover-bg: rgba(255, 255, 255, 0.15);
-    --sm-btn-hover-text: white;
+    --sm-btn-hover-text: var(--color-text-inverse);
 
     --sm-scroll-thumb: rgba(255, 255, 255, 0.2);
 }
@@ -221,9 +221,9 @@
     --sm-scroll-thumb: rgba(230, 81, 0, 0.3);
 }
 
-/* System Dark Mode Preference (Only applies if not overridden by explicit sunrise theme) */
+/* System Dark Mode Preference (Only applies if not overridden by explicit themes) */
 @media (prefers-color-scheme: dark) {
-    :root:not(.theme-sunrise) {
+    :root:not([class*="theme-"]) {
         --sm-bg: rgba(30, 30, 40, 0.85);
         --sm-border: 1px solid rgba(255, 255, 255, 0.1);
         --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
@@ -307,7 +307,7 @@
     height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--color-primary), #a855f7);
-    color: white;
+    color: var(--color-text-inverse);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -370,8 +370,8 @@
 /* Active State */
 .menu-item.expanded,
 .menu-item.active {
-    background: var(--color-accent);
-    color: white !important;
+    background: var(--color-primary);
+    color: var(--color-text-inverse) !important;
     /* Force white text on accent background */
     box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
 }
@@ -385,7 +385,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root:not(.theme-sunrise) .menu-item.expanded {
+    :root:not([class*="theme-"]) .menu-item.expanded {
         box-shadow: none;
         background: rgba(255, 255, 255, 0.12);
     }

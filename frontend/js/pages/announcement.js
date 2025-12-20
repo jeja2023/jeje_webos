@@ -127,7 +127,7 @@ class AnnouncementListPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">搜索</label>
-                            <input type="text" class="form-input" id="filterKeyword" 
+                            <input type="text" class="form-input" id="annFilterKeyword" 
                                    placeholder="标题、内容" value="${filters.keyword || ''}">
                         </div>
                         <div class="form-group">
@@ -220,7 +220,7 @@ class AnnouncementListPage extends Component {
             });
 
             this.delegate('click', '#searchBtn', () => {
-                const keyword = this.$('#filterKeyword')?.value.trim() || '';
+                const keyword = this.$('#annFilterKeyword')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             });
 

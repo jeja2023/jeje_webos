@@ -57,7 +57,7 @@
 
 .stat-card .stat-icon.primary {
     background: linear-gradient(135deg, rgba(0, 212, 170, 0.2), rgba(0, 212, 170, 0.1));
-    color: var(--color-accent);
+    color: var(--color-primary);
 }
 
 .stat-card .stat-icon.info {

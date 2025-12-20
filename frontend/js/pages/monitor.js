@@ -64,10 +64,10 @@ class MonitorPage extends Component {
         return `
             <div style="margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px;">
-                    <span style="font-size: 13px; color: var(--text-secondary);">${label}</span>
+                    <span style="font-size: 13px; color: var(--color-text-secondary);">${label}</span>
                     <span style="font-weight: 600; font-size: 18px; line-height: 1;">${percent.toFixed(1)}%</span>
                 </div>
-                <div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+                <div style="height: 6px; background: var(--color-bg-tertiary); border-radius: 3px; overflow: hidden;">
                     <div style="height: 100%; width: ${percent}%; background: ${color}; border-radius: 3px; transition: width 0.3s;"></div>
                 </div>
             </div>
@@ -113,11 +113,11 @@ class MonitorPage extends Component {
                             ${this.renderProgressBar(cpu.percent || 0, '使用率')}
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
                                 <div>
-                                    <div style="color: var(--text-secondary);">核心数</div>
+                                    <div style="color: var(--color-text-secondary);">核心数</div>
                                     <div style="font-weight: 600;">${cpu.cores || '-'}</div>
                                 </div>
                                 <div>
-                                    <div style="color: var(--text-secondary);">逻辑处理器</div>
+                                    <div style="color: var(--color-text-secondary);">逻辑处理器</div>
                                     <div style="font-weight: 600;">${cpu.logical_cores || '-'}</div>
                                 </div>
                             </div>
@@ -133,11 +133,11 @@ class MonitorPage extends Component {
                             ${this.renderProgressBar(memory.percent || 0, '使用率')}
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
                                 <div>
-                                    <div style="color: var(--text-secondary);">已使用</div>
+                                    <div style="color: var(--color-text-secondary);">已使用</div>
                                     <div style="font-weight: 600;">${this.formatBytes(memory.used)}</div>
                                 </div>
                                 <div>
-                                    <div style="color: var(--text-secondary);">总计</div>
+                                    <div style="color: var(--color-text-secondary);">总计</div>
                                     <div style="font-weight: 600;">${this.formatBytes(memory.total)}</div>
                                 </div>
                             </div>
@@ -153,11 +153,11 @@ class MonitorPage extends Component {
                             ${this.renderProgressBar(disk.percent || 0, '使用率')}
                             <div style="display: flex; justify-content: space-between; font-size: 13px;">
                                 <div>
-                                    <div style="color: var(--text-secondary);">已使用</div>
+                                    <div style="color: var(--color-text-secondary);">已使用</div>
                                     <div style="font-weight: 600;">${this.formatBytes(disk.used)}</div>
                                 </div>
                                 <div>
-                                    <div style="color: var(--text-secondary);">总计</div>
+                                    <div style="color: var(--color-text-secondary);">总计</div>
                                     <div style="font-weight: 600;">${this.formatBytes(disk.total)}</div>
                                 </div>
                             </div>
@@ -208,23 +208,23 @@ class MonitorPage extends Component {
                         <div class="card-body" style="padding: 16px;">
                             <div style="display: flex; flex-wrap: wrap; gap: 24px; row-gap: 16px;">
                                 <div style="min-width: 80px;">
-                                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 2px;">进程 ID</div>
+                                    <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">进程 ID</div>
                                     <div style="font-size: 18px; font-weight: 600;">${process?.pid || '-'}</div>
                                 </div>
                                 <div style="min-width: 80px;">
-                                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 2px;">运行时间</div>
+                                    <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">运行时间</div>
                                     <div style="font-size: 18px; font-weight: 600;">${this.formatUptime(process?.uptime)}</div>
                                 </div>
                                 <div style="min-width: 80px;">
-                                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 2px;">进程内存</div>
+                                    <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">进程内存</div>
                                     <div style="font-size: 18px; font-weight: 600;">${this.formatBytes(process?.memory_info?.rss)}</div>
                                 </div>
                                 <div style="min-width: 80px;">
-                                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 2px;">进程 CPU</div>
+                                    <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">进程 CPU</div>
                                     <div style="font-size: 18px; font-weight: 600;">${(process?.cpu_percent || 0).toFixed(1)}%</div>
                                 </div>
                                 <div style="min-width: 80px;">
-                                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 2px;">线程数</div>
+                                    <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">线程数</div>
                                     <div style="font-size: 18px; font-weight: 600;">${process?.num_threads || '-'}</div>
                                 </div>
                             </div>
@@ -239,19 +239,19 @@ class MonitorPage extends Component {
                         <div class="card-body" style="padding: 16px;">
                             <div style="display: grid; gap: 8px; font-size: 13px;">
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="color: var(--text-secondary); width: 70px;">操作系统</span>
+                                    <span style="color: var(--color-text-secondary); width: 70px;">操作系统</span>
                                     <span style="font-weight: 500;">${system?.platform || '-'}</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="color: var(--text-secondary); width: 70px;">主机名</span>
+                                    <span style="color: var(--color-text-secondary); width: 70px;">主机名</span>
                                     <span style="font-weight: 500;">${system?.hostname || '-'}</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="color: var(--text-secondary); width: 70px;">运行时间</span>
+                                    <span style="color: var(--color-text-secondary); width: 70px;">运行时间</span>
                                     <span style="font-weight: 500;">${this.formatUptime(system?.boot_time)}</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="color: var(--text-secondary); width: 70px;">Python</span>
+                                    <span style="color: var(--color-text-secondary); width: 70px;">Python</span>
                                     <span style="font-weight: 500;">${system?.python_version || '-'}</span>
                                 </div>
                             </div>
@@ -267,7 +267,7 @@ class MonitorPage extends Component {
                     gap: 16px;
                     padding: 16px 20px;
                     border-radius: 12px;
-                    background: var(--bg-secondary);
+                    background: var(--color-bg-secondary);
                     border: 1px solid transparent;
                     transition: all 0.2s;
                 }
@@ -299,7 +299,7 @@ class MonitorPage extends Component {
                 .health-name {
                     font-size: 15px;
                     font-weight: 600;
-                    color: var(--text-primary);
+                    color: var(--color-text-primary);
                     margin-bottom: 4px;
                 }
                 
@@ -308,7 +308,7 @@ class MonitorPage extends Component {
                     align-items: center;
                     gap: 8px;
                     font-size: 14px;
-                    color: var(--text-secondary);
+                    color: var(--color-text-secondary);
                 }
                 
                 .status-indicator {

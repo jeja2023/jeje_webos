@@ -125,8 +125,8 @@
 }
 
 .spotlight-item.active {
-    background: var(--color-accent);
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
 }
 
 .spotlight-item-icon {
@@ -143,7 +143,7 @@
 
 .spotlight-item.active .spotlight-item-icon {
     background: rgba(255, 255, 255, 0.2);
-    color: white;
+    color: var(--color-text-inverse);
 }
 
 .spotlight-item-content {

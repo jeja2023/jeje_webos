@@ -461,5 +461,10 @@ const WindowManager = {
     // --- 辅助函数：清除所有 ---
     closeAll() {
         this.windows.forEach((val, key) => this.close(key));
+    },
+
+    getActiveWindow() {
+        if (!this.activeWindowId) return null;
+        return this.windows.get(this.activeWindowId);
     }
 };

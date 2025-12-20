@@ -7,72 +7,104 @@
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-lg);
+    padding: 10px 20px;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    user-select: none;
     white-space: nowrap;
 }
 
+.btn:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* 主按钮 - 渐变与强调 */
 .btn-primary {
-    background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
-    color: var(--color-text-inverse);
-    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+    color: var(--color-btn-text, #ffffff) !important;
+    border: 1px solid var(--color-primary-dark);
+    box-shadow: 0 4px 12px var(--color-primary-glow);
 }
 
-.btn-primary:hover {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
-    box-shadow: var(--shadow-glow);
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    box-shadow: 0 6px 16px var(--color-primary-glow);
+    border-color: var(--color-primary);
 }
 
+.btn-primary:active:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+/* 次要按钮 */
 .btn-secondary {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
-}
-
-.btn-secondary:hover {
-    background: rgba(0, 0, 0, 0.1);
-    border-color: var(--color-border-light);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-border-light);
     color: var(--color-text-primary);
 }
 
+.btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-bg-hover);
+}
+
+/* 幽灵按钮 */
 .btn-ghost {
     background: transparent;
+    border-color: transparent;
     color: var(--color-text-secondary);
 }
 
-.btn-ghost:hover {
-    background: var(--color-bg-secondary);
+.btn-ghost:hover:not(:disabled) {
+    background: var(--color-bg-hover);
     color: var(--color-text-primary);
 }
 
+/* 危险按钮 */
 .btn-danger {
     background: var(--color-error);
-    color: white;
+    color: var(--color-btn-text, #ffffff) !important;
+    border-color: var(--color-error);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
     filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(var(--color-error-rgb), 0.3);
 }
 
+/* 尺寸变体 */
 .btn-sm {
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: 6px 12px;
     font-size: 0.8rem;
+    border-radius: var(--radius-sm);
 }
 
 .btn-lg {
-    padding: var(--spacing-md) var(--spacing-xl);
+    padding: 12px 24px;
     font-size: 1rem;
 }
 
+/* 状态变体 */
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    filter: grayscale(0.8);
 }
 
-/* 深色主题下的按钮增强 */
+/* 主题特定按钮增强 */
 :root.theme-dark .btn-secondary,
 :root.theme-neon .btn-secondary {
     background: rgba(255, 255, 255, 0.1);
@@ -82,6 +114,11 @@
 :root.theme-dark .btn-secondary:hover,
 :root.theme-neon .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
-    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+}
+
+/* 日出印象主题：提高按钮文字对比度 */
+:root.theme-sunrise .btn-primary,
+:root.theme-sunrise .btn-danger {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }

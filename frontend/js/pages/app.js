@@ -217,7 +217,9 @@ const App = {
             '/transfer': { auth: true, handler: wrap(TransferPage, '快传') },
 
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
+            '/analysis': { auth: true, handler: wrap(AnalysisPage, '数据分析') },
         });
+
     },
 
     ensureDesktopEnvironment() {

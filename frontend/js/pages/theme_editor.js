@@ -31,9 +31,9 @@ class ThemeEditorPage extends Component {
             },
             {
                 group: '强调色彩', items: [
-                    { key: '--color-accent', label: '主色调', type: 'color' },
-                    { key: '--color-accent-light', label: '浅色调', type: 'color' },
-                    { key: '--color-accent-dark', label: '深色调', type: 'color' }
+                    { key: '--color-primary', label: '主色调', type: 'color' },
+                    { key: '--color-primary-hover', label: '浅色调', type: 'color' },
+                    { key: '--color-primary-dark', label: '深色调', type: 'color' }
                 ]
             },
             {

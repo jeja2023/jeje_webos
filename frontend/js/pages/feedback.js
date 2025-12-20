@@ -180,7 +180,7 @@ class FeedbackListPage extends Component {
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">搜索</label>
                             <div class="input-group" style="display: flex; gap: 8px; align-items: center; max-width: 380px;">
-                                <input type="text" class="form-input" id="filterKeyword" placeholder="标题、内容" value="${filters.keyword || ''}" style="flex: 1; min-width: 160px;">
+                                <input type="text" class="form-input" id="fbFilterKeyword" placeholder="标题、内容" value="${filters.keyword || ''}" style="flex: 1; min-width: 160px;">
                                 <button class="btn btn-primary" id="searchBtn">搜索</button>
                             </div>
                         </div>
@@ -252,7 +252,7 @@ class FeedbackListPage extends Component {
         this.delegate('change', '#filterType', (e) => this.handleFilter('type', e.target.value));
         this.delegate('change', '#filterPriority', (e) => this.handleFilter('priority', e.target.value));
         this.delegate('click', '#searchBtn', () => {
-            const keyword = this.$('#filterKeyword')?.value.trim() || '';
+            const keyword = this.$('#fbFilterKeyword')?.value.trim() || '';
             this.handleFilter('keyword', keyword);
         });
         this.delegate('click', '[data-view]', (e) => {

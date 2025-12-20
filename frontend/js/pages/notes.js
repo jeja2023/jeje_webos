@@ -117,7 +117,7 @@ class NotesListPage extends Component {
                                        style="width: 200px;"
                                        placeholder="搜索笔记..." 
                                        value="${Utils.escapeHtml(keyword)}"
-                                       id="searchInput">
+                                       id="notesSearchInput">
                             </div>
                             <button class="btn btn-primary" id="newNote">
                                 ➕ 新建笔记
@@ -261,7 +261,7 @@ class NotesListPage extends Component {
             });
 
             // 搜索
-            const searchInput = this.$('#searchInput');
+            const searchInput = this.$('#notesSearchInput');
             if (searchInput) {
                 let timeout;
                 searchInput.addEventListener('input', (e) => {
@@ -473,12 +473,12 @@ class NotesEditPage extends Component {
                         
                         <div class="form-group">
                             <label class="form-label">标签</label>
-                            <div class="tags-selector" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-secondary); min-height: 50px;">
+                            <div class="tags-selector" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); min-height: 50px;">
                                 ${tags.length > 0 ? tags.map(tag => {
             const isSelected = note?.tags?.some(t => t.id === tag.id) || false;
             return `
                                         <label style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition-fast); 
-                                               ${isSelected ? `background: ${tag.color}; color: white;` : 'background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);'}
+                                               ${isSelected ? `background: ${tag.color}; color: var(--color-text-inverse);` : 'background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);'}
                                                ${isSelected ? '' : 'opacity: 0.7;'}
                                                ${isSelected ? '' : '&:hover { opacity: 1; }'}" 
                                                onmouseover="this.style.opacity='1'" 
@@ -490,7 +490,7 @@ class NotesEditPage extends Component {
                                         </label>
                                     `;
         }).join('') : `
-                                    <div style="color: var(--text-secondary); font-size: 0.875rem;">
+                                    <div style="color: var(--color-text-secondary); font-size: 0.875rem;">
                                         暂无标签，<a href="#/notes/tags" style="color: var(--primary); text-decoration: underline;">去创建标签</a>
                                     </div>
                                 `}
@@ -535,11 +535,11 @@ class NotesEditPage extends Component {
                     if (checkbox.checked) {
                         const tagColor = target.querySelector('span[style*="background"]')?.style.background || '#3b82f6';
                         target.style.background = tagColor;
-                        target.style.color = 'white';
+                        target.style.color = 'var(--color-text-inverse)';
                         target.style.opacity = '1';
                     } else {
-                        target.style.background = 'var(--bg-tertiary)';
-                        target.style.color = 'var(--text-primary)';
+                        target.style.background = 'var(--color-bg-tertiary)';
+                        target.style.color = 'var(--color-text-primary)';
                         target.style.opacity = '0.7';
                     }
                 }

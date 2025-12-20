@@ -24,11 +24,11 @@
 .theme-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    border-color: var(--color-accent);
+    border-color: var(--color-primary);
 }
 
 .theme-card.active {
-    border: 2px solid var(--color-accent);
+    border: 2px solid var(--color-primary);
     background: var(--color-bg-secondary);
 }
 

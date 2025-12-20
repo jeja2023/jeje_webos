@@ -69,7 +69,18 @@ class EventBus:
     def emit(self, name: str, source: str, data: Dict[str, Any] = None):
         """便捷发布方法（同步包装）"""
         event = Event(name=name, source=source, data=data or {})
-        asyncio.create_task(self.publish(event))
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                asyncio.create_task(self.publish(event))
+            else:
+                # 循环未运行（可能在关闭中），记录历史并记录日志
+                self._history.append(event)
+                logger.debug(f"EventBus.emit: 循环未运行，仅记录历史: {name}")
+        except RuntimeError:
+            # 完全没有运行中的循环（启动阶段），仅记录历史
+            self._history.append(event)
+            logger.debug(f"EventBus.emit: 没有运行中的循环，仅记录历史: {name}")
     
     def get_history(self, event_name: str = None, limit: int = 100) -> List[Event]:
         """获取事件历史"""

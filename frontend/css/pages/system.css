@@ -34,13 +34,13 @@
     width: 18px;
     left: 2px;
     bottom: 2px;
-    background-color: white;
+    background-color: var(--color-bg-primary);
     transition: .2s;
     border-radius: 50%;
 }
 
 .switch input:checked+.slider {
-    background: var(--color-accent);
+    background: var(--color-primary);
 }
 
 .switch input:checked+.slider:before {

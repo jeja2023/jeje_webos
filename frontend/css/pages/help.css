@@ -17,7 +17,7 @@
 .help-sidebar {
     width: 280px;
     flex-shrink: 0;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
     padding: 16px;
     position: sticky;
@@ -32,8 +32,8 @@
 
 .help-search .form-input {
     width: 100%;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
 }
 
 /* 导航菜单 */
@@ -49,19 +49,19 @@
     gap: 12px;
     padding: 12px 16px;
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: all 0.2s ease;
 }
 
 .help-nav-item:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
 }
 
 .help-nav-item.active {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-inverse);
 }
 
 .help-nav-icon {
@@ -77,7 +77,7 @@
 .help-content {
     flex: 1;
     min-width: 0;
-    background: var(--bg-secondary);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
     padding: 32px;
     overflow-y: auto;
@@ -92,28 +92,28 @@
 .help-article h3 {
     font-size: 24px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--color-border);
 }
 
 .help-article h4 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     margin: 24px 0 12px 0;
 }
 
 .help-article p {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     margin-bottom: 16px;
 }
 
 .help-article ul,
 .help-article ol {
     margin: 12px 0 20px 24px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .help-article li {
@@ -121,7 +121,7 @@
 }
 
 .help-article li strong {
-    color: var(--text-primary);
+    color: var(--color-text-primary);
 }
 
 /* 表格样式 */
@@ -129,7 +129,7 @@
     width: 100%;
     border-collapse: collapse;
     margin: 16px 0 24px 0;
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -138,12 +138,12 @@
 .help-table td {
     padding: 12px 16px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .help-table th {
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
     font-weight: 600;
     font-size: 13px;
     text-transform: uppercase;
@@ -151,7 +151,7 @@
 }
 
 .help-table td {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .help-table tr:last-child td {
@@ -168,9 +168,9 @@ kbd {
     padding: 4px 8px;
     font-family: 'SF Mono', Monaco, 'Courier New', monospace;
     font-size: 12px;
-    color: var(--text-primary);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -179,7 +179,7 @@ kbd {
 .faq-item {
     margin-bottom: 24px;
     padding: 20px;
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
     border-radius: 8px;
     border-left: 4px solid var(--color-primary);
 }
@@ -200,7 +200,7 @@ kbd {
 /* 布局图示 */
 .help-layout-diagram {
     margin: 20px 0;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--color-border);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -209,12 +209,12 @@ kbd {
     padding: 16px;
     text-align: center;
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .help-layout-diagram .header {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-inverse);
     font-weight: 500;
 }
 
@@ -224,35 +224,35 @@ kbd {
 
 .help-layout-diagram .diagram-sidebar {
     width: 120px;
-    background: var(--bg-tertiary);
-    border-right: 1px solid var(--border-color);
+    background: var(--color-bg-tertiary);
+    border-right: 1px solid var(--color-border);
 }
 
 .help-layout-diagram .main {
     flex: 1;
-    background: var(--bg-primary);
+    background: var(--color-bg-primary);
     min-height: 100px;
 }
 
 .help-layout-diagram .footer {
     padding: 16px;
     text-align: center;
-    background: var(--bg-tertiary);
-    border-top: 1px solid var(--border-color);
+    background: var(--color-bg-tertiary);
+    border-top: 1px solid var(--color-border);
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 /* 底部导航 */
 .help-footer {
     margin-top: 40px;
     padding-top: 24px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .help-module-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 1rem;
@@ -260,12 +260,12 @@ kbd {
 
 .help-module-card h4 {
     margin: 0 0 0.5rem 0;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
     font-size: 1.1rem;
 }
 
 .module-desc {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     margin: 0.5rem 0;
     font-size: 0.95rem;
 }
@@ -273,24 +273,24 @@ kbd {
 .module-features {
     margin: 0.75rem 0 0 0;
     padding-left: 1.5rem;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-size: 0.9rem;
 }
 
 .module-features code {
-    background: var(--code-bg, var(--bg-primary));
+    background: var(--code-bg, var(--color-bg-primary));
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-size: 0.85em;
-    color: var(--code-text, var(--text-primary));
+    color: var(--code-text, var(--color-text-primary));
 }
 
 .help-note {
     padding: 1rem;
     background: var(--warning-bg, rgba(255, 193, 7, 0.1));
-    border-left: 3px solid var(--warning-color, #ffc107);
+    border-left: 3px solid var(--color-warning, #ffc107);
     border-radius: 4px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .help-nav-buttons {
@@ -304,7 +304,7 @@ kbd {
     align-items: center;
     gap: 12px;
     padding: 16px 20px;
-    background: var(--bg-tertiary);
+    background: var(--color-bg-tertiary);
     border-radius: 8px;
     text-decoration: none;
     transition: all 0.2s ease;
@@ -312,7 +312,7 @@ kbd {
 }
 
 .help-nav-btn:hover {
-    background: var(--bg-primary);
+    background: var(--color-bg-primary);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -347,7 +347,7 @@ kbd {
 .help-nav-btn .nav-title {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--color-text-primary);
 }
 
 /* 响应式设计 */
