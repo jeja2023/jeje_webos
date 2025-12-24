@@ -1,0 +1,2084 @@
+/**
+ * 数据建模模块 - ETL功能
+ */
+
+/**
+ * ETL建模相关方法混入
+ */
+const AnalysisModelingMixin = {
+
+    /**
+     * 渲染数据建模页面
+     */
+    renderModeling() {
+        if (this.state.currentModel) {
+            return this.renderETLWorkspace();
+        }
+        return this.renderModelList();
+    },
+
+    /**
+     * 渲染模型列表
+     */
+    renderModelList() {
+        const models = this.state.modelList || [];
+        return `
+            <div class="model-list-page p-20">
+                <div class="flex-between mb-20">
+                    <h2>📦 数据模型管理</h2>
+                    <div>
+                         <button class="btn btn-ghost" id="btn-refresh-models">🔄 刷新</button>
+                    </div>
+                </div>
+                
+                <div class="model-grid">
+                    ${models.length === 0 ? '<div class="empty-state text-center p-20 text-secondary w-100" style="grid-column: 1/-1;">暂无模型，请点击新建</div>' : ''}
+                    
+                    <!-- 新建模型卡片 -->
+                    <div class="new-model-card animate-in btn-create-model-global">
+                        <div class="new-card-icon">➕</div>
+                        <span style="font-weight: 600; font-size: 15px;">新建模型</span>
+                    </div>
+
+                    ${models.map((m, index) => `
+                        <div class="model-card animate-in" data-id="${m.id}" style="animation-delay: ${index * 50}ms">
+                            <div class="model-card-top btn-edit-model" data-id="${m.id}">
+                                <div class="model-icon-wrapper">
+                                    <span>🧩</span>
+                                </div>
+                                <div class="model-title" title="${Utils.escapeHtml(m.name)}">${Utils.escapeHtml(m.name)}</div>
+                                <div class="model-desc">${Utils.escapeHtml(m.description || '暂无描述信息')}</div>
+                            </div>
+                            <div class="model-card-bottom">
+                                <div class="model-status-badge ${m.status === 'published' ? 'published' : 'draft'}">
+                                    ${m.status === 'published' ? '✅ 已发布' : '📝 设计中'}
+                                </div>
+                                <div class="flex align-center gap-5">
+                                    <span style="margin-right: 5px;">${Utils.formatDate(m.updated_at)}</span>
+                                    ${m.status === 'published' ?
+                `<button class="btn-run-model btn-model-action" data-id="${m.id}" title="立即运行" style="color:var(--color-success)">▶️</button>` : ''}
+                                    <button class="btn-delete-model btn-model-action" data-id="${m.id}" title="删除模型">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <!-- 新建模型弹窗 -->
+                ${this.state.showCreateModelModal ? this.renderCreateModelModal() : ''}
+            </div>
+        `;
+    },
+
+    renderCreateModelModal() {
+        return `
+            <div class="modal-overlay active" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+                <div class="modal-content bg-primary p-20 border-radius-10 shadow-lg" style="width: 400px; border: 1px solid var(--color-border);">
+                    <h3 class="mb-15">新建数据模型</h3>
+                    <div class="form-group mb-15">
+                        <label class="d-block mb-5">模型名称</label>
+                        <input type="text" class="form-control w-100" id="new-model-name" placeholder="输入模型名称">
+                    </div>
+                    <div class="form-group mb-20">
+                        <label class="d-block mb-5">描述</label>
+                        <textarea class="form-control w-100" id="new-model-desc" rows="3" placeholder="输入模型描述"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-10">
+                        <button class="btn btn-ghost" id="btn-cancel-create-model">取消</button>
+                        <button class="btn btn-primary" id="btn-confirm-create-model">创建</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 辅助方法：生成算子列表
+     */
+    _renderOperatorsList() {
+        return `
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">输入 / 输出</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="source" data-label="数据输入"><span class="op-icon">📥</span><span>输入</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sink" data-label="数据输出"><span class="op-icon">📤</span><span>输出</span></div>
+            
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">筛选与过滤</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="filter" data-label="条件过滤"><span class="op-icon">🔍</span><span>过滤</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="select" data-label="字段选择"><span class="op-icon">📝</span><span>字段</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="distinct" data-label="去重"><span class="op-icon">🎯</span><span>去重</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sample" data-label="采样"><span class="op-icon">🎲</span><span>采样</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="limit" data-label="限制行数"><span class="op-icon">📏</span><span>限制</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">数据转换</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="group" data-label="分组聚合"><span class="op-icon">Σ</span><span>聚合</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sort" data-label="排序"><span class="op-icon">⚡</span><span>排序</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="calculate" data-label="计算列"><span class="op-icon">🧮</span><span>计算</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="rename" data-label="字段重命名"><span class="op-icon">✏️</span><span>更名</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="pivot" data-label="数据透视"><span class="op-icon">📊</span><span>透视</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">数据关联</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="join" data-label="关联"><span class="op-icon">🔗</span><span>关联</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="union" data-label="合并"><span class="op-icon">➕</span><span>合并</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">清理增强</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="clean" data-label="清洗"><span class="op-icon">🧹</span><span>清洗</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="fillna" data-label="空值填充"><span class="op-icon">🔧</span><span>填充</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="typecast" data-label="类型转换"><span class="op-icon">🔄</span><span>转换</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="split" data-label="字段拆分"><span class="op-icon">✂️</span><span>拆分</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">高级脚本</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sql" data-label="SQL查询"><span class="op-icon">💾</span><span>SQL</span></div>
+        `;
+    },
+
+    renderETLWorkspace() {
+        const { modelNodes = [], modelConnections = [], selectedNodeId, etlLogs = [], isConsoleOpen, isExecuting, currentModel } = this.state;
+        const selectedNode = modelNodes.find(n => n.id === selectedNodeId);
+
+        return `
+            <div class="etl-layout flex-col h-100">
+                <!-- 顶部工具栏 -->
+                <div class="etl-header flex-between p-10 border-bottom bg-primary align-center">
+                    <div class="flex gap-10 align-center">
+                        <button class="btn btn-ghost btn-sm" id="btn-back-models">⬅️ 返回列表</button>
+                        <div class="border-left pl-10 flex align-center gap-10">
+                            <span class="font-bold text-lg">${currentModel?.name || '未命名模型'}</span>
+                            <span class="badge ${currentModel?.status === 'published' ? 'badge-success' : 'badge-secondary'} text-xs" title="当前模型状态">
+                                ${currentModel?.status === 'published' ? '已发布' : '设计中'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex gap-10">
+                         <button class="btn btn-outline-primary btn-sm" id="btn-save-model-graph">💾 保存设计</button>
+                         <button class="btn btn-primary btn-sm" id="btn-publish-model">🚀 发布模型</button>
+                    </div>
+                </div>
+
+                <!-- 原有的三栏布局 -->
+                <div class="etl-main-content flex flex-1 overflow-hidden">
+                    <!-- 1. 算子面板 -->
+                    <div class="etl-operators" style="width: 220px; border-right: 1px solid var(--color-border);">
+                        <div class="etl-panel-header p-10 font-bold border-bottom">数据算子库</div>
+                        <div class="etl-operator-list p-10 overflow-y-auto" style="height: calc(100% - 40px); display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; align-content: start;">
+                                ${this._renderOperatorsList()} 
+                        </div>
+                    </div>
+
+                    <!-- 2. 画布区域 -->
+                    <div class="etl-canvas flex-1 relative bg-secondary" id="etlCanvas" style="background-color: var(--color-bg-hover); overflow: hidden; cursor: grab;">
+                        <div class="etl-canvas-toolbar absolute top-10 right-10 flex gap-5 z-10">
+                            <button class="btn btn-ghost btn-sm bg-primary shadow-sm" id="btn-reset-canvas" title="重置画布位置">🔄</button>
+                            <button class="btn btn-ghost btn-sm bg-primary shadow-sm" id="btn-toggle-console">
+                                ${isConsoleOpen ? '隐藏日志' : '显示日志'}
+                            </button>
+                            <button class="btn btn-primary btn-sm ${isExecuting ? 'loading' : ''} shadow-sm" 
+                                    id="btn-run-etl" ${isExecuting ? 'disabled' : ''}>
+                                ${isExecuting ? '运行中...' : '▶ 全部运行'}
+                            </button>
+                        </div>
+                        
+                        <!-- 可平移的画布内容容器 -->
+                        <div class="etl-workspace-container" id="etlWorkspaceContainer" 
+                             style="position: absolute; top: 0; left: 0; width: 3000px; height: 3000px; 
+                                    transform: translate(${this.state.canvasOffsetX || 0}px, ${this.state.canvasOffsetY || 0}px);">
+                             <!-- 节点层 (先渲染，在底层) -->
+                            ${modelNodes.map(node => this.renderETLNode(node, node.id === selectedNodeId)).join('')}
+                            
+                             <!-- 连线层 (后渲染，在节点之上，删除按钮可点击) -->
+                            <svg class="etl-connections" id="etlConnectionLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; z-index: 100;">
+                                ${this.renderETLConnections(modelConnections, modelNodes)}
+                                ${this.state.tempConnection ? this.renderTempConnection(this.state.tempConnection) : ''}
+                            </svg>
+        
+                            ${modelNodes.length === 0 ? `
+                                <div class="etl-canvas-empty absolute center-translate text-center text-secondary" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                                    <div class="empty-icon text-3xl mb-10">🔧</div>
+                                    <p>从左侧拖拽算子到此处开始构建 ETL 流程</p>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- 控制台 -->
+                        <div class="etl-console ${isConsoleOpen ? 'open' : ''} absolute bottom-0 left-0 right-0 bg-primary border-top transition-all" 
+                             style="height: ${isConsoleOpen ? '200px' : '0'}; overflow: hidden; position: absolute; bottom: 0; left: 0; right: 0;">
+                            <div class="console-header flex-between p-5 border-bottom px-10 bg-secondary">
+                                <span class="text-sm font-bold">执行日志</span>
+                                <button class="btn-icon btn-ghost btn-xs" id="btn-clear-console">🗑️</button>
+                            </div>
+                            <div class="console-body p-10 overflow-y-auto text-sm font-mono" style="height: calc(100% - 30px);">
+                                ${etlLogs.length === 0 ? '<div class="log-empty text-secondary">等待执行...</div>' :
+                etlLogs.map(log => `
+                                    <div class="log-line ${log.type} mb-5">
+                                        <span class="log-time text-secondary mr-5">[${log.time}]</span>
+                                        <span class="log-msg">${log.message}</span>
+                                    </div>
+                                  `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 配置面板 -->
+                    <div class="etl-config" style="width: 300px; border-left: 1px solid var(--color-border); flex-shrink: 0;">
+                        <div class="etl-panel-header p-10 font-bold border-bottom">配置面板</div>
+                        <div class="etl-config-content p-10 overflow-y-auto" id="etl-config-panel-content" style="height: calc(100% - 40px);">
+                            ${selectedNode ? (this.state.selectedNodeConfigHtml || '<div class="text-center p-20 text-secondary">正在同步元数据...</div>') : (
+                this.state.selectedConnIndex !== null && modelConnections[this.state.selectedConnIndex] ? `
+                                    <div class="conn-config text-center">
+                                        <div class="mb-20 text-secondary">
+                                            <div class="text-3xl mb-10">🔗</div>
+                                            <div class="font-bold text-primary mb-5">当前选中连线</div>
+                                            <div class="text-xs">源: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].sourceId)?.label || '未知'}</div>
+                                            <div class="text-xs text-secondary mb-15">⬇️</div>
+                                            <div class="text-xs">目标: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].targetId)?.label || '未知'}</div>
+                                        </div>
+                                        <button class="btn btn-outline-danger btn-block btn-sm" id="btn-delete-conn-panel">🗑️ 移除此连线</button>
+                                    </div>
+                                ` : '<div class="config-empty text-center p-20 text-secondary">选择节点或连线以配置</div>'
+            )}
+                        </div>
+                    </div>
+                </div>
+                <!-- 数据预览弹窗 -->
+                ${this.state.previewNodeId ? this.renderETLPreviewModal() : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * 获取模型列表
+     */
+    async fetchModels() {
+        try {
+            const res = await AnalysisApi.getModels();
+            this.setState({ modelList: res.data || [] });
+        } catch (e) {
+            Toast.error('刷新模型失败');
+        }
+    },
+
+    // 辅助方法：获取数据集字段
+    async _fetchDatasetColumns(datasetName) {
+        if (!datasetName) return [];
+        // 如果缓存中已有，直接返回
+        if (this._datasetColsCache && this._datasetColsCache[datasetName]) {
+            return this._datasetColsCache[datasetName];
+        }
+
+        try {
+            const datasets = this.state.datasets || [];
+            const ds = datasets.find(d => d.name === datasetName);
+            if (!ds) return [];
+
+            const res = await AnalysisApi.getDatasetData(ds.id, { page: 1, size: 1 });
+            const cols = res.data?.columns || [];
+            if (!this._datasetColsCache) this._datasetColsCache = {};
+            this._datasetColsCache[datasetName] = cols;
+            return cols;
+        } catch (e) {
+            console.error('获取字段失败:', e);
+            return [];
+        }
+    },
+
+    // 辅助方法：计算某个节点的所有可用输入字段
+    async _getAvailableColumnsForNode(nodeId) {
+        const { modelNodes = [], modelConnections = [] } = this.state;
+        const node = modelNodes.find(n => n.id === nodeId);
+        if (!node) return [];
+
+        // 寻找上游节点
+        const conn = modelConnections.find(c => c.targetId === nodeId);
+        if (!conn) {
+            // 如果没有上游，且自己是 source 类型，从数据集取
+            if (node.type === 'source' && node.data?.table) {
+                return await this._fetchDatasetColumns(node.data.table);
+            }
+            return [];
+        }
+
+        // 递归找上游的根数据源（简化逻辑：找到根 source）
+        let currentId = nodeId;
+        let visited = new Set();
+        while (currentId && !visited.has(currentId)) {
+            visited.add(currentId);
+            const n = modelNodes.find(item => item.id === currentId);
+            if (n?.type === 'source' && n.data?.table) {
+                return await this._fetchDatasetColumns(n.data.table);
+            }
+            const upConn = modelConnections.find(c => c.targetId === currentId);
+            currentId = upConn ? upConn.sourceId : null;
+        }
+
+        return [];
+    },
+
+    /**
+     * 进入模型编辑模式
+     */
+    async enterModelEdit(modelId) {
+        try {
+            const res = await AnalysisApi.getModel(modelId);
+            const model = res.data;
+
+            // 解析图配置
+            let nodes = [], connections = [];
+            if (model.graph_config) {
+                nodes = model.graph_config.nodes || [];
+                connections = model.graph_config.connections || [];
+            }
+
+            this.setState({
+                currentModel: model,
+                modelNodes: nodes,
+                modelConnections: connections,
+                selectedNodeId: null,
+                etlLogs: []
+            });
+
+            // 稍后初始化拖放
+            setTimeout(() => this.initETLCanvasDrop(), 100);
+        } catch (e) {
+            Toast.error('加载模型失败: ' + e.message);
+        }
+    },
+
+    /**
+     * 绑定Modeling事件
+     */
+    bindModelingEvents() {
+        if (this._modelingEventsBound) return;
+        this._modelingEventsBound = true;
+
+        // 绑定刷新按钮
+        this.delegate('click', '#btn-refresh-models', () => this.fetchModels());
+
+        // 新建模型弹窗
+        this.delegate('click', '.btn-create-model-global', () => {
+            this.setState({ showCreateModelModal: true });
+        });
+
+        // 取消新建
+        this.delegate('click', '#btn-cancel-create-model', () => {
+            this.setState({ showCreateModelModal: false });
+        });
+
+        // 确认新建
+        this.delegate('click', '#btn-confirm-create-model', async () => {
+            const name = document.getElementById('new-model-name').value;
+            const desc = document.getElementById('new-model-desc').value;
+            if (!name) return Toast.error('请输入模型名称');
+
+            try {
+                const res = await AnalysisApi.createModel({ name, description: desc });
+                Toast.success('创建成功');
+                this.setState({ showCreateModelModal: false });
+                this.fetchModels();
+                // 自动进入编辑
+                this.enterModelEdit(res.data.id);
+            } catch (e) {
+                Toast.error('创建失败: ' + e.message);
+            }
+        });
+
+        // 编辑模型
+        this.delegate('click', '.btn-edit-model', (e, el) => {
+            const id = el.dataset.id;
+            this.enterModelEdit(id);
+        });
+
+        // 返回列表
+        this.delegate('click', '#btn-back-models', () => {
+            if (confirm('确定要返回吗？未保存的更改将丢失。')) {
+                this.setState({ currentModel: null });
+                this.fetchModels();
+            }
+        });
+
+        // 保存模型设计
+        this.delegate('click', '#btn-save-model-graph', async () => {
+            const { currentModel, modelNodes, modelConnections } = this.state;
+            if (!currentModel) return;
+
+            let newStatus = null;
+            // 如果当前是已发布状态，保存时提示并转回草稿
+            if (currentModel.status === 'published') {
+                if (!confirm('该模型已发布。保存修改将使模型状态变更为“设计中”，是否继续？')) {
+                    return;
+                }
+                newStatus = 'draft';
+            }
+
+            try {
+                const graphConfig = {
+                    nodes: modelNodes,
+                    connections: modelConnections
+                };
+
+                const payload = { graph_config: graphConfig };
+                if (newStatus) payload.status = newStatus;
+
+                await AnalysisApi.saveModelGraph(currentModel.id, payload);
+
+                // 更新本地状态
+                if (newStatus) {
+                    this.setState({ currentModel: { ...currentModel, status: newStatus } });
+                }
+
+                Toast.success('保存成功' + (newStatus ? ' (状态已更新为设计中)' : ''));
+            } catch (e) {
+                Toast.error('保存失败');
+            }
+        });
+
+        // 发布模型
+        this.delegate('click', '#btn-publish-model', async () => {
+            if (!confirm('确定要发布此模型吗？发布后状态将变为“已发布”。')) return;
+            const { currentModel, modelNodes, modelConnections } = this.state;
+            if (!currentModel) return;
+
+            try {
+                // 保存图并更新状态
+                const graphConfig = {
+                    nodes: modelNodes,
+                    connections: modelConnections
+                };
+                // 假设 saveModelGraph 支持更新 status，或者后端会处理 extra data
+                await AnalysisApi.saveModelGraph(currentModel.id, {
+                    graph_config: graphConfig,
+                    status: 'published'
+                });
+
+                // 更新本地状态
+                this.setState({ currentModel: { ...currentModel, status: 'published' } });
+                Toast.success('模型已发布！');
+            } catch (e) {
+                Toast.error('发布失败: ' + (e.message || '未知错误'));
+            }
+        });
+
+        // 快速运行发布模型
+        this.delegate('click', '.btn-run-model', async (e, el) => {
+            const id = el.dataset.id;
+            if (!confirm('确定要立即执行此模型的输出任务吗？')) return;
+
+            try {
+                el.disabled = true;
+                el.innerHTML = '⏳';
+
+                const token = Utils.getToken();
+                const response = await fetch(`/api/v1/analysis/models/${id}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const res = await response.json();
+
+                if (res.code === 200) {
+                    Toast.success(res.message || '执行成功');
+                } else {
+                    Toast.error(res.message || '执行失败');
+                }
+            } catch (err) {
+                console.error(err);
+                Toast.error('请求失败: ' + err.message);
+            } finally {
+                el.disabled = false;
+                el.innerHTML = '▶️';
+            }
+        });
+
+        // 删除模型
+        this.delegate('click', '.btn-delete-model', async (e, el) => {
+            if (!confirm('确定要删除此模型吗？')) return;
+            const id = el.dataset.id;
+            try {
+                await AnalysisApi.deleteModel(id);
+                Toast.success('删除成功');
+                this.fetchModels();
+            } catch (e) {
+                Toast.error('删除失败');
+            }
+        });
+
+        /* ========== ETL 工作台操作 ========== */
+
+        // 点击选中节点
+        this.delegate('mousedown', '.etl-node', (e, el) => {
+            // 防止拖拽干扰点击操作
+            if (e.target.classList.contains('node-port')) return;
+            // 防止点击操作按钮时触发拖拽
+            if (e.target.closest('.btn-node-preview')) return;
+            if (e.target.closest('.btn-node-run')) return;
+
+            const id = el.dataset.nodeId;
+
+            // 切换选中状态，并触发异步配置加载（不等待，立即响应交互）
+            this._loadNodeConfig(id);
+
+            // 开始拖拽节点逻辑
+            this.startETLNodeDrag(e, id);
+        });
+
+        // 节点运行按钮点击 - 调用后端真实执行
+        this.delegate('mousedown', '.btn-node-run', async (e, el) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const nodeId = el.closest('.etl-node').dataset.nodeId;
+
+            await this._executeNode(nodeId);
+        });
+
+        // 节点预览按钮点击 - 只预览已执行节点
+        this.delegate('mousedown', '.btn-node-preview', async (e, el) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const nodeId = el.closest('.etl-node').dataset.nodeId;
+
+            // 检查节点是否已执行
+            const node = this.state.modelNodes.find(n => n.id === nodeId);
+            if (!node || (node.status !== 'success' && node.status !== 'executed')) {
+                Toast.warning('请先运行此节点');
+                return;
+            }
+
+            // 调用后端预览接口
+            await this._previewNode(nodeId);
+        });
+
+        // 切换控制台
+        this.delegate('click', '#btn-toggle-console', () => {
+            this.setState({ isConsoleOpen: !this.state.isConsoleOpen });
+        });
+
+        // 监听配置保存按钮 (现在增加静默保存逻辑)
+        this.delegate('click', '#btn-save-node-cfg', async () => {
+            await this._saveNodeConfig();
+        });
+
+        // 监听数据源变更，自动刷新字段（静默刷新）
+        this.delegate('change', '#cfg-source-table, #cfg-join-table', async (e, el) => {
+            const { selectedNodeId, modelNodes } = this.state;
+            const node = modelNodes.find(n => n.id === selectedNodeId);
+            if (!node) return;
+
+            // 预存表名变更
+            const updates = node.type === 'source' ? { table: el.value } : { joinTable: el.value };
+            this.updateETLNodeData(node.id, updates);
+
+            // 重新获取元数据，表变了需要强制 loading
+            await this._loadNodeConfig(node.id, true);
+        });
+
+        // 清空日志
+        this.delegate('click', '#btn-clear-console', () => {
+            this.setState({ etlLogs: [] });
+        });
+
+
+
+        // 关闭预览弹窗
+        this.delegate('click', '#btn-close-preview', () => {
+            this.setState({ previewNodeId: null });
+        });
+
+        // 下载结果 - 导出 Sink 节点数据为 CSV
+        this.delegate('click', '#btn-download-etl-result', async () => {
+            const { selectedNodeId, modelNodes, currentModel } = this.state;
+            const node = modelNodes.find(n => n.id === selectedNodeId);
+
+            if (!node || node.type !== 'sink') {
+                Toast.error('请先选择输出节点');
+                return;
+            }
+
+            if (node.status !== 'success' && node.status !== 'executed') {
+                Toast.error('请先运行此节点');
+                return;
+            }
+
+            Toast.info('正在准备导出...');
+
+            try {
+                // 获取节点的预览数据
+                const res = await AnalysisApi.previewETLNode({
+                    model_id: currentModel.id,
+                    node_id: node.id
+                });
+
+                if (res.code === 200 && res.data?.preview) {
+                    const data = res.data.preview;
+                    const columns = res.data.columns || Object.keys(data[0] || {});
+
+                    // 转换为 CSV
+                    let csv = columns.join(',') + '\n';
+                    data.forEach(row => {
+                        csv += columns.map(col => {
+                            const val = row[col];
+                            if (val === null || val === undefined) return '';
+                            const str = String(val);
+                            // 如果包含逗号、引号或换行，需要用引号包裹
+                            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                                return '"' + str.replace(/"/g, '""') + '"';
+                            }
+                            return str;
+                        }).join(',') + '\n';
+                    });
+
+                    // 下载文件
+                    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${node.data?.target || 'etl_result'}_${Date.now()}.csv`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+
+                    Toast.success(`导出成功: ${data.length} 行`);
+                } else {
+                    throw new Error(res.message || '获取数据失败');
+                }
+            } catch (e) {
+                Toast.error('导出失败: ' + e.message);
+            }
+        });
+
+        // 运行 ETL
+        this.delegate('click', '#btn-run-etl', () => {
+            if (!this.state.isExecuting) {
+                this.runETLJob();
+            }
+        });
+
+        // 删除节点（配置面板中）
+        this.delegate('click', '#btn-delete-node', () => {
+            const { selectedNodeId } = this.state;
+            if (selectedNodeId && confirm('确定要删除该节点吗？')) {
+                this.deleteETLNode(selectedNodeId);
+            }
+        });
+
+        // 节点配置中的字段点击切换 (全响应式同步)
+        this.delegate('click', '.visual-field-chip', async (e, el) => {
+            const col = el.dataset.col;
+            const targetId = el.dataset.target;
+
+            // 特殊处理：过滤条件的字段插入
+            if (targetId === 'cfg-filter-chips') {
+                const area = document.getElementById('cfg-filter-cond');
+                if (area) {
+                    const start = area.selectionStart;
+                    const end = area.selectionEnd;
+                    const text = area.value;
+                    area.value = text.substring(0, start) + col + text.substring(end);
+                    area.focus();
+                    area.selectionStart = area.selectionEnd = start + col.length;
+                    await this._saveNodeConfig(true);
+                }
+                return;
+            }
+
+            const single = el.dataset.single === 'true';
+            const input = document.getElementById(targetId);
+            if (!input) return;
+
+            let vals = input.value.split(',').map(v => v.trim()).filter(v => v);
+            if (single) {
+                vals = [col];
+            } else {
+                if (vals.includes(col)) vals = vals.filter(v => v !== col);
+                else vals.push(col);
+            }
+
+            input.value = vals.join(', ');
+            const { selectedNodeId } = this.state;
+            if (selectedNodeId) await this._saveNodeConfig(true);
+        });
+
+        // 通用表单输入实时同步 (防止重绘丢失)
+        this.delegate('input', '.etl-config-content .form-control', (e, el) => {
+            // 仅同步数据，不强制刷新 HTML，除非是保存
+        });
+
+        // 点击空白处取消选中
+        this.delegate('mousedown', '#etlCanvas', (e) => {
+            if (e.target.id === 'etlCanvas' || e.target.closest('.etl-workspace')) {
+                // 如果点击的不是节点、连线、连线组、删除按钮，则清空选中状态
+                if (!e.target.closest('.etl-node') &&
+                    !e.target.closest('.etl-conn-line') &&
+                    !e.target.closest('.etl-conn-group') &&
+                    !e.target.closest('.etl-conn-remove') &&
+                    !e.target.closest('.node-port')) {
+                    this.setState({ selectedNodeId: null, selectedConnIndex: null });
+                }
+            }
+        });
+
+        // 右侧面板删除连线
+        this.delegate('click', '#btn-delete-conn-panel', () => {
+            const index = this.state.selectedConnIndex;
+            if (index !== null && confirm('确定要移除这条连线吗？')) {
+                const conns = [...(this.state.modelConnections || [])];
+                conns.splice(index, 1);
+                this.setState({ modelConnections: conns, selectedConnIndex: null });
+                Toast.success('连线已移除');
+            }
+        });
+
+        // 连线删除按钮点击 (使用全局事件确保不会因 DOM 重建而失效)
+        if (!this._connDeleteBound) {
+            this._connDeleteBound = true;
+            const self = this;
+            document.addEventListener('click', function (e) {
+                const removeBtn = e.target.closest('.etl-conn-remove');
+                if (removeBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const index = parseInt(removeBtn.dataset.index);
+                    const { modelConnections } = self.state;
+
+                    if (modelConnections && modelConnections[index] !== undefined) {
+                        if (confirm('确定要移除这条连线吗？')) {
+                            const newConns = [...modelConnections];
+                            newConns.splice(index, 1);
+                            self.setState({ modelConnections: newConns, selectedConnIndex: null });
+
+                        }
+                    }
+                    return;
+                }
+
+                // 检查是否点击了连线组
+                const connGroup = e.target.closest('.etl-conn-group');
+                if (connGroup && self.state.currentModel) {
+                    e.stopPropagation();
+                    const index = parseInt(connGroup.dataset.index);
+                    self.setState({ selectedConnIndex: index, selectedNodeId: null });
+                }
+            }, true); // 使用捕获阶段
+        }
+
+        // 端口点击拖拽连线
+        this.delegate('mousedown', '.node-port', (e, el) => {
+            e.stopPropagation();
+            const nodeId = el.closest('.etl-node').dataset.nodeId;
+            const isOut = el.classList.contains('port-out');
+            if (isOut) {
+                this.startETLConnectionLine(e, nodeId);
+            }
+        });
+
+        // 绑定算子列表拖拽开始 (核心修复：补全缺失的 dragstart 处理)
+        this.delegate('dragstart', '.etl-operator', (e, el) => {
+            const type = el.dataset.type;
+            const label = el.dataset.label;
+
+            this._draggedOp = { type, label };
+
+            // 设置拖拽效果
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', type); // 部分浏览器需要设置数据才能触发 drop
+            }
+
+            el.style.opacity = '0.5';
+        });
+
+        this.delegate('dragend', '.etl-operator', (e, el) => {
+            el.style.opacity = '1';
+        });
+    },
+
+    /**
+     * 加载节点配置详情（支持异步元数据）
+     * @param {string} nodeId 节点ID
+     * @param {boolean} showLoading 是否显示加载提示，默认显示
+     */
+    async _loadNodeConfig(nodeId, showLoading = true) {
+        if (!nodeId) return;
+
+        // 如果需要显示加载状态或当前无 HTML，则清空
+        if (showLoading || !this.state.selectedNodeConfigHtml) {
+            this.setState({ selectedNodeId: nodeId, selectedNodeConfigHtml: null });
+        } else {
+            this.setState({ selectedNodeId: nodeId });
+        }
+
+        const node = (this.state.modelNodes || []).find(n => n.id === nodeId);
+        if (node) {
+            const html = await this.renderETLNodeConfig(node);
+            this.setState({ selectedNodeConfigHtml: html });
+        }
+    },
+
+    /**
+     * 保存当前选中节点的配置
+     * @param {boolean} silentMode 静默模式，不弹出 Toast 提示
+     */
+    async _saveNodeConfig(silentMode = false) {
+        const { selectedNodeId, modelNodes } = this.state;
+        const node = modelNodes.find(n => n.id === selectedNodeId);
+        if (!node) return;
+
+        let updates = {};
+        const getValue = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : (node.data ? node.data[id.replace('cfg-', '').replace('-', '')] : null);
+        };
+
+        // 根据节点类型读取配置
+        switch (node.type) {
+            case 'source':
+                updates.table = getValue('cfg-source-table');
+                break;
+            case 'sink':
+                updates.target = getValue('cfg-sink-target');
+                updates.mode = getValue('cfg-sink-mode');
+                break;
+            case 'filter':
+                const filterRows = document.querySelectorAll('.etl-filter-row');
+                if (filterRows.length > 0) {
+                    updates.conditions = Array.from(filterRows).map((row, i) => ({
+                        join: i > 0 ? (row.querySelector('.filter-join')?.value || 'AND') : 'AND',
+                        field: row.querySelector('.filter-field').value,
+                        operator: row.querySelector('.filter-op').value,
+                        value: row.querySelector('.filter-val').value
+                    }));
+                    // 更新摘要用的首个条件
+                    if (updates.conditions.length > 0) {
+                        updates.field = updates.conditions[0].field;
+                        updates.operator = updates.conditions[0].operator;
+                        updates.value = updates.conditions[0].value;
+                    }
+                } else {
+                    updates.field = getValue('cfg-filter-field');
+                    updates.operator = getValue('cfg-filter-op');
+                    updates.value = getValue('cfg-filter-value');
+                }
+                break;
+            case 'select':
+                updates.columns = getValue('cfg-select-cols');
+                break;
+            case 'distinct':
+                updates.columns = getValue('cfg-distinct-cols');
+                break;
+            case 'sample':
+                updates.rate = getValue('cfg-sample-rate');
+                break;
+            case 'limit':
+                updates.count = getValue('cfg-limit-count');
+                break;
+            case 'group':
+                updates.groupBy = getValue('cfg-group-by');
+                updates.aggFunc = getValue('cfg-group-func');
+                updates.aggCol = getValue('cfg-group-agg-col');
+                break;
+            case 'sort':
+                updates.orderBy = getValue('cfg-sort-col');
+                updates.direction = getValue('cfg-sort-dir');
+                break;
+            case 'calculate':
+                updates.newColumn = getValue('cfg-calc-name');
+                updates.fieldA = getValue('cfg-calc-field-a');
+                updates.op = getValue('cfg-calc-op');
+                updates.value = getValue('cfg-calc-value');
+                updates.expression = `${updates.newColumn} = ${updates.fieldA} ${updates.op} ${updates.value}`;
+                break;
+            case 'rename':
+                updates.oldCol = getValue('cfg-rename-old');
+                updates.newCol = getValue('cfg-rename-new');
+                updates.mapping = `${updates.oldCol}:${updates.newCol}`;
+                break;
+            case 'join':
+                updates.joinTable = getValue('cfg-join-table');
+                updates.joinType = getValue('cfg-join-type');
+                updates.leftOn = getValue('cfg-join-left');
+                updates.rightOn = getValue('cfg-join-right');
+                break;
+            case 'union':
+                updates.tables = getValue('cfg-union-table');
+                updates.unionMode = getValue('cfg-union-mode');
+                break;
+            case 'fillna':
+                updates.targetCol = getValue('cfg-fillna-col');
+                updates.fillValue = getValue('cfg-fillna-val');
+                break;
+            case 'typecast':
+                updates.column = getValue('cfg-cast-col');
+                updates.castType = getValue('cfg-cast-type');
+                break;
+            case 'split':
+                updates.sourceCol = getValue('cfg-split-source');
+                updates.separator = getValue('cfg-split-sep');
+                updates.limit = getValue('cfg-split-limit');
+                break;
+            case 'sql':
+                updates.query = getValue('cfg-sql-query');
+                break;
+            case 'clean':
+                updates.mode = getValue('cfg-clean-mode');
+                break;
+            case 'pivot':
+                updates.index = getValue('cfg-pivot-index');
+                updates.columns = getValue('cfg-pivot-column');
+                updates.values = getValue('cfg-pivot-values');
+                updates.aggFunc = getValue('cfg-pivot-func');
+                break;
+        }
+
+        // 通用：更新节点标签
+        const label = getValue('cfg-node-label');
+        if (label) updates.label = label;
+
+        // 通用：输出字段选择（对于非 sink 节点）
+        if (node.type !== 'sink') {
+            updates.outputColumns = getValue('cfg-output-cols');
+        }
+
+        this.updateETLNodeData(node.id, updates);
+
+        // 保存后刷新一次配置面板 HTML 以同步状态 (静默刷新，防止跳动)
+        await this._loadNodeConfig(node.id, false);
+
+        if (!silentMode) Toast.success('节点配置已保存');
+    },
+
+    /**
+     * 渲染ETL节点
+     */
+    renderETLNode(node, isSelected) {
+        const icons = {
+            source: '📥', sink: '📤', filter: '🔍', select: '📝', group: 'Σ',
+            join: '🔗', sort: '⚡', clean: '🧹', distinct: '🎯', sample: '🎲',
+            limit: '📏', calculate: '🧮', rename: '✏️', pivot: '📊', union: '➕',
+            fillna: '🔧', typecast: '🔄', split: '✂️', sql: '💾'
+        };
+        // 按类别定义颜色
+        const colors = {
+            // 输入/输出 - 蓝色系
+            source: '#3b82f6', sink: '#1d4ed8',
+            // 筛选过滤 - 绿色系
+            filter: '#10b981', select: '#059669', distinct: '#047857', sample: '#34d399', limit: '#6ee7b7',
+            // 数据转换 - 紫色系
+            group: '#8b5cf6', sort: '#7c3aed', calculate: '#a855f7', rename: '#c084fc', pivot: '#d946ef',
+            // 数据关联 - 橙色系
+            join: '#f97316', union: '#fb923c',
+            // 清理增强 - 青色系
+            clean: '#06b6d4', fillna: '#22d3ee', typecast: '#67e8f9', split: '#0891b2',
+            // 高级脚本 - 灰色系
+            sql: '#64748b'
+        };
+        const nodeColor = colors[node.type] || '#6b7280';
+        const isExecuted = node.status === 'success' || node.status === 'executed';
+        const isRunning = node.status === 'running';
+        const hasError = node.status === 'error';
+
+        return `
+            <div class="etl-node ${node.status || ''} ${isSelected ? 'selected' : ''}" 
+                 data-node-id="${node.id}"
+                 style="left: ${node.x}px; top: ${node.y}px; border-left: 4px solid ${nodeColor};">
+                <div class="node-port port-in"></div>
+                <div class="node-head" style="background: linear-gradient(90deg, ${nodeColor}20, transparent);">
+                    <span class="node-icon">${icons[node.type] || '📦'}</span>
+                    <span class="node-label" title="${Utils.escapeHtml(node.data?.label || node.type)}">${node.data?.label || node.type}</span>
+                    <div class="node-actions-mini">
+                         <span class="btn-node-run" title="运行此节点">▶️</span>
+                         ${isExecuted ? `<span class="btn-node-preview" title="预览数据">👁️</span>` : ''}
+                    </div>
+                    ${isRunning ? '<div class="node-spinner"></div>' : ''}
+                    ${isExecuted ? '<span class="node-status" title="已执行">✅</span>' : ''}
+                    ${hasError ? '<span class="node-status" title="执行失败">❌</span>' : ''}
+                </div>
+                <div class="node-info">
+                    ${isExecuted && node.data?._rowCount ? `📊 ${node.data._rowCount} 行` : this.getNodeSummary(node)}
+                </div>
+                <div class="node-port port-out" style="background: ${nodeColor}; border-color: ${nodeColor};"></div>
+            </div>
+        `;
+    },
+
+    /**
+     * 获取节点摘要信息
+     */
+    getNodeSummary(node) {
+        const d = node.data || {};
+        switch (node.type) {
+            case 'source': return d.table || '未配置来源';
+            case 'sink': return d.target || '未配置目标';
+            case 'filter': return (d.field && d.operator) ? `${d.field} ${d.operator} ${d.value || ''}` : '未设置条件';
+            case 'select': return d.columns || '全部字段';
+            case 'distinct': return d.columns || '全部列去重';
+            case 'sample': return d.rate ? `${d.rate}%` : '未配置';
+            case 'limit': return d.count ? `取前 ${d.count} 行` : '未配置';
+            case 'group': return d.groupBy ? `按 ${d.groupBy} 分组` : '未配置分组';
+            case 'sort': return d.orderBy ? `${d.orderBy} ${d.direction || 'ASC'}` : '未配置排序';
+            case 'calculate': return (d.newColumn && d.fieldA) ? `${d.newColumn}=${d.fieldA}${d.op || '+'}${d.value || ''}` : '未配置公式';
+            case 'rename': return d.oldCol ? `${d.oldCol}→${d.newCol}` : '未配置映射';
+            case 'pivot': return d.index ? `索引: ${d.index}` : '未配置';
+            case 'join': return d.joinType ? `${d.joinType.toUpperCase()} JOIN` : '未配置';
+            case 'union': return d.tables ? `合并: ${d.tables}` : '未配置';
+            case 'fillna': return d.fillValue !== undefined ? `填充: ${d.fillValue}` : '未配置';
+            case 'typecast': return d.castType ? `转为 ${d.castType}` : '未配置';
+            case 'split': return d.separator ? `分隔符: "${d.separator}"` : '未配置';
+            case 'sql': return d.query ? '已配置 SQL' : '未配置 SQL';
+            case 'clean': return d.mode ? (d.mode === 'drop_na' ? '删除空值行' : '删除重复行') : '未配置';
+            default: return '';
+        }
+    },
+
+    /**
+     * 渲染ETL连接线
+     */
+    renderETLConnections(connections, nodes) {
+        const { selectedConnIndex } = this.state;
+        return connections.map((conn, index) => {
+            const src = nodes.find(n => n.id === conn.sourceId);
+            const tgt = nodes.find(n => n.id === conn.targetId);
+            if (!src || !tgt) return '';
+
+            // 精确计算连接点（x 居中，y 分别位于顶部和底部边缘）
+            const nodeWidth = 150;  // 与 CSS .etl-node width 保持一致
+            const nodeMinHeight = 70; // 与 CSS .etl-node height 保持一致
+
+            const x1 = src.x + nodeWidth / 2;
+            const y1 = src.y + nodeMinHeight; // 出发点在底部
+            const x2 = tgt.x + nodeWidth / 2;
+            const y2 = tgt.y; // 到达点在顶部
+
+            // 使用三次贝塞尔曲线
+            const d = `M ${x1} ${y1} C ${x1} ${y1 + 40}, ${x2} ${y2 - 40}, ${x2} ${y2}`;
+            const isSelected = selectedConnIndex === index;
+
+            // 计算中点用于放置删除按钮
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            return `
+                <g class="etl-conn-group" data-index="${index}" style="pointer-events: auto; cursor: pointer;">
+                    <!-- 极宽的透明感应层 (40px) -->
+                    <path d="${d}" stroke="rgba(0,0,0,0)" stroke-width="40" fill="none" class="etl-conn-hit-area" data-index="${index}" style="pointer-events: stroke;" />
+                    <!-- 可见连线 -->
+                    <path class="etl-conn-line ${isSelected ? 'selected' : ''}" 
+                          d="${d}" 
+                          stroke="${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}"
+                          stroke-width="${isSelected ? '3' : '2'}"
+                          fill="none" 
+                          style="pointer-events: none;" />
+                    
+                    <!-- 悬停即显的删除按钮 -->
+                    <g class="etl-conn-remove" data-index="${index}" transform="translate(${midX}, ${midY})" style="pointer-events: all; cursor: pointer;">
+                        <circle r="10" fill="#f43f5e" stroke="#fff" stroke-width="1.5" />
+                        <text dy=".35em" text-anchor="middle" fill="#fff" style="font-size: 14px; font-family: Arial, sans-serif; font-weight: bold; pointer-events: none; user-select: none;">×</text>
+                    </g>
+                </g>
+            `;
+        }).join('');
+    },
+
+    /**
+     * 渲染拖拽中的临时连线
+     */
+    renderTempConnection(temp) {
+        const { x1, y1, x2, y2 } = temp;
+        const d = `M ${x1} ${y1} C ${x1} ${y1 + 40}, ${x2} ${y2 - 40}, ${x2} ${y2}`;
+        return `<path class="etl-temp-line" d="${d}" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="5,5" fill="none" />`;
+    },
+
+    // 辅助部件：渲染字段选择标签组
+    _renderFieldChips(availableFields, selectedFields = [], targetId, single = false) {
+        if (!availableFields || availableFields.length === 0) {
+            return '<div class="text-secondary text-xs p-10 bg-hover border-radius-5">💡 请先正确配置上游数据源表</div>';
+        }
+        const selectedArr = typeof selectedFields === 'string' ? selectedFields.split(',').map(v => v.trim()).filter(v => v) : (selectedFields || []);
+        return `
+            <div class="field-chips-container mt-10" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow-y: auto; padding: 5px;">
+                ${availableFields.map(f => {
+            const fName = typeof f === 'object' ? f.name : f;
+            const active = selectedArr.includes(fName);
+            return `<span class="visual-field-chip ${active ? 'active' : ''}" 
+                                  data-col="${fName}" 
+                                  data-target="${targetId}"
+                                  data-single="${single}"
+                                  style="padding: 4px 10px; border-radius: 15px; border: 1px solid var(--color-border); cursor: pointer; font-size: 11px; transition: all 0.2s; ${active ? 'background: var(--color-primary); color: white; border-color: var(--color-primary);' : 'background: var(--color-bg-secondary);'}">
+                                ${fName}
+                            </span>`;
+        }).join('')}
+            </div>
+            <input type="hidden" id="${targetId}" value="${selectedArr.join(', ')}">
+        `;
+    },
+
+    async renderETLNodeConfig(node) {
+        if (!node) return '';
+
+        // 【企业级修复】标准化字段对象，杜绝 undefined
+        let rawFields = await (this._getAvailableColumnsForNode ? this._getAvailableColumnsForNode(node.id) : Promise.resolve([]));
+        if (!rawFields) rawFields = [];
+        const availableFields = rawFields.map(f => {
+            if (typeof f === 'string') return { name: f, type: 'string' };
+            if (typeof f === 'object' && f.name) return f;
+            return { name: String(f), type: 'unknown' };
+        });
+
+        // 通用渲染辅助函数：生成带 Label 的表单组
+        const renderGroup = (label, content, helpText = '') => `
+            <div class="form-group mb-15">
+                <label class="block text-sm font-bold mb-5 text-secondary">${label}</label>
+                ${content}
+                ${helpText ? `<div class="text-xs text-tertiary mt-5">${helpText}</div>` : ''}
+            </div>
+        `;
+
+        let fields = '';
+
+        switch (node.type) {
+            /* ========== 数据输入输出 ========== */
+            case 'source':
+                fields = renderGroup('数据来源表', `
+                    <select class="form-control w-100" id="cfg-source-table">
+                        <option value="">请选择数据集...</option>
+                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.table === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                `, '选择系统内已注册的数据集作为起始输入');
+                break;
+
+            case 'sink':
+                fields = renderGroup('输出目标表', `
+                    <input type="text" class="form-control w-100" id="cfg-sink-target" 
+                           placeholder="例如: result_table_v1" value="${node.data?.target || ''}">
+                `) + renderGroup('写入模式', `
+                    <select class="form-control w-100" id="cfg-sink-mode">
+                        <option value="append" ${node.data?.mode === 'append' ? 'selected' : ''}>追加数据 (Append)</option>
+                        <option value="overwrite" ${node.data?.mode === 'overwrite' ? 'selected' : ''}>覆盖数据 (Overwrite)</option>
+                    </select>
+                `, '决定当目标表已存在时的处理策略') + `
+                    <div class="mt-20 border-top pt-15">
+                        <button class="btn btn-outline-success btn-block" id="btn-download-etl-result">📥 导出结果</button>
+                    </div>
+                `;
+                break;
+
+            /* ========== 数据筛选与过滤 ========== */
+            case 'filter':
+                let conditions = node.data?.conditions || [];
+                // 兼容旧数据
+                if (conditions.length === 0 && node.data?.field) {
+                    conditions = [{
+                        field: node.data.field,
+                        operator: node.data.operator,
+                        value: node.data.value,
+                        join: 'AND'
+                    }];
+                }
+                if (conditions.length === 0) conditions = [{ field: '', operator: '=', value: '', join: 'AND' }];
+
+                const renderOpOptions = (selected) => `
+                    <optgroup label="数值/比较">
+                        <option value="=" ${selected === '=' ? 'selected' : ''}>等于 (=)</option>
+                        <option value="!=" ${selected === '!=' ? 'selected' : ''}>不等于 (!=)</option>
+                        <option value=">" ${selected === '>' ? 'selected' : ''}>大于 (&gt;)</option>
+                        <option value=">=" ${selected === '>=' ? 'selected' : ''}>大于等于 (&ge;)</option>
+                        <option value="<" ${selected === '<' ? 'selected' : ''}>小于 (&lt;)</option>
+                        <option value="<=" ${selected === '<=' ? 'selected' : ''}>小于等于 (&le;)</option>
+                        <option value="IN" ${selected === 'IN' ? 'selected' : ''}>IN (列表)</option>
+                    </optgroup>
+                    <optgroup label="文本匹配">
+                        <option value="contains" ${selected === 'contains' ? 'selected' : ''}>包含 (Like)</option>
+                        <option value="not_contains" ${selected === 'not_contains' ? 'selected' : ''}>不包含</option>
+                        <option value="start_with" ${selected === 'start_with' ? 'selected' : ''}>开始于</option>
+                        <option value="end_with" ${selected === 'end_with' ? 'selected' : ''}>结束于</option>
+                    </optgroup>
+                    <optgroup label="空值检查">
+                        <option value="is_null" ${selected === 'is_null' ? 'selected' : ''}>为空 (NULL)</option>
+                        <option value="not_null" ${selected === 'not_null' ? 'selected' : ''}>不为空</option>
+                        <option value="is_empty" ${selected === 'is_empty' ? 'selected' : ''}>为空字符</option>
+                        <option value="not_empty" ${selected === 'not_empty' ? 'selected' : ''}>不为空字符</option>
+                    </optgroup>
+                `;
+
+                fields = renderGroup('过滤规则设置 (多条件)', `
+                    <div id="cfg-filters-list">
+                        ${conditions.map((cond, i) => `
+                            <div class="etl-filter-row bg-secondary p-10 border-radius-sm mb-10 relative" style="border:1px solid var(--color-border)">
+                                ${i > 0 ? `
+                                    <div class="mb-5">
+                                        <select class="form-control form-control-sm filter-join w-auto font-bold text-primary">
+                                            <option value="AND" ${cond.join === 'AND' ? 'selected' : ''}>且 (AND)</option>
+                                            <option value="OR" ${cond.join === 'OR' ? 'selected' : ''}>或 (OR)</option>
+                                        </select>
+                                    </div>
+                                ` : ''}
+                                <div class="flex gap-5 mb-5">
+                                    <select class="form-control filter-field" style="flex: 2;">
+                                        <option value="">选择字段</option>
+                                        ${availableFields.map(f => `<option value="${f.name}" ${cond.field === f.name ? 'selected' : ''}>${f.name}</option>`).join('')}
+                                    </select>
+                                    ${i > 0 ? `<button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>` : ''}
+                                </div>
+                                <div class="mb-5">
+                                    <select class="form-control w-100 filter-op" onchange="this.parentElement.nextElementSibling.style.display = ['is_null','not_null','is_empty','not_empty'].includes(this.value) ? 'none' : 'block'">
+                                        ${renderOpOptions(cond.operator)}
+                                    </select>
+                                </div>
+                                <input type="text" class="form-control w-100 filter-val" 
+                                       placeholder="输入比较值" value="${cond.value || ''}" 
+                                       style="display: ${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(cond.operator) ? 'none' : 'block'};">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm btn-block dashed-btn" id="btn-add-filter-row">➕ 添加条件</button>
+                    
+                    <!-- 隐藏模板 -->
+                    <template id="tpl-filter-row">
+                        <div class="etl-filter-row bg-secondary p-10 border-radius-sm mb-10 relative" style="border:1px solid var(--color-border)">
+                            <div class="mb-5">
+                                <select class="form-control form-control-sm filter-join w-auto font-bold text-primary">
+                                    <option value="AND">且 (AND)</option>
+                                    <option value="OR">或 (OR)</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-5 mb-5">
+                                <select class="form-control filter-field" style="flex: 2;">
+                                    <option value="">选择字段</option>
+                                    ${availableFields.map(f => `<option value="${f.name}">${f.name}</option>`).join('')}
+                                </select>
+                                <button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>
+                            </div>
+                            <div class="mb-5">
+                                <select class="form-control w-100 filter-op" onchange="this.parentElement.nextElementSibling.style.display = ['is_null','not_null','is_empty','not_empty'].includes(this.value) ? 'none' : 'block'">
+                                    ${renderOpOptions('=')}
+                                </select>
+                            </div>
+                            <input type="text" class="form-control w-100 filter-val" placeholder="输入比较值">
+                        </div>
+                    </template>
+                `, '设置多个过滤条件，按顺序执行筛选');
+
+                // 延迟绑定添加按钮事件 (Inline implementation via setTimeout to assume render completion)
+                setTimeout(() => {
+                    const btn = document.getElementById('btn-add-filter-row');
+                    if (btn) {
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            const tpl = document.getElementById('tpl-filter-row');
+                            const list = document.getElementById('cfg-filters-list');
+                            if (tpl && list) {
+                                list.insertAdjacentHTML('beforeend', tpl.innerHTML);
+                            }
+                        };
+                    }
+                }, 100);
+                break;
+
+            case 'distinct':
+                fields = renderGroup('去重依据字段',
+                    this._renderFieldChips(availableFields, node.data?.columns, 'cfg-distinct-cols'),
+                    '依据选定字段进行去重，未选则默认全字段去重'
+                );
+                break;
+
+            case 'sample':
+                fields = renderGroup('采样比例 (%)', `
+                    <div class="flex align-center gap-10">
+                         <input type="range" class="flex-1" id="cfg-sample-range" min="1" max="100" value="${node.data?.rate || 20}" 
+                                oninput="document.getElementById('cfg-sample-rate').value = this.value">
+                         <input type="number" class="form-control" id="cfg-sample-rate" style="width: 60px;"
+                                min="1" max="100" value="${node.data?.rate || 20}">
+                    </div>
+                `, '随机抽取数据的百分比');
+                break;
+
+            case 'limit':
+                fields = renderGroup('限制输出行数', `
+                    <input type="number" class="form-control w-100" id="cfg-limit-count" 
+                           min="1" placeholder="例如: 1000" value="${node.data?.count || ''}">
+                `, '仅保留前 N 条数据');
+                break;
+
+            /* ========== 字段处理 ========== */
+            case 'select':
+                fields = renderGroup('保留字段选择',
+                    this._renderFieldChips(availableFields, node.data?.columns, 'cfg-select-cols'),
+                    '未选中的字段将被丢弃'
+                );
+                break;
+
+            case 'rename':
+                fields = renderGroup('字段重命名', `
+                     <div class="bg-secondary p-10 border-radius-sm">
+                        <label class="text-xs mb-5 block">原字段:</label>
+                        ${this._renderFieldChips(availableFields, node.data?.oldCol, 'cfg-rename-old', true)}
+                        <label class="text-xs mt-10 mb-5 block">新名称:</label>
+                        <input type="text" class="form-control w-100" id="cfg-rename-new" 
+                               placeholder="输入新字段名" value="${node.data?.newCol || ''}">
+                     </div>
+                `);
+                break;
+
+            case 'split':
+                fields = renderGroup('拆分源字段',
+                    this._renderFieldChips(availableFields, node.data?.sourceCol, 'cfg-split-source', true)
+                ) + renderGroup('拆分配置', `
+                    <div class="flex gap-10 mb-10">
+                        <input type="text" class="form-control flex-1" id="cfg-split-sep" placeholder="分隔符 (如: ,)" value="${node.data?.separator || ','}">
+                        <input type="number" class="form-control" style="width: 80px;" id="cfg-split-limit" placeholder="列数" value="${node.data?.limit || 2}">
+                    </div>
+                `, '指定分隔符和最大拆分列数');
+                break;
+
+            /* ========== 数据转换 ========== */
+            case 'calculate':
+                fields = renderGroup('计算配置', `
+                     <div class="config-card p-10 bg-secondary border-radius-sm">
+                        <div class="mb-10">
+                            <label class="text-xs text-tertiary">目标字段名</label>
+                            <input type="text" class="form-control w-100 mt-5" id="cfg-calc-name" 
+                                   placeholder="例如: total_price" value="${node.data?.newColumn || ''}">
+                        </div>
+                        <div class="mb-10">
+                            <label class="text-xs text-tertiary">计算公式</label>
+                            <div class="flex gap-5 mt-5 align-center">
+                                ${this._renderFieldChips(availableFields, node.data?.fieldA, 'cfg-calc-field-a', true)}
+                                <select class="form-control" id="cfg-calc-op" style="width: 60px;">
+                                    <option value="+" ${node.data?.op === '+' ? 'selected' : ''}>+</option>
+                                    <option value="-" ${node.data?.op === '-' ? 'selected' : ''}>-</option>
+                                    <option value="*" ${node.data?.op === '*' ? 'selected' : ''}>*</option>
+                                    <option value="/" ${node.data?.op === '/' ? 'selected' : ''}>/</option>
+                                </select>
+                                <input type="text" class="form-control flex-1" id="cfg-calc-value" placeholder="数值/字段" value="${node.data?.value || ''}">
+                            </div>
+                        </div>
+                     </div>
+                `);
+                break;
+
+            case 'group':
+                fields = renderGroup('分组维度 (GroupBy)',
+                    this._renderFieldChips(availableFields, node.data?.groupBy, 'cfg-group-by')
+                ) + renderGroup('聚合配置', `
+                    <div class="flex gap-5 align-center mb-5">
+                        <select class="form-control" id="cfg-group-func" style="width: 100px;">
+                            <option value="COUNT" ${node.data?.aggFunc === 'COUNT' ? 'selected' : ''}>计数</option>
+                            <option value="SUM" ${node.data?.aggFunc === 'SUM' ? 'selected' : ''}>求和</option>
+                            <option value="AVG" ${node.data?.aggFunc === 'AVG' ? 'selected' : ''}>平均</option>
+                            <option value="MAX" ${node.data?.aggFunc === 'MAX' ? 'selected' : ''}>最大</option>
+                            <option value="MIN" ${node.data?.aggFunc === 'MIN' ? 'selected' : ''}>最小</option>
+                        </select>
+                        <span class="text-xs">ON</span>
+                    </div>
+                    ${this._renderFieldChips(availableFields, node.data?.aggCol, 'cfg-group-agg-col', true)}
+                `);
+                break;
+
+            case 'sort':
+                fields = renderGroup('排序依据',
+                    this._renderFieldChips(availableFields, node.data?.orderBy, 'cfg-sort-col', true)
+                ) + renderGroup('排序方向', `
+                     <div class="flex gap-10">
+                        <label class="flex align-center gap-5 cursor-pointer">
+                            <input type="radio" name="sort-dir" value="ASC" ${node.data?.direction !== 'DESC' ? 'checked' : ''}> 
+                            <span>升序 (A-Z)</span>
+                        </label>
+                        <label class="flex align-center gap-5 cursor-pointer">
+                            <input type="radio" name="sort-dir" value="DESC" ${node.data?.direction === 'DESC' ? 'checked' : ''}> 
+                            <span>降序 (Z-A)</span>
+                        </label>
+                     </div>
+                     <input type="hidden" id="cfg-sort-dir" value="${node.data?.direction || 'ASC'}">
+                `);
+                break;
+
+            case 'join':
+                // 动态获取右表字段
+                let rightFields = [];
+                if (node.data?.joinTable) {
+                    rightFields = await this._fetchDatasetColumns(node.data.joinTable);
+                    rightFields = rightFields.map(f => typeof f === 'string' ? { name: f } : f);
+                }
+
+                fields = renderGroup('关联类型', `
+                    <select class="form-control w-100" id="cfg-join-type">
+                        <option value="inner" ${node.data?.joinType === 'inner' ? 'selected' : ''}>内连接 (Inner Join)</option>
+                        <option value="left" ${node.data?.joinType === 'left' ? 'selected' : ''}>左连接 (Left Join)</option>
+                        <option value="right" ${node.data?.joinType === 'right' ? 'selected' : ''}>右连接 (Right Join)</option>
+                        <option value="full" ${node.data?.joinType === 'full' ? 'selected' : ''}>全连接 (Full Outer)</option>
+                    </select>
+                `) + renderGroup('右表选择', `
+                    <select class="form-control w-100" id="cfg-join-table">
+                        <option value="">选择要关联的数据集...</option>
+                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.joinTable === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                `, '当前流为左表，请选择右表') + renderGroup('关联键配置 - 左表',
+                    this._renderFieldChips(availableFields, node.data?.leftOn, 'cfg-join-left', true)
+                ) + renderGroup('关联键配置 - 右表',
+                    this._renderFieldChips(rightFields, node.data?.rightOn, 'cfg-join-right', true)
+                );
+                break;
+
+            case 'fillna':
+                fields = renderGroup('填充目标字段',
+                    this._renderFieldChips(availableFields, node.data?.targetCol, 'cfg-fillna-col', true)
+                ) + renderGroup('填充值', `
+                    <input type="text" class="form-control w-100" id="cfg-fillna-val" placeholder="例如: 0 或 Unknown" value="${node.data?.fillValue || ''}">
+                `);
+                break;
+
+            case 'clean':
+                fields = renderGroup('清洗模式', `
+                    <select class="form-control w-100" id="cfg-clean-mode">
+                        <option value="drop_na" ${node.data?.mode === 'drop_na' ? 'selected' : ''}>删除包含空值的行</option>
+                        <option value="drop_duplicates" ${node.data?.mode === 'drop_duplicates' ? 'selected' : ''}>删除重复完全行</option>
+                    </select>
+                `);
+                break;
+
+            case 'sql':
+                fields = renderGroup('SQL 查询脚本', `
+                    <textarea class="form-control w-100 font-mono text-xs" id="cfg-sql-query" rows="6" 
+                              placeholder="SELECT * FROM input WHERE ...">${node.data?.query || ''}</textarea>
+                `, '可使用 "input" 代表上游输入表') + renderGroup('可用字段参考',
+                    this._renderFieldChips(availableFields, null, 'cfg-sql-ref'),
+                    '点击复制字段名'
+                );
+                break;
+
+            case 'union':
+                fields = renderGroup('合并表', `
+                    <select class="form-control w-100" id="cfg-union-table">
+                        <option value="">选择要合并的数据集...</option>
+                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.tables === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                `, '选择要与当前流合并的另一个数据集') + renderGroup('合并模式', `
+                    <select class="form-control w-100" id="cfg-union-mode">
+                        <option value="ALL" ${node.data?.unionMode === 'ALL' ? 'selected' : ''}>保留重复 (UNION ALL)</option>
+                        <option value="DISTINCT" ${node.data?.unionMode === 'DISTINCT' ? 'selected' : ''}>去重合并 (UNION)</option>
+                    </select>
+                `);
+                break;
+
+            case 'typecast':
+                fields = renderGroup('目标字段',
+                    this._renderFieldChips(availableFields, node.data?.column, 'cfg-cast-col', true)
+                ) + renderGroup('目标类型', `
+                    <select class="form-control w-100" id="cfg-cast-type">
+                        <option value="INTEGER" ${node.data?.castType === 'INTEGER' ? 'selected' : ''}>整数 INTEGER</option>
+                        <option value="DOUBLE" ${node.data?.castType === 'DOUBLE' ? 'selected' : ''}>浮点数 DOUBLE</option>
+                        <option value="VARCHAR" ${node.data?.castType === 'VARCHAR' ? 'selected' : ''}>字符串 VARCHAR</option>
+                        <option value="DATE" ${node.data?.castType === 'DATE' ? 'selected' : ''}>日期 DATE</option>
+                        <option value="TIMESTAMP" ${node.data?.castType === 'TIMESTAMP' ? 'selected' : ''}>时间戳 TIMESTAMP</option>
+                        <option value="BOOLEAN" ${node.data?.castType === 'BOOLEAN' ? 'selected' : ''}>布尔 BOOLEAN</option>
+                    </select>
+                `);
+                break;
+
+            case 'pivot':
+                fields = renderGroup('行索引 (Index)',
+                    this._renderFieldChips(availableFields, node.data?.index, 'cfg-pivot-index', true)
+                ) + renderGroup('列字段 (Column)',
+                    this._renderFieldChips(availableFields, node.data?.columns, 'cfg-pivot-column', true)
+                ) + renderGroup('值字段 (Value)',
+                    this._renderFieldChips(availableFields, node.data?.values, 'cfg-pivot-values', true)
+                ) + renderGroup('聚合函数', `
+                    <select class="form-control w-100" id="cfg-pivot-func">
+                         <option value="SUM" ${node.data?.aggFunc === 'SUM' ? 'selected' : ''}>求和 (SUM)</option>
+                         <option value="AVG" ${node.data?.aggFunc === 'AVG' ? 'selected' : ''}>平均 (AVG)</option>
+                         <option value="COUNT" ${node.data?.aggFunc === 'COUNT' ? 'selected' : ''}>计数 (COUNT)</option>
+                         <option value="MAX" ${node.data?.aggFunc === 'MAX' ? 'selected' : ''}>最大 (MAX)</option>
+                         <option value="MIN" ${node.data?.aggFunc === 'MIN' ? 'selected' : ''}>最小 (MIN)</option>
+                    </select>
+                `);
+                break;
+
+            default:
+                fields = `<div class="text-secondary text-center p-20">高级配置功能正在开发中...</div>`;
+        }
+
+        // 对于非 sink 节点，添加输出字段选择器
+        if (node.type !== 'sink') {
+            fields += `
+                <div class="output-columns-section mt-15 pt-15 border-top">
+                    ${renderGroup('输出字段 (可选)',
+                this._renderFieldChips(availableFields, node.data?.outputColumns, 'cfg-output-cols'),
+                '选择需要输出的字段，留空则输出全部'
+            )}
+                </div>
+            `;
+        }
+
+        // 绑定 Sort 的 Radio 事件
+        setTimeout(() => {
+            const radios = document.querySelectorAll('input[name="sort-dir"]');
+            radios.forEach(r => r.addEventListener('change', (e) => {
+                const el = document.getElementById('cfg-sort-dir');
+                if (el) el.value = e.target.value;
+                // 触发自动保存
+                this._saveNodeConfig(true);
+            }));
+        }, 0);
+
+        return `
+            <div class="node-config-wrapper" style="display: flex; flex-direction: column; height: 100%;">
+                <div class="flex-between align-center mb-10" style="flex-shrink: 0;">
+                    <input type="text" class="form-control font-bold" id="cfg-node-label" 
+                           value="${node.data?.label || node.label}" 
+                           placeholder="节点名称" style="border: none; background: transparent; padding-left: 0; font-size: 14px;">
+                    <span class="badge badge-primary text-xs">${node.type.toUpperCase()}</span>
+                </div>
+                
+                <div class="node-config-scroll" style="flex: 1; overflow-y: auto; padding-right: 5px; min-height: 0;">
+                    ${fields}
+                </div>
+
+                <div class="node-config-actions" style="flex-shrink: 0; padding-top: 12px; border-top: 1px solid var(--color-border); margin-top: 10px;">
+                    <button class="btn btn-primary w-100 mb-10" id="btn-save-node-cfg">✅ 应用并保存</button>
+                    <button class="btn btn-outline-danger w-100" id="btn-delete-node">🗑️ 删除此节点</button>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 渲染预览弹窗
+     */
+    /**
+     * 渲染预览弹窗（真实数据版）
+     */
+    renderETLPreviewModal() {
+        const { previewNodeId, modelNodes, previewData, previewLoading, previewError } = this.state;
+        const node = modelNodes.find(n => n.id === previewNodeId);
+        if (!node) return '';
+
+        let content = '';
+
+        if (previewLoading) {
+            content = `
+                <div class="flex-center flex-col p-30 text-secondary">
+                    <div class="node-spinner mb-10" style="width: 30px; height: 30px; border-width: 3px;"></div>
+                    <div>正在回溯并计算数据快照...</div>
+                </div>
+            `;
+        } else if (previewError) {
+            content = `
+                <div class="flex-center flex-col p-30 text-error">
+                    <div class="text-3xl mb-10">⚠️</div>
+                    <div>${previewError}</div>
+                    <div class="text-xs text-secondary mt-5">请检查上游节点配置或源数据是否可用</div>
+                </div>
+            `;
+        } else if (!previewData || previewData.length === 0) {
+            content = `
+                <div class="flex-center flex-col p-30 text-secondary">
+                    <div class="text-3xl mb-10">📭</div>
+                    <div>暂无结果数据</div>
+                    <div class="text-xs mt-5">该节点可能过滤了所有行，或源数据为空</div>
+                </div>
+            `;
+        } else {
+            // 动态生成表头
+            const cols = Object.keys(previewData[0]);
+            content = `
+                <div class="text-xs text-secondary mb-10 flex-between">
+                    <span>⚡ 实时计算结果 (Top ${previewData.length})</span>
+                    <span>字段数: ${cols.length}</span>
+                </div>
+                <div class="modal-body-scroll border-top">
+                    <table class="premium-table" style="width: 100%;">
+                        <thead>
+                            <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${previewData.map(row => `
+                                <tr>${cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : '-'}</td>`).join('')}</tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="modal-overlay active">
+                <div class="modal-content modal-large bg-primary">
+                    <div class="flex-between mb-15">
+                        <div class="flex align-center gap-10">
+                            <h3>🔍 数据实时预览: ${node.data?.label || node.type}</h3>
+                            <span class="badge badge-secondary text-xs">PREVIEW</span>
+                        </div>
+                        <button class="btn-icon btn-ghost" id="btn-close-preview">×</button>
+                    </div>
+                    ${content}
+                    <div class="flex justify-end pt-10 border-top mt-auto">
+                        <button class="btn btn-primary" id="btn-close-preview">关闭</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 执行单个节点 - 调用后端真实执行
+     */
+    async _executeNode(nodeId) {
+        const { currentModel, modelNodes, modelConnections } = this.state;
+
+        if (!currentModel) {
+            Toast.error('请先保存模型');
+            return;
+        }
+
+        const node = modelNodes.find(n => n.id === nodeId);
+        if (!node) {
+            Toast.error('节点不存在');
+            return;
+        }
+
+        // 更新节点状态为运行中
+        this._updateNodeStatus(nodeId, 'running');
+        this._addLog('info', `正在执行节点: ${node.data?.label || node.type}...`);
+
+        try {
+            const res = await AnalysisApi.executeETLNode({
+                model_id: currentModel.id,
+                node_id: nodeId,
+                graph_config: {
+                    nodes: modelNodes,
+                    connections: modelConnections
+                }
+            });
+
+            if (res.code === 200 && res.data?.success) {
+                // 执行成功，更新节点状态和行数
+                this._updateNodeStatus(nodeId, 'success');
+                this._updateNodeData(nodeId, { _rowCount: res.data.row_count });
+                this._addLog('success', `节点执行成功: ${node.data?.label || node.type} (${res.data.row_count} 行)`);
+                Toast.success(`执行成功: ${res.data.row_count} 行`);
+            } else {
+                throw new Error(res.message || res.data?.error || '执行失败');
+            }
+        } catch (e) {
+            console.error('节点执行失败:', e);
+            this._updateNodeStatus(nodeId, 'error');
+            this._addLog('error', `节点执行失败: ${e.message}`);
+            Toast.error(`执行失败: ${e.message}`);
+        }
+    },
+
+    /**
+     * 预览已执行节点的数据
+     */
+    async _previewNode(nodeId) {
+        const { currentModel, modelNodes } = this.state;
+        const node = modelNodes.find(n => n.id === nodeId);
+
+        // 显示加载状态
+        this.setState({
+            previewNodeId: nodeId,
+            previewData: null,
+            previewLoading: true,
+            previewError: null
+        });
+
+        try {
+            const res = await AnalysisApi.previewETLNode({
+                model_id: currentModel.id,
+                node_id: nodeId
+            });
+
+            if (res.code === 200) {
+                this.setState({
+                    previewData: res.data.preview || [],
+                    previewLoading: false
+                });
+            } else {
+                throw new Error(res.message || '获取预览失败');
+            }
+        } catch (e) {
+            console.error('预览失败:', e);
+            this.setState({
+                previewData: null,
+                previewLoading: false,
+                previewError: e.message || '获取预览失败'
+            });
+        }
+    },
+
+    /**
+     * 更新节点状态
+     */
+    _updateNodeStatus(nodeId, status) {
+        const updated = this.state.modelNodes.map(n => {
+            if (n.id === nodeId) {
+                return { ...n, status };
+            }
+            return n;
+        });
+        this.setState({ modelNodes: updated });
+    },
+
+    /**
+     * 更新节点数据
+     */
+    _updateNodeData(nodeId, dataUpdates) {
+        const updated = this.state.modelNodes.map(n => {
+            if (n.id === nodeId) {
+                return { ...n, data: { ...n.data, ...dataUpdates } };
+            }
+            return n;
+        });
+        this.setState({ modelNodes: updated });
+    },
+
+    /**
+     * 添加日志
+     */
+    _addLog(type, message) {
+        const time = new Date().toLocaleTimeString();
+        const logs = [...(this.state.etlLogs || []), { type, message, time }];
+        // 最多保留 100 条日志
+        if (logs.length > 100) logs.shift();
+        this.setState({ etlLogs: logs });
+    },
+
+    /**
+     * 初始化ETL画布
+     */
+    initETLCanvas() {
+        const canvas = document.getElementById('etlCanvas');
+        if (!canvas || canvas.dataset.init) return;
+        canvas.dataset.init = 'true';
+
+        // 拖拽悬停
+        canvas.addEventListener('dragover', e => e.preventDefault());
+
+        // 放置算子
+        canvas.addEventListener('drop', e => {
+            e.preventDefault();
+            if (this._draggedOp) {
+                const rect = canvas.getBoundingClientRect();
+                // 考虑画布偏移
+                const offsetX = this.state.canvasOffsetX || 0;
+                const offsetY = this.state.canvasOffsetY || 0;
+                const x = e.clientX - rect.left - 70 - offsetX;
+                const y = e.clientY - rect.top - 25 - offsetY;
+                this.addETLNode(this._draggedOp.type, this._draggedOp.label, x, y);
+                this._draggedOp = null;
+            }
+        });
+
+        // ========== 画布平移功能 ==========
+        let isPanning = false;
+        let startX = 0, startY = 0;
+        let startOffsetX = 0, startOffsetY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            // 只在画布空白区域（直接点击 canvas 或 workspace-container）才触发平移
+            if (e.target === canvas || e.target.classList.contains('etl-workspace-container') ||
+                e.target.tagName === 'svg' || e.target.classList.contains('etl-connections')) {
+                isPanning = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startOffsetX = this.state.canvasOffsetX || 0;
+                startOffsetY = this.state.canvasOffsetY || 0;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            const container = document.getElementById('etlWorkspaceContainer');
+            if (container) {
+                const newX = startOffsetX + dx;
+                const newY = startOffsetY + dy;
+                container.style.transform = `translate(${newX}px, ${newY}px)`;
+                // 临时存储，不触发 setState 避免重绘
+                this._tempCanvasOffset = { x: newX, y: newY };
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isPanning && this._tempCanvasOffset) {
+                // 保存偏移状态
+                this.state.canvasOffsetX = this._tempCanvasOffset.x;
+                this.state.canvasOffsetY = this._tempCanvasOffset.y;
+                this._tempCanvasOffset = null;
+            }
+            isPanning = false;
+            if (canvas) canvas.style.cursor = 'grab';
+        });
+
+        // 重置画布按钮
+        const resetBtn = document.getElementById('btn-reset-canvas');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                const container = document.getElementById('etlWorkspaceContainer');
+                if (container) {
+                    container.style.transform = 'translate(0px, 0px)';
+                    this.state.canvasOffsetX = 0;
+                    this.state.canvasOffsetY = 0;
+                }
+            });
+        }
+    },
+
+    /**
+     * 添加ETL节点
+     */
+    addETLNode(type, label, x, y) {
+        const id = 'node_' + Date.now();
+        const newNode = { id, type, x, y, data: { label }, status: 'idle' };
+
+        // 自动连线：现在改为全开放连接
+        let conns = [...(this.state.modelConnections || [])];
+        if (this.state.selectedNodeId) {
+            const prev = (this.state.modelNodes || []).find(n => n.id === this.state.selectedNodeId);
+            if (prev && prev.id !== id) {
+                conns.push({ sourceId: prev.id, targetId: id });
+            }
+        }
+
+        this.setState({
+            modelNodes: [...(this.state.modelNodes || []), newNode],
+            modelConnections: conns,
+            selectedNodeId: id
+        });
+
+        // 添加后自动加载配置面板
+        this._loadNodeConfig(id);
+    },
+
+    /**
+     * 删除ETL节点
+     */
+    deleteETLNode(id) {
+        this.setState({
+            modelNodes: (this.state.modelNodes || []).filter(n => n.id !== id),
+            modelConnections: (this.state.modelConnections || []).filter(c => c.sourceId !== id && c.targetId !== id),
+            selectedNodeId: null
+        });
+    },
+
+    /**
+     * 更新ETL节点数据
+     */
+    updateETLNodeData(id, updates) {
+        const nodes = (this.state.modelNodes || []).map(n => {
+            if (n.id === id) {
+                return { ...n, data: { ...n.data, ...updates } };
+            }
+            return n;
+        });
+        this.setState({ modelNodes: nodes });
+    },
+
+    /**
+     * 运行ETL作业
+     */
+    runETLJob() {
+        const nodes = this.state.modelNodes || [];
+        const connections = this.state.modelConnections || [];
+        const currentModel = this.state.currentModel;
+
+        if (nodes.length === 0) {
+            Toast.error('请先添加节点');
+            return;
+        }
+
+        if (!currentModel) {
+            Toast.error('请先保存模型');
+            return;
+        }
+
+        this.setState({ isConsoleOpen: true, etlLogs: [], isExecuting: true });
+
+        // 重置所有节点状态
+        const resetNodes = nodes.map(n => ({ ...n, status: 'idle' }));
+        this.setState({ modelNodes: resetNodes });
+
+        this.addETLLog('info', '🚀 启动全部运行...');
+        this.addETLLog('info', `检测到 ${nodes.length} 个处理节点`);
+
+        // 按拓扑顺序执行（从源节点开始）
+        this.executeAllNodesSequentially(0, nodes, connections, currentModel);
+    },
+
+    /**
+     * 依次执行所有节点（调用真实后端API）
+     */
+    async executeAllNodesSequentially(idx, nodes, connections, currentModel) {
+        if (idx >= nodes.length) {
+            this.addETLLog('success', '✨ 全部运行完成！');
+            this.setState({ isExecuting: false });
+            Toast.success('全部运行完成');
+
+            // 刷新数据集列表，以便看到 Sink 节点保存的新数据集
+            try {
+                const res = await AnalysisApi.getDatasets();
+                if (res.data) {
+                    this.setState({ datasets: res.data });
+                }
+            } catch (e) {
+                console.warn('刷新数据集列表失败:', e);
+            }
+            return;
+        }
+
+        const node = nodes[idx];
+        this.updateETLNodeStatus(node.id, 'running');
+        this.addETLLog('info', `正在执行: ${node.data?.label || node.type}...`);
+
+        try {
+            const res = await AnalysisApi.executeETLNode({
+                model_id: currentModel.id,
+                node_id: node.id,
+                graph_config: {
+                    nodes: nodes,
+                    connections: connections
+                }
+            });
+
+            if (res.code === 200 && res.data?.success) {
+                this.updateETLNodeStatus(node.id, 'success');
+                // 存储行数
+                this._updateNodeData(node.id, { _rowCount: res.data.row_count });
+                this.addETLLog('success', `✅ ${node.data?.label || node.type} 完成 (${res.data.row_count} 行)`);
+
+                // 继续执行下一个节点
+                setTimeout(() => {
+                    this.executeAllNodesSequentially(idx + 1, nodes, connections, currentModel);
+                }, 100);
+            } else {
+                throw new Error(res.message || res.data?.error || '执行失败');
+            }
+        } catch (e) {
+            this.updateETLNodeStatus(node.id, 'error');
+            this.addETLLog('error', `❌ ${node.data?.label || node.type} 失败: ${e.message}`);
+            this.setState({ isExecuting: false });
+            Toast.error(`执行失败: ${e.message}`);
+        }
+    },
+
+    /**
+     * 更新节点状态
+     */
+    updateETLNodeStatus(id, status) {
+        const nodes = (this.state.modelNodes || []).map(n => n.id === id ? { ...n, status } : n);
+        this.setState({ modelNodes: nodes });
+    },
+
+    /**
+     * 添加ETL日志
+     */
+    addETLLog(type, message) {
+        const time = new Date().toLocaleTimeString();
+        this.setState({ etlLogs: [...(this.state.etlLogs || []), { type, message, time }] });
+        setTimeout(() => {
+            const body = document.querySelector('.console-body');
+            if (body) body.scrollTop = body.scrollHeight;
+        }, 50);
+    },
+
+    /**
+     * 开始建立连接线
+     */
+    startETLConnectionLine(e, sourceId) {
+        const canvas = document.getElementById('etlCanvas');
+        const srcNode = (this.state.modelNodes || []).find(n => n.id === sourceId);
+        if (!srcNode || !canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const startX = srcNode.x + 70;
+        const startY = srcNode.y + 55;
+
+        const move = (ev) => {
+            const x2 = ev.clientX - rect.left;
+            const y2 = ev.clientY - rect.top;
+            this.setState({
+                tempConnection: { x1: startX, y1: startY, x2, y2 }
+            });
+        };
+
+        const up = (ev) => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+
+            // 检查松开点是否在另一个节点的输入端口上
+            const targetEl = ev.target.closest('.node-port.port-in');
+            if (targetEl) {
+                const targetNodeId = targetEl.closest('.etl-node').dataset.nodeId;
+                if (targetNodeId !== sourceId) {
+                    this.addETLConnection(sourceId, targetNodeId);
+                }
+            }
+            this.setState({ tempConnection: null });
+        };
+
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+    },
+
+    /**
+     * 手动添加连接关系
+     */
+    addETLConnection(sourceId, targetId) {
+        const conns = [...(this.state.modelConnections || [])];
+        // 检查是否已存在
+        const exists = conns.find(c => c.sourceId === sourceId && c.targetId === targetId);
+        if (exists) return;
+
+        conns.push({ sourceId, targetId });
+        this.setState({ modelConnections: conns });
+        this.addETLLog('info', `建立连接: 从节点[${sourceId}]到底部[${targetId}]`);
+    },
+
+    /**
+     * ETL节点拖拽
+     */
+    startETLNodeDrag(e, nodeId) {
+        const node = (this.state.modelNodes || []).find(n => n.id === nodeId);
+        if (!node) return;
+
+        e.preventDefault();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initX = node.x;
+        const initY = node.y;
+
+        const move = (ev) => {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            const updated = (this.state.modelNodes || []).map(n => {
+                if (n.id === nodeId) {
+                    return { ...n, x: initX + dx, y: initY + dy };
+                }
+                return n;
+            });
+            this.setState({ modelNodes: updated });
+        };
+
+        const up = () => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+        };
+
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+    },
+
+    /**
+     * 初始化ETL画布拖放
+     */
+    initETLCanvasDrop() {
+        // 绑定画布放置事件
+        this.initETLCanvas();
+    }
+};
+
+// 将方法混入到 AnalysisPage.prototype
+if (typeof AnalysisPage !== 'undefined') {
+    Object.assign(AnalysisPage.prototype, AnalysisModelingMixin);
+}

@@ -38,6 +38,11 @@ class DockComponent extends Component {
         Store.subscribe('user', () => {
             this.updateCategories();
         });
+
+        // 监听是否有最大化窗口 - 触发重新渲染以更新auto-hide类
+        Store.subscribe('hasMaximizedWindow', () => {
+            this.update();
+        });
     }
 
     // 获取用户固定的应用列表
@@ -305,9 +310,12 @@ class DockComponent extends Component {
         // 应用中心是否激活：检查是否有以 /apps 开头的窗口打开
         const isAppsActive = openWindows && openWindows.some(id => id.startsWith('/apps'));
 
+        // 检查是否有最大化窗口（从Store获取）
+        const hasMaximized = Store.get('hasMaximizedWindow') || false;
+
         return `
             <div class="dock-container">
-                <div class="dock">
+                <div class="dock ${hasMaximized ? 'auto-hide' : ''}">
                     <!-- 开始按钮 -->
                     <div class="dock-item" id="dock-launcher" title="开始">
                         <span class="dock-icon">🚀</span>
@@ -424,6 +432,57 @@ class DockComponent extends Component {
     afterMount() {
         this.updateCategories();
         this.bindEvents();
+        this.setupAutoHideHotzone();
+    }
+
+    // 设置底部热区检测（解决最大化窗口时的 Dock 显示问题）
+    setupAutoHideHotzone() {
+        const HOTZONE_HEIGHT = 8; // 底部热区高度（像素）
+        let hideTimeout = null;
+        let isTriggered = false; // 是否已通过热区触发
+
+        document.addEventListener('mousemove', (e) => {
+            const dock = document.querySelector('.dock.auto-hide');
+            if (!dock) return;
+
+            const windowHeight = window.innerHeight;
+            const isInHotzone = e.clientY >= windowHeight - HOTZONE_HEIGHT;
+            const isHoveringDock = dock.classList.contains('show') && e.target.closest('.dock');
+
+            // 只有在底部热区内才触发显示
+            if (isInHotzone) {
+                isTriggered = true;
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+                dock.classList.add('show');
+            } else if (isTriggered && isHoveringDock) {
+                // Dock 已显示且鼠标在 Dock 上，保持显示
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+            } else {
+                // 延迟隐藏 Dock
+                if (dock.classList.contains('show') && !hideTimeout) {
+                    hideTimeout = setTimeout(() => {
+                        dock.classList.remove('show');
+                        isTriggered = false;
+                        hideTimeout = null;
+                    }, 300);
+                }
+            }
+        });
+
+        // 鼠标离开窗口时隐藏
+        document.addEventListener('mouseleave', () => {
+            const dock = document.querySelector('.dock.auto-hide');
+            if (dock) {
+                dock.classList.remove('show');
+                isTriggered = false;
+            }
+        });
     }
 
     afterUpdate() {

@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.8-blue.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -264,6 +264,19 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 ## 📅 更新日志 (Changelog)
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
+
+### v2.0.9 (2025-12-24)
+- 📊 **数据分析模块增强**：
+  - **ETL 缓存持久化**：节点执行结果支持磁盘缓存（Parquet 格式），服务重启后可恢复
+  - **BI 图表渲染优化**：顺序渲染、数据缓存、防抖 resize，性能大幅提升
+  - **代码重构**：`aggregateData` 函数统一到 `Utils` 工具类，消除重复代码
+- 🧪 **模块测试规范**：
+  - 新增模块级测试目录结构规范，测试文件随模块一起管理
+  - 为数据分析模块编写 26 个 ETL 算子单元测试
+- 📖 **开发规范更新**：
+  - 完善 `manifest.py` 生命周期钩子配置文档
+  - 新增「4.4 模块测试规范」章节
+  - 更新模块内部结构表格，添加 `tests/` 目录说明
 
 ### v2.0.8 (2025-12-20)
 - 📊 **图表分析**：新增 8 种图表类型（柱状图、饼图、折线图、散点图、直方图、箱线图、热力图、趋势预测）。

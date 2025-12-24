@@ -32,6 +32,20 @@
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+.dock.auto-hide {
+    transform: translateY(120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+/* JavaScript 控制的显示状态 */
+.dock.auto-hide.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .dock-item {
     position: relative;
     width: 64px;

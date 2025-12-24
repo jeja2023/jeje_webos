@@ -214,6 +214,11 @@ class HelpPage extends Component {
 
         if (enabledIds.includes('transfer')) {
             modulesHtml += this.getTransferHelpContent();
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
+        }
+
+        if (enabledIds.includes('analysis')) {
+            modulesHtml += this.getAnalysisHelpContent();
         }
 
         return modulesHtml;
@@ -661,6 +666,66 @@ class HelpPage extends Component {
                 <li>发送方和接收方需在同一网络环境下</li>
                 <li>传输过程中请保持页面打开，避免刷新或关闭</li>
                 <li>如遇连接问题，可尝试刷新页面重新操作</li>
+            </ul>
+        `;
+    }
+
+    getAnalysisHelpContent() {
+        return `
+            <h3>数据分析指南</h3>
+            <p>数据分析是一个基于 DuckDB 的高性能数据分析中心，支持数据导入、清洗、比对、可视化和 ETL 建模。</p>
+            
+            <h4>📥 数据导入</h4>
+            <ul>
+                <li><strong>文件导入</strong> - 支持 CSV、Excel、JSON 格式，可从文件管理器选择或直接上传</li>
+                <li><strong>数据库导入</strong> - 支持 MySQL、PostgreSQL、SQLite 等数据库连接导入</li>
+            </ul>
+            
+            <h4>🧹 数据清洗</h4>
+            <ul>
+                <li><strong>删除空值</strong> - 移除包含空值的行</li>
+                <li><strong>去重</strong> - 删除重复记录</li>
+                <li><strong>类型转换</strong> - 修改字段数据类型</li>
+                <li><strong>字段筛选</strong> - 选择需要保留的字段</li>
+            </ul>
+            
+            <h4>🔍 数据比对</h4>
+            <ul>
+                <li><strong>交集</strong> - 找出两个数据集的共同数据</li>
+                <li><strong>差集</strong> - 找出仅在某一数据集中存在的数据</li>
+                <li><strong>并集</strong> - 合并两个数据集的所有数据</li>
+            </ul>
+            
+            <h4>📊 图表分析</h4>
+            <p>支持多种图表类型进行数据可视化：</p>
+            <ul>
+                <li><strong>基础图表</strong> - 柱状图、饼图、折线图、散点图</li>
+                <li><strong>高级图表</strong> - 直方图（分布分析）、箱线图（离散度）、热力图（相关性矩阵）、趋势预测</li>
+            </ul>
+            
+            <h4>🔧 ETL 数据建模</h4>
+            <p>可视化的 ETL 工作流设计器，支持拖拽式操作：</p>
+            <ul>
+                <li><strong>数据源</strong> - 选择已导入的数据集作为输入</li>
+                <li><strong>算子</strong> - 过滤、选择、去重、排序、聚合、采样、限制、计算列、重命名等</li>
+                <li><strong>输出</strong> - 将处理结果保存为新数据集</li>
+                <li><strong>执行</strong> - 运行整个工作流或单个节点</li>
+                <li><strong>预览</strong> - 查看每个节点的输出数据</li>
+            </ul>
+            
+            <h4>🎯 BI 仪表盘</h4>
+            <ul>
+                <li><strong>创建仪表盘</strong> - 新建自定义仪表盘</li>
+                <li><strong>添加组件</strong> - 支持柱状图、折线图、饼图等可视化组件</li>
+                <li><strong>网格布局</strong> - 组件支持多种尺寸（小/中/大/宽）</li>
+                <li><strong>数据绑定</strong> - 选择数据集和字段进行可视化</li>
+            </ul>
+            
+            <h4>💾 SQL 查询</h4>
+            <ul>
+                <li><strong>SQL 编辑器</strong> - 直接编写 SQL 查询已导入的数据</li>
+                <li><strong>可视化构建器</strong> - 通过界面构建 SQL 语句</li>
+                <li><strong>结果导出</strong> - 将查询结果保存为新数据集</li>
             </ul>
         `;
     }

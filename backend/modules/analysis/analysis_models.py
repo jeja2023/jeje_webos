@@ -21,3 +21,35 @@ class AnalysisDataset(Base):
     __table_args__ = (
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '数据分析集管理表', 'extend_existing': True},
     )
+
+class AnalysisModel(Base):
+    """数据模型表（保存ETL流程）"""
+    __tablename__ = "analysis_models"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    graph_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 保存 nodes 和 connections
+    status: Mapped[str] = mapped_column(String(50), default='draft') # draft, published
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': 'ETL数据模型表', 'extend_existing': True},
+    )
+
+class AnalysisDashboard(Base):
+    """BI 仪表盘表"""
+    __tablename__ = "analysis_dashboards"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    widgets: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 保存组件列表和布局
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': 'BI仪表盘管理表', 'extend_existing': True},
+    )
+

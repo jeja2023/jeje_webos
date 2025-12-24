@@ -108,6 +108,7 @@ const WindowManager = {
         }
 
         this.updateDesktopState();
+        this.checkMaximizedState();
 
         // 移除旧的路由逻辑注释，现在由 focusLastActive 处理
     },
@@ -168,6 +169,14 @@ const WindowManager = {
         }
 
         this.updateDesktopState();
+        this.checkMaximizedState();
+    },
+
+    checkMaximizedState() {
+        const hasMaximized = Array.from(this.windows.values()).some(w => w.maximized && !w.minimized);
+        if (typeof Store !== 'undefined') {
+            Store.set('hasMaximizedWindow', hasMaximized);
+        }
     },
 
     maximize(id) {
@@ -181,6 +190,7 @@ const WindowManager = {
             win.element.classList.add('maximized');
             win.maximized = true;
         }
+        this.checkMaximizedState();
     },
 
     restore(id) {
@@ -192,6 +202,7 @@ const WindowManager = {
         win.element.classList.add('active');
 
         this.updateDesktopState();
+        this.checkMaximizedState();
     },
 
     focusLastActive() {
@@ -216,6 +227,7 @@ const WindowManager = {
                 }
             }
         }
+        this.checkMaximizedState();
     },
 
 

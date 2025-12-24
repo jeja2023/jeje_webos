@@ -1,0 +1,47 @@
+/* 数据比对模块样式 */
+
+/* 比对面板 */
+.compare-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.compare-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: flex-start;
+    background: var(--color-bg-primary);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+}
+
+.diff-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.diff-card {
+    background: var(--color-bg-secondary);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid var(--color-border);
+}
+
+/* 结果卡片 */
+.result-card {
+    background: var(--color-bg-primary) !important;
+    border: 1px solid var(--color-border);
+}

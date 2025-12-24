@@ -26,7 +26,8 @@ class DatasetResponse(DatasetBase):
 
 class ImportFileRequest(BaseModel):
     name: str
-    file_id: int  # 对应 sys_files 中的 ID
+    file_id: int  # 文件ID
+    source: Optional[str] = "upload"  # 文件来源: 'upload'=新上传(sys_files), 'filemanager'=文件管理(fm_files)
     options: Optional[Dict[str, Any]] = None
 
 class ImportDatabaseRequest(BaseModel):
@@ -34,6 +35,10 @@ class ImportDatabaseRequest(BaseModel):
     connection_url: str
     query: str
     options: Optional[Dict[str, Any]] = None
+    test_only: Optional[bool] = False  # 仅测试连接，不导入数据
+
+class DbTablesRequest(BaseModel):
+    connection_url: str
 
 class CompareRequest(BaseModel):
     source_id: int  # 数据集1 ID
@@ -42,12 +47,20 @@ class CompareRequest(BaseModel):
     compare_columns: Optional[List[str]] = None  # 需要对比的字段，为空对比全部
 
 # --- 数据清洗 ---
-class CleaningRequest(BaseModel):
-    dataset_id: int
-    operation: str  # drop_missing, fill_missing, drop_duplicates, convert_type
+class CleaningOperation(BaseModel):
+    operation: str
     columns: Optional[List[str]] = None
     params: Optional[Dict[str, Any]] = None
-    new_dataset_name: Optional[str] = None  # 如果提供，保存为新数据集，否则覆盖（慎用）
+    fill_value: Optional[str] = None
+
+class CleaningRequest(BaseModel):
+    dataset_id: int
+    operations: Optional[List[CleaningOperation]] = None  # 支持多步骤清洗
+    operation: Optional[str] = None  # 兼容旧版单一操作
+    columns: Optional[List[str]] = None
+    params: Optional[Dict[str, Any]] = None
+    fill_value: Optional[str] = None  # 填充值
+    save_mode: str = "new"  # new: 新建数据集, preview: 仅预览不保存
 
 # --- 数据建模 ---
 class ModelingSummaryRequest(BaseModel):
@@ -62,3 +75,72 @@ class ModelingAggregateRequest(BaseModel):
     dataset_id: int
     group_by: List[str]
     aggregates: Dict[str, str]  # 字段名 -> 聚合函数 (sum, avg, count, max, min)
+
+# SQL建模请求
+class ModelingSqlRequest(BaseModel):
+    sql: str  # 用户自定义SQL语句
+    save_as: Optional[str] = None  # 可选：保存结果为新数据集
+
+# --- ETL 模型管理 ---
+class ModelBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class ModelCreate(ModelBase):
+    pass
+
+class ModelUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class ModelSaveGraphRequest(BaseModel):
+    graph_config: Dict[str, Any] # 包含 nodes, connections, etc.
+    status: Optional[str] = None
+
+class ModelResponse(ModelBase):
+    id: int
+    graph_config: Optional[Dict[str, Any]]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# --- ETL 节点执行 ---
+class ETLExecuteNodeRequest(BaseModel):
+    """执行单个 ETL 节点请求"""
+    model_id: int  # 模型ID
+    node_id: str   # 要执行的节点ID
+    graph_config: Dict[str, Any]  # 完整的图配置
+
+
+class ETLPreviewNodeRequest(BaseModel):
+    """预览节点数据请求"""
+    model_id: int
+    node_id: str
+
+# --- BI 仪表盘 ---
+class DashboardBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    widgets: Optional[List[Dict[str, Any]]] = None
+
+class DashboardCreate(DashboardBase):
+    pass
+
+class DashboardUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    widgets: Optional[List[Dict[str, Any]]] = None
+
+class DashboardResponse(DashboardBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+

@@ -171,7 +171,7 @@ const Utils = {
     /**
      * 格式化日期
      */
-    formatDate(date, format = 'YYYY-MM-DD HH:mm') {
+    formatDate(date, format = 'YYYY-MM-DD HH:mm:ss') {
         if (!date) return '';
         const d = new Date(date);
         const pad = n => String(n).padStart(2, '0');
@@ -339,5 +339,102 @@ const Utils = {
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+    },
+
+    /**
+     * 导出数据为 CSV
+     */
+    exportToCSV(data, fileName) {
+        if (!data || !data.length) return;
+        const keys = Object.keys(data[0]);
+        const csvContent = [
+            keys.join(','),
+            ...data.map(row => keys.map(k => `"${String(row[k] ?? '').replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+    },
+
+    /**
+     * 导出数据为 Excel (兼容模式)
+     */
+    exportToExcel(data, fileName) {
+        // 对于简单需求，带 BOM 的 CSV 即可被 Excel 完美识别并正确处理中文
+        this.exportToCSV(data, fileName);
+    },
+
+    /**
+     * 数据聚合处理
+     * 用于图表分析和 BI 仪表盘的数据聚合
+     * @param {Array} data - 原始数据数组
+     * @param {string} xField - X轴分类字段
+     * @param {string} yField - Y轴数值字段
+     * @param {string} aggregateType - 聚合类型: none, count, sum, avg, max, min, value
+     * @param {Object} options - 可选配置 { maxItems: 20, nullLabel: '空值' }
+     * @returns {Array} 聚合后的数据 [{ name, value }, ...]
+     */
+    aggregateData(data, xField, yField, aggregateType, options = {}) {
+        const { maxItems = 20, nullLabel = '空值' } = options;
+
+        // 不聚合模式：直接返回前 N 条明细
+        if (aggregateType === 'none') {
+            return data.slice(0, maxItems).map(row => ({
+                name: row[xField] ?? nullLabel,
+                value: row[yField] ? parseFloat(row[yField]) : 0
+            }));
+        }
+
+        // 分组统计
+        const groups = {};
+        data.forEach(row => {
+            const key = String(row[xField] ?? nullLabel);
+            if (!groups[key]) {
+                groups[key] = { values: [], count: 0 };
+            }
+            groups[key].count++;
+            if (yField && row[yField] !== null && row[yField] !== undefined) {
+                const num = parseFloat(row[yField]);
+                if (!isNaN(num)) {
+                    groups[key].values.push(num);
+                }
+            }
+        });
+
+        // 计算聚合值
+        const result = [];
+        for (const [name, group] of Object.entries(groups)) {
+            let value = 0;
+            switch (aggregateType) {
+                case 'value':
+                    // 原值：取第一个值（适合每个X只有一条记录的场景）
+                    value = group.values.length > 0 ? group.values[0] : group.count;
+                    break;
+                case 'count':
+                    value = group.count;
+                    break;
+                case 'sum':
+                    value = group.values.reduce((a, b) => a + b, 0);
+                    break;
+                case 'avg':
+                    value = group.values.length > 0
+                        ? group.values.reduce((a, b) => a + b, 0) / group.values.length
+                        : 0;
+                    break;
+                case 'max':
+                    value = group.values.length > 0 ? Math.max(...group.values) : 0;
+                    break;
+                case 'min':
+                    value = group.values.length > 0 ? Math.min(...group.values) : 0;
+                    break;
+            }
+            result.push({ name, value: Math.round(value * 100) / 100 });
+        }
+
+        // 按值降序排序并限制数量
+        return result.sort((a, b) => b.value - a.value).slice(0, maxItems);
     }
 };

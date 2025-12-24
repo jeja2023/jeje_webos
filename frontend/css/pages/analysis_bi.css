@@ -1,5 +1,5 @@
 /**
- * BI 数据建模模块样式
+ * BI 仪表盘模块样式
  */
 
 /* 页面容器 */
@@ -9,6 +9,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: var(--color-bg-secondary);
 }
 
 .bi-header {
@@ -21,103 +22,205 @@
 }
 
 .bi-title h2 {
-    margin: 0 0 4px 0;
+    margin: 0 0 6px 0;
     font-size: 24px;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--color-text-primary);
 }
 
 .bi-title p {
     margin: 0;
     font-size: 14px;
+    color: var(--color-text-tertiary);
 }
 
 /* 仪表盘网格 */
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    gap: 24px;
     flex: 1;
     overflow-y: auto;
     padding: 4px;
+    align-content: start;
 }
 
+/* 仪表盘卡片 */
 .dashboard-card {
     background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
     border-radius: 16px;
     overflow: hidden;
-    cursor: pointer;
-    transition: all 0.3s ease;
     position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    height: 220px;
+    cursor: pointer;
 }
 
 .dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-    border-color: var(--color-primary);
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: var(--color-border-hover);
 }
 
-.dashboard-preview {
-    height: 140px;
-    background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+/* 封面区域 */
+.dashboard-cover {
+    height: 130px;
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    overflow: hidden;
 }
 
-.dashboard-preview .preview-icon {
-    font-size: 48px;
+/* 随机渐变背景类 (JS动态分配) */
+.bg-gradient-1 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-2 {
+    background: linear-gradient(135deg, #2af598 0%, #009efd 100%);
+}
+
+.bg-gradient-3 {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+}
+
+.bg-gradient-4 {
+    background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+}
+
+.bg-gradient-5 {
+    background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+}
+
+.bg-gradient-6 {
+    background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+}
+
+.dashboard-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
     opacity: 0.6;
 }
 
-.dashboard-preview .widget-count {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    background: var(--color-bg-primary);
-    padding: 4px 12px;
-    border-radius: 12px;
+.dashboard-icon {
+    font-size: 48px;
+    z-index: 2;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s;
 }
 
+.dashboard-card:hover .dashboard-icon {
+    transform: scale(1.1);
+}
+
+/* 信息区域 */
 .dashboard-info {
     padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--color-bg-primary);
+    position: relative;
+    z-index: 1;
 }
 
 .dashboard-info h4 {
-    margin: 0 0 4px 0;
+    margin: 0 0 8px 0;
     font-size: 16px;
     font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.dashboard-info p {
-    margin: 0;
+.dashboard-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
 }
 
+/* 右上角删除按钮 */
 .btn-delete-dashboard {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.5);
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
     border: none;
     cursor: pointer;
     opacity: 0;
+    transform: scale(0.8);
     transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
+    z-index: 10;
+    color: var(--color-error);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-card:hover .btn-delete-dashboard {
     opacity: 1;
+    transform: scale(1);
 }
 
 .btn-delete-dashboard:hover {
     background: var(--color-error);
+    color: white;
+}
+
+/* 新建卡片样式 */
+.new-dashboard-card {
+    border: 2px dashed var(--color-border);
+    background: transparent;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    height: 220px;
+    color: var(--color-text-tertiary);
+    gap: 15px;
+}
+
+.new-dashboard-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-bg-hover);
+    color: var(--color-primary);
+    transform: translateY(-5px);
+}
+
+.new-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--color-bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.3s;
+}
+
+.new-dashboard-card:hover .new-card-icon {
+    background: var(--color-primary);
+    color: white;
 }
 
 /* 空状态 */
@@ -139,11 +242,7 @@
     color: var(--color-text-secondary);
 }
 
-.empty-state p {
-    margin: 0;
-}
-
-/* 仪表盘视图 */
+/* 仪表盘视图 - 保持原有样式 */
 .bi-dashboard-view {
     height: 100%;
     display: flex;
@@ -319,14 +418,6 @@
     color: var(--color-error);
 }
 
-/* 数字卡片 */
-.number-widget {
-    font-size: 48px;
-    font-weight: 700;
-    color: var(--color-primary);
-    text-align: center;
-}
-
 /* 响应式 */
 @media (max-width: 1200px) {
     .widget-canvas {
@@ -353,11 +444,5 @@
     .dashboard-toolbar {
         flex-direction: column;
         gap: 12px;
-    }
-
-    .toolbar-left,
-    .toolbar-right {
-        width: 100%;
-        justify-content: center;
     }
 }

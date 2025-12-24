@@ -20,7 +20,7 @@
 APP_NAME=JeJe WebOS
 
 # 应用版本
-APP_VERSION=2.0.7
+APP_VERSION=2.0.9
 
 # 调试模式（生产环境请设为 false）
 DEBUG=false

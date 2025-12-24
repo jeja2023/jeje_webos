@@ -117,6 +117,40 @@
     border-color: var(--color-primary);
 }
 
+/* 描边按钮变体 */
+.btn-outline-primary {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-outline-primary:hover:not(:disabled) {
+    background: rgba(var(--color-primary-rgb, 0, 212, 170), 0.1);
+    border-color: var(--color-primary-hover);
+}
+
+.btn-outline-danger {
+    background: transparent;
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.btn-outline-secondary {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+}
+
 /* 日出印象主题：提高按钮文字对比度 */
 :root.theme-sunrise .btn-primary,
 :root.theme-sunrise .btn-danger {

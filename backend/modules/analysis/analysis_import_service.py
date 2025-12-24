@@ -13,17 +13,39 @@ logger = logging.getLogger(__name__)
 
 class ImportService:
     @staticmethod
-    async def import_from_file(db: AsyncSession, name: str, file_id: int, options: dict = None):
-        """从上传的文件导入数据到 DuckDB"""
-        # 1. 获取文件记录
-        result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
-        file_record = result.scalar_one_or_none()
-        if not file_record:
-            raise ValueError("文件记录不存在")
+    async def import_from_file(db: AsyncSession, name: str, file_id: int, options: dict = None, source: str = "upload"):
+        """从上传的文件导入数据到 DuckDB
+        
+        Args:
+            source: 文件来源，'upload'=新上传(sys_files)，'filemanager'=文件管理(fm_files)
+        """
+        storage_path = None
+        original_filename = None
+        mime_type = None
+        
+        if source == "filemanager":
+            # 从 fm_files 表获取（文件管理模块）
+            from modules.filemanager.filemanager_models import VirtualFile
+            result = await db.execute(select(VirtualFile).where(VirtualFile.id == file_id))
+            virtual_file = result.scalar_one_or_none()
+            if not virtual_file:
+                raise ValueError(f"文件管理中未找到 ID={file_id} 的文件")
+            storage_path = virtual_file.storage_path
+            original_filename = virtual_file.name
+            mime_type = virtual_file.mime_type
+        else:
+            # 默认从 sys_files 表获取（新上传的文件）
+            result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
+            file_record = result.scalar_one_or_none()
+            if not file_record:
+                raise ValueError(f"存储记录中未找到 ID={file_id} 的文件")
+            storage_path = file_record.storage_path
+            original_filename = file_record.filename
+            mime_type = file_record.mime_type
             
         # 2. 获取实际文件路径
         storage = get_storage_manager()
-        file_path = storage.get_file_path(file_record.storage_path)
+        file_path = storage.get_file_path(storage_path)
         if not file_path or not os.path.exists(file_path):
             raise ValueError("物理文件不存在")
             
@@ -31,14 +53,15 @@ class ImportService:
         table_name = f"dataset_{uuid.uuid4().hex[:8]}"
         
         # 4. 使用 DuckDB 读取文件
-        ext = os.path.splitext(file_record.filename)[1].lower()
+        ext = os.path.splitext(original_filename)[1].lower()
         try:
             if ext == '.csv':
-                # DuckDB 读取 CSV 极其高效
-                duckdb_instance.query(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto(?)", [str(file_path)])
+                # DuckDB 读取 CSV，使用 sample_size=-1 确保扫描全量以正确推断类型，保留原始样式
+                duckdb_instance.query(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto(?, sample_size=-1)", [str(file_path)])
             elif ext in ['.xlsx', '.xls']:
-                # 需要 openpyxl。DuckDB 原生对 Excel 支持有限，使用 pandas 中转
-                df = pd.read_excel(file_path)
+                # 根据格式选择引擎：.xlsx 用 openpyxl，.xls 用 xlrd
+                engine = 'openpyxl' if ext == '.xlsx' else 'xlrd'
+                df = pd.read_excel(file_path, engine=engine)
                 # DuckDB 可以直接查询 Python 中的 DataFrame 对象
                 duckdb_instance.conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
             else:
@@ -56,8 +79,8 @@ class ImportService:
                 row_count=row_count,
                 config={
                     "file_id": file_id, 
-                    "original_filename": file_record.filename,
-                    "mime_type": file_record.mime_type
+                    "original_filename": original_filename,
+                    "mime_type": mime_type
                 }
             )
             db.add(dataset)

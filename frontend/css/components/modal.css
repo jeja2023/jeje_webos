@@ -2,6 +2,20 @@
  * 模态框组件样式
  */
 
+#modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: 999999;
+    pointer-events: none;
+}
+
+#modal-container>* {
+    pointer-events: auto;
+}
+
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -9,8 +23,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
-    /* 确保在最大化窗口(9000)之上 */
+    z-index: 100000;
+    /* 确保在所有窗口之上（窗口从3000开始递增） */
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-normal);

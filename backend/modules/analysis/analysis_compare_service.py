@@ -4,8 +4,36 @@ from modules.analysis.analysis_models import AnalysisDataset
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
+import math
+from datetime import datetime, date
+import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+def clean_for_json(records: List[Dict]) -> List[Dict]:
+    """清理数据使其可以安全地 JSON 序列化（处理 NaN、Inf、时间类型等）"""
+    cleaned = []
+    for row in records:
+        clean_row = {}
+        for key, value in row.items():
+            if value is None:
+                clean_row[key] = None
+            elif isinstance(value, float):
+                if math.isnan(value) or math.isinf(value):
+                    clean_row[key] = None
+                else:
+                    clean_row[key] = value
+            elif isinstance(value, pd.Timestamp):
+                # pandas Timestamp 转换为友好的字符串格式
+                clean_row[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+            elif isinstance(value, datetime):
+                clean_row[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+            elif isinstance(value, date):
+                clean_row[key] = value.strftime('%Y-%m-%d')
+            else:
+                clean_row[key] = value
+        cleaned.append(clean_row)
+    return cleaned
 
 class CompareService:
     @staticmethod
@@ -29,7 +57,7 @@ class CompareService:
     ) -> Dict[str, Any]:
         """
         比对两个数据集
-        返回：新增行、变更行、删除行（基于 join_keys）
+        返回：相同数据、仅源数据集、仅目标数据集、差异数据（基于 join_keys）
         """
         source = await CompareService.get_dataset_metadata(db, source_id)
         target = await CompareService.get_dataset_metadata(db, target_id)
@@ -48,48 +76,77 @@ class CompareService:
         if not compare_columns:
             compare_columns = [c for c in common_cols if c not in join_keys]
 
-        # 1. 找出 source 中有但 target 中没有的 (新增/New in Source)
         join_on = " AND ".join([f"s.{k} = t.{k}" for k in join_keys])
-        sql_added = f"""
+        
+        # 1. 仅源数据集（Source Only）- 源中有但目标中没有
+        sql_source_only = f"""
             SELECT s.* FROM {t1} s 
             LEFT JOIN {t2} t ON {join_on}
             WHERE {" AND ".join([f"t.{k} IS NULL" for k in join_keys])}
             LIMIT 1000
         """
-        added_data = duckdb_instance.fetch_df(sql_added).to_dict(orient='records')
+        source_only_df = duckdb_instance.fetch_df(sql_source_only)
+        source_only_data = clean_for_json(source_only_df.to_dict(orient='records'))
 
-        # 2. 找出 target 中有但 source 中没有的 (已删除/Missing in Source)
-        sql_deleted = f"""
+        # 2. 仅目标数据集（Target Only）- 目标中有但源中没有
+        sql_target_only = f"""
             SELECT t.* FROM {t2} t 
             LEFT JOIN {t1} s ON {join_on}
             WHERE {" AND ".join([f"s.{k} IS NULL" for k in join_keys])}
             LIMIT 1000
         """
-        deleted_data = duckdb_instance.fetch_df(sql_deleted).to_dict(orient='records')
+        target_only_df = duckdb_instance.fetch_df(sql_target_only)
+        target_only_data = clean_for_json(target_only_df.to_dict(orient='records'))
 
-        # 3. 找出 key 相同但字段值不同的 (变更/Changed)
-        diff_conditions = []
-        for c in compare_columns:
-            # 考虑空值情况
-            diff_conditions.append(f"s.{c} != t.{c}")
-            
-        sql_changed = f"""
-            SELECT s.*, 
-                   {", ".join([f"t.{c} AS _target_{c}" for c in compare_columns])}
-            FROM {t1} s 
-            INNER JOIN {t2} t ON {join_on}
-            WHERE {" OR ".join(diff_conditions)}
-            LIMIT 1000
-        """
-        changed_data = duckdb_instance.fetch_df(sql_changed).to_dict(orient='records')
+        # 3. 相同数据（Same）- 关键字段相同且所有比较字段也相同
+        same_data = []
+        if compare_columns:
+            same_conditions = [f"(s.{c} = t.{c} OR (s.{c} IS NULL AND t.{c} IS NULL))" for c in compare_columns]
+            sql_same = f"""
+                SELECT s.* FROM {t1} s 
+                INNER JOIN {t2} t ON {join_on}
+                WHERE {" AND ".join(same_conditions)}
+                LIMIT 1000
+            """
+            same_df = duckdb_instance.fetch_df(sql_same)
+            same_data = clean_for_json(same_df.to_dict(orient='records'))
+        else:
+            # 如果没有比较字段（所有字段都是关键字段），则匹配的都是相同数据
+            sql_same = f"""
+                SELECT s.* FROM {t1} s 
+                INNER JOIN {t2} t ON {join_on}
+                LIMIT 1000
+            """
+            same_df = duckdb_instance.fetch_df(sql_same)
+            same_data = clean_for_json(same_df.to_dict(orient='records'))
+
+        # 4. 差异数据（Different）- 关键字段相同但其他字段不同
+        different_data = []
+        if compare_columns:
+            diff_conditions = [f"(s.{c} != t.{c} OR (s.{c} IS NULL AND t.{c} IS NOT NULL) OR (s.{c} IS NOT NULL AND t.{c} IS NULL))" for c in compare_columns]
+            sql_different = f"""
+                SELECT s.*, 
+                       {", ".join([f"t.{c} AS _target_{c}" for c in compare_columns])}
+                FROM {t1} s 
+                INNER JOIN {t2} t ON {join_on}
+                WHERE {" OR ".join(diff_conditions)}
+                LIMIT 1000
+            """
+            different_df = duckdb_instance.fetch_df(sql_different)
+            different_data = clean_for_json(different_df.to_dict(orient='records'))
 
         return {
-            "added": added_data,
-            "deleted": deleted_data,
-            "changed": changed_data,
+            "same": same_data,
+            "source_only": source_only_data,
+            "target_only": target_only_data,
+            "different": different_data,
+            "columns": common_cols,
+            "compare_columns": compare_columns,
+            "join_keys": join_keys,
             "summary": {
-                "added_count": len(added_data),
-                "deleted_count": len(deleted_data),
-                "changed_count": len(changed_data)
+                "same_count": len(same_data),
+                "source_only_count": len(source_only_data),
+                "target_only_count": len(target_only_data),
+                "different_count": len(different_data)
             }
         }

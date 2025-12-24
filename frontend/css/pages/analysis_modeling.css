@@ -1,0 +1,838 @@
+/* 数据建模模块样式 (ETL) */
+
+/* ==================== 模型列表样式 (Refined) ==================== */
+.model-list-page {
+    height: 100%;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.model-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.model-title-section h2 {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.model-title-section p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-text-tertiary);
+}
+
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    align-content: start;
+}
+
+.model-card {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+    height: 200px;
+    position: relative;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.model-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-border-hover);
+}
+
+.model-card-top {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.model-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 16px;
+    transition: transform 0.3s ease;
+}
+
+.model-card:hover .model-icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
+}
+
+.model-title {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-desc {
+    color: var(--color-text-tertiary);
+    font-size: 13px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-clamp: 2;
+}
+
+.model-card-bottom {
+    padding: 12px 20px;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+.model-status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+}
+
+.model-status-badge.published {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.model-status-badge.draft {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.btn-model-action {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--color-text-tertiary);
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-model-action:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.btn-delete-model:hover {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+/* 新建卡片 */
+.new-model-card {
+    border: 2px dashed var(--color-border);
+    background: transparent;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    height: 200px;
+    color: var(--color-text-tertiary);
+    gap: 15px;
+    box-shadow: none;
+}
+
+.new-model-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-bg-hover);
+    color: var(--color-primary);
+    transform: translateY(-5px);
+}
+
+.new-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--color-bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.3s;
+}
+
+.new-model-card:hover .new-card-icon {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* 兼容旧样式 */
+.modeling-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.modeling-card {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.modeling-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+/* ==================== ETL 三栏布局 ==================== */
+.etl-layout {
+    display: flex;
+    height: 100%;
+    gap: 1px;
+    background: var(--color-border);
+    overflow: hidden;
+}
+
+/* 1. 算子面板 */
+.etl-operators {
+    width: 180px;
+    min-width: 160px;
+    background: var(--color-bg-primary);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.etl-panel-header {
+    padding: 14px 16px;
+    background: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--color-text-primary);
+}
+
+.etl-operator-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    align-content: start;
+}
+
+.etl-operator-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.etl-operator-list::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+}
+
+.etl-operator-list::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
+}
+
+.etl-operator-list::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+}
+
+.opt-group-label {
+    font-size: 9px;
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    margin: 8px 0 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    grid-column: 1 / -1;
+}
+
+.opt-group-label:first-child {
+    margin-top: 0;
+}
+
+.etl-operator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: grab;
+    transition: all 0.15s;
+    font-size: 11px;
+    color: var(--color-text-primary);
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.etl-operator:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-primary);
+}
+
+.etl-operator:active {
+    cursor: grabbing;
+}
+
+.op-icon {
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* 2. 画布 */
+.etl-canvas {
+    flex: 1;
+    min-width: 200px;
+    background: var(--color-bg-secondary);
+    background-image:
+        linear-gradient(rgba(128, 128, 128, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(128, 128, 128, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.etl-canvas-toolbar {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.etl-canvas-empty {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--color-text-tertiary);
+}
+
+.etl-canvas-empty .empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+/* 画布平移容器 */
+.etl-workspace-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3000px;
+    height: 3000px;
+    background-image:
+        linear-gradient(rgba(128, 128, 128, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(128, 128, 128, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    transition: none;
+}
+
+.etl-canvas {
+    cursor: grab;
+    user-select: none;
+}
+
+.etl-canvas:active {
+    cursor: grabbing;
+}
+
+/* 连线 */
+.etl-connections {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.etl-conn-line {
+    stroke: var(--color-border);
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.2s, stroke-width 0.2s;
+}
+
+.etl-conn-line.selected {
+    stroke: var(--color-primary);
+    stroke-width: 3;
+    filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.5));
+}
+
+.etl-conn-group:hover .etl-conn-line {
+    stroke: var(--color-primary-light, #a5a6f6);
+}
+
+.etl-conn-line-bg {
+    cursor: pointer;
+}
+
+.etl-temp-line {
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-dasharray: 4;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -8;
+    }
+}
+
+
+/* 节点 */
+.etl-node {
+    position: absolute;
+    width: 200px;
+    /* 增加宽度以显示更长名称 */
+    height: 70px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+    user-select: none;
+    z-index: 2;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.etl-node:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.etl-node.selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.etl-conn-remove {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.etl-conn-group:hover .etl-conn-remove,
+.etl-conn-remove:hover {
+    opacity: 1;
+}
+
+.etl-conn-remove circle {
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.etl-conn-remove:hover circle {
+    transform: scale(1.15);
+    filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.etl-node.running {
+    border-color: var(--color-primary);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.etl-node.success {
+    border-color: #10b981;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+    }
+}
+
+.node-head {
+    padding: 6px 10px;
+    background: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    height: 30px;
+    position: relative;
+    /* 为绝对定位的按钮提供锚点 */
+}
+
+.node-icon {
+    font-size: 14px;
+}
+
+.node-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 50px;
+    /* 预留右侧按钮空间，防止遮挡 */
+}
+
+.node-actions-mini {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.6;
+    /* 提高默认可见度 */
+    transition: opacity 0.2s;
+}
+
+.etl-node:hover .node-actions-mini {
+    opacity: 1;
+}
+
+.btn-node-preview,
+.btn-node-run {
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.btn-node-preview:hover,
+.btn-node-run:hover {
+    background: var(--color-bg-hover);
+    transform: scale(1.2);
+}
+
+.btn-node-run:hover {
+    color: #10b981;
+}
+
+.btn-node-preview:hover {
+    color: var(--color-primary);
+}
+
+.node-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.node-status {
+    font-size: 12px;
+}
+
+.etl-node.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.etl-node.success,
+.etl-node.executed {
+    border-color: #10b981;
+}
+
+.node-info {
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 35px;
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+}
+
+/* 连接端口 */
+.node-port {
+    width: 12px;
+    height: 12px;
+    background: var(--color-bg-tertiary);
+    border: 2px solid var(--color-border);
+    border-radius: 50%;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: crosshair;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.node-port:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    transform: translateX(-50%) scale(1.4);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+.port-in {
+    top: -6px;
+}
+
+.port-out {
+    bottom: -6px;
+}
+
+
+/* 3. 配置面板 */
+.etl-config {
+    width: 300px;
+    min-width: 280px;
+    background: var(--color-bg-primary);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.etl-config-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 45px);
+}
+
+.node-config-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.node-config-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.node-config-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
+}
+
+.node-config-actions {
+    flex-shrink: 0;
+    padding-top: 10px;
+    margin-top: auto;
+}
+
+.config-empty {
+    text-align: center;
+    color: var(--color-text-tertiary);
+    margin-top: 40px;
+    font-size: 13px;
+}
+
+/* 控制台 */
+.etl-console {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 250px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.etl-console.open {
+    transform: translateY(0);
+}
+
+.console-header {
+    height: 36px;
+    background: #252526;
+    border-bottom: 1px solid #333;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.console-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.log-line {
+    padding: 2px 0;
+}
+
+.log-time {
+    color: #858585;
+    margin-right: 8px;
+}
+
+.log-line.info .log-msg {
+    color: #d4d4d4;
+}
+
+.log-line.success .log-msg {
+    color: #89d185;
+}
+
+.log-line.error .log-msg {
+    color: #f48771;
+}
+
+.log-empty {
+    color: #666;
+    font-style: italic;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+}
+
+/* 响应式 ETL */
+@media (max-width: 900px) {
+    .etl-layout {
+        flex-direction: column;
+    }
+
+    .etl-operators {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+    }
+
+    .etl-operator-list {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 10px;
+    }
+
+    .etl-operator {
+        flex-shrink: 0;
+    }
+
+    .etl-config {
+        display: none;
+    }
+}
+
+/* ==================== ETL 可视化配置组件 ==================== */
+.visual-field-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 16px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--color-text-secondary);
+    user-select: none;
+}
+
+.visual-field-chip:hover {
+    border-color: var(--color-primary);
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+    transform: translateY(-1px);
+}
+
+.visual-field-chip.active {
+    background: var(--color-primary) !important;
+    color: #fff !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 3px 8px rgba(99, 102, 241, 0.3);
+}
+
+.field-chips-container {
+    padding: 10px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--color-border);
+    max-height: 160px;
+    overflow-y: auto;
+}
