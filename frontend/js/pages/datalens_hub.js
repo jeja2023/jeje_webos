@@ -121,8 +121,16 @@ const DataLensHubMixin = {
                 newValue: JSON.stringify(pinnedApps)
             }));
 
-            // 刷新当前视图列表以更新按钮状态
-            this._loadHubData();
+            // 更新当前视图列表中的按钮状态（本地更新，无需重新请求 API）
+            const { views } = this.state;
+            const updatedViews = views.map(v => {
+                if (v.id === view.id) {
+                    // 我们只需触发界面重绘，视图卡片渲染会自动读取 pinnedApps 状态
+                    return { ...v, _pinned_updated: Date.now() };
+                }
+                return v;
+            });
+            this.setState({ views: updatedViews });
 
         } catch (e) {
             Toast.error('操作失败: ' + (e.message || '未知错误'));

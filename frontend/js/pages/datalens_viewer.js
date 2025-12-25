@@ -145,8 +145,16 @@ const DataLensViewerMixin = {
                 <div class="lens-viewer-header">
                     <div class="lens-viewer-title-group">
                         ${this.state.isSingleView ? '' : '<button class="lens-btn-icon lens-tab-hub" title="返回首页">🏠</button>'}
-                        <h2 class="lens-viewer-title">${activeTab.name}</h2>
-                        ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}">ℹ️</span>` : ''}
+                        <div class="lens-breadcrumb">
+                            <span class="lens-breadcrumb-item">数据透镜</span>
+                            ${activeTab.category_name ? `
+                                <span class="lens-breadcrumb-separator">/</span>
+                                <span class="lens-breadcrumb-item">${activeTab.category_name}</span>
+                            ` : ''}
+                            <span class="lens-breadcrumb-separator">/</span>
+                            <h2 class="lens-viewer-title">${activeTab.name}</h2>
+                            ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}">ℹ️</span>` : ''}
+                        </div>
                     </div>
                     <div class="lens-viewer-toolbar">
                         <div class="lens-mode-selector">
@@ -771,20 +779,7 @@ const DataLensViewerMixin = {
 
         const tab = openTabs[tabIndex];
 
-        // 如果当前是开启状态，准备将其关闭时，清空筛选并重置数据
-        if (tab.showFilterPanel) {
-            tab.filters = {};
-            this._loadViewData(
-                tab.id, 1, tab.pageSize || 20, tab.search || '',
-                tab.sortField, tab.sortOrder, tab.sorts, {}
-            );
-        } else {
-            // 如果是打开面板且目前没有筛选条件，默认添加一行
-            if (!tab.filters || Object.keys(tab.filters).length === 0) {
-                tab.filters = { [`_new_${Date.now()}`]: { op: 'eq', value: '' } };
-            }
-        }
-
+        // 切换显示状态（不再在关闭时自动清空，由用户点击“清空”按钮决定）
         tab.showFilterPanel = !tab.showFilterPanel;
         tab.showSortPanel = false; // 关闭排序面板
         this.setState({ openTabs: [...openTabs] });

@@ -20,6 +20,38 @@ from .datalens_schemas import (
 
 logger = logging.getLogger(__name__)
 
+# 文件数据源内存缓存 (文件名 -> (DataFrame, timestamp))
+_file_data_cache = {}
+_CACHE_TTL = 60  # 缓存 60 秒
+
+
+def _get_cached_df(file_path: str, source_type: str, file_config: Dict[str, Any]):
+    """获取缓存的 DataFrame，如果过期或不存在则重新加载"""
+    import pandas as pd
+    import time
+    import os
+
+    now = time.time()
+    
+    # 检查缓存是否存在且有效
+    if file_path in _file_data_cache:
+        df, timestamp = _file_data_cache[file_path]
+        # 同时检查文件修改时间，如果文件变了也失效
+        mtime = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
+        if now - timestamp < _CACHE_TTL and timestamp > mtime:
+            return df
+
+    # 重新加载
+    if source_type == DataSourceType.CSV:
+        df = pd.read_csv(file_path, encoding=file_config.get("encoding", "utf-8"))
+    else:  # Excel
+        sheet_name = file_config.get("sheet_name") or 0
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        if isinstance(df, dict):
+            df = list(df.values())[0]
+            
+    _file_data_cache[file_path] = (df, now)
+    return df
 
 def _convert_datetime_columns(df):
     """
@@ -753,14 +785,7 @@ class QueryExecutor:
         import pandas as pd
 
         file_path = file_config.get("file_path", "")
-
-        if source_type == DataSourceType.CSV:
-            df = pd.read_csv(file_path, encoding=file_config.get("encoding", "utf-8"))
-        else:  # Excel
-            sheet_name = file_config.get("sheet_name") or 0
-            df = pd.read_excel(file_path, sheet_name=sheet_name)
-            if isinstance(df, dict):
-                df = list(df.values())[0]
+        df = _get_cached_df(file_path, source_type, file_config)
 
         # 应用筛选条件
         if request.filters:

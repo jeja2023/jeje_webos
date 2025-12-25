@@ -388,6 +388,16 @@ class DataLensPage extends Component {
             if (row) row.remove();
         });
 
+        // 移除 Viewer 中的返回首页按钮事件（因为单视图模式已隐藏该按钮，且架构已改为多窗口）
+        this.delegate('click', '.lens-tab-hub', () => {
+            if (this.state.isSingleView) {
+                // 如果在独立窗口点击返回（假设未来有此需求），则关闭窗口
+                if (typeof WindowManager !== 'undefined') WindowManager.close(this.windowId);
+            } else {
+                this.setState({ mode: 'hub' });
+            }
+        });
+
         // 排序面板事件
         this.delegate('click', '.lens-sort-btn', () => this._toggleSortPanel());
         this.delegate('click', '.lens-sort-close', () => this._toggleSortPanel());
@@ -397,18 +407,6 @@ class DataLensPage extends Component {
         this.delegate('click', '.lens-sort-remove', (e, el) => {
             const row = el.closest('.lens-sort-row');
             if (row) row.remove();
-        });
-
-        // 标签栏操作
-        this.delegate('click', '.lens-tab-item', (e, el) => {
-            if (e.target.closest('.lens-tab-close')) return;
-            const id = parseInt(el.dataset.id);
-            this.setState({ activeTabId: id, mode: 'viewer' });
-        });
-
-        this.delegate('click', '.lens-tab-close', (e, el) => {
-            e.stopPropagation();
-            this._closeTab(parseInt(el.dataset.id));
         });
     }
 

@@ -155,7 +155,31 @@ const Spotlight = {
 
         results = [...results, ...settingsMatches];
 
-        // 3. 搜索文件 (调用后端 API)
+        // 3. 搜索数据透镜视图 (DataLens)
+        if (keyword.length >= 1) {
+            try {
+                // 如果 window.LensApi 可用，则搜索视图
+                if (window.LensApi) {
+                    const lensRes = await LensApi.getViews({ search: keyword });
+                    if (lensRes.code === 200 && lensRes.data) {
+                        const viewMatches = lensRes.data.map(view => ({
+                            title: view.name,
+                            desc: view.description || '数据透镜视图',
+                            icon: view.icon || '📊',
+                            type: 'datalens',
+                            group: '数据透镜',
+                            id: view.id,
+                            path: `/lens/view/${view.id}`
+                        }));
+                        results = [...results, ...viewMatches];
+                    }
+                }
+            } catch (e) {
+                console.warn('数据透镜搜索失败', e);
+            }
+        }
+
+        // 4. 搜索文件 (调用后端 API)
         if (keyword.length > 1) {
             try {
                 const res = await Api.get('/storage/list', {
