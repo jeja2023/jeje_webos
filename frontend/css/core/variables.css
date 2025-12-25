@@ -82,6 +82,19 @@
     --transition-fast: 0.15s cubic-bezier(0.25, 0.1, 0.25, 1.0);
     --transition-normal: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0);
     --transition-slow: 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+
+    /* DataLens 映射别名 - 解决变量名不一致问题 */
+    --bg-primary: var(--color-bg-primary);
+    --bg-secondary: var(--color-bg-secondary);
+    --bg-tertiary: var(--color-bg-tertiary);
+    --bg-hover: var(--color-bg-hover);
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-muted: var(--color-text-muted);
+    --border-color: var(--color-border);
+    --color-text: var(--color-text-primary);
+    --danger-color: var(--color-error);
+    --danger-rgb: var(--color-error-rgb);
 }
 
 /* 深色模式覆盖 (如果系统开启且无手动选择) */

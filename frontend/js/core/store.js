@@ -352,6 +352,9 @@ const Store = {
         localStorage.setItem(Config.storageKeys.theme, themeMode);
         this.applyTheme(themeMode);
         this.notify('theme', themeMode);
+
+        // 触发全局主题变化事件，供其他组件监听（如 ECharts 图表）
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: themeMode } }));
     },
 
     /**

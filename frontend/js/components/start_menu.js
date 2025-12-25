@@ -10,13 +10,14 @@ class StartMenuComponent extends Component {
         // 展开/收起状态记录 - 默认全部折叠
         this.expanded = {};
 
-        // 监听模块变化
-        Store.subscribe('modules', () => {
-            if (this.visible) this.update();
-        });
+        // 监听变化以刷新菜单
+        const updateVisible = () => { if (this.visible) this.update(); };
+        Store.subscribe('modules', updateVisible);
+        Store.subscribe('pinnedApps', updateVisible);
+        Store.subscribe('user', updateVisible);
     }
 
-    // 动态构建菜单树 - 直接显示所有已启用的应用
+    // 动态构建菜单树
     buildMenuTree() {
         const user = Store.get('user');
         const isAdmin = user?.role === 'admin';
@@ -25,18 +26,71 @@ class StartMenuComponent extends Component {
 
         const menuTree = [];
 
-        // 仪表盘已移除，登录后直接显示桌面
+        // 1. 获取用户自定义快捷方式 (从 user.settings.start_menu_shortcuts)
+        const shortcuts = user?.settings?.start_menu_shortcuts || [];
 
-        // 预定义的菜单配置（已简化为单一入口，直接重定向到主路径）
+        // 兼容 DataLens 保存到 localStorage 的快捷方式
+        const savedPinned = localStorage.getItem('jeje_pinned_apps');
+        const localPinned = savedPinned ? JSON.parse(savedPinned) : [];
+        const localShortcuts = localPinned.filter(app => typeof app === 'object' && app.id);
+
+        // 合并远程和本地快捷方式 (优先以本地为准实时更新)
+        const allShortcuts = [...shortcuts];
+        localShortcuts.forEach(ls => {
+            if (!allShortcuts.some(s => s.id === ls.id)) {
+                allShortcuts.push(ls);
+            }
+        });
+
+        if (allShortcuts.length > 0) {
+            // 添加快捷方式
+            allShortcuts.forEach(shortcut => {
+                menuTree.push({
+                    id: shortcut.id,
+                    title: shortcut.name || shortcut.title,
+                    icon: shortcut.icon || '🔗',
+                    path: shortcut.path,
+                    isShortcut: true,
+                    type: shortcut.type
+                });
+            });
+
+            // 添加分隔线
+            if (menuTree.length > 0) {
+                menuTree.push({ isSeparator: true });
+            }
+        }
+
+        // 2. 获取 Dock 中已存在的应用 ID (字符串)，用于过滤
+        const dockPinnedApps = user?.settings?.dock_pinned_apps || [];
+        // 过滤出 localPinned 中的字符串 ID
+        const localPinnedIds = localPinned.filter(app => typeof app === 'string');
+        const pinnedIds = new Set([...dockPinnedApps, ...localPinnedIds]);
+
+        // 添加 Dock 上硬编码的系统应用 ID，也要过滤
+        pinnedIds.add('message'); // 信息
+        pinnedIds.add('apps');    // 应用中心
+        if (isAdmin || isManager) {
+            pinnedIds.add('announcement'); // 公告管理 (Dock id: sys_announcement)
+            pinnedIds.add('users');        // 用户管理 (Dock id: sys_users)
+        }
+        if (isAdmin) {
+            pinnedIds.add('system');       // 系统管理 (Dock id: sys_ops)
+        }
+
+        // 3. 遍历模块和系统应用，过滤掉已在 Dock 的
+
+        // 预定义的菜单配置
         const menuConfigs = {
             'blog': '/blog/list',
             'notes': '/notes/list',
             'feedback': '/feedback/my'
         };
 
-        // 遍历所有已启用的模块，直接显示
+        // 模块应用
         for (const mod of modules) {
             if (!mod.enabled) continue;
+            if (pinnedIds.has(mod.id)) continue; // 如果在 Dock 上则跳过
 
             const targetPath = menuConfigs[mod.id];
 
@@ -49,67 +103,26 @@ class StartMenuComponent extends Component {
             });
         }
 
-        // 文件管理（所有人可见）
-        menuTree.push({
-            id: 'filemanager',
-            title: '文件管理',
-            icon: '📂',
-            path: '/filemanager'
-        });
+        // 系统内置应用（检查是否被过滤）
+        const sysApps = [
+            { id: 'filemanager', title: '文件管理', icon: '📂', path: '/filemanager' },
+            { id: 'transfer', title: '快传', icon: '⚡', path: '/transfer' },
+            { id: 'theme', title: '主题', icon: '🎨', path: '/theme/editor' }
+        ];
 
-        // 快传（所有人可见）
-        menuTree.push({
-            id: 'transfer',
-            title: '快传',
-            icon: '⚡',
-            path: '/transfer'
-        });
-
-        // 信息（所有人可见，直接进入通知列表）
-        menuTree.push({
-            id: 'message',
-            title: '信息',
-            icon: '✉️',
-            path: '/message/list'
-        });
-
-        // 个性化
-        menuTree.push({
-            id: 'theme',
-            title: '主题',
-            icon: '🎨',
-            path: '/theme/editor'
-        });
-
-        // 公告（仅管理员/经理可见，单一入口）
-        if (isAdmin || isManager) {
-            menuTree.push({
-                id: 'announcement',
-                title: '公告',
-                icon: '📢',
-                path: '/announcement/list'
-            });
+        for (const app of sysApps) {
+            if (!pinnedIds.has(app.id)) {
+                menuTree.push(app);
+            }
         }
 
-        // 用户管理（管理员/经理可见，单一入口）
-        if (isAdmin || isManager) {
-            menuTree.push({
-                id: 'users',
-                title: '用户管理',
-                icon: '👥',
-                path: '/users/list'
-            });
-        }
-
-        // 系统管理（仅管理员可见，单一入口）
-        if (isAdmin) {
-            menuTree.push({
-                id: 'system',
-                title: '系统管理',
-                icon: '🖥️',
-                path: '/system/settings'
-            });
-        }
+        // 如果 Dock 上没有固定这些管理应用，则在开始菜单显示
+        // 注意：Dock 逻辑是 isAdmin/Manager 就会显示，所以只要用户是管理员，Dock 上一定有。
+        // 但如果用户手动取消固定（目前 Dock 逻辑是硬编码的，无法取消固定系统区），
+        // 所以这里只要判断权限即可，如果没权限自然看不到，有权限 Dock 上有，所以也不用显示。
+        // 为了保险，还是保留基础逻辑，万一 Dock 逻辑变了。
+        // 但是根据 User Requirement: "Remove same functional menus as Dock"
+        // 管理员的“系统管理”、“用户管理”在 Dock 上都有，所以这里应该都不显示。
 
         return menuTree;
     }
@@ -129,25 +142,32 @@ class StartMenuComponent extends Component {
         const isAdmin = user?.role === 'admin';
 
         const renderItem = (item, level = 0, parentId = '') => {
+            // 分隔符处理
+            if (item.isSeparator) {
+                return '<div class="menu-separator"></div>';
+            }
+
             // 权限过滤
             if (item.admin && !isAdmin) return '';
 
             const hasChildren = item.children && item.children.length > 0;
-            // 对于顶级菜单使用 item.id，对于子级菜单使用 parentId-title 格式
             const uniqueId = item.id || (parentId ? `${parentId}-${item.title}` : item.title);
-            // 只有明确在 expanded 中标记为 true 的才展开，否则默认折叠
             const isExpanded = this.expanded[uniqueId] === true;
 
             const indent = level * 16;
 
+            // 快捷方式特殊标记
+            const itemClass = `menu-item ${hasChildren ? 'has-children' : ''} ${isExpanded ? 'expanded' : ''} ${item.isShortcut ? 'menu-item-shortcut' : ''}`;
+
             let html = `
                 <div class="menu-item-wrapper">
-                    <div class="menu-item ${hasChildren ? 'has-children' : ''} ${isExpanded ? 'expanded' : ''}" 
+                    <div class="${itemClass}" 
                          data-id="${uniqueId}" 
                          ${item.path ? `data-path="${item.path}"` : ''}
                          style="padding-left: ${16 + indent}px">
                         <span class="menu-icon">${item.emoji || item.icon}</span>
                         <span class="menu-title">${item.title}</span>
+                         ${item.isShortcut ? '<span class="menu-badge">📌</span>' : ''}
                         ${hasChildren ? `
                             <span class="menu-arrow">▼</span>
                         ` : ''}

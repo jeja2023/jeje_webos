@@ -103,7 +103,7 @@ class HelpPage extends Component {
             <ul>
                 <li><strong>桌面化体验</strong> - 精美的桌面布局，直观易用</li>
                 <li><strong>模块化设计</strong> - 按需加载功能模块，灵活扩展</li>
-                <li><strong>多任务处理</strong> - 支持应用窗口化运行（当前版本为单窗口模式）</li>
+                <li><strong>多任务处理</strong> - 支持应用窗口化运行，数据透镜等特定模块支持多窗口并存</li>
                 <li><strong>实时通知</strong> - WebSocket 实时消息推送</li>
                 <li><strong>数据安全</strong> - JWT 认证 + 数据加密</li>
             </ul>
@@ -214,6 +214,11 @@ class HelpPage extends Component {
 
         if (enabledIds.includes('transfer')) {
             modulesHtml += this.getTransferHelpContent();
+            modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
+        }
+
+        if (enabledIds.includes('datalens') || enabledIds.includes('lens')) {
+            modulesHtml += this.getDataLensHelpContent();
             modulesHtml += '<hr style="margin: 30px 0; border: none; border-top: 1px solid var(--color-border);">';
         }
 
@@ -856,6 +861,28 @@ class HelpPage extends Component {
                 if (content) content.scrollTop = 0;
             }
         });
+    }
+    getDataLensHelpContent() {
+        return `
+            <h3>数据透镜指南</h3>
+            <p>数据透镜 (DataLens) 是系统内置的万能视窗，支持多种数据源的可视化探索与管理。</p>
+            
+            <h4>🪟 独立窗口架构</h4>
+            <p>在最新版本中，数据透镜采用了<strong>独立窗口架构</strong>，为您提供强大的多任务处理能力：</p>
+            <ul>
+                <li><strong>多开并存</strong> - 从主网格（Hub）点击任何视图，都会在桌面上开启一个独立的新窗口。您可以同时打开多个不同的视图，并排放置进行对比。</li>
+                <li><strong>固定标题</strong> - 每个视图窗口的标题栏会清晰显示当前视图的名称，方便在任务栏或桌面识别。</li>
+                <li><strong>智能路由</strong> - 视图窗口拥有独立的 URL（如 /lens/view/123），支持刷新页面后自动恢复原位。</li>
+            </ul>
+
+            <h4>📊 核心功能</h4>
+            <ul>
+                <li><strong>可视化探索</strong> - 支持表格和图表两种查看模式。</li>
+                <li><strong>动态筛选</strong> - 内置强大的多条件筛选器（等于、包含、大于等），实时过滤海量数据。</li>
+                <li><strong>多字段排序</strong> - 支持添加多个排序条件，精确控制数据呈现顺序。</li>
+                <li><strong>钉选功能</strong> - 点击视图卡片上的 📌 按钮，可将常用视图固定到系统开始菜单，实现一键触达。</li>
+            </ul>
+        `;
     }
 }
 

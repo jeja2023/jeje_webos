@@ -218,6 +218,10 @@ const App = {
 
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
             '/analysis': { auth: true, handler: wrap(AnalysisPage, '数据分析') },
+
+            // DataLens 数据透镜
+            '/lens': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
+            '/lens/view/:id': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
         });
 
     },

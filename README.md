@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -58,11 +58,11 @@
     - **传输码机制**：发送方生成 6 位传输码，接收方输入即可连接。
     - **实时同步**：WebSocket 实时进度推送，传输完成自动下载。
     - **历史记录**：完整的传输历史和统计数据。
-- **📊 数据分析**：
-    - **图表可视化**：支持柱状图、饼图、折线图、散点图等基础图表。
-    - **高级分析**：直方图（分布分析）、箱线图（离散度）、热力图（相关性矩阵）、趋势预测。
-    - **BI 仪表盘**：自定义仪表盘，支持拖拽布局、多组件配置、数据持久化。
-    - **数据处理**：数据导入（CSV/Excel/JSON）、数据清洗、数据比对、数据建模。
+- **👁️ 数据透镜 (DataLens)**：
+    - **独立窗口架构**：视图从 Hub 开启后作为独立桌面窗口运行，支持多视图并开对比。
+    - **万能视窗**：支持任意 SQL 视图或数据表的可视化查看，内置表格与图表双模态。
+    - **动态配置**：支持多条件筛选（Filter）、多字段排序（Sort）、导出 CSV。
+    - **快速入口**：支持将常用视图直接钉选（Pin）到系统开始菜单。
 
 ---
 
@@ -264,6 +264,17 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 ## 📅 更新日志 (Changelog)
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
+
+### v2.1.0 (2024-12-25)
+- 👁️ **数据透镜模块架构重构**：
+  - **独立窗口体系**：视图从 Hub 开启后使用独立桌面窗口展示，支持多开对比，不再受限于单页面标签切换
+  - **UI 界面优化**：隐藏单视图模式下的返回按钮，强化窗口标题显示，并移除冗余的分页标签
+  - **路由增强**：支持通过视图 URL 直接定位和唤起特定窗口，实现了主 Hub 与子视图的解耦
+- 💄 **UI/UX 细节修复**：
+  - **对比度增强**：修复了“预览”按钮在各主题下的可见性问题，增加了呼吸脉冲动画效果
+  - **变量统合**：修复了 DataLens 模块内 CSS 变量命名不一致导致的背景显示异常
+- 📖 **文档中心更新**：
+  - 更新「帮助中心」中关于“独立窗口架构”的说明和“数据透镜”使用指南
 
 ### v2.0.9 (2025-12-24)
 - 📊 **数据分析模块增强**：

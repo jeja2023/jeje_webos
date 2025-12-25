@@ -378,6 +378,21 @@ _mount_static_resources(app)
 
 
 # ==================== 根路由 ====================
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """浏览器自动请求的图标处理"""
+    favicon_path = os.path.join(FRONTEND_PATH, "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    
+    # 如果根目录没有，尝试使用 images 下的 logo
+    logo_path = os.path.join(FRONTEND_PATH, "images/logo.jpg")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path)
+        
+    return HTTPException(status_code=404)
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """根路径返回前端页面"""
