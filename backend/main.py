@@ -357,6 +357,11 @@ def _mount_static_resources(app: FastAPI):
         images_path = os.path.join(FRONTEND_PATH, "images")
         if os.path.exists(images_path):
             app.mount("/static/images", CachedStaticFiles(directory=images_path), name="images")
+        
+        # 挂载 fonts（带缓存控制）
+        fonts_path = os.path.join(FRONTEND_PATH, "fonts")
+        if os.path.exists(fonts_path):
+            app.mount("/static/fonts", CachedStaticFiles(directory=fonts_path), name="fonts")
 
     # 模块静态资源（挂载到 /static/{module_name}/）
     modules_path = os.path.join(os.path.dirname(__file__), "modules")

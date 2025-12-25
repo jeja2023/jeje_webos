@@ -1374,12 +1374,17 @@ class FavoriteService:
 
         return [
             {
-                "id": fav.id,
-                "view_id": view.id,
-                "view_name": view.name,
-                "view_icon": view.icon,
+                "id": view.id,  # 这里的 ID 改为 View ID 以便前端卡片操作
+                "favorite_id": fav.id,
+                "name": view.name,
+                "description": view.description,
+                "icon": view.icon,
+                "category_id": view.category_id,
                 "category_name": cat.name if cat else None,
-                "created_at": fav.created_at
+                "created_at": view.created_at,
+                "updated_at": view.updated_at,
+                "is_favorited": True,
+                "creator_name": f"用户{view.created_by}" # 简化处理，或进一步 Join User
             }
             for fav, view, cat in rows
         ]
@@ -1432,12 +1437,17 @@ class RecentViewService:
 
         return [
             {
-                "id": recent.id,
-                "view_id": view.id,
-                "view_name": view.name,
-                "view_icon": view.icon,
+                "id": view.id, # 这里的 ID 改为 View ID 以便前端卡片操作
+                "recent_id": recent.id,
+                "name": view.name,
+                "description": view.description,
+                "icon": view.icon,
+                "category_id": view.category_id,
                 "category_name": cat.name if cat else None,
-                "accessed_at": recent.accessed_at
+                "created_at": view.created_at,
+                "updated_at": view.updated_at,
+                "accessed_at": recent.accessed_at,
+                "creator_name": f"用户{view.created_by}" # 简化处理
             }
             for recent, view, cat in rows
         ]

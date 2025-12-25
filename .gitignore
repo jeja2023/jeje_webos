@@ -98,3 +98,10 @@ backend/state/*.json
 # 临时文件
 *.tmp
 *.temp
+
+# 字体文件（体积较大）
+frontend/fonts/*.ttf
+frontend/fonts/*.woff
+frontend/fonts/*.woff2
+frontend/fonts/*.eot
+frontend/fonts/*.otf

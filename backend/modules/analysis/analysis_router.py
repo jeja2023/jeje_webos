@@ -31,6 +31,14 @@ from .analysis_schemas import (
 )
 from .analysis_bi_service import BIService
 from .analysis_etl_service import ETLExecutionService
+from .analysis_smart_table_service import SmartTableService
+from .analysis_smart_report_service import SmartReportService
+from .analysis_chart_service import AnalysisChartService
+from .analysis_schemas import (
+    SmartTableCreate, SmartTableUpdate, SmartTableResponse,
+    SmartReportCreate, SmartReportUpdate, SmartReportResponse,
+    AnalysisChartCreate, AnalysisChartUpdate, AnalysisChartResponse
+)
 
 from sqlalchemy import select
 
@@ -594,3 +602,274 @@ async def delete_dashboard(
         return error(str(e))
 
 
+
+# ============ 智能表格 ============
+
+@router.get("/smart-tables")
+async def list_smart_tables(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取所有智能表格列表"""
+    try:
+        items = await SmartTableService.get_tables(db)
+        return success([SmartTableResponse.model_validate(i).model_dump() for i in items])
+    except Exception as e:
+        return error(str(e))
+
+@router.get("/smart-tables/{table_id}")
+async def get_smart_table(
+    table_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取单个智能表格详情"""
+    try:
+        item = await SmartTableService.get_table_by_id(db, table_id)
+        if not item:
+            return error("表格不存在", code=404)
+        return success(SmartTableResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-tables")
+async def create_smart_table(
+    req: SmartTableCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """创建智能表格"""
+    try:
+        item = await SmartTableService.create_table(db, req)
+        return success(SmartTableResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.put("/smart-tables/{table_id}")
+async def update_smart_table(
+    table_id: int,
+    req: SmartTableUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """更新智能表格定义"""
+    try:
+        item = await SmartTableService.update_table(db, table_id, req)
+        return success(SmartTableResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.delete("/smart-tables/{table_id}")
+async def delete_smart_table(
+    table_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """删除智能表格"""
+    try:
+        await SmartTableService.delete_table(db, table_id)
+        return success(None, "删除成功")
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-tables/{table_id}/sync")
+async def sync_smart_table(
+    table_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """将智能表格数据同步到数据集"""
+    try:
+        dataset = await SmartTableService.sync_to_dataset(db, table_id)
+        from .analysis_schemas import DatasetResponse # assuming it exists
+        return success({"dataset_id": dataset.id, "table_name": dataset.table_name}, "同步成功")
+    except Exception as e:
+        return error(str(e))
+@router.get("/smart-tables/{table_id}/data")
+async def get_smart_table_data(
+    table_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取智能表格数据"""
+    try:
+        data = await SmartTableService.get_table_data(db, table_id)
+        return success(data)
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-tables/{table_id}/data")
+async def add_smart_table_row(
+    table_id: int,
+    req_data: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """添加一行数据到智能表格"""
+    try:
+        await SmartTableService.add_row(db, table_id, req_data)
+        return success(None, "添加成功")
+    except Exception as e:
+        return error(str(e))
+
+@router.put("/smart-tables/data/{row_id}")
+async def update_smart_table_row(
+    row_id: int,
+    req_data: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """更新智能表格中的一行数据"""
+    try:
+        await SmartTableService.update_row(db, row_id, req_data)
+        return success(None, "更新成功")
+    except Exception as e:
+        return error(str(e))
+
+@router.delete("/smart-tables/data/{row_id}")
+async def delete_smart_table_row(
+    row_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """删除智能表格中的一行数据"""
+    try:
+        await SmartTableService.delete_row(db, row_id)
+        return success(None, "删除成功")
+    except Exception as e:
+        return error(str(e))
+
+
+# ============ 智能报告 ============
+
+@router.get("/smart-reports")
+async def list_smart_reports(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取所有智能报告列表"""
+    try:
+        items = await SmartReportService.get_reports(db)
+        return success([SmartReportResponse.model_validate(i).model_dump() for i in items])
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-reports")
+async def create_smart_report(
+    req: SmartReportCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """创建智能报告模版"""
+    try:
+        item = await SmartReportService.create_report(db, req)
+        return success(SmartReportResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.put("/smart-reports/{report_id}")
+async def update_smart_report(
+    report_id: int,
+    req: SmartReportUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """更新智能报告模版"""
+    try:
+        item = await SmartReportService.update_report(db, report_id, req)
+        return success(SmartReportResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.delete("/smart-reports/{report_id}")
+async def delete_smart_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """删除智能报告模版"""
+    try:
+        await SmartReportService.delete_report(db, report_id)
+        return success(None, "删除成功")
+    except Exception as e:
+        return error(str(e))
+
+@router.get("/smart-reports/{report_id}/generate")
+async def generate_smart_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """根据模版和数据生成报告"""
+    try:
+        content = await SmartReportService.generate_report(db, report_id)
+        return success({"content": content})
+    except Exception as e:
+        return error(str(e))
+
+# ============ 图表管理 ============
+
+@router.get("/charts")
+async def list_charts(
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取所有保存的图表"""
+    try:
+        items = await AnalysisChartService.list_charts(db)
+        return success([AnalysisChartResponse.model_validate(i).model_dump() for i in items])
+    except Exception as e:
+        return error(str(e))
+
+@router.get("/charts/{chart_id}")
+async def get_chart(
+    chart_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取单个图表详情"""
+    try:
+        item = await AnalysisChartService.get_chart(db, chart_id)
+        return success(AnalysisChartResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/charts")
+async def create_chart(
+    req: AnalysisChartCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """保存图表"""
+    try:
+        item = await AnalysisChartService.create_chart(db, req)
+        return success(AnalysisChartResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.put("/charts/{chart_id}")
+async def update_chart(
+    chart_id: int,
+    req: AnalysisChartUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """更新图表配置"""
+    try:
+        item = await AnalysisChartService.update_chart(db, chart_id, req)
+        return success(AnalysisChartResponse.model_validate(item).model_dump())
+    except Exception as e:
+        return error(str(e))
+
+@router.delete("/charts/{chart_id}")
+async def delete_chart(
+    chart_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """删除图表"""
+    try:
+        await AnalysisChartService.delete_chart(db, chart_id)
+        return success(None, "删除成功")
+    except Exception as e:
+        return error(str(e))

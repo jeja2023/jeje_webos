@@ -41,7 +41,33 @@ const AnalysisApi = {
     createDashboard: (data) => Api.post('/analysis/dashboards', data),
     getDashboard: (id) => Api.get(`/analysis/dashboards/${id}`),
     updateDashboard: (id, data) => Api.put(`/analysis/dashboards/${id}`, data),
-    deleteDashboard: (id) => Api.delete(`/analysis/dashboards/${id}`)
+    deleteDashboard: (id) => Api.delete(`/analysis/dashboards/${id}`),
+
+    // 图表管理
+    getCharts: () => Api.get('/analysis/charts'),
+    createChart: (data) => Api.post('/analysis/charts', data),
+    getChart: (id) => Api.get(`/analysis/charts/${id}`),
+    updateChart: (id, data) => Api.put(`/analysis/charts/${id}`, data),
+    deleteChart: (id) => Api.delete(`/analysis/charts/${id}`),
+
+    // 智能表格
+    getSmartTables: () => Api.get('/analysis/smart-tables'),
+    createSmartTable: (data) => Api.post('/analysis/smart-tables', data),
+    updateSmartTable: (id, data) => Api.put(`/analysis/smart-tables/${id}`, data),
+    deleteSmartTable: (id) => Api.delete(`/analysis/smart-tables/${id}`),
+    getSmartTableData: (id) => Api.get(`/analysis/smart-tables/${id}/data`),
+    addSmartTableRow: (id, data) => Api.post(`/analysis/smart-tables/${id}/data`, data),
+    updateSmartTableRow: (rowId, data) => Api.put(`/analysis/smart-tables/data/${rowId}`, data),
+    deleteSmartTableRow: (rowId) => Api.delete(`/analysis/smart-tables/data/${rowId}`),
+    syncSmartTable: (id) => Api.post(`/analysis/smart-tables/${id}/sync`),
+
+    // 智能报告
+    getSmartReports: () => Api.get('/analysis/smart-reports'),
+    createSmartReport: (data) => Api.post('/analysis/smart-reports', data),
+    updateSmartReport: (id, data) => Api.put(`/analysis/smart-reports/${id}`, data),
+    deleteSmartReport: (id) => Api.delete(`/analysis/smart-reports/${id}`),
+    generateSmartReport: (id) => Api.get(`/analysis/smart-reports/${id}/generate`)
+
 };
 
 class AnalysisPage extends Component {
@@ -163,6 +189,18 @@ class AnalysisPage extends Component {
         }
         if (this.state.activeTab === 'cleaning') {
             if (this.bindCleaningEvents) this.bindCleaningEvents();
+        }
+        if (this.state.activeTab === 'smart-table') {
+            if (this.bindSmartTableEvents) {
+                this.bindSmartTableEvents();
+                if (!this.state.smartTables) this.fetchSmartTables();
+            }
+        }
+        if (this.state.activeTab === 'smart-report') {
+            if (this.bindSmartReportEvents) {
+                this.bindSmartReportEvents();
+                if (!this.state.smartReports) this.fetchSmartReports();
+            }
         }
     }
 
@@ -365,6 +403,10 @@ class AnalysisPage extends Component {
 
 
     render() {
+        // Ensure datasets are loaded for reports and charts
+        if (['smart-report', 'charts', 'modeling'].includes(this.state.activeTab) && this.state.datasets.length === 0 && !this.state.loadingDatasets) {
+            this.fetchDatasets();
+        }
         return `
             <div class="analysis-container">
                 <div class="analysis-sidebar">
@@ -373,6 +415,9 @@ class AnalysisPage extends Component {
                             <span>🎯</span> 数据大屏
                         </div>
                         <div class="analysis-menu-divider"></div>
+                        <div class="analysis-menu-item ${this.state.activeTab === 'smart-table' ? 'active' : ''}" data-tab="smart-table">
+                            <span>📋</span> 智能表格
+                        </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'datasets' ? 'active' : ''}" data-tab="datasets">
                             <span>📦</span> 数据管理
                         </div>
@@ -394,6 +439,9 @@ class AnalysisPage extends Component {
                         <div class="analysis-menu-item ${this.state.activeTab === 'modeling' ? 'active' : ''}" data-tab="modeling">
                             <span>📈</span> 数据建模
                         </div>
+                        <div class="analysis-menu-item ${this.state.activeTab === 'smart-report' ? 'active' : ''}" data-tab="smart-report">
+                            <span>📝</span> 智能报告
+                        </div>
                     </div>
                 </div>
                 <div class="analysis-content">
@@ -414,6 +462,8 @@ class AnalysisPage extends Component {
             case 'charts': return this.renderCharts();
             case 'sql': return this.renderSqlQuery();
             case 'bi': return this.renderBI();
+            case 'smart-table': return this.renderSmartTable();
+            case 'smart-report': return this.renderSmartReport();
             default: return `<div class="p-20">功能开发中...</div>`;
         }
     }

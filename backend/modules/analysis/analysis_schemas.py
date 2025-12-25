@@ -144,3 +144,80 @@ class DashboardResponse(DashboardBase):
     class Config:
         from_attributes = True
 
+
+# --- 智能表格 ---
+class SmartTableBase(BaseModel):
+    name: str
+    fields: List[Dict[str, Any]] # e.g. [{"name": "age", "type": "number", "label": "年龄"}]
+
+class SmartTableCreate(SmartTableBase):
+    pass
+
+class SmartTableUpdate(BaseModel):
+    name: Optional[str] = None
+    fields: Optional[List[Dict[str, Any]]] = None
+    dataset_id: Optional[int] = None
+
+class SmartTableResponse(SmartTableBase):
+    id: int
+    dataset_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class SmartTableDataRow(BaseModel):
+    table_id: int
+    row_data: Dict[str, Any]
+
+class SmartTableDataUpdate(BaseModel):
+    row_data: Dict[str, Any]
+
+# --- 智能报告 ---
+class SmartReportBase(BaseModel):
+    name: str
+    template: str
+    dataset_id: Optional[int] = None
+
+class SmartReportCreate(SmartReportBase):
+    pass
+
+class SmartReportUpdate(BaseModel):
+    name: Optional[str] = None
+    template: Optional[str] = None
+    dataset_id: Optional[int] = None
+
+class SmartReportResponse(SmartReportBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# --- 图表管理 ---
+class AnalysisChartBase(BaseModel):
+    name: str
+    dataset_id: int
+    chart_type: str
+    config: Dict[str, Any]
+    description: Optional[str] = None
+
+class AnalysisChartCreate(AnalysisChartBase):
+    pass
+
+class AnalysisChartUpdate(BaseModel):
+    name: Optional[str] = None
+    dataset_id: Optional[int] = None
+    chart_type: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
+
+class AnalysisChartResponse(AnalysisChartBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

@@ -406,6 +406,10 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+.single-view-mode .lens-viewer-title-group {
+    display: none !important;
+}
+
 .lens-viewer-toolbar {
     display: flex;
     justify-content: space-between;

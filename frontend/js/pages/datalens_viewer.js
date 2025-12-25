@@ -40,9 +40,17 @@ const DataLensViewerMixin = {
                 requestData.sort_order = sortOrder;
             }
 
-            // 添加筛选条件
+            // 添加筛选条件（过滤掉无效的空字段名或占位符字段）
             if (filters && Object.keys(filters).length > 0) {
-                requestData.filters = filters;
+                const validFilters = {};
+                for (const [field, cond] of Object.entries(filters)) {
+                    // 跳过空字段名或临时占位符
+                    if (!field || field.startsWith('_new_')) continue;
+                    validFilters[field] = cond;
+                }
+                if (Object.keys(validFilters).length > 0) {
+                    requestData.filters = validFilters;
+                }
             }
 
             const res = await LensApi.getViewData(viewId, requestData);
@@ -143,8 +151,7 @@ const DataLensViewerMixin = {
         return `
             <div class="lens-viewer animate-fade-in">
                 <div class="lens-viewer-header">
-                    <div class="lens-viewer-title-group">
-                        ${this.state.isSingleView ? '' : '<button class="lens-btn-icon lens-tab-hub" title="返回首页">🏠</button>'}
+                    ${this.state.isSingleView ? '' : `<div class="lens-viewer-title-group">
                         <div class="lens-breadcrumb">
                             <span class="lens-breadcrumb-item">数据透镜</span>
                             ${activeTab.category_name ? `
@@ -155,7 +162,7 @@ const DataLensViewerMixin = {
                             <h2 class="lens-viewer-title">${activeTab.name}</h2>
                             ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}">ℹ️</span>` : ''}
                         </div>
-                    </div>
+                    </div>`}
                     <div class="lens-viewer-toolbar">
                         <div class="lens-mode-selector">
                             <button class="lens-mode-btn ${activeTab.viewMode === 'table' || !activeTab.viewMode ? 'active' : ''}" data-mode="table" title="表格视图">📋 表格</button>
@@ -202,47 +209,47 @@ const DataLensViewerMixin = {
         try {
             if (!tab.data || !tab.data.data || !tab.data.data.length) {
                 return `
-                    <div class="lens-chart-container">
-                        <div class="lens-chart-loading">暂无数据，请尝试调整查询或搜索条件</div>
+    <div class="lens-chart-container">
+        <div class="lens-chart-loading">暂无数据，请尝试调整查询或搜索条件</div>
                     </div>
-                `;
+    `;
             }
 
             // 检查 ECharts 是否已加载
             if (!window.echarts) {
                 return `
-                    <div class="lens-chart-container">
-                        <div class="lens-chart-loading">
-                            <p>图表库未加载</p>
-                            <small>请确认 ECharts 已正确引入</small>
-                        </div>
+    <div class="lens-chart-container">
+        <div class="lens-chart-loading">
+            <p>图表库未加载</p>
+            <small>请确认 ECharts 已正确引入</small>
+        </div>
                     </div>
-                `;
+    `;
             }
 
             const chartConfig = tab.chart_config;
             if (!chartConfig) {
                 return `
-                    <div class="lens-chart-container">
-                        <div class="lens-chart-loading">
-                            <p>该视图尚未配置图表展示</p>
-                            ${this._hasPermission('datalens:update') ? `<button class="lens-btn lens-btn-primary mt-10" onclick="window.DataLensPageInstance._showVisualSettings(${tab.id})">去配置图表</button>` : ''}
-                        </div>
+    <div class="lens-chart-container">
+        <div class="lens-chart-loading">
+            <p>该视图尚未配置图表展示</p>
+            ${this._hasPermission('datalens:update') ? `<button class="lens-btn lens-btn-primary mt-10" onclick="window.DataLensPageInstance._showVisualSettings(${tab.id})">去配置图表</button>` : ''}
+        </div>
                     </div>
-                `;
+    `;
             }
 
             // 初始化图表需要等到 DOM 挂载后通过 setTimeout 调用 _initChart
             setTimeout(() => this._initChart(tab), 100);
 
             return `
-                <div class="lens-chart-container" id="lens-chart-${tab.id}">
-                    <div class="lens-chart-loading">图表初始化中...</div>
+    <div class="lens-chart-container" id="lens-chart-${tab.id}">
+        <div class="lens-chart-loading">图表初始化中...</div>
                 </div>
-            `;
+    `;
         } catch (e) {
             console.error('渲染图表视图失败:', e);
-            return `<div class="lens-error">图表视图渲染失败: ${e.message || '未知错误'}</div>`;
+            return `<div class="lens-error"> 图表视图渲染失败: ${e.message || '未知错误'}</div> `;
         }
     },
 
@@ -466,7 +473,7 @@ const DataLensViewerMixin = {
 
         } catch (e) {
             console.error('渲染图表失败:', e);
-            container.innerHTML = `<div class="lens-error">图表渲染失败: ${e.message}</div>`;
+            container.innerHTML = `<div class="lens-error"> 图表渲染失败: ${e.message}</div> `;
         }
     },
 
@@ -652,11 +659,11 @@ const DataLensViewerMixin = {
 
     _renderLoading() {
         return `
-            <div class="lens-loading">
+    <div class="lens-loading">
                 <div class="loading-spinner"></div>
                 <div class="loading-text">数据加载中...</div>
             </div>
-        `;
+    `;
     },
 
     /**
@@ -683,7 +690,7 @@ const DataLensViewerMixin = {
         ];
 
         return `
-            <div class="lens-filter-panel animate-slide-down">
+    <div class="lens-filter-panel animate-slide-down">
                 <div class="lens-panel-header">
                     <h4>🔽 数据筛选</h4>
                     <button class="lens-btn-icon lens-filter-close">✕</button>
@@ -720,7 +727,7 @@ const DataLensViewerMixin = {
                     </div>
                 </div>
             </div>
-        `;
+    `;
     },
 
     /**
@@ -733,7 +740,7 @@ const DataLensViewerMixin = {
         const sorts = tab.sorts || [];
 
         return `
-            <div class="lens-sort-panel animate-slide-down">
+    <div class="lens-sort-panel animate-slide-down">
                 <div class="lens-panel-header">
                     <h4>↕️ 多字段排序</h4>
                     <button class="lens-btn-icon lens-sort-close">✕</button>
@@ -766,7 +773,7 @@ const DataLensViewerMixin = {
                     </div>
                 </div>
             </div>
-        `;
+    `;
     },
 
     /**
@@ -778,6 +785,20 @@ const DataLensViewerMixin = {
         if (tabIndex === -1) return;
 
         const tab = openTabs[tabIndex];
+
+        // 如果是打开面板且当前没有筛选条件，默认添加一行空条件
+        if (!tab.showFilterPanel) {
+            if (!tab.filters || Object.keys(tab.filters).length === 0) {
+                tab.filters = { '': { op: 'eq', value: '' } };
+            }
+        } else {
+            // 关闭面板时，清空筛选条件并重新加载数据
+            tab.filters = {};
+            this._loadViewData(
+                tab.id, 1, tab.pageSize || 20, tab.search || '',
+                tab.sortField, tab.sortOrder, tab.sorts, {}
+            );
+        }
 
         // 切换显示状态（不再在关闭时自动清空，由用户点击“清空”按钮决定）
         tab.showFilterPanel = !tab.showFilterPanel;

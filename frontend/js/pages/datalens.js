@@ -7,10 +7,10 @@
  * DataLens 主页面
  */
 class DataLensPage extends Component {
-    constructor(container, props) {
+    constructor(container, viewId) {
         super(container);
-        // 是否处于独立视图模式（由开始菜单快捷方式打开）
-        const singleViewId = props && props[0] ? parseInt(props[0]) : null;
+        // 是否处于独立视图模式（由独立窗口或路由打开）
+        const singleViewId = viewId ? parseInt(viewId) : null;
 
         this.state = {
             // 当前模式：hub（首页）、viewer（浏览）
@@ -31,7 +31,7 @@ class DataLensPage extends Component {
             openTabs: [],
             activeTabId: null,
             // 加载状态
-            loading: false
+            loading: !!singleViewId
         };
 
         // 单例引用，供外部或弹窗调用
@@ -72,6 +72,8 @@ class DataLensPage extends Component {
             }
         } catch (e) {
             console.error('打开视图失败:', e);
+            this.setState({ loading: false });
+            Toast.error('视图加载失败: ' + e.message);
         }
     }
 
@@ -138,7 +140,7 @@ class DataLensPage extends Component {
             ...view,
             viewMode: 'table', // 默认表格
             data: null,
-            loading: false,
+            loading: true, // 初始为加载中状态
             page: 1,
             pageSize: 20,
             search: '',
@@ -150,14 +152,16 @@ class DataLensPage extends Component {
             showSortPanel: false     // 排序面板显示状态
         };
 
+        // 更新状态，关闭全局 loading，添加新标签页
         this.setState({
             mode: 'viewer',
+            loading: false,
             openTabs: [...openTabs, newTab],
             activeTabId: view.id
         });
 
-        // 加载数据
-        this._loadViewData(view.id);
+        // 加载数据 —— 使用 setTimeout 确保状态已完全更新
+        setTimeout(() => this._loadViewData(view.id), 0);
     }
 
     _closeTab(tabId) {
@@ -292,8 +296,6 @@ class DataLensPage extends Component {
         this.delegate('click', '#lens-manage-categories', () => this._showCategoryManager());
         this.delegate('click', '#lens-create-view', () => this._showViewEditor());
 
-        // Viewer 事件
-        this.delegate('click', '.lens-tab-hub', () => this.setState({ mode: 'hub' }));
 
         // Viewer 刷新
         this.delegate('click', '.lens-refresh-btn', () => {
@@ -386,16 +388,6 @@ class DataLensPage extends Component {
         this.delegate('click', '.lens-filter-remove', (e, el) => {
             const row = el.closest('.lens-filter-row');
             if (row) row.remove();
-        });
-
-        // 移除 Viewer 中的返回首页按钮事件（因为单视图模式已隐藏该按钮，且架构已改为多窗口）
-        this.delegate('click', '.lens-tab-hub', () => {
-            if (this.state.isSingleView) {
-                // 如果在独立窗口点击返回（假设未来有此需求），则关闭窗口
-                if (typeof WindowManager !== 'undefined') WindowManager.close(this.windowId);
-            } else {
-                this.setState({ mode: 'hub' });
-            }
         });
 
         // 排序面板事件

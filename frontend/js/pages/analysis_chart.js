@@ -131,6 +131,9 @@ const AnalysisChartMixin = {
                         <button class="btn btn-primary w-100" id="btn-generate-chart">
                             🎨 生成图表
                         </button>
+                        <button class="btn btn-outline-primary w-100 mt-10" id="btn-save-chart">
+                            💾 保存图表
+                        </button>
                     </div>
                     
                     <!-- 图表展示区 -->
@@ -665,6 +668,63 @@ const AnalysisChartMixin = {
     },
 
     /**
+     * 保存当前图表配置
+     */
+    async saveJsonChart() {
+        const datasetId = document.getElementById('chart-dataset')?.value;
+        const xField = document.getElementById('chart-x-field')?.value;
+        const yField = document.getElementById('chart-y-field')?.value;
+        const aggregate = document.getElementById('chart-aggregate')?.value;
+        const { chartType } = this.state;
+        const forecastSteps = document.getElementById('forecast-steps')?.value;
+
+        if (!datasetId) return Toast.error('请先生成图表');
+
+        const config = {
+            xField,
+            yField,
+            aggregate,
+            forecastSteps,
+            // 如果是多选字段（热力图）特殊处理
+            xFields: xField && document.getElementById('chart-x-field').multiple ?
+                Array.from(document.getElementById('chart-x-field').selectedOptions).map(o => o.value) : undefined
+        };
+
+        Modal.show({
+            title: '保存图表',
+            content: `
+                <div class="form-group">
+                    <label>图表名称</label>
+                    <input type="text" id="save-chart-name" class="form-control" placeholder="请输入图表名称">
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="save-chart-desc" class="form-control" rows="3"></textarea>
+                </div>
+            `,
+            onConfirm: async () => {
+                const name = document.getElementById('save-chart-name').value;
+                const description = document.getElementById('save-chart-desc').value;
+                if (!name) return Toast.error('请输入名称');
+
+                try {
+                    await AnalysisApi.createChart({
+                        name,
+                        dataset_id: parseInt(datasetId),
+                        chart_type: chartType,
+                        config,
+                        description
+                    });
+                    Toast.success('图表保存成功');
+                    return true;
+                } catch (e) {
+                    Toast.error('保存失败: ' + e.message);
+                }
+            }
+        });
+    },
+
+    /**
      * 绑定图表相关事件
      */
     bindChartEvents() {
@@ -684,6 +744,11 @@ const AnalysisChartMixin = {
         // 生成图表按钮
         this.delegate('click', '#btn-generate-chart', () => {
             this.generateChart();
+        });
+
+        // 保存图表按钮
+        this.delegate('click', '#btn-save-chart', () => {
+            this.saveJsonChart();
         });
 
         // 数据集选择变化时更新字段

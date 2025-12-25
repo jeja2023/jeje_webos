@@ -1,5 +1,35 @@
 /* 数据分析模块专属样式 (核心布局与通用组件) */
 
+/* 官方公文标准字体定义 */
+@font-face {
+    font-family: 'FZXiaoBiaoSong-B05S';
+    src: url('/static/fonts/FZXiaoBiaoSong-B05S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZFangSong-Z02S';
+    src: url('/static/fonts/FZFangSong-Z02S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZKai-Z03S';
+    src: url('/static/fonts/FZKai-Z03S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZHei-B01S';
+    src: url('/static/fonts/FZHei-B01S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
 .analysis-container {
     display: flex;
     height: 100%;
