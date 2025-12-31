@@ -219,6 +219,45 @@ class DockComponent extends Component {
         this.setState({ categories });
     }
 
+    // 获取应用对应的图标配置（同步设计规约）
+    _getIconSpec(id, defaultIcon = '📦') {
+        const iconMap = {
+            'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
+            'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
+            'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
+            'announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
+            'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
+            'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
+            'datalens': { ri: 'ri-database-2-line', gradient: 'gradient-violet' },
+            'monitor': { ri: 'ri-dashboard-2-line', gradient: 'gradient-rose' },
+            'system': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+            'backup': { ri: 'ri-history-line', gradient: 'gradient-slate' },
+            'theme_editor': { ri: 'ri-palette-line', gradient: 'gradient-pink' },
+            'sys_manage': { ri: 'ri-settings-3-line', gradient: 'gradient-green' },
+            'sys_market': { ri: 'ri-store-2-line', gradient: 'gradient-amber' },
+            'sys_dev': { ri: 'ri-code-s-slash-line', gradient: 'gradient-emerald' },
+            'market': { ri: 'ri-apps-2-line', gradient: 'gradient-blue' },
+            'transfer': { ri: 'ri-share-forward-line', gradient: 'gradient-cyan' },
+            'message': { ri: 'ri-message-3-line', gradient: 'gradient-indigo' },
+            'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
+            'sys_announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'sys_users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
+            'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+        };
+
+        return iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
+    }
+
+    // 渲染图标 HTML 辅助函数
+    _renderIcon(id, defaultIcon) {
+        const spec = this._getIconSpec(id, defaultIcon);
+        if (spec.ri) {
+            return `<div class="dock-icon-wrapper ${spec.gradient}"><i class="${spec.ri}"></i></div>`;
+        }
+        return `<div class="dock-icon-wrapper">${spec.emoji}</div>`;
+    }
+
     // 根据模块构建 Dock 项
     buildDockItem(module, isAdmin, user) {
         const menuConfig = {
@@ -318,7 +357,7 @@ class DockComponent extends Component {
                 <div class="dock ${hasMaximized ? 'auto-hide' : ''}">
                     <!-- 开始按钮 -->
                     <div class="dock-item" id="dock-launcher" title="开始">
-                        <span class="dock-icon">🚀</span>
+                        <span class="dock-icon">${this._renderIcon('launcher', '🚀')}</span>
                         <div class="dock-tooltip">开始</div>
                     </div>
                     
@@ -333,7 +372,7 @@ class DockComponent extends Component {
                     <div class="dock-item ${isAppsActive ? 'active' : ''}" 
                          onclick="Router.push('/apps')" 
                          title="应用中心">
-                        <span class="dock-icon">🏪</span>
+                        <span class="dock-icon">${this._renderIcon('market', '🏪')}</span>
                         <div class="dock-tooltip">应用中心</div>
                     </div>
                 </div>
@@ -371,7 +410,7 @@ class DockComponent extends Component {
                 <div class="dock-item ${isActive ? 'active' : ''}" 
                      onclick="Router.push('${category.path}')" 
                      title="${category.title}">
-                    <span class="dock-icon">${category.icon}</span>
+                    <span class="dock-icon">${this._renderIcon(category.id, category.icon)}</span>
                     <div class="dock-tooltip">${category.title}</div>
                 </div>
             `;

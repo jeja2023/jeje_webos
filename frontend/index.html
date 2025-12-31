@@ -13,23 +13,29 @@
     <link rel="stylesheet" href="/static/css/core/reset.css">
     <link rel="stylesheet" href="/static/css/core/utils.css">
     <link rel="stylesheet" href="/static/css/core/mobile.css">
+    <link rel="stylesheet" href="/static/css/core/button.css">
+    <link rel="stylesheet" href="/static/css/core/card.css">
+    <link rel="stylesheet" href="/static/css/core/form.css">
+    <link rel="stylesheet" href="/static/css/core/table.css">
+    <link rel="stylesheet" href="/static/css/core/tag.css">
+    <link rel="stylesheet" href="/static/css/core/pagination.css">
+    <link rel="stylesheet" href="/static/libs/remixicon/remixicon.css">
 
     <!-- 组件样式 -->
-    <link rel="stylesheet" href="/static/css/components/button.css">
-    <link rel="stylesheet" href="/static/css/components/card.css">
-    <link rel="stylesheet" href="/static/css/components/form.css">
-    <link rel="stylesheet" href="/static/css/components/table.css">
-    <link rel="stylesheet" href="/static/css/components/tag.css">
     <link rel="stylesheet" href="/static/css/components/modal.css">
     <link rel="stylesheet" href="/static/css/components/toast.css">
-    <link rel="stylesheet" href="/static/css/components/pagination.css">
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
     <link rel="stylesheet" href="/static/css/components/header.css">
     <link rel="stylesheet" href="/static/css/components/spotlight.css">
     <link rel="stylesheet" href="/static/css/components/shortcuts_help.css">
+    <link rel="stylesheet" href="/static/css/components/data_tools.css">
+    <link rel="stylesheet" href="/static/css/components/dock.css">
+    <link rel="stylesheet" href="/static/css/components/topbar.css">
+    <link rel="stylesheet" href="/static/css/components/start_menu.css">
 
     <!-- 页面样式 -->
     <link rel="stylesheet" href="/static/css/pages/layout.css">
+    <link rel="stylesheet" href="/static/css/pages/desktop.css">
     <link rel="stylesheet" href="/static/css/pages/login.css">
     <link rel="stylesheet" href="/static/css/pages/blog.css">
     <link rel="stylesheet" href="/static/css/pages/notes.css">
@@ -40,17 +46,41 @@
     <link rel="stylesheet" href="/static/css/pages/theme_editor.css">
     <link rel="stylesheet" href="/static/css/pages/filemanager.css">
     <link rel="stylesheet" href="/static/css/pages/transfer.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_sql.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_bi.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_import.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_modeling.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_chart.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis_compare.css">
-    <link rel="stylesheet" href="/static/css/pages/datalens.css">
+    <link rel="stylesheet" href="/static/css/pages/announcement.css">
+    <link rel="stylesheet" href="/static/css/pages/backup.css">
+    <link rel="stylesheet" href="/static/css/pages/feedback.css">
+    <link rel="stylesheet" href="/static/css/pages/market.css">
+    <link rel="stylesheet" href="/static/css/pages/messages.css">
+    <link rel="stylesheet" href="/static/css/pages/monitor.css">
+    <link rel="stylesheet" href="/static/css/pages/profile.css">
+    <link rel="stylesheet" href="/static/css/pages/roles.css">
+    <link rel="stylesheet" href="/static/css/pages/import-export.css">
+
+    <!-- 数据分析模块样式 -->
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_sql.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_bi.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_import.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_modeling.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_chart.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_compare.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_smart_table.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_smart_report.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_cleaning.css">
+
+    <!-- 数据透镜模块样式 -->
+    <link rel="stylesheet" href="/static/css/pages/datalens/datalens.css">
+    <link rel="stylesheet" href="/static/css/pages/datalens/datalens_hub.css">
+    <link rel="stylesheet" href="/static/css/pages/datalens/datalens_viewer.css">
+    <link rel="stylesheet" href="/static/css/pages/datalens/datalens_editor.css">
+    <link rel="stylesheet" href="/static/css/pages/datalens/datalens_api.css">
 
     <!-- 图表库 -->
-    <script src="/static/js/lib/echarts.min.js"></script>
+    <script src="/static/libs/echarts/echarts.min.js"></script>
+
+    <!-- Toast UI Editor (智能报告模块) -->
+    <link rel="stylesheet" href="/static/libs/toastui-editor/toastui-editor.min.css" />
+    <script src="/static/libs/toastui-editor/toastui-editor-all.min.js"></script>
 
 </head>
 
@@ -69,7 +99,7 @@
     <script src="/static/js/core/store.js"></script>
     <script src="/static/js/core/router.js"></script>
     <script src="/static/js/core/component.js"></script>
-    <script src="/static/js/core/window-manager.js"></script>
+    <script src="/static/js/core/window_manager.js"></script>
     <script src="/static/js/core/websocket.js"></script>
 
     <!-- 组件脚本 -->
@@ -77,6 +107,7 @@
     <script src="/static/js/components/toast.js"></script>
     <script src="/static/js/core/notification.js"></script>
     <script src="/static/js/components/shortcuts_help.js"></script>
+    <script src="/static/js/components/data_tools.js"></script>
 
     <!-- 页面脚本 -->
     <script src="/static/js/pages/login.js"></script>
@@ -96,32 +127,32 @@
     <script src="/static/js/pages/filemanager.js"></script>
     <script src="/static/js/pages/transfer.js"></script>
 
-    <!-- 桌面模式样式 -->
-    <link rel="stylesheet" href="/static/css/pages/desktop.css">
-    <link rel="stylesheet" href="/static/css/components/dock.css">
-    <link rel="stylesheet" href="/static/css/components/topbar.css">
-    <link rel="stylesheet" href="/static/css/components/start_menu.css">
     <script src="/static/js/pages/profile.js"></script>
     <script src="/static/js/pages/help.js"></script>
     <script src="/static/js/pages/market.js"></script>
-    <script src="/static/js/pages/analysis.js"></script>
-    <script src="/static/js/pages/analysis_import.js"></script>
-    <script src="/static/js/pages/analysis_cleaning.js"></script>
-    <script src="/static/js/pages/analysis_modeling.js"></script>
-    <script src="/static/js/pages/analysis_chart.js"></script>
-    <script src="/static/js/pages/analysis_sql.js"></script>
-    <script src="/static/js/pages/analysis_compare.js"></script>
-    <script src="/static/js/pages/analysis_bi.js"></script>
-    <script src="/static/js/pages/analysis_smart_table.js"></script>
-    <script src="/static/js/pages/analysis_smart_report.js"></script>
-    <script src="/static/js/pages/datalens_api.js"></script>
-    <script src="/static/js/pages/datalens.js"></script>
-    <script src="/static/js/pages/datalens_hub.js"></script>
-    <script src="/static/js/pages/datalens_viewer.js"></script>
-    <script src="/static/js/pages/datalens_editor.js"></script>
+
+    <!-- 数据分析模块脚本 -->
+    <script src="/static/js/pages/analysis/analysis.js"></script>
+    <script src="/static/js/pages/analysis/analysis_import.js"></script>
+    <script src="/static/js/pages/analysis/analysis_cleaning.js"></script>
+    <script src="/static/js/pages/analysis/analysis_modeling.js"></script>
+    <script src="/static/js/pages/analysis/analysis_chart.js"></script>
+    <script src="/static/js/pages/analysis/analysis_sql.js"></script>
+    <script src="/static/js/pages/analysis/analysis_compare.js"></script>
+    <script src="/static/js/pages/analysis/analysis_bi.js"></script>
+    <script src="/static/js/pages/analysis/analysis_smart_table.js"></script>
+    <script src="/static/js/pages/analysis/analysis_smart_report.js"></script>
 
 
-    <!-- 新组件 -->
+    <!-- 数据透镜模块脚本 -->
+    <script src="/static/js/pages/datalens/datalens_api.js"></script>
+    <script src="/static/js/pages/datalens/datalens.js"></script>
+    <script src="/static/js/pages/datalens/datalens_hub.js"></script>
+    <script src="/static/js/pages/datalens/datalens_viewer.js"></script>
+    <script src="/static/js/pages/datalens/datalens_editor.js"></script>
+
+
+    <!-- 桌面环境组件 -->
     <script src="/static/js/components/dock.js"></script>
     <script src="/static/js/components/topbar.js"></script>
     <script src="/static/js/components/start_menu.js"></script>
@@ -129,6 +160,7 @@
 
     <!-- 应用入口 -->
     <script src="/static/js/pages/app.js"></script>
+
 </body>
 
 </html>

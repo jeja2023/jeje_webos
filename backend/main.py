@@ -13,6 +13,7 @@ JeJe WebOS - 主入口
 
 import os
 import logging
+import traceback
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +21,6 @@ from fastapi.responses import JSONResponse, FileResponse
 
 # 导入增强版静态文件服务
 from core.static_files import CachedStaticFiles, GzipMiddleware
-
 from core.config import get_settings
 from core.database import init_db, close_db
 from core.bootstrap import init_admin_user
@@ -52,7 +52,6 @@ from sqlalchemy.exc import SAWarning
 warnings.filterwarnings("ignore", category=SAWarning)
 
 settings = get_settings()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -245,8 +244,9 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# 1.5 Gzip 压缩中间件（压缩 JS/CSS/JSON 响应）
+# 1.5 Gzip 压缩中间件
 app.add_middleware(GzipMiddleware, minimum_size=500, compresslevel=6)
+
 
 # 2. 安全响应头中间件
 app.add_middleware(SecurityHeadersMiddleware)
@@ -284,11 +284,11 @@ from fastapi.exceptions import HTTPException as StarletteHTTPException
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """全局异常捕获"""
-    # 如果是 HTTPException，不在这里处理，让 FastAPI 默认处理器处理（保留原来的 detail 结构）
+    # 如果是 HTTPException，不在这里处理，让 FastAPI 默认处理器处理
     if isinstance(exc, StarletteHTTPException):
         raise exc
-        
-    logger.error(f"未处理异常: {exc}", exc_info=True)
+    
+    logger.error(f"未处理异常: {exc}\n路径: {request.url.path}\n方法: {request.method}\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=500,
         content={
@@ -297,6 +297,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "data": None
         }
     )
+
 
 
 # ==================== 加载模块路由 ====================
@@ -362,6 +363,11 @@ def _mount_static_resources(app: FastAPI):
         fonts_path = os.path.join(FRONTEND_PATH, "fonts")
         if os.path.exists(fonts_path):
             app.mount("/static/fonts", CachedStaticFiles(directory=fonts_path), name="fonts")
+        
+        # 挂载 libs（第三方库：CKEditor、ECharts 等）
+        libs_path = os.path.join(FRONTEND_PATH, "libs")
+        if os.path.exists(libs_path):
+            app.mount("/static/libs", CachedStaticFiles(directory=libs_path), name="libs")
 
     # 模块静态资源（挂载到 /static/{module_name}/）
     modules_path = os.path.join(os.path.dirname(__file__), "modules")
@@ -456,15 +462,13 @@ app.add_api_route(
 if __name__ == "__main__":
     import uvicorn
     
-    # 开发模式启用热重载（监控 .py 文件变化自动重启）
-    # 注意：修改 .env 文件后需要手动重启服务生效
-    # uvicorn.run 参数说明:
-    # reload: 仅在 debug 模式下开启
-    # reload_dirs: 仅监控 backend 目录代码变化，忽略 storage, state 等数据的变动
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.debug,
-        reload_dirs=["backend"] if settings.debug else None
+        reload=True,
+        reload_dirs=["backend"]
     )
+
+
+

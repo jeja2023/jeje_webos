@@ -132,6 +132,38 @@ async def upload_file(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
+    # 6. 检查用户存储配额（头像除外，因为头像通常很小）
+    if category != "avatar":
+        from sqlalchemy import func, select
+        from models.account import User
+        from models.storage import FileRecord as StorageFileRecord
+        
+        # 获取用户信息
+        user_result = await db.execute(select(User).where(User.id == current_user.user_id))
+        user = user_result.scalar_one_or_none()
+        
+        if user and user.storage_quota is not None:
+            # 计算当前已使用空间（包括 storage 和 filemanager 的文件）
+            # 注意：这里只统计 storage 模块的文件，filemanager 的文件单独统计
+            size_result = await db.execute(
+                select(func.coalesce(func.sum(StorageFileRecord.file_size), 0))
+                .select_from(StorageFileRecord)
+                .where(StorageFileRecord.uploader_id == current_user.user_id)
+            )
+            current_size = size_result.scalar_one()
+            
+            # 检查是否超过配额
+            if current_size + file_size > user.storage_quota:
+                used_mb = current_size / 1024 / 1024
+                quota_mb = user.storage_quota / 1024 / 1024
+                file_mb = file_size / 1024 / 1024
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"存储空间不足：当前已使用 {used_mb:.2f}MB / {quota_mb:.2f}MB，"
+                           f"本次上传需要 {file_mb:.2f}MB，超出配额限制。"
+                           f"请删除部分文件或联系管理员增加配额。"
+                )
+    
     # 如果是头像，额外检查是否为图片
     if category == "avatar":
         if not (file.content_type and file.content_type.startswith("image/")):

@@ -1,0 +1,67 @@
+/**
+ * 公告管理页面样式
+ */
+
+.announcement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.announcement-item {
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.announcement-item:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.announcement-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 16px;
+}
+
+/* 公告详情 */
+.announcement-view {
+    padding: 24px;
+    background: var(--bg-primary);
+}
+
+.announcement-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.announcement-content {
+    line-height: 1.8;
+    font-size: 15px;
+    color: var(--text-primary);
+}
+
+/* 状态样式 */
+.announcement-unread {
+    border-left: 4px solid var(--color-primary);
+}
+
+.announcement-important {
+    border-left: 4px solid var(--color-error);
+}

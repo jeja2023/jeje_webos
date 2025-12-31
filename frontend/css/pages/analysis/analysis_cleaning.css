@@ -1,0 +1,68 @@
+/* ==================== 数据清洗样式 ==================== */
+
+.cleaning-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    align-items: start;
+    height: calc(100vh - 160px);
+}
+
+.cleaning-config-container {
+    background: var(--color-bg-primary);
+    padding: 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    border: 1px solid var(--color-border);
+    height: 100%;
+    overflow-y: auto;
+}
+
+.cleaning-preview {
+    background: var(--color-bg-primary);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cleaning-rule-box {
+    background: var(--color-bg-secondary);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px dashed var(--color-border);
+}
+
+.task-list-container {
+    max-height: 150px;
+    overflow-y: auto;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 4px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 11px;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.clean-result-card {
+    margin-top: 15px;
+    padding: 12px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    font-size: 12px;
+    border-left: 3px solid var(--color-info);
+}

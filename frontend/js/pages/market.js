@@ -256,6 +256,35 @@ class AppCenterMarketPage extends Component {
         });
     }
 
+    // 获取应用对应的图标类
+    _getIconSpec(item) {
+        const iconMap = {
+            'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
+            'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
+            'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
+            'announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
+            'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
+            'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
+            'datalens': { ri: 'ri-database-2-line', gradient: 'gradient-violet' },
+            'monitor': { ri: 'ri-dashboard-2-line', gradient: 'gradient-rose' },
+            'system': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+            'backup': { ri: 'ri-history-line', gradient: 'gradient-slate' },
+            'theme_editor': { ri: 'ri-palette-line', gradient: 'gradient-pink' },
+            'sys_manage': { ri: 'ri-settings-3-line', gradient: 'gradient-green' },
+            'sys_market': { ri: 'ri-store-2-line', gradient: 'gradient-amber' },
+            'sys_dev': { ri: 'ri-code-s-slash-line', gradient: 'gradient-emerald' },
+            'market': { ri: 'ri-apps-2-line', gradient: 'gradient-blue' },
+            'transfer': { ri: 'ri-share-forward-line', gradient: 'gradient-cyan' },
+            'messages': { ri: 'ri-message-3-line', gradient: 'gradient-indigo' },
+            'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
+            'profile': { ri: 'ri-user-settings-line', gradient: 'gradient-sky' },
+            'help': { ri: 'ri-help-circle-line', gradient: 'gradient-blue' },
+        };
+
+        return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || '📦' };
+    }
+
     // 渲染主页：应用图标网格
     renderHome() {
         const { modules } = this.state;
@@ -280,12 +309,12 @@ class AppCenterMarketPage extends Component {
                 <div class="apps-grid">
                     ${allItems.map(item => {
             const isSystem = item.isSystem;
-            // feedback 已移除系统应用限制，现在由用户自由选择是否固定
-            const isSystemApp = ['announcement'].includes(item.id);  // 系统应用
+            const isSystemApp = ['announcement'].includes(item.id);
             const children = !isSystem ? this.getChildLinks(item) : null;
             const hasChildren = children && children.length > 0;
             const entryPath = !isSystem && !hasChildren ? this.getAppEntryPath(item) : null;
             const isPinned = !isSystem && (isSystemApp || pinnedApps.includes(item.id));
+            const iconSpec = this._getIconSpec(item);
 
             return `
                             <div class="app-card-wrapper" data-id="${item.id}" ${hasChildren ? 'data-has-popup="true"' : ''}>
@@ -293,19 +322,19 @@ class AppCenterMarketPage extends Component {
                                      ${isSystem ? `data-view-target="${item.viewTarget}"` : ''}
                                      ${entryPath ? `data-app-path="${entryPath}"` : ''}
                                      ${hasChildren ? `data-toggle-popup="${item.id}"` : ''}>
-                                    <div class="app-icon-large" style="${isSystem ? 'background: var(--color-bg-tertiary); box-shadow:none; border: 1px solid var(--color-border);' : ''}">
-                                        ${item.icon || '📦'}
+                                    <div class="app-icon-box ${iconSpec.gradient}">
+                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
                                     </div>
                                     <div class="app-name">${Utils.escapeHtml(item.name)}</div>
                                     ${!isSystem ? (isSystemApp ? `
-                                        <div class="pin-btn pinned system-pinned" title="系统应用，始终固定">
-                                            🔒
+                                        <div class="pin-status system-pinned" title="系统应用，始终固定">
+                                            <i class="ri-lock-line"></i>
                                         </div>
                                     ` : `
-                                        <button class="pin-btn ${isPinned ? 'pinned' : ''}" 
+                                        <button class="pin-status ${isPinned ? 'pinned' : ''}" 
                                                 data-pin-app="${item.id}" 
                                                 title="${isPinned ? '从 Dock 取消固定' : '固定到 Dock'}">
-                                            ${isPinned ? '📌' : '📍'}
+                                            <i class="${isPinned ? 'ri-pushpin-2-fill' : 'ri-pushpin-2-line'}"></i>
                                         </button>
                                     `) : ''}
                                 </div>
@@ -349,11 +378,15 @@ class AppCenterMarketPage extends Component {
             <div class="sub-page fade-in">
                 ${this.renderHeader('应用管理')}
                 <div class="card-grid">
-                    ${modules.map(m => `
+                    ${modules.map(m => {
+            const iconSpec = this._getIconSpec(m);
+            return `
                         <div class="card module-card ${!m.enabled ? 'disabled' : ''}">
                             <div class="card-body">
                                 <div class="module-header">
-                                    <div class="module-icon">${m.icon || '📦'}</div>
+                                    <div class="module-icon-box ${iconSpec.gradient}">
+                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                    </div>
                                     <div class="module-info">
                                         <h3 class="module-title">
                                             ${Utils.escapeHtml(m.name)}
@@ -370,7 +403,8 @@ class AppCenterMarketPage extends Component {
                                 <p class="module-desc">${Utils.escapeHtml(m.description || '暂无描述')}</p>
                             </div>
                         </div>
-                    `).join('')}
+                    `;
+        }).join('')}
                 </div>
             </div>
         `;
@@ -398,11 +432,15 @@ class AppCenterMarketPage extends Component {
                 ${availableModules.length > 0 ? `
                     <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">📦 可安装的应用</h3>
                     <div class="card-grid" style="margin-bottom: 32px;">
-                        ${availableModules.map(app => `
+                        ${availableModules.map(app => {
+            const iconSpec = this._getIconSpec(app);
+            return `
                             <div class="card">
                                 <div class="card-body">
                                     <div class="module-header">
-                                        <div class="module-icon" style="background: var(--color-bg-tertiary);">${app.icon || '📦'}</div>
+                                        <div class="module-icon-box ${iconSpec.gradient}">
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
@@ -419,18 +457,23 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `;
+        }).join('')}
                     </div>
                 ` : ''}
 
                 ${installedModules.length > 0 ? `
                     <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">✅ 已安装的应用</h3>
                     <div class="card-grid">
-                        ${installedModules.map(app => `
+                        ${installedModules.map(app => {
+            const iconSpec = this._getIconSpec(app);
+            return `
                             <div class="card">
                                 <div class="card-body">
                                     <div class="module-header">
-                                        <div class="module-icon">${app.icon || '📦'}</div>
+                                        <div class="module-icon-box ${iconSpec.gradient}">
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
@@ -452,7 +495,8 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `;
+        }).join('')}
                     </div>
                 ` : ''}
 

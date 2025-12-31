@@ -22,10 +22,11 @@ class BackupManager:
     """备份管理器"""
     
     def __init__(self):
-        # 统一使用 upload_dir 上级作为存储根，避免工作目录差异
-        self.storage_root = Path(settings.upload_dir).resolve().parent
-        self.backup_dir = self.storage_root / "backups"
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        # 使用统一的 StorageManager 获取系统备份目录
+        from utils.storage import get_storage_manager
+        self.storage = get_storage_manager()
+        self.backup_dir = self.storage.get_system_dir("backups")
+        
         # 分类子目录：数据库和文件
         (self.backup_dir / "db").mkdir(parents=True, exist_ok=True)
         (self.backup_dir / "files").mkdir(parents=True, exist_ok=True)

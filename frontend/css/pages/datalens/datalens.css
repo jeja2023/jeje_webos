@@ -1,0 +1,324 @@
+/**
+ * DataLens 数据透镜模块基础样式
+ * 系统的万能视窗容器
+ */
+
+.lens-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.lens-page.single-view-mode {
+    border-radius: 0;
+}
+
+.lens-page.single-view-mode .lens-header {
+    display: none;
+}
+
+.lens-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 顶部标签栏 */
+.lens-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    height: 52px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lens-app-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 通用按钮系统 */
+.lens-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.lens-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.lens-btn:active {
+    transform: translateY(1px);
+}
+
+.lens-btn-primary {
+    background: var(--color-primary);
+    color: #fff !important;
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.lens-btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    box-shadow: 0 6px 16px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.lens-btn-outline {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.lens-btn-outline:hover {
+    background: rgba(var(--color-primary-rgb), 0.05);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.lens-btn-danger {
+    background: var(--color-error);
+    color: #fff !important;
+    border-color: var(--color-error);
+}
+
+.lens-btn-danger:hover {
+    background: #ff5c5c;
+    border-color: #ff5c5c;
+    box-shadow: 0 4px 12px rgba(var(--color-error-rgb), 0.2);
+}
+
+.lens-btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.lens-btn-xs {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+}
+
+.lens-btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.lens-btn-icon:hover {
+    background: var(--bg-hover);
+    color: var(--color-primary);
+}
+
+/* 模式选择器 (通用) */
+.lens-mode-selector {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-tertiary);
+    padding: 4px;
+    border-radius: 8px;
+    width: fit-content;
+}
+
+.lens-mode-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lens-mode-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.lens-mode-btn.active {
+    background: var(--color-primary);
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* 状态高亮 (通用) */
+.has-filter,
+.has-sort {
+    background: rgba(var(--color-primary-rgb), 0.1) !important;
+    color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+}
+
+/* 加载动画 */
+.lens-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 16px;
+    color: var(--text-muted);
+}
+
+.loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: lens-spin 1s linear infinite;
+}
+
+@keyframes lens-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 动画效果 */
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-down {
+    animation: slideDown 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 自定义滚动条美化 */
+.lens-hub-content::-webkit-scrollbar,
+.lens-sidebar::-webkit-scrollbar,
+.lens-table-wrapper::-webkit-scrollbar,
+.lens-editor::-webkit-scrollbar,
+.lens-columns-grid::-webkit-scrollbar,
+.lens-icon-picker::-webkit-scrollbar,
+.lens-field-groups-container::-webkit-scrollbar,
+.lens-filter-list::-webkit-scrollbar,
+.lens-sort-list::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.lens-hub-content::-webkit-scrollbar-track,
+.lens-sidebar::-webkit-scrollbar-track,
+.lens-table-wrapper::-webkit-scrollbar-track,
+.lens-editor::-webkit-scrollbar-track,
+.lens-columns-grid::-webkit-scrollbar-track,
+.lens-icon-picker::-webkit-scrollbar-track,
+.lens-field-groups-container::-webkit-scrollbar-track,
+.lens-filter-list::-webkit-scrollbar-track,
+.lens-sort-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.lens-hub-content::-webkit-scrollbar-thumb,
+.lens-sidebar::-webkit-scrollbar-thumb,
+.lens-table-wrapper::-webkit-scrollbar-thumb,
+.lens-editor::-webkit-scrollbar-thumb,
+.lens-columns-grid::-webkit-scrollbar-thumb,
+.lens-icon-picker::-webkit-scrollbar-thumb,
+.lens-field-groups-container::-webkit-scrollbar-thumb,
+.lens-filter-list::-webkit-scrollbar-thumb,
+.lens-sort-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .lens-hub-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-sidebar::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-table-wrapper::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-editor::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-columns-grid::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-icon-picker::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-field-groups-container::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-filter-list::-webkit-scrollbar-thumb,
+[data-theme="dark"] .lens-sort-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.lens-hub-content::-webkit-scrollbar-thumb:hover,
+.lens-sidebar::-webkit-scrollbar-thumb:hover,
+.lens-table-wrapper::-webkit-scrollbar-thumb:hover,
+.lens-editor::-webkit-scrollbar-thumb:hover,
+.lens-columns-grid::-webkit-scrollbar-thumb:hover,
+.lens-icon-picker::-webkit-scrollbar-thumb:hover,
+.lens-field-groups-container::-webkit-scrollbar-thumb:hover,
+.lens-filter-list::-webkit-scrollbar-thumb:hover,
+.lens-sort-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--color-primary-rgb), 0.5);
+}

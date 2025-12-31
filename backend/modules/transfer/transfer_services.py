@@ -39,16 +39,10 @@ class TransferConfig:
     @classmethod
     def get_temp_dir(cls) -> Path:
         """获取临时文件目录"""
-        # 使用配置的 upload_dir 作为基础路径
-        base_dir = Path(settings.upload_dir)
-        if not base_dir.is_absolute():
-            # 如果是相对路径，相对于项目根目录（backend 的父目录）
-            from core.config import BACKEND_DIR
-            project_root = BACKEND_DIR.parent
-            base_dir = project_root / base_dir
-        
-        temp_dir = base_dir / "transfer_temp"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        # 使用统一的 StorageManager 获取系统临时目录
+        from utils.storage import get_storage_manager
+        storage = get_storage_manager()
+        temp_dir = storage.get_system_dir("transfer_temp")
         return temp_dir
 
 

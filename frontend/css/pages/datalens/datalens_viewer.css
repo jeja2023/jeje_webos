@@ -1,0 +1,544 @@
+/**
+ * DataLens Viewer 模块样式 - 数据查看与展示
+ */
+
+.lens-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-primary);
+}
+
+.lens-viewer-header {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    gap: 16px;
+}
+
+.lens-viewer-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lens-viewer-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.lens-viewer-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: help;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    margin-left: 8px;
+}
+
+.lens-viewer-desc:hover {
+    opacity: 1;
+}
+
+.lens-viewer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* 面包屑导航 */
+.lens-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.lens-breadcrumb-item {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lens-breadcrumb-item:hover {
+    color: var(--color-primary);
+}
+
+.lens-breadcrumb-separator {
+    opacity: 0.3;
+    font-size: 10px;
+}
+
+.lens-viewer-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px;
+}
+
+/* 数据表格容器 */
+.lens-table-wrapper {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+}
+
+.lens-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.lens-table th,
+.lens-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.lens-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lens-table th[data-field] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.lens-table th[data-field]:hover {
+    background: var(--bg-hover);
+    color: var(--color-primary);
+}
+
+.lens-table tr:hover td {
+    background: var(--bg-hover);
+}
+
+/* 分页 */
+.lens-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.lens-pagination-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.lens-pagination-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.lens-page-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lens-page-btn:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.lens-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 搜索框 */
+.lens-viewer-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.lens-viewer-search input {
+    width: 200px;
+    padding: 8px 32px 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    font-size: 13px;
+    transition: width 0.3s;
+}
+
+.lens-viewer-search input:focus {
+    width: 300px;
+    border-color: var(--color-primary);
+    background: var(--bg-primary);
+}
+
+.lens-search-icon {
+    position: absolute;
+    right: 10px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* 图表容器 */
+.lens-chart-container {
+    flex: 1;
+    min-height: 400px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.lens-chart-loading {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+/* 单元格格式化 */
+.lens-cell-img {
+    max-width: 60px;
+    max-height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.lens-cell-bool {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.lens-cell-bool.true {
+    background: rgba(var(--color-success-rgb), 0.1);
+    color: var(--color-success);
+}
+
+.lens-cell-bool.false {
+    background: rgba(var(--color-error-rgb), 0.1);
+    color: var(--color-error);
+}
+
+.lens-status-badge {
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 筛选与排序面板 - 紧凑行内布局 (参考 data_tools.css) */
+.lens-filter-panel,
+.lens-sort-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 90;
+    min-height: 44px;
+}
+
+/* 面板头部：标题 + 关闭按钮 */
+.lens-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    height: 28px;
+}
+
+.lens-panel-header h4 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+/* 关闭按钮 - 在头部右侧 */
+.lens-filter-close,
+.lens-sort-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.lens-filter-close:hover,
+.lens-sort-close:hover {
+    color: var(--color-danger);
+    background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.15);
+}
+
+/* 列表区域：占据剩余空间，自动换行 */
+.lens-filter-list,
+.lens-sort-list {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 200px;
+    min-height: 28px;
+    align-content: flex-start;
+    align-items: center;
+}
+
+/* 单行条件样式优化 */
+.lens-filter-row,
+.lens-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    flex-shrink: 0;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.lens-filter-row .form-control,
+.lens-sort-row .form-control {
+    padding: 2px 6px;
+    font-size: 11px;
+    height: 26px;
+    width: auto;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.lens-filter-row .form-control:focus,
+.lens-sort-row .form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.lens-filter-field,
+.lens-sort-field {
+    width: 100px;
+    flex: none;
+    font-weight: 500;
+}
+
+.lens-filter-op {
+    width: 80px;
+    flex: none;
+}
+
+.lens-filter-value {
+    width: 100px;
+    flex: none;
+}
+
+.lens-sort-direction {
+    width: 75px;
+    flex: none;
+}
+
+.lens-filter-remove,
+.lens-sort-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.lens-filter-remove:hover,
+.lens-sort-remove:hover {
+    opacity: 1;
+    color: var(--color-danger);
+    background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.1);
+}
+
+.lens-sort-order {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--color-primary);
+    color: #fff;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 面板操作区 - 靠右对齐 */
+.lens-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 12px;
+    height: 28px;
+    margin-left: auto;
+}
+
+.lens-panel-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+/* 浅色主题适配 */
+[data-theme="light"] .lens-filter-panel,
+[data-theme="light"] .lens-sort-panel {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .lens-panel-header,
+[data-theme="light"] .lens-panel-actions {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .lens-filter-row,
+[data-theme="light"] .lens-sort-row {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .lens-filter-row .form-control,
+[data-theme="light"] .lens-sort-row .form-control {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #333;
+}
+
+/* 状态徽章增强 */
+.lens-filter-badge {
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+/* 搜索框增强 */
+.lens-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.lens-viewer-search-input {
+    min-width: 180px;
+    padding: 8px 32px 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.lens-viewer-search-input:focus {
+    width: 260px;
+    border-color: var(--color-primary);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.lens-search-box .lens-search-icon {
+    position: absolute;
+    right: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.lens-search-clear {
+    position: absolute;
+    right: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    font-size: 12px;
+}
+
+.lens-search-clear:hover {
+    color: var(--color-error);
+}
+
+/* 状态颜色标签 */
+.lens-status-success {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.lens-status-warning {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.lens-status-danger {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.lens-status-info {
+    color: #3b82f6;
+    font-weight: 600;
+}

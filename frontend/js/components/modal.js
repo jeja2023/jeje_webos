@@ -152,8 +152,16 @@ class Modal {
                         confirmBtn.innerText = '处理中...';
 
                         const shouldClose = await this.options.onConfirm();
-                        if (shouldClose !== false) this.close();
+                        if (shouldClose !== false) {
+                            this.close();
+                        } else {
+                            // 如果返回 false，说明验证失败，恢复按钮状态
+                            confirmBtn.classList.remove('loading');
+                            confirmBtn.disabled = false;
+                            confirmBtn.innerText = originalText;
+                        }
                     } catch (e) {
+
                         console.error(e);
                         // 显示错误提示
                         const msg = e.message || e.toString();

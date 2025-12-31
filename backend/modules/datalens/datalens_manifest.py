@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 # 生命周期钩子
 async def on_install():
     """模块安装时执行"""
-    logger.info("DataLens 数据透镜模块正在安装...")
+    pass
 
 
 async def on_enable():
     """模块启用时执行"""
-    logger.info("DataLens 数据透镜模块已启用")
+    pass
 
 
 async def on_disable():
     """模块禁用时执行"""
-    logger.info("DataLens 数据透镜模块已禁用")
+    pass
 
 
 # 模块清单

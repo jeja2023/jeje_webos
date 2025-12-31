@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, Form
+from fastapi.responses import StreamingResponse, FileResponse
 import uuid
+import json
+import logging
 import pandas as pd
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,8 +12,21 @@ from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission
 from schemas.response import success, error
 from .analysis_schemas import (
-    DatasetResponse, ImportFileRequest, 
-    ImportDatabaseRequest, DbTablesRequest, CompareRequest
+    DatasetCreate, DatasetUpdate, DatasetResponse,
+    ImportFileRequest, ImportDatabaseRequest, DbTablesRequest,
+    CompareRequest, CleaningRequest,
+    ModelingSummaryRequest, ModelingCorrelationRequest, ModelingAggregateRequest,
+    ModelingSqlRequest,
+    ModelCreate, ModelUpdate, ModelResponse, ModelSaveGraphRequest,
+    ETLExecuteNodeRequest, ETLPreviewNodeRequest,
+    DashboardCreate, DashboardUpdate, DashboardResponse,
+    SmartTableCreate, SmartTableUpdate, SmartTableResponse,
+    SmartTableDataRow, SmartTableDataUpdate,
+    SmartReportCreate, SmartReportUpdate, SmartReportResponse,
+    SmartReportUpdateContentRequest,
+    AnalysisChartCreate, AnalysisChartUpdate, AnalysisChartResponse,
+    SmartReportRecordCreate, SmartReportRecordResponse,
+    GenerateReportRequest
 )
 from .analysis_import_service import ImportService
 from .analysis_compare_service import CompareService
@@ -19,28 +34,15 @@ from .analysis_cleaning_service import CleaningService
 from .analysis_modeling_service import ModelingService
 from .analysis_duckdb_service import duckdb_instance
 from .analysis_models import AnalysisDataset
-from .analysis_schemas import (
-    DatasetResponse, ImportFileRequest, 
-    ImportDatabaseRequest, CompareRequest,
-    CleaningRequest, ModelingSummaryRequest,
-    ModelingCorrelationRequest, ModelingAggregateRequest,
-    ModelingSqlRequest,
-    ModelCreate, ModelUpdate, ModelResponse, ModelSaveGraphRequest,
-    ETLExecuteNodeRequest, ETLPreviewNodeRequest,
-    DashboardCreate, DashboardUpdate, DashboardResponse
-)
 from .analysis_bi_service import BIService
 from .analysis_etl_service import ETLExecutionService
 from .analysis_smart_table_service import SmartTableService
 from .analysis_smart_report_service import SmartReportService
 from .analysis_chart_service import AnalysisChartService
-from .analysis_schemas import (
-    SmartTableCreate, SmartTableUpdate, SmartTableResponse,
-    SmartReportCreate, SmartReportUpdate, SmartReportResponse,
-    AnalysisChartCreate, AnalysisChartUpdate, AnalysisChartResponse
-)
 
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -137,10 +139,14 @@ async def get_dataset_data(
     size: int = 50,
     sort: Optional[str] = None, # 格式: field1:asc,field2:desc
     search: Optional[str] = None, # 搜索关键词
+    sorts: Optional[str] = None, # JSON格式的多字段排序 [{field, order}]
+    filters: Optional[str] = None, # JSON格式的筛选条件 {field: {op, value}}
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("analysis:view"))
 ):
-    """获取数据集内容（支持分页、多字段排序、搜索）"""
+    """获取数据集内容（支持分页、多字段排序、搜索、筛选）"""
+    import json
+    
     # 1. 获取表名
     res = await db.execute(select(AnalysisDataset).where(AnalysisDataset.id == dataset_id))
     dataset = res.scalar_one_or_none()
@@ -149,41 +155,106 @@ async def get_dataset_data(
 
     table_name = dataset.table_name
     
+    # 1.5. 检查表是否存在（在查询前检查）
+    try:
+        if not duckdb_instance.table_exists(table_name):
+            return error(f"数据集表不存在，表名: {table_name}。可能数据已被删除，请重新导入数据。")
+    except Exception as e:
+        logger.error(f"检查表存在性失败: {e}")
+        return error(f"无法访问数据集: {str(e)}")
+    
     # 2. 构造排序 SQL
     order_by = ""
-    if sort:
+    # 优先使用 sorts 参数（多字段排序数组）
+    if sorts:
+        try:
+            sorts_list = json.loads(sorts)
+            sort_parts = []
+            for s in sorts_list:
+                field = s.get('field', '')
+                order = s.get('order', 'asc')
+                if field and field.replace('_', '').isalnum():
+                    sort_parts.append(f'"{field}" {order}')
+            if sort_parts:
+                order_by = f"ORDER BY {', '.join(sort_parts)}"
+        except:
+            pass
+    # 回退到旧的 sort 参数
+    elif sort:
         sort_parts = []
         for part in sort.split(','):
             field, order = part.split(':') if ':' in part else (part, 'asc')
-            # 简单防注入：检查字段名是否只含字母数字下划线
             if field.replace('_', '').isalnum():
                 sort_parts.append(f'"{field}" {order}')
         if sort_parts:
             order_by = f"ORDER BY {', '.join(sort_parts)}"
 
-    # 3. 构造搜索条件
-    where_clause = ""
+    # 3. 构造筛选条件
+    where_conditions = []
+    
+    # 解析 filters 参数
+    if filters:
+        try:
+            filters_dict = json.loads(filters)
+            for field, cond in filters_dict.items():
+                if not field or not field.replace('_', '').isalnum():
+                    continue
+                    
+                op = cond.get('op', 'eq') if isinstance(cond, dict) else 'eq'
+                value = cond.get('value', '') if isinstance(cond, dict) else str(cond)
+                
+                # 转义单引号防注入
+                value_escaped = str(value).replace("'", "''")
+                
+                if op == 'eq':
+                    where_conditions.append(f'"{field}" = \'{value_escaped}\'')
+                elif op == 'ne':
+                    where_conditions.append(f'"{field}" != \'{value_escaped}\'')
+                elif op == 'gt':
+                    where_conditions.append(f'TRY_CAST("{field}" AS DOUBLE) > {value_escaped}')
+                elif op == 'gte':
+                    where_conditions.append(f'TRY_CAST("{field}" AS DOUBLE) >= {value_escaped}')
+                elif op == 'lt':
+                    where_conditions.append(f'TRY_CAST("{field}" AS DOUBLE) < {value_escaped}')
+                elif op == 'lte':
+                    where_conditions.append(f'TRY_CAST("{field}" AS DOUBLE) <= {value_escaped}')
+                elif op == 'like':
+                    where_conditions.append(f'CAST("{field}" AS VARCHAR) ILIKE \'%{value_escaped}%\'')
+                elif op == 'notlike':
+                    where_conditions.append(f'CAST("{field}" AS VARCHAR) NOT ILIKE \'%{value_escaped}%\'')
+                elif op == 'isnull':
+                    where_conditions.append(f'"{field}" IS NULL')
+                elif op == 'notnull':
+                    where_conditions.append(f'"{field}" IS NOT NULL')
+        except Exception as e:
+            pass  # 解析失败时忽略筛选条件
+
+    # 4. 添加搜索条件
     if search and search.strip():
-        # 获取所有列名
         try:
             cols_df = duckdb_instance.fetch_df(f"DESCRIBE {table_name}")
             cols = cols_df['column_name'].tolist()
-            # 构建 LIKE 条件（对所有字符串列）
             search_escaped = search.replace("'", "''")
             like_conditions = [f'CAST("{col}" AS VARCHAR) ILIKE \'%{search_escaped}%\'' for col in cols]
-            where_clause = f"WHERE ({' OR '.join(like_conditions)})"
+            where_conditions.append(f"({' OR '.join(like_conditions)})")
         except:
             pass
 
-    # 4. 获取过滤后的总数
+    # 5. 构建 WHERE 子句
+    where_clause = ""
+    if where_conditions:
+        where_clause = f"WHERE {' AND '.join(where_conditions)}"
+
+    # 6. 获取过滤后的总数
     try:
         count_sql = f"SELECT COUNT(*) as cnt FROM {table_name} {where_clause}"
         count_df = duckdb_instance.fetch_df(count_sql)
         filtered_total = int(count_df['cnt'].iloc[0])
-    except:
+    except Exception as e:
+        logger.warning(f"获取过滤总数失败，使用数据集行数: {e}")
         filtered_total = dataset.row_count
-
-    # 5. 分页查询
+    
+    # 7. 分页查询
     offset = (page - 1) * size
     sql = f"SELECT * FROM {table_name} {where_clause} {order_by} LIMIT {size} OFFSET {offset}"
     
@@ -206,6 +277,7 @@ async def get_dataset_data(
             "columns": df.columns.tolist()
         })
     except Exception as e:
+        logger.error(f"查询数据集数据失败: {e}")
         return error(f"查询失败: {str(e)}")
 
 @router.post("/compare")
@@ -760,10 +832,36 @@ async def create_smart_report(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("analysis:model"))
 ):
-    """创建智能报告模版"""
+    """创建空白报告模板"""
     try:
-        item = await SmartReportService.create_report(db, req)
-        return success(SmartReportResponse.model_validate(item).model_dump())
+        item = await SmartReportService.create_report(db, req.name)
+        return success(SmartReportResponse.model_validate(item).model_dump(), "模板创建成功")
+    except Exception as e:
+        return error(str(e))
+
+# 移除上传 Word 模板的功能，转为在线 Markdown 设计
+@router.post("/smart-reports/upload", include_in_schema=False)
+async def upload_smart_report_template_deprecated():
+    return error("该功能已弃用，请使用在线 Markdown 编辑器设计报告")
+
+@router.post("/smart-reports/{report_id}/update-content")
+async def update_smart_report_content(
+    report_id: int,
+    req: SmartReportUpdateContentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """保存在线编辑器设计的模板内容和变量"""
+    try:
+        item = await SmartReportService.update_template_content(
+            db, report_id, 
+            content_md=req.content_md,
+            content_html=req.content_html, 
+            template_vars=req.template_vars,
+            dataset_id=req.dataset_id, 
+            data_row=req.data_row
+        )
+        return success(SmartReportResponse.model_validate(item).model_dump(), "模板保存成功")
     except Exception as e:
         return error(str(e))
 
@@ -774,9 +872,9 @@ async def update_smart_report(
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("analysis:model"))
 ):
-    """更新智能报告模版"""
+    """更新智能报告信息（重命名）"""
     try:
-        item = await SmartReportService.update_report(db, report_id, req)
+        item = await SmartReportService.update_report(db, report_id, req.name)
         return success(SmartReportResponse.model_validate(item).model_dump())
     except Exception as e:
         return error(str(e))
@@ -794,18 +892,208 @@ async def delete_smart_report(
     except Exception as e:
         return error(str(e))
 
-@router.get("/smart-reports/{report_id}/generate")
+
+@router.post("/smart-reports/{report_id}/rescan-variables")
+async def rescan_report_variables(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """重新扫描模板变量 (Markdown)"""
+    try:
+        report = await SmartReportService.get_report(db, report_id)
+        if not report:
+            return error("报告模板不存在", code=404)
+            
+        import re
+        content = report.content_md or ""
+        vars = list(set(re.findall(r"\{\{([^}]+)\}\}", content)))
+        
+        report.template_vars = vars
+        await db.commit()
+        await db.refresh(report)
+        
+        return success({"vars": vars}, "重新扫描完成")
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-reports/{report_id}/generate")
 async def generate_smart_report(
     report_id: int,
+    req: GenerateReportRequest,
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(require_permission("analysis:view"))
 ):
     """根据模版和数据生成报告"""
     try:
-        content = await SmartReportService.generate_report(db, report_id)
-        return success({"content": content})
+        result = await SmartReportService.generate_report(
+            db, 
+            report_id, 
+            req.data, 
+            save_record=req.save_record, 
+            record_name=req.record_name,
+            content_md=req.content_md,  # 传入处理后的内容（包含图表图片）
+            user_id=current_user.user_id  # 传入用户ID用于目录隔离
+        )
+        
+        # 返回文件名，前端通过单独的 download 接口下载
+        return success(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return error(str(e))
+
+@router.post("/smart-reports/{report_id}/preview")
+async def preview_smart_report(
+    report_id: int,
+    req: GenerateReportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """预览报告（填充变量后返回内容，不生成文件）"""
+    try:
+        result = await SmartReportService.preview_report(db, report_id, req.data)
+        return success(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return error(str(e))
+
+@router.get("/smart-reports/download/temp/{file_path:path}")
+async def download_temp_report(
+    file_path: str,
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """下载临时生成的报告（支持子目录路径，如 report_39/xxx.pdf）"""
+    try:
+        from utils.storage import get_storage_manager
+        from urllib.parse import quote
+        import os
+        
+        storage_manager = get_storage_manager()
+        storage_dir = storage_manager.get_module_dir("report", "temp")
+        full_path = storage_dir / file_path
+        
+        # 安全检查：确保路径在存储目录内
+        try:
+            full_path.resolve().relative_to(storage_dir.resolve())
+        except ValueError:
+            return error(403, "非法路径")
+        
+        if not full_path.exists():
+            return error(404, "文件不存在或已过期")
+        
+        # 验证文件是否为 PDF
+        if not file_path.endswith(".pdf"):
+            return error(400, "不支持的文件类型")
+        
+        # 获取文件名用于下载
+        filename = os.path.basename(file_path)
+        encoded_filename = quote(filename)
+        
+        return FileResponse(
+            path=str(full_path),
+            filename=filename,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename*=UTF-8\'\'{encoded_filename}',
+                "Content-Type": "application/pdf"
+            }
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"下载报告失败: {e}", exc_info=True)
+        return error(str(e))
+
+@router.get("/smart-reports/{report_id}/records")
+async def list_report_records(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """获取报告的所有生成记录"""
+    try:
+        items = await SmartReportService.get_records(db, report_id)
+        return success([SmartReportRecordResponse.model_validate(i).model_dump() for i in items])
     except Exception as e:
         return error(str(e))
+
+@router.get("/smart-reports/records/{record_id}/download-docx")
+async def download_record_docx(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """下载归档的 DOCX"""
+    try:
+        record = await SmartReportService.get_record(db, record_id)
+        if not record:
+            return error("记录不存在", code=404)
+            
+        if not record.docx_file_path:
+            return error("该记录没有文件", code=404)
+            
+        from utils.storage import get_storage_manager
+        storage_manager = get_storage_manager()
+        storage_dir = storage_manager.get_module_dir("report", "archive")
+        file_path = storage_dir / record.docx_file_path
+        
+        if not file_path.exists():
+            return error("文件已丢失", code=404)
+            
+        return FileResponse(
+            path=file_path,
+            filename=f"{record.name}.docx",
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except Exception as e:
+        return error(str(e))
+
+@router.get("/smart-reports/records/{record_id}/download-pdf")
+async def download_record_pdf(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """下载归档的 PDF (如果有)"""
+    try:
+        record = await SmartReportService.get_record(db, record_id)
+        if not record:
+            return error("记录不存在", code=404)
+            
+        if not record.pdf_file_path:
+            return error("该记录未生成 PDF", code=404)
+            
+        from utils.storage import get_storage_manager
+        storage_manager = get_storage_manager()
+        storage_dir = storage_manager.get_module_dir("report", "archive")
+        file_path = storage_dir / record.pdf_file_path
+        
+        if not file_path.exists():
+            return error("文件已丢失", code=404)
+            
+        return FileResponse(
+            path=file_path,
+            filename=f"{record.name}.pdf",
+            media_type="application/pdf"
+        )
+    except Exception as e:
+        return error(str(e))
+
+@router.delete("/smart-reports/records/{record_id}")
+async def delete_report_record(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """删除报告记录"""
+    try:
+        await SmartReportService.delete_record(db, record_id)
+        return success(None, "删除成功")
+    except Exception as e:
+        return error(str(e))
+
 
 # ============ 图表管理 ============
 

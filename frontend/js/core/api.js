@@ -213,8 +213,21 @@ const Api = {
         });
 
         if (!response.ok) {
-            const text = await response.text();
-            throw new Error(text || '下载失败');
+            // 尝试读取错误信息
+            let errorMessage = '下载失败';
+            try {
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorData.detail || errorMessage;
+                } else {
+                    const text = await response.text();
+                    if (text) errorMessage = text;
+                }
+            } catch (_) {
+                // 忽略解析错误
+            }
+            throw new Error(errorMessage);
         }
 
         const disposition = response.headers.get('content-disposition') || '';
@@ -228,7 +241,14 @@ const Api = {
             }
         }
 
+        // 确保正确处理二进制数据
         const blob = await response.blob();
+        
+        // 验证 blob 是否有效
+        if (!blob || blob.size === 0) {
+            throw new Error('下载的文件为空');
+        }
+        
         return { blob, filename };
     }
 };
@@ -439,6 +459,7 @@ const AnnouncementApi = {
 };
 
 // 暴露到全局对象
+Api.baseUrl = Config.apiBase;
 window.Api = Api;
 window.AuthApi = AuthApi;
 window.UserApi = UserApi;

@@ -12,17 +12,24 @@ logger = logging.getLogger(__name__)
 # 生命周期钩子
 async def on_install():
     """模块安装时执行"""
-    logger.info("数据分析模块正在安装...")
+    pass
 
 
 async def on_enable():
     """模块启用时执行"""
-    logger.info("数据分析模块已启用")
+    # 初始化 DuckDB 连接，确保数据库文件已创建
+    try:
+        from .analysis_duckdb_service import duckdb_instance
+        duckdb_instance.ensure_connection()
+        logger.info("数据分析模块已启用，DuckDB 数据库已初始化")
+    except Exception as e:
+        logger.error(f"初始化 DuckDB 数据库失败: {e}")
+        # 不抛出异常，允许模块继续启用
 
 
 async def on_disable():
     """模块禁用时执行"""
-    logger.info("数据分析模块已禁用")
+    pass
 
 
 # 模块清单

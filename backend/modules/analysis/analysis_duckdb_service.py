@@ -21,27 +21,32 @@ class DuckDBService:
             return
         DuckDBService._initialized = True
         
-        # 确定存储路径：项目根目录/storage/analysis/analysis.db
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        self.db_dir = os.path.join(base_dir, "storage", "analysis")
-        
-        if not os.path.exists(self.db_dir):
-            os.makedirs(self.db_dir, exist_ok=True)
-            
+        # 使用 StorageManager 获取标准化存储路径
+        from utils.storage import get_storage_manager
+        storage = get_storage_manager()
+        self.db_dir = storage.get_module_dir("analysis")
         self.db_path = os.path.join(self.db_dir, "analysis.db")
-        logger.debug(f"DuckDB 存储路径: {self.db_path}")
+        
+        # 使用 DEBUG 级别避免在 Uvicorn reloader 中重复输出
+        logger.debug(f"DuckDB 存储初始化: {self.db_path}")
 
-    @property
-    def conn(self):
+    def ensure_connection(self):
+        """确保连接已建立（用于初始化时创建数据库文件）"""
         if self._conn is None:
             try:
                 # DuckDB 默认是线程安全的，但在高并发写时由于是文件锁定，建议谨慎
+                # 如果文件不存在，DuckDB 会自动创建
                 self._conn = duckdb.connect(self.db_path)
-                logger.info("DuckDB 连接成功")
+                logger.info(f"DuckDB 数据库已创建/连接: {self.db_path}")
             except Exception as e:
                 logger.error(f"DuckDB 连接失败: {e}")
                 raise
         return self._conn
+    
+    @property
+    def conn(self):
+        """获取数据库连接（延迟初始化）"""
+        return self.ensure_connection()
 
     def query(self, sql: str, params: Any = None):
         """执行查询并返回结果"""

@@ -1,0 +1,30 @@
+/**
+ * 数据导入导出样式
+ */
+
+.report-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.card-compact .card-body {
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.export-btns {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    margin-top: var(--spacing-md);
+}
+
+.export-btns .btn {
+    min-width: 120px;
+}
+
+@media (max-width: 768px) {
+    .report-layout {
+        grid-template-columns: 1fr;
+    }
+}

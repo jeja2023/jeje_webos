@@ -309,6 +309,9 @@ def register_exception_handlers(app):
     
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request, exc: RequestValidationError):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         errors = []
         for error in exc.errors():
             errors.append({
@@ -316,6 +319,13 @@ def register_exception_handlers(app):
                 "message": error["msg"],
                 "type": error["type"]
             })
+        
+        # 打印验证错误以便调试
+        print(f"\n{'='*60}")
+        print(f"🟡 请求验证失败: {request.url.path}")
+        print(f"验证错误: {errors}")
+        print(f"{'='*60}\n")
+        logger.warning(f"请求验证失败: {request.url.path} - {errors}")
         
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -325,6 +335,7 @@ def register_exception_handlers(app):
                 "data": {"errors": errors}
             }
         )
+
     
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_exception(request, exc: StarletteHTTPException):

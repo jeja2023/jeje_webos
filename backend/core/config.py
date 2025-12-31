@@ -108,6 +108,7 @@ class Settings(BaseSettings):
     admin_phone: str = "13800138000"  # 管理员手机号（必填）
     admin_nickname: str = "系统管理员"
     
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
         env_file_encoding="utf-8",

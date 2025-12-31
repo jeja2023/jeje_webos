@@ -1,0 +1,81 @@
+/* ==================== 智能表格样式 ==================== */
+
+.smart-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.smart-table-card {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-primary);
+    transition: all var(--transition-normal);
+}
+
+.smart-table-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary);
+}
+
+.smart-table-card-header {
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+    padding: var(--spacing-xl);
+    text-align: center;
+}
+
+.smart-table-card-icon {
+    font-size: 32px;
+}
+
+.smart-table-card-body {
+    padding: 15px;
+}
+
+/* 字段配置项 */
+.field-setup-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.field-setup-item.wide {
+    width: 100%;
+}
+
+.field-setup-item.half {
+    width: calc(50% - 5px);
+}
+
+.calc-config {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--color-bg-primary);
+    border-radius: 6px;
+    border: 1px dashed var(--color-primary);
+}
+
+/* 数据填报表单 */
+.smart-row-form {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+@media (max-width: 768px) {
+    .smart-row-form {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .smart-row-form {
+        grid-template-columns: 1fr;
+    }
+}

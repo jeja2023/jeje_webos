@@ -26,11 +26,43 @@ settings = get_settings()
 
 
 class StorageManager:
-    """文件存储管理器"""
+    """
+    文件存储管理器 - 统一存储规则
+    
+    目录结构:
+    storage/
+    ├── public/              # 公共文件（不区分用户，如系统资源）
+    │   ├── avatars/         # 用户头像
+    │   └── attachments/     # 公共附件
+    ├── users/               # 用户私有文件（按用户ID隔离）
+    │   └── user_{id}/       # 单个用户的所有私有文件
+    │       ├── uploads/     # 用户上传的文件
+    │       └── exports/     # 用户导出的文件
+    ├── modules/             # 模块专属目录（按模块+用户隔离）
+    │   └── {module}/        # 模块名
+    │       ├── temp/        # 临时文件
+    │       │   └── user_{id}/
+    │       └── archive/     # 归档文件
+    │           └── user_{id}/
+    └── system/              # 系统级目录（备份、日志等）
+        ├── backups/
+        └── logs/
+    """
     
     def __init__(self):
-        # 使用绝对路径，避免工作目录差异导致多处生成 storage
-        self.upload_dir = Path(settings.upload_dir).resolve()
+        # 统一使用项目根目录下的存储目录 (BACKEND_DIR 的同级目录)
+        from core.config import BACKEND_DIR
+        self.root_dir = (BACKEND_DIR.parent / settings.upload_dir).resolve()
+        
+        # 定义标准子目录
+        self.public_dir = self.root_dir / "public"
+        self.users_dir = self.root_dir / "users"
+        self.modules_dir = self.root_dir / "modules"
+        self.system_dir = self.root_dir / "system"
+        
+        # 向后兼容：旧的 upload_dir 指向根目录，但建议业务迁移到 public
+        self.upload_dir = self.root_dir 
+        
         self.max_size = settings.max_upload_size
         self.allowed_extensions = {
             # 图片
@@ -40,15 +72,98 @@ class StorageManager:
             # 压缩文件
             'zip', 'rar', '7z', 'tar', 'gz',
             # 其他
-            'json', 'xml', 'csv'
+            'json', 'xml', 'csv', 'sqlite', 'db'
         }
         
-        # 确保上传目录存在
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        # 确保基础目录存在
+        for d in [self.public_dir, self.users_dir, self.modules_dir, self.system_dir]:
+            d.mkdir(parents=True, exist_ok=True)
+
+    def get_user_dir(self, user_id: int, sub_dir: str = "") -> Path:
+        """
+        获取用户私有目录
+        
+        Args:
+            user_id: 用户ID
+            sub_dir: 子目录（如 uploads, exports）
+        
+        Returns:
+            用户目录路径
+        """
+        target = self.users_dir / f"user_{user_id}"
+        if sub_dir:
+            target = target / sub_dir
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    def get_module_dir(self, module_name: str, sub_dir: str = "", user_id: Optional[int] = None) -> Path:
+        """
+        获取模块专属目录
+        
+        Args:
+            module_name: 模块名称
+            sub_dir: 子目录（如 temp, archive）
+            user_id: 用户ID（可选，用于用户隔离）
+        
+        Returns:
+            模块目录路径
+        """
+        target = self.modules_dir / module_name
+        if sub_dir:
+            target = target / sub_dir
+        if user_id is not None:
+            target = target / f"user_{user_id}"
+        target.mkdir(parents=True, exist_ok=True)
+        return target
+
+    def get_system_dir(self, category: str) -> Path:
+        """获取系统级目录（备份、日志等）"""
+        target = self.system_dir / category
+        target.mkdir(parents=True, exist_ok=True)
+        return target
     
+    def delete_user_files(self, user_id: int) -> bool:
+        """
+        删除用户的所有文件（用于用户注销等场景）
+        
+        Args:
+            user_id: 用户ID
+        
+        Returns:
+            是否成功
+        """
+        import shutil
+        success = True
+        
+        # 删除 users 目录下的用户文件
+        user_dir = self.users_dir / f"user_{user_id}"
+        if user_dir.exists():
+            try:
+                shutil.rmtree(user_dir)
+                logger.info(f"已删除用户目录: {user_dir}")
+            except Exception as e:
+                logger.error(f"删除用户目录失败: {user_dir}, 错误: {e}")
+                success = False
+        
+        # 删除 modules 目录下所有模块的用户文件
+        for module_dir in self.modules_dir.iterdir():
+            if module_dir.is_dir():
+                for sub_dir in module_dir.iterdir():
+                    if sub_dir.is_dir():
+                        user_module_dir = sub_dir / f"user_{user_id}"
+                        if user_module_dir.exists():
+                            try:
+                                shutil.rmtree(user_module_dir)
+                                logger.info(f"已删除模块用户目录: {user_module_dir}")
+                            except Exception as e:
+                                logger.error(f"删除模块用户目录失败: {user_module_dir}, 错误: {e}")
+                                success = False
+        
+        return success
+
     def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachment") -> Tuple[str, str]:
         """
-        生成唯一文件名
+        生成唯一文件名 (默认在 public 目录下)
         
         Args:
             original_filename: 原始文件名
@@ -65,30 +180,25 @@ class StorageManager:
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.{ext}" if ext else file_id
         
-        # 确定基础目录名
-        # 头像放在 avatars 目录，其他按分类存放
+        # 确定相对于 root_dir 的路径
+        # 默认放在 public 命名空间下
+        root_namespace = "public"
         dir_name = category if category else "files"
         if dir_name == "avatar":
             dir_name = "avatars"
         
-        base_dir = self.upload_dir / dir_name
+        base_dir = self.public_dir / dir_name
         base_dir.mkdir(parents=True, exist_ok=True)
         
-        # 对于头像，不需要按日期或用户分级，直接放在 avatars 目录下以便管理（或者按用户分级也可以）
-        # 这里选择：avatars 使用扁平结构或 user_id 结构，其他使用日期结构
-        
         if category == "avatar" and user_id:
-            # 头像：avatars/{filename}
-            # 为了避免一个目录文件太多，还是可以用 hash 前缀或 user_id，但头像通常直接与用户关联，这里简单点
-            relative_path = f"{dir_name}/{filename}"
+            relative_path = f"{root_namespace}/{dir_name}/{filename}"
             full_path = base_dir / filename
         else:
-            # 默认：{category}/YYYY/MM/{filename}
             date_dir = datetime.now().strftime("%Y/%m")
-            date_path = base_dir / date_dir
-            date_path.mkdir(parents=True, exist_ok=True)
-            relative_path = f"{dir_name}/{date_dir}/{filename}"
-            full_path = date_path / filename
+            date_full_path = base_dir / date_dir
+            date_full_path.mkdir(parents=True, exist_ok=True)
+            relative_path = f"{root_namespace}/{dir_name}/{date_dir}/{filename}"
+            full_path = date_full_path / filename
         
         return relative_path, str(full_path)
     

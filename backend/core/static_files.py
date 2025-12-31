@@ -186,7 +186,13 @@ class GzipMiddleware:
             await self.app(scope, receive, send_wrapper)
         except Exception as e:
             # 如果响应还没开始，发送一个错误响应
-            if not response_started:
-                import logging
-                logging.getLogger(__name__).error(f"Gzip中间件捕获异常: {e}")
+            import logging
+            import traceback
+            logging.getLogger(__name__).error(f"Gzip中间件捕获异常: {type(e).__name__}: {e}")
+            print(f"\n{'='*60}")
+            print(f"🔴 Gzip中间件捕获异常: {type(e).__name__}: {e}")
+            print(f"请求路径: {scope.get('path', 'unknown')}")
+            traceback.print_exc()
+            print(f"{'='*60}\n")
             raise
+

@@ -5,8 +5,14 @@ DataLens 数据透镜模块 - API 路由
 
 import json
 import logging
+import traceback
+import os
+import sys
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+import httpx
+from mimetypes import guess_type
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Body
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -441,7 +447,7 @@ async def export_view_data(
     """
     流式导出视图数据为 CSV
     """
-    from fastapi.responses import StreamingResponse
+    from fastapi.responses import JSONResponse, Response
     from datetime import datetime
     import urllib.parse
 
@@ -515,6 +521,8 @@ async def execute_preview(
     执行预览查询（不保存）
     用于编辑器中测试 SQL 或配置
     """
+    logger.info(f"用户 {user.username} 请求预览数据: datasource_id={data.datasource_id}, query_type={data.query_type}")
+    
     # 获取数据源
     datasource = await DataSourceService.get_by_id(db, data.datasource_id)
     if not datasource:
@@ -522,10 +530,6 @@ async def execute_preview(
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens:admin" in user.permissions
-    # 只要能看到数据源，就能预览（假设已通过前端数据源列表控制）
-    # 更严格的控制：
-    # if not is_admin and datasource.created_by != user.user_id:
-    #     raise HTTPException(status_code=403, detail="无权使用该数据源")
     
     try:
         # 构造分页请求 (preview 只取前10条)
@@ -537,10 +541,13 @@ async def execute_preview(
             data.query_config or {}, 
             request
         )
+        logger.info(f"预览执行成功，返回 {len(result.data)} 条数据")
         return success(data=result.model_dump())
     except Exception as e:
-        logger.error(f"预览执行失败: {e}")
+        logger.error(f"执行预览失败: {e}\n{traceback.format_exc()}")
         return error(message=f"执行失败: {str(e)}")
+
+
 
 
 # ==================== 收藏管理 ====================
@@ -607,11 +614,12 @@ async def upload_file(
 ):
     """
     上传 CSV/Excel 文件
-    文件将保存到 storage/lens/ 目录
+    文件将保存到 storage/modules/datalens/ 目录
     """
     import os
     import aiofiles
     from datetime import datetime
+    from utils.storage import get_storage_manager
 
     # 检查文件类型
     allowed_extensions = [".csv", ".xlsx", ".xls"]
@@ -619,23 +627,90 @@ async def upload_file(
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail=f"不支持的文件类型，仅支持: {', '.join(allowed_extensions)}")
 
-    # 创建存储目录
-    storage_dir = os.path.join("storage", "lens")
-    os.makedirs(storage_dir, exist_ok=True)
+    # 使用 StorageManager 获取模块专属目录
+    storage_manager = get_storage_manager()
+    storage_dir = storage_manager.get_module_dir("datalens")
 
     # 生成文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_filename = f"{timestamp}_{user.user_id}_{file.filename}"
-    file_path = os.path.join(storage_dir, safe_filename)
+    file_path_obj = storage_dir / safe_filename
+    file_path = str(file_path_obj)
 
     # 保存文件
+    content = await file.read()
     async with aiofiles.open(file_path, "wb") as f:
-        content = await file.read()
         await f.write(content)
 
-    logger.info(f"用户 {user.username} 上传了文件: {file.filename}")
+    # 获取相对于 storage 根目录的路径，便于数据库存储
+    try:
+        relative_path = os.path.relpath(file_path, storage_manager.root_dir)
+        # 统一使用正斜杠
+        relative_path = relative_path.replace("\\", "/")
+    except ValueError:
+        relative_path = file_path
+
+    logger.info(f"用户 {user.username} 上传了文件: {file.filename} -> {relative_path}")
     return success(data={
-        "file_path": file_path,
+        "file_path": relative_path,  # 数据库中存储相对路径更稳健
         "file_name": file.filename,
         "file_size": len(content)
     }, message="文件上传成功")
+
+
+@router.get("/image")
+async def get_lens_image(
+    path: str = Query(..., description="图片文件路径或URL"),
+    base_path: str = Query(None, description="可选：图片基础根目录（覆盖全局配置）"),
+    user: TokenData = Depends(get_current_user)
+):
+    """
+    图片代理接口
+    支持读取本地绝对路径或远程 URL 并返回图片流
+    """
+    # 1. 处理远程 URL
+    if path.startswith("http://") or path.startswith("https://"):
+        try:
+            async with httpx.AsyncClient(timeout=10, verify=False) as client:
+                response = await client.get(path)
+                if response.status_code == 200:
+                    content_type = response.headers.get("content-type", "image/jpeg")
+                    return StreamingResponse(
+                        iter([response.content]), 
+                        media_type=content_type
+                    )
+                else:
+                    raise HTTPException(status_code=404, detail="远程图片无法访问")
+        except Exception as e:
+            logger.error(f"代理远程图片失败: {e}")
+            raise HTTPException(status_code=500, detail=f"获取远程图片失败: {str(e)}")
+
+    # 2. 处理本地路径
+    # 安全检查：只允许特定的扩展名
+    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"}
+    _, ext = os.path.splitext(path.lower())
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail="不支持的图片类型")
+
+    # 路径搜索逻辑
+    final_path = path
+
+    # 优先级 0: 如果提供了 base_path，优先尝试拼接
+    if base_path:
+        # 移除路径开头可能存在的 / 或 \
+        clean_rel_path = path.lstrip("/\\")
+        potential_path = os.path.join(base_path, clean_rel_path)
+        if os.path.exists(potential_path):
+            final_path = potential_path
+
+    # 最终检查文件是否存在
+    if not os.path.exists(final_path):
+        # 尝试相对于系统根目录或项目目录
+        raise HTTPException(status_code=404, detail=f"图片文件不存在: {path}")
+
+    # 获取 MIME 类型
+    mime_type, _ = guess_type(path)
+    if not mime_type or not mime_type.startswith("image/"):
+        mime_type = "image/jpeg"
+
+    return FileResponse(final_path, media_type=mime_type)

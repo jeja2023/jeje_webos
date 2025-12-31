@@ -84,18 +84,38 @@ class AnalysisSmartTableData(Base):
     )
 
 class AnalysisSmartReport(Base):
-    """智能报告模版与生成记录表"""
+    """智能报告模版表"""
     __tablename__ = "analysis_smart_reports"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255))
-    template: Mapped[str] = mapped_column(Text) # 报告模版内容 (JSON string or HTML/Markdown)
-    dataset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True) # 关联的数据集ID
+    template_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True) # Word 模板文件路径
+    content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # 解析后的 HTML 内容
+    content_md: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Markdown 内容
+    template_vars: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 模板变量列表
+    dataset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True) # 默认关联的数据集ID
+    data_row: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # 默认使用的数据行模式 (first, last, sum, avg)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     
     __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能报告表', 'extend_existing': True},
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能报告模版表', 'extend_existing': True},
+    )
+
+class AnalysisSmartReportRecord(Base):
+    """智能报告已生成记录表"""
+    __tablename__ = "analysis_smart_report_records"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    report_id: Mapped[int] = mapped_column(Integer) # 关联的模版ID
+    name: Mapped[str] = mapped_column(String(255)) # 记录名称(例如：2025-12-27日报)
+    docx_file_path: Mapped[str] = mapped_column(String(500)) # 生成的Word文件路径 (归档)
+    pdf_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True) # PDF文件存储路径 (可选)
+    full_content: Mapped[Optional[str]] = mapped_column(Text(length=16777215), nullable=True) # 生成的报告全文内容(Markdown)，用于知识库 (MEDIUMTEXT)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能报告生成记录表', 'extend_existing': True},
     )
 
 class AnalysisChart(Base):

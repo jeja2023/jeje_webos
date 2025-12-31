@@ -1,0 +1,239 @@
+﻿/* 数据分析模块专属样式 (核心布局与通用组件) */
+
+/* 官方公文标准字体定义 */
+@font-face {
+    font-family: 'FZXiaoBiaoSong-B05S';
+    src: url('/fonts/FZXiaoBiaoSong-B05S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZFangSong-Z02S';
+    src: url('/fonts/FZFangSong-Z02S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZKai-Z03S';
+    src: url('/fonts/FZKai-Z03S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'FZHei-B01S';
+    src: url('/fonts/FZHei-B01S.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+.analysis-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg-secondary);
+}
+
+.analysis-sidebar {
+    width: 260px;
+    background: var(--color-bg-primary);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.analysis-menu {
+    padding: 15px;
+    flex: 1;
+}
+
+.analysis-menu-item {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    color: var(--color-text-secondary);
+}
+
+.analysis-menu-item:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.analysis-menu-item.active {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.analysis-menu-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 10px 15px;
+}
+
+.analysis-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bi-wrapper {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 数据表格样式 (Dataset Viewer & 通用列表) */
+.data-table-container {
+    padding: 20px;
+    flex: 1;
+    overflow: auto;
+}
+
+.premium-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.premium-table th {
+    background: var(--color-bg-secondary);
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+}
+
+.premium-table th:hover {
+    background: var(--color-bg-hover);
+}
+
+.premium-table th .sort-icon {
+    margin-left: 5px;
+    opacity: 0.5;
+}
+
+.premium-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    vertical-align: middle;
+}
+
+.premium-table tr:hover td {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+/* 图片渲染 */
+.cell-image {
+    max-width: 60px;
+    max-height: 40px;
+    border-radius: 4px;
+    cursor: zoom-in;
+    transition: transform 0.2s;
+    object-fit: cover;
+}
+
+.cell-image:hover {
+    transform: scale(1.1);
+}
+
+/* 通用徽章样式 */
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.badge-danger {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.badge-warning {
+    background: rgba(255, 152, 0, 0.1);
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.badge-secondary {
+    background: rgba(128, 128, 128, 0.1);
+    color: var(--color-text-secondary);
+    border: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.badge-info {
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196f3;
+    border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+
+/* ============ 智能报告基础样式 (通用) ============ */
+.variable-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #f59e0b;
+    margin: 0 2px;
+}
+
+.btn-insert-dataset-var:hover {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+    color: #92400e !important;
+    transform: scale(1.05);
+}
+
+.tip-text {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+.template-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.template-badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}

@@ -115,10 +115,11 @@ class HealthChecker:
             import shutil
             import os
             
-            # 检查存储目录
-            storage_path = os.path.join(os.path.dirname(__file__), "..", "storage")
-            if not os.path.exists(storage_path):
-                storage_path = "."
+            # 通过 StorageManager 获取根存储目录
+            from utils.storage import get_storage_manager
+            storage_path = get_storage_manager().root_dir
+            if not storage_path.exists():
+                storage_path = Path(".")
             
             total, used, free = shutil.disk_usage(storage_path)
             

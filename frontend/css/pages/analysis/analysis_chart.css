@@ -1,0 +1,142 @@
+/* 图表分析模块样式 */
+
+.charts-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.charts-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 15px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 配置面板 */
+.chart-config-panel {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.config-section {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+}
+
+.config-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.config-section h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 图表类型选择器 */
+.chart-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.chart-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    background: var(--color-bg-secondary);
+    border: 2px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--color-text-secondary);
+}
+
+.chart-type-btn:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-primary);
+    color: var(--color-text-primary);
+}
+
+.chart-type-btn.active {
+    background: rgba(var(--color-primary-rgb, 99, 102, 241), 0.15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.chart-type-btn .chart-icon {
+    font-size: 18px;
+}
+
+.chart-type-btn span:last-child {
+    font-size: 9px;
+    font-weight: 500;
+}
+
+/* 图表展示区 */
+.chart-display-area {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chart-container {
+    flex: 1;
+    min-height: 400px;
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 500px !important;
+    min-width: 100% !important;
+}
+
+.chart-placeholder {
+    text-align: center;
+    color: var(--color-text-tertiary);
+}
+
+.chart-placeholder .placeholder-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+}
+
+.chart-placeholder p {
+    font-size: 14px;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    .charts-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-config-panel {
+        order: 1;
+    }
+
+    .chart-display-area {
+        order: 0;
+        min-height: 350px;
+    }
+}

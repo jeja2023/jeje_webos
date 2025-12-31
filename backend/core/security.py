@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
@@ -15,8 +15,9 @@ from .config import get_settings
 
 settings = get_settings()
 
-# Bearer令牌认证
-security = HTTPBearer()
+# Bearer令牌认证 (设置为 auto_error=False, 以便支持从 Query 参数中读取 token)
+security = HTTPBearer(auto_error=False)
+
 
 
 class TokenData(BaseModel):
@@ -151,11 +152,24 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[To
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    token: Optional[str] = Query(None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> TokenData:
     """获取当前用户（依赖注入用）"""
-    token = credentials.credentials
-    token_data = decode_token(token)
+    jwt_token = None
+    if credentials:
+        jwt_token = credentials.credentials
+    elif token:
+        jwt_token = token
+    
+    if not jwt_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证凭证",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    token_data = decode_token(jwt_token)
     
     if token_data is None:
         raise HTTPException(

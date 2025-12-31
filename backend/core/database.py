@@ -68,6 +68,22 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def ensure_database_exists():
     """确保数据库存在，如果不存在则尝试创建"""
+    # 检查数据库密码是否配置
+    if not settings.db_password:
+        logger.error("=" * 60)
+        logger.error("❌ 数据库密码未配置！")
+        logger.error("")
+        logger.error("请在 backend/.env 文件中设置 DB_PASSWORD")
+        logger.error("")
+        logger.error("示例配置：")
+        logger.error("  DB_USER=root")
+        logger.error("  DB_PASSWORD=your_mysql_password")
+        logger.error("")
+        logger.error("如果您的 MySQL root 用户确实没有密码，")
+        logger.error("请确保 MySQL 允许无密码连接，或设置一个密码。")
+        logger.error("=" * 60)
+        raise ValueError("数据库密码未配置，请在 .env 文件中设置 DB_PASSWORD")
+    
     # 创建不指定数据库的连接URL（用于创建数据库）
     from sqlalchemy.ext.asyncio import create_async_engine as create_engine
     from urllib.parse import quote_plus
@@ -122,15 +138,40 @@ async def ensure_database_exists():
     except Exception as e:
         # 检查是否是权限问题，给出更友好的提示
         error_msg = str(e)
-        if "Access denied" in error_msg:
-             # 上面已经处理过特定权限错误，这里处理漏网的
-             logger.error(f"数据库访问被拒绝: {error_msg}")
+        if "Access denied" in error_msg or "1045" in error_msg:
+            logger.error("=" * 60)
+            logger.error("❌ MySQL 数据库访问被拒绝")
+            logger.error("")
+            logger.error("可能的原因：")
+            logger.error("  1. 数据库密码错误")
+            logger.error("  2. 数据库用户不存在或没有权限")
+            logger.error("  3. MySQL 服务未启动")
+            logger.error("")
+            logger.error("请检查 backend/.env 文件中的配置：")
+            logger.error(f"  DB_USER={settings.db_user}")
+            logger.error(f"  DB_PASSWORD={'*' * len(settings.db_password) if settings.db_password else '(未设置)'}")
+            logger.error(f"  DB_HOST={settings.db_host}")
+            logger.error(f"  DB_PORT={settings.db_port}")
+            logger.error("")
+            logger.error("如果密码正确但仍无法连接，请检查：")
+            logger.error("  - MySQL 服务是否正在运行")
+            logger.error("  - 用户是否有足够的权限")
+            logger.error("  - 防火墙是否阻止了连接")
+            logger.error("=" * 60)
         elif "Can't connect to MySQL server" in error_msg:
-            logger.error(f"无法连接到 MySQL 服务器（请检查主机和端口配置是否正确，或 MySQL 服务是否已启动）: {error_msg}")
+            logger.error("=" * 60)
+            logger.error("❌ 无法连接到 MySQL 服务器")
+            logger.error("")
+            logger.error("请检查：")
+            logger.error(f"  1. MySQL 服务是否已启动（主机: {settings.db_host}, 端口: {settings.db_port}）")
+            logger.error("  2. 主机和端口配置是否正确")
+            logger.error("  3. 防火墙是否允许连接")
+            logger.error("=" * 60)
         elif "Unknown database" in error_msg:
-            logger.error(f"找不到指定数据库: {error_msg}")
+            logger.error(f"❌ 找不到指定数据库: {settings.db_name}")
+            logger.error("请检查 DB_NAME 配置是否正确")
         else:
-            logger.error(f"检查/创建数据库失败: {e}")
+            logger.error(f"❌ 检查/创建数据库失败: {e}")
         raise
     finally:
         await admin_engine.dispose()

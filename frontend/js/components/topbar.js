@@ -77,7 +77,8 @@ class TopBarComponent extends Component {
         try {
             let list = [];
             if (tab === 'message') {
-                const res = await MessageApi.list({ page: 1, size: 5 });
+                // 只获取未读消息
+                const res = await MessageApi.list({ page: 1, size: 5, is_read: false });
                 list = res.data.items || [];
                 if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/message/list');
             } else if (tab === 'announcement') {
@@ -322,7 +323,8 @@ class TopBarComponent extends Component {
                         try {
                             let list = [];
                             if (tabName === 'message') {
-                                const res = await MessageApi.list({ page: 1, size: 5 });
+                                // 只获取未读消息
+                                const res = await MessageApi.list({ page: 1, size: 5, is_read: false });
                                 list = res.data.items || [];
                                 if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/message/list');
                             } else if (tabName === 'announcement') {

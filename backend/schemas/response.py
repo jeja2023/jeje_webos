@@ -43,7 +43,19 @@ def success(data: Any = None, message: str = "success") -> dict:
 
 
 def error(code: int = 400, message: str = "error", data: Any = None) -> dict:
-    """错误响应"""
+    """
+    错误响应
+    
+    支持两种调用方式：
+    1. error(message="错误信息") - 使用默认 code=400
+    2. error(404, "资源不存在") - 位置参数
+    3. error(code=404, message="资源不存在") - 关键字参数
+    """
+    # 如果第一个参数是字符串，将其作为 message
+    if isinstance(code, str):
+        message = code
+        code = 400
+    
     return {
         "code": code,
         "message": message,

@@ -6,10 +6,19 @@ DataLens 数据透镜模块 - 业务逻辑层
 import json
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Tuple
-from sqlalchemy import select, func, delete, and_, or_
+import os
+import sys
+import time
+import math
+import pandas as pd
+import numpy as np
+from decimal import Decimal
+from urllib.parse import quote_plus
+from sqlalchemy import select, func, delete, and_, or_, create_engine, text, inspect, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, List, Dict, Any, Tuple
 
+from utils.storage import get_storage_manager
 from .datalens_models import LensDataSource, LensCategory, LensView, LensFavorite, LensRecentView
 from .datalens_schemas import (
     DataSourceCreate, DataSourceUpdate, DataSourceType,
@@ -17,53 +26,122 @@ from .datalens_schemas import (
     ViewCreate, ViewUpdate, ViewDataRequest, ViewDataResponse,
     QueryType
 )
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
+
+# 获取存储管理器实例
+def _get_storage():
+    return get_storage_manager()
+
+# 统一解析路径：如果是相对路径，则补全 storage 根目录
+def _resolve_path(path: str) -> str:
+    if not path:
+        return ""
+    if os.path.isabs(path):
+        return path
+    # 补全 storage 根目录
+    return str(_get_storage().root_dir / path)
 
 # 文件数据源内存缓存 (文件名 -> (DataFrame, timestamp))
 _file_data_cache = {}
 _CACHE_TTL = 60  # 缓存 60 秒
 
 
+def _build_db_url(source_type: str, conn_config: Dict[str, Any]) -> str:
+    """构造数据库连接 URL"""
+    if source_type == DataSourceType.MYSQL:
+        encoded_pwd = quote_plus(conn_config.get("password", ""))
+        return f"mysql+pymysql://{conn_config.get('user', 'root')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 3306)}/{conn_config.get('database', '')}"
+    elif source_type == DataSourceType.POSTGRES:
+        encoded_pwd = quote_plus(conn_config.get("password", ""))
+        return f"postgresql+psycopg2://{conn_config.get('user', 'postgres')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 5432)}/{conn_config.get('database', '')}"
+    elif source_type == DataSourceType.SQLITE:
+        return f"sqlite:///{conn_config.get('file_path', '')}"
+    else:
+        raise ValueError(f"不支持的数据库类型: {source_type}")
+
+
 def _get_cached_df(file_path: str, source_type: str, file_config: Dict[str, Any]):
     """获取缓存的 DataFrame，如果过期或不存在则重新加载"""
-    import pandas as pd
-    import time
-    import os
+    
+    # 解析路径
+    abs_path = _resolve_path(file_path)
 
     now = time.time()
     
     # 检查缓存是否存在且有效
-    if file_path in _file_data_cache:
-        df, timestamp = _file_data_cache[file_path]
+    if abs_path in _file_data_cache:
+        df, timestamp = _file_data_cache[abs_path]
         # 同时检查文件修改时间，如果文件变了也失效
-        mtime = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
+        mtime = os.path.getmtime(abs_path) if os.path.exists(abs_path) else 0
         if now - timestamp < _CACHE_TTL and timestamp > mtime:
             return df
 
     # 重新加载
     if source_type == DataSourceType.CSV:
-        df = pd.read_csv(file_path, encoding=file_config.get("encoding", "utf-8"))
+        df = pd.read_csv(abs_path, encoding=file_config.get("encoding", "utf-8"))
     else:  # Excel
         sheet_name = file_config.get("sheet_name") or 0
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        df = pd.read_excel(abs_path, sheet_name=sheet_name)
         if isinstance(df, dict):
             df = list(df.values())[0]
             
-    _file_data_cache[file_path] = (df, now)
+    _file_data_cache[abs_path] = (df, now)
     return df
 
-def _convert_datetime_columns(df):
+def _sanitize_dataframe(df):
     """
-    将 DataFrame 中的日期时间列转换为字符串格式
-    避免 JSON 序列化时自动转换为 ISO 格式（带 T）
+    清洗 DataFrame 数据，使其支持 JSON 序列化
+    1. 将日期时间转换为字符串
+    2. 将二进制数据 (bytes) 转换为 Hex 字符串
+    3. 处理 Decimal, Numpy 等非标 JSON 类型
+    4. 处理 NaN 和 Infinity 等无法 JSON 序列化的浮点数
     """
-    import pandas as pd
+    
+    if df.empty:
+        return df
+    
+    # 避免 SettingWithCopyWarning
+    df = df.copy()
+    
+    # 首先处理所有数值列中的 NaN 和 Infinity
     for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            # 将 datetime 转换为字符串，使用空格分隔日期和时间
+        if pd.api.types.is_float_dtype(df[col]) or pd.api.types.is_integer_dtype(df[col]):
+            # 将 NaN 和 Infinity 替换为 None
+            df[col] = df[col].apply(lambda x: None if (pd.isna(x) or (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))) else x)
+        
+        # 处理日期时间
+        elif pd.api.types.is_datetime64_any_dtype(df[col]):
             df[col] = df[col].apply(lambda x: str(x).replace('T', ' ') if pd.notna(x) else None)
+        
+        # 处理 Object 类型 (bytes, decimal, list, etc.)
+        elif df[col].dtype == object:
+            # 获取第一个非空值用于探针
+            non_nulls = df[col].dropna()
+            if not non_nulls.empty:
+                first_val = non_nulls.iloc[0]
+                
+                # Bytes -> Hex
+                if isinstance(first_val, bytes):
+                    df[col] = df[col].apply(lambda x: x.hex() if isinstance(x, bytes) else x)
+                # Decimal -> Float (并处理 NaN)
+                elif isinstance(first_val, Decimal):
+                    def safe_decimal_to_float(x):
+                        if isinstance(x, Decimal):
+                            f = float(x)
+                            return None if (math.isnan(f) or math.isinf(f)) else f
+                        return x
+                    df[col] = df[col].apply(safe_decimal_to_float)
+                # List/Numpy -> String
+                elif isinstance(first_val, (np.ndarray, list)):
+                    df[col] = df[col].apply(lambda x: str(x) if x is not None else None)
+            
+            # 对 Object 列也检查是否有 float NaN (可能是混合类型列)
+            df[col] = df[col].apply(lambda x: None if (isinstance(x, float) and (math.isnan(x) or math.isinf(x))) else x)
+                
     return df
+
 
 
 def _build_sort_clause(request, db_type: str = "mysql") -> str:
@@ -79,20 +157,21 @@ def _build_sort_clause(request, db_type: str = "mysql") -> str:
             field = sort_item.get("field", "")
             order = sort_item.get("order", "asc").upper()
             if field and order in ("ASC", "DESC"):
+                # 处理带表名的字段别名
+                safe_field = field.replace(".", "__") if "." in field else field
                 # 根据数据库类型使用不同的引用符号
                 if db_type == "mysql":
-                    sort_parts.append(f"`{field}` {order}")
-                elif db_type == "postgres":
-                    sort_parts.append(f'"{field}" {order}')
+                    sort_parts.append(f"`{safe_field}` {order}")
                 else:
-                    sort_parts.append(f'"{field}" {order}')
+                    sort_parts.append(f'"{safe_field}" {order}')
     # 兼容单字段排序
     elif request.sort_field:
         order = "DESC" if request.sort_order == "desc" else "ASC"
+        safe_field = request.sort_field.replace(".", "__") if "." in request.sort_field else request.sort_field
         if db_type == "mysql":
-            sort_parts.append(f"`{request.sort_field}` {order}")
+            sort_parts.append(f"`{safe_field}` {order}")
         else:
-            sort_parts.append(f'"{request.sort_field}" {order}')
+            sort_parts.append(f'"{safe_field}" {order}')
     
     if sort_parts:
         return " ORDER BY " + ", ".join(sort_parts)
@@ -113,13 +192,16 @@ def _build_filter_clause(filters: Dict[str, Any], db_type: str = "mysql") -> Tup
     param_index = 0
     
     for field, condition in filters.items():
+        # 处理带表名的字段别名 (persons.name -> persons__name)
+        safe_field = field.replace(".", "__") if "." in field else field
+        
         if not isinstance(condition, dict):
             # 简单等于条件
             param_name = f"filter_{param_index}"
             if db_type == "mysql":
-                clauses.append(f"`{field}` = :{param_name}")
+                clauses.append(f"`{safe_field}` = :{param_name}")
             else:
-                clauses.append(f'"{field}" = :{param_name}')
+                clauses.append(f'"{safe_field}" = :{param_name}')
             params[param_name] = condition
             param_index += 1
             continue
@@ -129,7 +211,7 @@ def _build_filter_clause(filters: Dict[str, Any], db_type: str = "mysql") -> Tup
         param_name = f"filter_{param_index}"
         
         # 根据数据库类型选择字段引用符
-        field_ref = f"`{field}`" if db_type == "mysql" else f'"{field}"'
+        field_ref = f"`{safe_field}`" if db_type == "mysql" else f'"{safe_field}"'
         
         if op == "eq":
             clauses.append(f"{field_ref} = :{param_name}")
@@ -395,9 +477,6 @@ class DataSourceConnector:
     async def _test_csv(config: Dict[str, Any]) -> Tuple[bool, str]:
         """测试 CSV 文件读取"""
         try:
-            import pandas as pd
-            import os
-            file_path = config.get("file_path", "")
             if not file_path:
                 return False, "请提供 CSV 文件路径"
             if not os.path.exists(file_path):
@@ -412,9 +491,6 @@ class DataSourceConnector:
     async def _test_excel(config: Dict[str, Any]) -> Tuple[bool, str]:
         """测试 Excel 文件读取"""
         try:
-            import pandas as pd
-            import os
-            file_path = config.get("file_path", "")
             if not file_path:
                 return False, "请提供 Excel 文件路径"
             if not os.path.exists(file_path):
@@ -495,20 +571,10 @@ class QueryExecutor:
                     base_sql += f" WHERE {where}"
 
             # 使用 SQLAlchemy 执行并流式获取数据
-            from sqlalchemy import create_engine, text
-            from urllib.parse import quote_plus
-            import pandas as pd
-
-            if source_type == DataSourceType.MYSQL:
-                encoded_pwd = quote_plus(conn_config.get("password", ""))
-                url = f"mysql+pymysql://{conn_config.get('user', 'root')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 3306)}/{conn_config.get('database', '')}"
-            elif source_type == DataSourceType.POSTGRES:
-                encoded_pwd = quote_plus(conn_config.get("password", ""))
-                url = f"postgresql+psycopg2://{conn_config.get('user', 'postgres')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 5432)}/{conn_config.get('database', '')}"
-            elif source_type == DataSourceType.SQLITE:
-                url = f"sqlite:///{conn_config.get('file_path', '')}"
-            else:
-                raise ValueError(f"流式导出暂不支持该数据库类型: {source_type}")
+            try:
+                url = _build_db_url(source_type, conn_config)
+            except ValueError:
+                 raise ValueError(f"流式导出暂不支持该数据库类型: {source_type}")
 
             engine = create_engine(url)
             
@@ -520,7 +586,7 @@ class QueryExecutor:
 
                 # 分块读取
                 for chunk in pd.read_sql(text(base_sql), conn, chunksize=batch_size):
-                    chunk = _convert_datetime_columns(chunk)
+                    chunk = _sanitize_dataframe(chunk)
                     for row in chunk.to_dict(orient="records"):
                         yield row
             
@@ -528,7 +594,7 @@ class QueryExecutor:
 
         elif source_type in [DataSourceType.CSV, DataSourceType.EXCEL]:
             import pandas as pd
-            file_path = file_config.get("file_path", "")
+            file_path = _resolve_path(file_config.get("file_path", ""))
             
             if source_type == DataSourceType.CSV:
                 # 流式读取 CSV
@@ -542,7 +608,7 @@ class QueryExecutor:
                     if first:
                         yield chunk.columns.tolist()
                         first = False
-                    chunk = _convert_datetime_columns(chunk)
+                    chunk = _sanitize_dataframe(chunk)
                     for row in chunk.to_dict(orient="records"):
                         yield row
             else:
@@ -552,7 +618,7 @@ class QueryExecutor:
                 if isinstance(df, dict):
                     df = list(df.values())[0]
                 yield df.columns.tolist()
-                df = _convert_datetime_columns(df)
+                df = _sanitize_dataframe(df)
                 for row in df.to_dict(orient="records"):
                     yield row
         else:
@@ -612,8 +678,6 @@ class QueryExecutor:
         request: ViewDataRequest
     ) -> ViewDataResponse:
         """执行 SQL 数据库查询"""
-        import pandas as pd
-
         # 确定数据库类型
         db_type = "mysql" if source_type == DataSourceType.MYSQL else "postgres"
 
@@ -621,12 +685,50 @@ class QueryExecutor:
         if query_type == QueryType.SQL:
             base_sql = query_config.get("sql", "SELECT 1")
         else:
-            # TABLE 模式，构建 SQL
-            table = query_config.get("table", "")
+            # TABLE 模式，构建 SQL（支持多表关联）
+            main_table = query_config.get("table", "")
+            # 处理列字段，支持带表名的列名，并自动处理重名冲突
             columns = query_config.get("columns", ["*"])
+            col_list = []
+            if isinstance(columns, list):
+                for col in columns:
+                    if isinstance(col, dict):
+                        field = col.get("field", "*")
+                        alias = col.get("alias")
+                        col_list.append(f"{field} AS {alias}" if alias else field)
+                    elif isinstance(col, str) and "." in col:
+                        # 自动为带表名的字段增加别名，防止子查询重名错误
+                        # 例如: persons.id -> persons.id AS persons__id
+                        safe_alias = col.replace(".", "__")
+                        col_list.append(f"{col} AS {safe_alias}")
+                    else:
+                        col_list.append(col)
+            else:
+                col_list = [columns]
+            
+            col_str = ", ".join(col_list)
+            
+            # 处理表名转义
+            if db_type == "mysql":
+                table_ref = f"`{main_table}`"
+            else:
+                table_ref = f'"{main_table}"'
+            
+            base_sql = f"SELECT {col_str} FROM {table_ref}"
+            
+            # 处理 JOIN
+            joins = query_config.get("joins", [])
+            if joins:
+                for join in joins:
+                    join_type = join.get("type", "LEFT JOIN")
+                    join_table = join.get("table", "")
+                    join_on = join.get("on", "")
+                    
+                    join_table_ref = f"`{join_table}`" if db_type == "mysql" else f'"{join_table}"'
+                    if join_table and join_on:
+                        base_sql += f" {join_type} {join_table_ref} ON {join_on}"
+            
             where = query_config.get("where", "")
-            col_str = ", ".join(columns) if isinstance(columns, list) else columns
-            base_sql = f"SELECT {col_str} FROM {table}"
             if where:
                 base_sql += f" WHERE {where}"
 
@@ -649,10 +751,7 @@ class QueryExecutor:
 
         # 根据数据源类型执行
         if source_type == DataSourceType.MYSQL:
-            from sqlalchemy import create_engine, text
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"mysql+pymysql://{conn_config.get('user', 'root')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 3306)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
 
             # 搜索支持：如果是搜索模式，我们需要知道列名
@@ -688,10 +787,7 @@ class QueryExecutor:
             engine.dispose()
 
         elif source_type == DataSourceType.POSTGRES:
-            from sqlalchemy import create_engine, text
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"postgresql+psycopg2://{conn_config.get('user', 'postgres')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 5432)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
 
             if request.search:
@@ -763,8 +859,26 @@ class QueryExecutor:
         columns = [{"field": col, "title": col} for col in df.columns.tolist()]
 
         # 构建数据（先处理日期时间列，避免格式转换）
-        df = _convert_datetime_columns(df)
+        df = _sanitize_dataframe(df)
+        
+        # 使用 pandas 的方法将所有 NaN 替换为 None
+        df = df.where(pd.notnull(df), None)
+        
         data = df.to_dict(orient="records")
+        
+        # 递归清理数据中的 float NaN 值
+        def clean_nan(obj):
+            import math
+            if isinstance(obj, dict):
+                return {k: clean_nan(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_nan(item) for item in obj]
+            elif isinstance(obj, float):
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+            return obj
+        
+        data = clean_nan(data)
 
         return ViewDataResponse(
             columns=columns,
@@ -773,6 +887,7 @@ class QueryExecutor:
             page=request.page,
             page_size=request.page_size
         )
+
 
     @staticmethod
     async def _execute_file_query(
@@ -810,7 +925,7 @@ class QueryExecutor:
         columns = [{"field": col, "title": col} for col in df_page.columns.tolist()]
 
         # 构建数据（先处理日期时间列，避免格式转换）
-        df_page = _convert_datetime_columns(df_page)
+        df_page = _sanitize_dataframe(df_page)
         data = df_page.to_dict(orient="records")
 
         return ViewDataResponse(
@@ -863,7 +978,7 @@ class QueryExecutor:
         if items:
             df = pd.DataFrame(items)
             # 处理日期时间列，避免格式转换
-            df = _convert_datetime_columns(df)
+            df = _sanitize_dataframe(df)
             columns = [{"field": col, "title": col} for col in df.columns.tolist()]
             data_list = df.to_dict(orient="records")
         else:
@@ -954,10 +1069,7 @@ class DataSourceService:
         file_config = json.loads(source.file_config) if source.file_config else {}
 
         if source_type == DataSourceType.MYSQL:
-            from sqlalchemy import create_engine, text, inspect
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"mysql+pymysql://{conn_config.get('user', 'root')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 3306)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
             inspector = inspect(engine)
             tables = inspector.get_table_names()
@@ -965,10 +1077,7 @@ class DataSourceService:
             return tables
 
         elif source_type == DataSourceType.POSTGRES:
-            from sqlalchemy import create_engine, inspect
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"postgresql+psycopg2://{conn_config.get('user', 'postgres')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 5432)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
             inspector = inspect(engine)
             tables = inspector.get_table_names()
@@ -1002,10 +1111,7 @@ class DataSourceService:
         file_config = json.loads(source.file_config) if source.file_config else {}
 
         if source_type == DataSourceType.MYSQL:
-            from sqlalchemy import create_engine, inspect
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"mysql+pymysql://{conn_config.get('user', 'root')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 3306)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
             inspector = inspect(engine)
             columns = inspector.get_columns(table_name)
@@ -1013,10 +1119,7 @@ class DataSourceService:
             return [{"name": c["name"], "type": str(c["type"])} for c in columns]
 
         elif source_type == DataSourceType.POSTGRES:
-            from sqlalchemy import create_engine, inspect
-            from urllib.parse import quote_plus
-            encoded_pwd = quote_plus(conn_config.get("password", ""))
-            url = f"postgresql+psycopg2://{conn_config.get('user', 'postgres')}:{encoded_pwd}@{conn_config.get('host', 'localhost')}:{conn_config.get('port', 5432)}/{conn_config.get('database', '')}"
+            url = _build_db_url(source_type, conn_config)
             engine = create_engine(url)
             inspector = inspect(engine)
             columns = inspector.get_columns(table_name)
@@ -1277,9 +1380,35 @@ class ViewService:
     @staticmethod
     async def delete(db: AsyncSession, view: LensView) -> None:
         """删除视图"""
+        view_id = view.id
+        
         # 删除相关的收藏和最近访问记录
-        await db.execute(delete(LensFavorite).where(LensFavorite.view_id == view.id))
-        await db.execute(delete(LensRecentView).where(LensRecentView.view_id == view.id))
+        await db.execute(delete(LensFavorite).where(LensFavorite.view_id == view_id))
+        await db.execute(delete(LensRecentView).where(LensRecentView.view_id == view_id))
+        
+        # 同步清理所有用户设置中的快捷方式
+        # 注意: 这种操作在大规模用户下可能性能较差，但在目前系统规模下是安全的
+        from models import User
+        result = await db.execute(select(User))
+        users = result.scalars().all()
+        for u in users:
+            if u.settings and "start_menu_shortcuts" in u.settings:
+                shortcuts = u.settings["start_menu_shortcuts"]
+                if not isinstance(shortcuts, list): continue
+                
+                # 过滤掉指向该视图的快捷方式
+                new_shortcuts = [
+                    s for s in shortcuts 
+                    if not (isinstance(s, dict) and s.get("type") == "datalens" and s.get("view_id") == view_id)
+                ]
+                
+                if len(new_shortcuts) != len(shortcuts):
+                    # 更新用户设置
+                    updated_settings = dict(u.settings)
+                    updated_settings["start_menu_shortcuts"] = new_shortcuts
+                    u.settings = updated_settings
+                    flag_modified(u, "settings")
+        
         await db.delete(view)
 
     @staticmethod

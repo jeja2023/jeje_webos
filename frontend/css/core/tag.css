@@ -1,0 +1,75 @@
+/**
+ * 标签组件样式
+ */
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.tag-primary {
+    background: rgba(0, 212, 170, 0.15);
+    color: var(--color-primary);
+}
+
+.tag-warning {
+    background: rgba(255, 200, 87, 0.15);
+    color: var(--color-warning);
+}
+
+.tag-danger {
+    background: rgba(255, 107, 107, 0.15);
+    color: var(--color-error);
+}
+
+.tag-info {
+    background: rgba(116, 185, 255, 0.15);
+    color: var(--color-info);
+}
+
+/* 徽章别名 */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    line-height: 1.2;
+}
+
+.badge-primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.badge-secondary {
+    background: var(--color-secondary);
+    color: #fff;
+}
+
+.badge-success {
+    background: var(--color-success);
+    color: #fff;
+}
+
+.badge-warning {
+    background: var(--color-warning);
+    color: #fff;
+}
+
+.badge-danger {
+    background: var(--color-error);
+    color: #fff;
+}
+
+.badge-info {
+    background: var(--color-info);
+    color: #fff;
+}

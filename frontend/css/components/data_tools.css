@@ -1,0 +1,394 @@
+/**
+ * 数据工具组件样式 - 多字段排序与筛选
+ * 可复用于数据透镜、数据分析等模块
+ * 样式与数据透镜保持一致
+ */
+
+/* ==================== 通用数据工具样式 (dt- 前缀) ==================== */
+
+/* 工具栏按钮 (用于页面顶部的工具栏) */
+.dt-filter-btn,
+.dt-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dt-filter-btn:hover,
+.dt-sort-btn:hover {
+    background: rgba(var(--color-primary-rgb), 0.15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
+}
+
+/* 有筛选/排序时的高亮状态 */
+.dt-filter-btn.has-filter,
+.dt-sort-btn.has-sort {
+    background: rgba(var(--color-primary-rgb), 0.2) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+}
+
+/* ==================== 筛选和排序面板 ==================== */
+.dt-filter-panel,
+.dt-sort-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    margin: 0 20px 8px;
+    /* 适配数据分析页面的 20px padding */
+    padding: 8px 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: flex-start;
+    /* 顶部对齐，防止多行时错位 */
+    gap: 12px;
+
+    /* 关键：允许面板整体换行，如果宽度极窄时 */
+    flex-wrap: wrap;
+}
+
+/* 面板头部 */
+.dt-panel-header {
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    height: 28px;
+    /* 与单行列表高度基本一致 */
+}
+
+.dt-panel-header h4 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+/* 筛选/排序行列表 - 横向排列 */
+.dt-filter-list,
+.dt-sort-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    /* 允许换行 */
+    gap: 8px;
+    flex: 1 1 auto;
+    /* 允许伸缩 */
+    min-width: 200px;
+    /* 最小宽度，确保不会被压缩到消失 */
+    min-height: 28px;
+    align-content: flex-start;
+    /* 关键：多行时顶部对齐，防止行间距拉大 */
+}
+
+/* 筛选/排序行 - 紧凑样式 */
+.dt-filter-row,
+.dt-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+
+    /* 关键：防止Flex压缩 */
+    flex-shrink: 0;
+
+    /* 关键：强制间距，防止重叠 */
+    margin-bottom: 4px;
+}
+
+/* 行内表单控件 - 紧凑尺寸 */
+.dt-filter-row .form-control,
+.dt-sort-row .form-control {
+    padding: 2px 6px;
+    font-size: 11px;
+    height: 26px;
+    width: auto;
+    /* 默认宽度，后面具体定义 */
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.dt-filter-row .form-control:focus,
+.dt-sort-row .form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* 字段选择框宽度控制 - 适当缩窄以适应小屏 */
+.dt-filter-field,
+.dt-sort-field {
+    width: 100px;
+    flex: none;
+}
+
+.dt-filter-op {
+    width: 80px;
+    flex: none;
+}
+
+.dt-filter-value {
+    width: 120px;
+    flex: none;
+}
+
+.dt-sort-direction {
+    width: 75px;
+    flex: none;
+}
+
+/* 按钮样式组件 */
+.dt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.dt-btn-sm {
+    padding: 2px 8px;
+    font-size: 11px;
+    height: 24px;
+}
+
+.dt-btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
+.dt-btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 8px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.dt-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    flex-shrink: 0;
+    /* 防止图标被压缩 */
+}
+
+.dt-btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* 序号标签 */
+.dt-sort-order {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--color-primary);
+    color: #fff;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 面板操作区 */
+.dt-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 12px;
+    height: 28px;
+    margin-left: auto;
+    /* 在 wrap布局下自动推到右侧 */
+}
+
+.dt-panel-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+/* 筛选标签 */
+.dt-filter-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--color-primary);
+    color: #fff;
+    border-radius: 12px;
+}
+
+/* ==================== 浅色主题适配 ==================== */
+[data-theme="light"] .dt-filter-panel,
+[data-theme="light"] .dt-sort-panel {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dt-panel-header,
+[data-theme="light"] .dt-panel-actions {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dt-filter-row,
+[data-theme="light"] .dt-sort-row {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dt-filter-row .form-control,
+[data-theme="light"] .dt-sort-row .form-control {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #333 !important;
+}
+
+[data-theme="light"] .dt-btn {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: #f0f0f0;
+    color: #333;
+}
+
+[data-theme="light"] .dt-btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
+/* ==================== 动画 ==================== */
+@keyframes dt-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-down {
+    animation: dt-slide-down 0.25s ease-out;
+}
+
+/* ==================== 响应式适配 ==================== */
+
+/* 当屏幕小于 1200px 时，采用垂直布局排列各区域，避免拥挤 */
+@media (max-width: 1200px) {
+
+    .dt-filter-panel,
+    .dt-sort-panel {
+        flex-direction: column;
+        /* 垂直排列 */
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .dt-panel-header {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-right: 0;
+        padding-bottom: 6px;
+        width: 100%;
+        /* 头部占满一行 */
+        margin-bottom: 4px;
+        height: auto;
+    }
+
+    .dt-filter-list,
+    .dt-sort-list {
+        width: 100%;
+        /* 列表在中间，占满一行 */
+        flex: none;
+        /* 取消弹性，固定占满 */
+        margin: 0;
+    }
+
+    .dt-panel-actions {
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-left: 0;
+        padding-top: 8px;
+        width: 100%;
+        /* 操作区占满底部一行 */
+        justify-content: flex-end;
+        /* 按钮靠右 */
+        margin-top: 4px;
+        height: auto;
+        margin-left: 0;
+    }
+}
+
+/* 移动端/极窄屏幕适配 */
+@media (max-width: 600px) {
+
+    .dt-filter-row,
+    .dt-sort-row {
+        flex-wrap: wrap;
+        /* 表单项也可以换行 */
+        width: 100%;
+        padding: 6px;
+        height: auto;
+        /* 高度自适应 */
+    }
+
+    .dt-filter-field,
+    .dt-sort-field,
+    .dt-filter-op,
+    .dt-sort-direction {
+        width: calc(50% - 4px);
+        /* 半宽 */
+        flex: none;
+        margin-bottom: 4px;
+        /* 增加行间距 */
+    }
+
+    .dt-filter-value {
+        width: 100%;
+        /* 值输入框占满 */
+        margin-top: 4px;
+        flex: none;
+    }
+
+    .dt-btn-icon {
+        margin-left: auto;
+        /* 删除按钮靠右 */
+    }
+}

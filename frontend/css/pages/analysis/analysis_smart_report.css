@@ -1,0 +1,510 @@
+/* ==================== 智能报告编辑器布局 ==================== */
+
+.report-editor-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: var(--color-bg-tertiary);
+    gap: 0;
+}
+
+/* 左侧边栏 - 数据源配置 */
+.report-sidebar-left {
+    width: 220px;
+    min-width: 200px;
+    background: var(--color-bg-primary);
+    border-right: 1px solid var(--color-border);
+    padding: 15px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+/* 右侧边栏 - 图表组件 */
+.report-sidebar-right {
+    width: 200px;
+    min-width: 180px;
+    background: var(--color-bg-primary);
+    border-left: 1px solid var(--color-border);
+    padding: 15px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+/* 中间主区域 */
+.report-center-area {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    min-width: 0;
+    background: #e8eaed;
+}
+
+/* 编辑器和预览区域的通用样式 */
+.report-editor-section,
+.report-preview-section {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+/* 区域标题栏 */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.section-header .header-icon {
+    font-size: 14px;
+}
+
+.section-header .header-title {
+    font-family: "Microsoft YaHei", sans-serif;
+}
+
+/* 自定义工具栏 */
+.custom-editor-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e5e7eb;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: #ddd;
+    margin: 0 8px;
+}
+
+.toolbar-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.toolbar-btn:active {
+    background: #d1d5db;
+}
+
+.toolbar-select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    min-width: 70px;
+}
+
+.toolbar-select:hover {
+    border-color: #667eea;
+}
+
+.toolbar-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.toolbar-color {
+    width: 32px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+}
+
+.toolbar-color:hover {
+    border-color: #667eea;
+}
+
+/* 编辑器主体 */
+.editor-body {
+    flex: 1;
+    overflow: hidden;
+}
+
+#tui-editor-container {
+    height: 100%;
+}
+
+/* 预览主体 */
+.preview-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #333;
+}
+
+/* 预览内容样式 */
+.preview-body h1 {
+    font-size: 22px;
+    text-align: center;
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #667eea;
+    color: #333;
+}
+
+.preview-body h2 {
+    font-size: 18px;
+    margin: 18px 0 10px;
+    color: #444;
+    border-left: 4px solid #667eea;
+    padding-left: 10px;
+}
+
+.preview-body h3 {
+    font-size: 16px;
+    margin: 15px 0 8px;
+    color: #555;
+}
+
+.preview-body p {
+    margin: 10px 0;
+    text-indent: 0;
+}
+
+.preview-body ul, .preview-body ol {
+    margin: 10px 0;
+    padding-left: 25px;
+}
+
+.preview-body li {
+    margin: 5px 0;
+}
+
+.preview-body strong {
+    color: #667eea;
+}
+
+.preview-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.preview-body th,
+.preview-body td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.preview-body th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
+.preview-body code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+}
+
+.preview-body pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+.preview-body blockquote {
+    border-left: 4px solid #667eea;
+    padding-left: 15px;
+    margin: 15px 0;
+    color: #666;
+    background: #f9f9f9;
+    padding: 10px 15px;
+    border-radius: 0 4px 4px 0;
+}
+
+/* 图表容器样式 */
+.preview-chart-container {
+    width: 100% !important;
+    height: 320px !important;
+    min-height: 320px !important;
+    margin: 15px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #fff;
+    display: block;
+    position: relative;
+}
+
+.preview-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    margin: 15px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    color: #6b7280;
+}
+
+.chart-placeholder .icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+    opacity: 0.7;
+}
+
+.chart-placeholder p {
+    margin: 0;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Toast UI Editor 样式覆盖 */
+.toastui-editor-defaultUI {
+    border: none !important;
+}
+
+.toastui-editor-defaultUI-toolbar {
+    border-bottom: 1px solid #eee !important;
+    background: #fafafa !important;
+    padding: 5px 8px !important;
+}
+
+.toastui-editor-toolbar-icons {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.toastui-editor-toolbar-icons:hover {
+    background-color: #e8eaed !important;
+    border-radius: 4px !important;
+}
+
+.toastui-editor-mode-switch,
+.toastui-editor-tabs {
+    display: none !important;
+}
+
+.toastui-editor-md-container {
+    background: #fff !important;
+}
+
+.toastui-editor-md-container .toastui-editor {
+    font-family: "Microsoft YaHei", Consolas, monospace !important;
+    font-size: 14px !important;
+}
+
+/* 侧边栏样式 */
+.report-sidebar-left .section-title,
+.report-sidebar-right .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--color-text-primary);
+}
+
+.report-sidebar-left .form-group {
+    margin-bottom: 12px;
+}
+
+.report-sidebar-left .form-group label {
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+    color: var(--color-text-secondary);
+}
+
+.report-sidebar-left .form-control-sm {
+    font-size: 13px;
+    padding: 6px 10px;
+}
+
+/* 变量标签 */
+.var-tag-btn {
+    display: inline-block;
+    padding: 3px 10px;
+    margin: 3px;
+    font-size: 11px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+    border: 1px solid #667eea50;
+    color: #667eea;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.var-tag-btn:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* 图表列表 */
+.chart-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chart-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+}
+
+.chart-item .chart-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chart-item .chart-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chart-item .chart-type {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    margin-top: 2px;
+}
+
+.chart-item .insert-btn {
+    padding: 4px 10px;
+    font-size: 10px;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.chart-item .insert-btn:hover {
+    background: #5a6fd6;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 30px 15px;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+}
+
+.empty-state .icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+/* 隐藏渲染容器 - 用于导出图表为图片 */
+#hidden-chart-render-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 1200px;
+    height: 800px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: -9999;
+    overflow: visible;
+}
+
+/* 暗色主题适配 */
+[data-theme="dark"] .report-center-area {
+    background: #1a1a2e;
+}
+
+[data-theme="dark"] .report-editor-section,
+[data-theme="dark"] .report-preview-section {
+    background: var(--color-bg-primary);
+}
+
+[data-theme="dark"] .preview-body {
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .preview-body h1,
+[data-theme="dark"] .preview-body h2,
+[data-theme="dark"] .preview-body h3 {
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .preview-body th {
+    background: var(--color-bg-tertiary);
+}
+
+[data-theme="dark"] .toastui-editor-defaultUI-toolbar {
+    background: var(--color-bg-tertiary) !important;
+}
+
+[data-theme="dark"] .toastui-editor-md-container {
+    background: var(--color-bg-primary) !important;
+}
