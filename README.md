@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue 3 like](https://img.shields.io/badge/JS-Vanilla%20%2B%20Web%20Component-yellow.svg)](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/jeja2023/jeje_webos)
+[![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)](https://github.com/jeja2023/jeje_webos)
 
 **JeJe WebOS** 是一个尝试打破传统 B/S 架构管理后台交互模式的实验性项目。它在浏览器中复刻了原生桌面操作系统的操作体验，提供了 **窗口管理**、**多任务处理** 和 **模块热插拔** 能力，旨在为用户构建一个流畅、直观且高度可扩展的个人云端工作台。
 
@@ -264,6 +264,11 @@ JeJe WebOS 采用了许多现代 Web 特性（如 Grid 布局、CSS 变量、Web
 ## 📅 更新日志 (Changelog)
 
 > 完整更新历史请查看 [更新日志.md](./更新日志.md)
+
+### v2.1.1 (2025-12-31)
+- 📂 **存储系统重构**：统一存储管理器，实现用户隔离和模块分类
+- 📊 **智能报告优化**：修复PDF图表显示问题，完善文件清理机制
+- 📖 **开发规范完善**：新增JS/CSS文件规范和存储规范章节
 
 ### v2.1.0 (2025-12-25)
 - 👁️ **数据透镜模块深度优化**：
