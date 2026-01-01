@@ -39,9 +39,9 @@ class CachedStaticFiles(StaticFiles):
         '.ico': 2592000,
         '.webp': 2592000,
         
-        # CSS/JS - 1周（可能会更新）
-        '.css': 604800,
-        '.js': 604800,
+        # CSS/JS - 实时更新（开发环境）
+        '.css': 0,
+        '.js': 0,
         
         # HTML - 不缓存（动态内容）
         '.html': 0,

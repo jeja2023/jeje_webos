@@ -342,6 +342,14 @@ const Utils = {
     },
 
     /**
+     * 格式化数字 (添加千分位)
+     */
+    formatNumber(num) {
+        if (num === null || num === undefined) return '0';
+        return num.toLocaleString();
+    },
+
+    /**
      * 导出数据为 CSV
      */
     exportToCSV(data, fileName) {

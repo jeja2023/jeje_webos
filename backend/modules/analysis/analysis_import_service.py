@@ -13,6 +13,60 @@ logger = logging.getLogger(__name__)
 
 class ImportService:
     @staticmethod
+    async def preview_file(db: AsyncSession, file_id: int, source: str = "upload"):
+        """预览文件内容（返回前10行数据）"""
+        storage_path = None
+        original_filename = None
+        
+        if source == "filemanager":
+            from modules.filemanager.filemanager_models import VirtualFile
+            result = await db.execute(select(VirtualFile).where(VirtualFile.id == file_id))
+            virtual_file = result.scalar_one_or_none()
+            if not virtual_file:
+                raise ValueError(f"文件不存在 (ID: {file_id})")
+            storage_path = virtual_file.storage_path
+            original_filename = virtual_file.name
+        elif source == "upload" or source == "" or source is None:
+            result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
+            file_record = result.scalar_one_or_none()
+            if not file_record:
+                raise ValueError(f"文件不存在 (ID: {file_id})")
+            storage_path = file_record.storage_path
+            original_filename = file_record.filename
+        else:
+             # Fallback: check both or raise error?
+             # Let's try to be smart: if not found in upload, look in filemanager?
+             # For now, strict mode is better.
+             raise ValueError(f"未知的来源类型: {source}")
+
+        storage = get_storage_manager()
+        file_path = storage.get_file_path(storage_path)
+        if not file_path or not os.path.exists(file_path):
+            raise ValueError("物理文件不存在")
+
+        ext = os.path.splitext(original_filename)[1].lower()
+        try:
+            if ext == '.csv':
+                df = pd.read_csv(file_path, nrows=10)
+            elif ext in ['.xlsx', '.xls']:
+                engine = 'openpyxl' if ext == '.xlsx' else 'xlrd'
+                df = pd.read_excel(file_path, engine=engine, nrows=10)
+            else:
+                raise ValueError(f"不支持的格式: {ext}")
+            
+            # 格式化日期时间列
+            for col in df.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+                df[col] = df[col].astype(str)
+
+            return {
+                "columns": df.columns.tolist(),
+                "preview": df.where(pd.notnull(df), None).to_dict(orient='records'),
+                "filename": original_filename
+            }
+        except Exception as e:
+            raise ValueError(f"预览失败: {str(e)}")
+
+    @staticmethod
     async def import_from_file(db: AsyncSession, name: str, file_id: int, options: dict = None, source: str = "upload"):
         """从上传的文件导入数据到 DuckDB
         
@@ -149,3 +203,29 @@ class ImportService:
         await db.delete(dataset)
         await db.commit()
         return True
+
+    @staticmethod
+    async def update_dataset(db: AsyncSession, dataset_id: int, updates: dict):
+        """更新数据集信息"""
+        result = await db.execute(select(AnalysisDataset).where(AnalysisDataset.id == dataset_id))
+        dataset = result.scalar_one_or_none()
+        if not dataset:
+            raise ValueError("数据集不存在")
+
+        # 更新基本字段
+        if 'name' in updates and updates['name'] is not None:
+            dataset.name = updates['name']
+        
+        # 处理 description (存储在 config 中)
+        if 'description' in updates and updates['description'] is not None:
+            if not dataset.config:
+                dataset.config = {}
+            # 创建新字典以触发 SQLAlchemy JSON 变更检测
+            new_config = dataset.config.copy()
+            new_config['description'] = updates['description']
+            dataset.config = new_config
+
+        dataset.updated_at = pd.Timestamp.now()
+        await db.commit()
+        await db.refresh(dataset)
+        return dataset

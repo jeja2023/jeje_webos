@@ -6,11 +6,14 @@
 const AnalysisApi = {
     getDatasets: () => Api.get('/analysis/datasets'),
     importFile: (data) => Api.post('/analysis/import/file', data),
+    previewImport: (data) => Api.post('/analysis/import/preview', data),
+    importBatchFiles: (data) => Api.post('/analysis/import/batch-files', data),
     uploadFile: (formData) => Api.upload('/storage/upload?category=analysis', formData),
     importDatabase: (data) => Api.post('/analysis/import/database', data),
     getDatasetData: (id, params) => Api.get(`/analysis/datasets/${id}/data`, params),
     compare: (data) => Api.post('/analysis/compare', data),
     deleteDataset: (id) => Api.delete(`/analysis/datasets/${id}`),
+    updateDataset: (id, data) => Api.put(`/analysis/datasets/${id}`, data),
     // 数据库导入
     getDbTables: (data) => Api.post('/analysis/import/db-tables', data),
     // 清洗与建模
@@ -22,6 +25,8 @@ const AnalysisApi = {
     // SQL 建模
     executeSql: (data) => Api.post('/analysis/model/sql', data),
     getTables: () => Api.get('/analysis/tables'),
+    getStorageFiles: (params) => Api.get('/storage/list', params),
+    browseFileManager: (params) => Api.get('/filemanager/browse', params),
 
     // 模型管理 (ETL)
     getModels: () => Api.get('/analysis/models'),
@@ -79,6 +84,8 @@ class AnalysisPage extends Component {
         this.state = {
             activeTab: 'bi', // datasets, import, compare, cleaning, modeling, charts, bi
             datasets: [],
+            datasetSearch: '', // 数据集搜索
+            datasetSelectedIds: [], // 数据集多选
             currentDataset: null,
             data: [],
             columns: [],
@@ -98,7 +105,11 @@ class AnalysisPage extends Component {
             importType: 'file', // file, database
             fileSource: 'upload', // upload, manager
             fileManagerFiles: null,
+            currentFolderId: null,
+            folderPath: [], // 存储面包屑 [{id, name}]
             loadingFiles: false,
+            selectedFiles: [],
+            cloudSelections: [],
             // 数据库导入专用
             dbTables: null,
             dbConnected: false,
@@ -220,7 +231,7 @@ class AnalysisPage extends Component {
             if (this.bindChartEvents && !this._chartEventsBound) {
                 this.bindChartEvents();
             }
-            
+
             // 如果显示 ChartHub，确保列表已更新
             if (this.state.showChartHub) {
                 const container = document.getElementById('saved-charts-list');
@@ -245,7 +256,7 @@ class AnalysisPage extends Component {
                     }, 200);
                 }
             }
-            
+
             if (this.state.chartDatasetId) {
                 // 如果切换了图表类型或初始进入，确保字段列表被填充
                 const xSelect = document.getElementById('chart-x-field');
@@ -472,6 +483,111 @@ class AnalysisPage extends Component {
             window.open(el.src);
         });
 
+        // --- 数据集管理事件增强 ---
+
+        // 搜索框 (实时更新Table而不重新渲染整个页面，避免失去焦点)
+        this.delegate('input', '#dataset-list-search', (e) => {
+            const val = e.target.value.trim();
+            // 静默更新状态
+            this.state.datasetSearch = val;
+
+            // 过滤并局部更新 DOM
+            const { datasets } = this.state;
+            const list = datasets.filter(d => {
+                if (!val) return true;
+                const term = val.toLowerCase();
+                return d.name.toLowerCase().includes(term) ||
+                    (d.config?.description || '').toLowerCase().includes(term);
+            });
+
+            const tbody = document.getElementById('dataset-list-body');
+            if (tbody) {
+                tbody.innerHTML = this.renderDatasetRows(list);
+            }
+        });
+
+        // 全选/取消全选
+        this.delegate('change', '#check-all-datasets', (e) => {
+            const checked = e.target.checked;
+            const { datasets, datasetSearch } = this.state;
+            const list = datasets.filter(d => !datasetSearch || d.name.toLowerCase().includes(datasetSearch.toLowerCase()));
+            this.setState({
+                datasetSelectedIds: checked ? list.map(d => d.id) : []
+            });
+        });
+
+        // 单选
+        this.delegate('change', '.check-dataset-item', (e, el) => {
+            const id = parseInt(el.value);
+            const { datasetSelectedIds } = this.state;
+            if (el.checked) {
+                this.setState({ datasetSelectedIds: [...datasetSelectedIds, id] });
+            } else {
+                this.setState({ datasetSelectedIds: datasetSelectedIds.filter(idx => idx !== id) });
+            }
+        });
+
+        // 批量删除
+        this.delegate('click', '#btn-batch-delete-datasets', async () => {
+            const { datasetSelectedIds } = this.state;
+            if (datasetSelectedIds.length === 0) return;
+            if (!confirm(`确定要删除选中的 ${datasetSelectedIds.length} 个数据集吗？\n此操作不可恢复。`)) return;
+
+            try {
+                Toast.info('正在删除...');
+                for (const id of datasetSelectedIds) {
+                    await AnalysisApi.deleteDataset(id);
+                }
+                Toast.success('批量删除成功');
+                this.setState({ datasetSelectedIds: [] });
+                this.fetchDatasets();
+            } catch (e) {
+                Toast.error('部分删除失败: ' + e.message);
+                this.fetchDatasets();
+            }
+        });
+
+        // 编辑数据集
+        this.delegate('click', '.btn-edit-dataset', (e, el) => {
+            const id = parseInt(el.dataset.id);
+            const ds = this.state.datasets.find(d => d.id === id);
+            if (!ds) return;
+
+            const content = `
+                <div class="form-group mb-15">
+                    <label class="required">数据集名称</label>
+                    <input type="text" class="form-control" id="edit-ds-name" value="${Utils.escapeHtml(ds.name)}">
+                </div>
+                <div class="form-group mb-15">
+                    <label>描述 / 备注</label>
+                    <textarea class="form-control" id="edit-ds-desc" rows="3" placeholder="添加备注...">${Utils.escapeHtml(ds.config?.description || '')}</textarea>
+                </div>
+            `;
+
+            new Modal({
+                title: '编辑数据集信息',
+                content: content,
+                onConfirm: async () => {
+                    const name = document.getElementById('edit-ds-name').value.trim();
+                    const desc = document.getElementById('edit-ds-desc').value.trim();
+                    if (!name) {
+                        Toast.error('名称不能为空');
+                        return false;
+                    }
+
+                    try {
+                        await AnalysisApi.updateDataset(id, { name, description: desc });
+                        Toast.success('更新成功');
+                        this.fetchDatasets();
+                        return true;
+                    } catch (e) {
+                        Toast.error('更新失败: ' + e.message);
+                        return false;
+                    }
+                }
+            }).show();
+        });
+
         // 调用各模块的事件绑定
         if (this.bindModelingEvents) this.bindModelingEvents();
         if (this.bindChartEvents) this.bindChartEvents();
@@ -521,7 +637,7 @@ class AnalysisPage extends Component {
                             <span>🔍</span> 数据比对
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'sql' ? 'active' : ''}" data-tab="sql">
-                            <span>💾</span> SQL查询
+                            <span>🖥️</span> SQL查询
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'modeling' ? 'active' : ''}" data-tab="modeling">
                             <span>📈</span> 数据建模
@@ -570,49 +686,128 @@ class AnalysisPage extends Component {
     }
 
     renderDatasets() {
-        const list = this.state.datasets;
+        const { datasets, datasetSearch, datasetSelectedIds } = this.state;
+
+        // 过滤
+        const list = datasets.filter(d => {
+            if (!datasetSearch) return true;
+            const term = datasetSearch.toLowerCase();
+            return d.name.toLowerCase().includes(term) ||
+                (d.config?.description || '').toLowerCase().includes(term);
+        });
+
+        // 全选状态
+        const isAllSelected = list.length > 0 && list.every(d => datasetSelectedIds.includes(d.id));
+        const isIndeterminate = list.some(d => datasetSelectedIds.includes(d.id)) && !isAllSelected;
+
         return `
-            <div class="p-20">
-                <div class="flex-between mb-20">
-                    <h2>数据集列表</h2>
-                    <button class="btn btn-outline-primary btn-sm" id="btn-refresh-datasets">
-                        🔄 刷新列表
-                    </button>
+            <div class="p-20" style="height: calc(100vh - 120px); overflow: auto;">
+                <div class="flex-between mb-20 gap-15">
+                    <div class="flex-center gap-15" style="flex: 1;">
+                        <h2 class="m-0">数据管理</h2>
+                        <div class="search-wrapper" style="max-width: 300px; flex: 1;">
+                            <i class="ri-search-line"></i>
+                            <input type="text" class="form-control" id="dataset-list-search" 
+                                placeholder="搜索名称或描述..." value="${datasetSearch || ''}">
+                        </div>
+                    </div>
+                    <div class="flex gap-10">
+                        ${datasetSelectedIds.length > 0 ? `
+                            <button class="btn btn-danger btn-sm" id="btn-batch-delete-datasets">
+                                🗑️ 删除选中 (${datasetSelectedIds.length})
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-outline-primary btn-sm" id="btn-refresh-datasets">
+                            🔄 刷新
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-tab=import]').click()">
+                            ➕ 新建导入
+                        </button>
+                    </div>
                 </div>
-                <table class="premium-table">
-                    <thead>
-                        <tr>
-                            <th>名称</th>
-                            <th>来源</th>
-                            <th>行数</th>
-                            <th>创建时间</th>
-                            <th width="150">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${list.map(d => `
+
+                <div class="premium-table-container">
+                    <table class="premium-table">
+                        <thead>
                             <tr>
-                                <td>${d.name}</td>
-                                <td>${d.source_type === 'file' ? '文件' : '数据库'}</td>
-                                <td>${d.row_count}</td>
-                                <td>${Utils.formatDate(d.created_at)}</td>
-                                <td>
-                                    <div class="flex gap-10">
-                                        <button class="btn btn-sm btn-secondary btn-view-dataset" data-id="${d.id}" style="padding: 4px 10px;">
-                                            👁️ 查看
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-delete-dataset" data-id="${d.id}" style="padding: 4px 10px;">
-                                            🗑️ 删除
-                                        </button>
-                                    </div>
-                                </td>
+                                <th width="40" class="text-center">
+                                    <input type="checkbox" id="check-all-datasets" 
+                                        ${isAllSelected ? 'checked' : ''} 
+                                        ${list.length === 0 ? 'disabled' : ''}>
+                                </th>
+                                <th>名称 / 描述</th>
+                                <th>来源</th>
+                                <th>数据量</th>
+                                <th>创建时间</th>
+                                <th width="180">操作</th>
                             </tr>
-                        `).join('')}
-                        ${list.length === 0 ? '<tr><td colspan="5" class="text-center">暂无数据</td></tr>' : ''}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody id="dataset-list-body">
+                            ${this.renderDatasetRows(list)}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
+    }
+
+    renderDatasetRows(list) {
+        const { datasetSelectedIds, datasetSearch } = this.state;
+        if (list.length === 0) {
+            return `
+                <tr>
+                    <td colspan="6" class="text-center py-50">
+                        <div class="text-secondary">
+                            <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+                            ${datasetSearch ? '未找到匹配的数据集' : '暂无数据集，请先导入'}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return list.map(d => `
+            <tr class="${datasetSelectedIds.includes(d.id) ? 'active' : ''}">
+                <td class="text-center">
+                    <input type="checkbox" class="check-dataset-item" 
+                        value="${d.id}" ${datasetSelectedIds.includes(d.id) ? 'checked' : ''}>
+                </td>
+                <td>
+                    <div class="flex-column">
+                        <div class="font-600 text-truncate" style="max-width: 300px;" title="${d.name}">${d.name}</div>
+                        ${d.config?.description ? `
+                            <div class="text-secondary text-xs text-truncate" style="max-width: 300px;" title="${d.config.description}">
+                                ${d.config.description}
+                            </div>
+                        ` : '<div class="text-tertiary text-xs">暂无描述</div>'}
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${d.source_type === 'file' ? 'bg-secondary' : 'bg-info'}">
+                        ${d.source_type === 'file' ? '📂 文件' : '🗄️ 数据库'}
+                    </span>
+                </td>
+                <td>
+                    <span class="font-mono text-sm">${Utils.formatNumber(d.row_count)}</span> 行
+                </td>
+                <td class="text-secondary text-sm">
+                    ${Utils.formatDate(d.created_at)}
+                </td>
+                <td>
+                    <div class="flex gap-10">
+                        <button class="btn btn-sm btn-ghost btn-view-dataset" data-id="${d.id}" title="查看数据">
+                            👁️
+                        </button>
+                        <button class="btn btn-sm btn-ghost btn-edit-dataset" data-id="${d.id}" title="编辑信息">
+                            ✏️
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-danger btn-delete-dataset" data-id="${d.id}" title="删除">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
     }
 
     renderViewer() {

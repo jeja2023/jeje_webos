@@ -35,7 +35,45 @@ class ETLExecutionService:
             cache_path = Path(tempfile.gettempdir()) / "jeje_etl_cache"
             cache_path.mkdir(parents=True, exist_ok=True)
             cls._cache_dir = str(cache_path)
+            
+            # 初始化时尝试清理过期缓存
+            cls._cleanup_old_cache()
+            
         return cls._cache_dir
+
+    @classmethod
+    def _cleanup_old_cache(cls):
+        """清理超过24小时的旧缓存文件"""
+        try:
+            import time
+            import os
+            from pathlib import Path
+            
+            if not cls._cache_dir:
+                return
+
+            cache_path = Path(cls._cache_dir)
+            if not cache_path.exists():
+                return
+                
+            now = time.time()
+            ttl = 24 * 3600  # 24小时
+            
+            deleted_count = 0
+            for f in cache_path.glob("*.parquet"):
+                try:
+                    # 检查文件最后修改时间
+                    if now - f.stat().st_mtime > ttl:
+                        f.unlink()
+                        deleted_count += 1
+                except Exception:
+                    pass
+            
+            if deleted_count > 0:
+                logger.info(f"已自动清理 {deleted_count} 个过期的 ETL 缓存文件")
+                
+        except Exception as e:
+            logger.warning(f"清理旧缓存失败: {e}")
     
     @classmethod
     def _get_cache_file_path(cls, key: str) -> str:
@@ -324,6 +362,12 @@ class ETLExecutionService:
             result = await cls._execute_union(db, upstream_df, node_data)
         elif node_type == 'pivot':
             result = cls._execute_pivot(upstream_df, node_data)
+        elif node_type == 'text_ops':
+            result = cls._execute_text_ops(upstream_df, node_data)
+        elif node_type == 'math_ops':
+            result = cls._execute_math_ops(upstream_df, node_data)
+        elif node_type == 'window':
+            result = cls._execute_window(upstream_df, node_data)
         elif node_type == 'sql':
             result = cls._execute_sql(upstream_df, node_data)
         else:
@@ -984,6 +1028,136 @@ class ETLExecutionService:
             except:
                 pass
     
+    @classmethod
+    def _execute_text_ops(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
+        """执行文本处理节点"""
+        target_col = node_data.get('targetCol', '')
+        func = node_data.get('func', 'UPPER')
+        new_col = node_data.get('newCol', '')
+        
+        if not target_col:
+            return df
+        
+        if target_col not in df.columns:
+            raise ValueError(f"字段不存在: {target_col}")
+        
+        # 如果未指定新字段名，覆盖原字段
+        result_col_name = new_col if new_col else target_col
+        
+        result = df.copy()
+        series = result[target_col].astype(str)
+        
+        if func == 'UPPER':
+            result[result_col_name] = series.str.upper()
+        elif func == 'LOWER':
+            result[result_col_name] = series.str.lower()
+        elif func == 'TRIM':
+            result[result_col_name] = series.str.strip()
+        elif func == 'LENGTH':
+            result[result_col_name] = series.str.len()
+        elif func == 'REVERSE':
+            result[result_col_name] = series.apply(lambda x: x[::-1] if isinstance(x, str) else x)
+            
+        logger.info(f"TextOps 节点: {target_col} -> {func} -> {result_col_name}")
+        return result
+
+    @classmethod
+    def _execute_math_ops(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
+        """执行数学运算节点"""
+        field_a = node_data.get('fieldA', '')
+        op = node_data.get('op', '+')
+        value = node_data.get('value', '0')
+        new_col = node_data.get('newCol', '')
+        
+        if not field_a or not new_col:
+            return df
+            
+        if field_a not in df.columns:
+            raise ValueError(f"字段不存在: {field_a}")
+            
+        result = df.copy()
+        
+        # 尝试将输入转为数字
+        col_a = pd.to_numeric(result[field_a], errors='coerce').fillna(0)
+        
+        # 处理操作数 B (可能是字段或常量)
+        if value in df.columns:
+            col_b = pd.to_numeric(result[value], errors='coerce').fillna(0)
+        else:
+            try:
+                col_b = float(value)
+            except:
+                col_b = 0
+                
+        if op == '+':
+            result[new_col] = col_a + col_b
+        elif op == '-':
+            result[new_col] = col_a - col_b
+        elif op == '*':
+            result[new_col] = col_a * col_b
+        elif op == '/':
+            result[new_col] = col_a / col_b.replace(0, np.nan) # 防止除零
+        elif op == '%':
+            result[new_col] = col_a % col_b.replace(0, np.nan)
+            
+        logger.info(f"MathOps 节点: {new_col} = {field_a} {op} {value}")
+        return result
+
+    @classmethod
+    def _execute_window(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
+        """执行窗口函数节点 (Using DuckDB)"""
+        import uuid
+        func = node_data.get('func', 'ROW_NUMBER')
+        partition_by = node_data.get('partitionBy', '')
+        order_by = node_data.get('orderBy', '')
+        new_col = node_data.get('newCol', '')
+        
+        if not new_col:
+            raise ValueError("必须指定目标新字段名")
+            
+        # 注册临时表
+        temp_name = f"temp_window_{uuid.uuid4().hex[:8]}"
+        duckdb_instance.conn.register(temp_name, df)
+        
+        try:
+            # 构建 OVER 子句
+            over_parts = []
+            if partition_by:
+                # 兼容多字段
+                parts = [f'"{p.strip()}"' for p in partition_by.split(',') if p.strip()]
+                if parts:
+                    over_parts.append(f"PARTITION BY {', '.join(parts)}")
+            
+            if order_by:
+                orders = [f'"{o.strip()}"' for o in order_by.split(',') if o.strip()]
+                if orders:
+                    over_parts.append(f"ORDER BY {', '.join(orders)}")
+            else:
+                pass
+                
+            over_clause = f"OVER ({' '.join(over_parts)})"
+            
+            # 构建函数调用
+            if func in ['LEAD', 'LAG']:
+                # See thought above about LEAD/LAG args
+                if not order_by:
+                     raise ValueError(f"{func} 函数需要指定排序列(Order By)作为操作对象")
+                target_col = order_by.split(',')[0].strip()
+                func_call = f"{func}(\"{target_col}\", 1)"
+            else:
+                func_call = f"{func}()"
+                
+            sql = f"""
+                SELECT *, {func_call} {over_clause} AS "{new_col}"
+                FROM {temp_name}
+            """
+            
+            logger.info(f"Window 节点 (SQL): {new_col} = {func} OVER(...)")
+            return duckdb_instance.fetch_df(sql)
+            
+        finally:
+            duckdb_instance.conn.unregister(temp_name)
+
     @classmethod
     def _df_to_records(cls, df: pd.DataFrame) -> List[Dict]:
         """将 DataFrame 转换为记录列表，处理特殊值"""

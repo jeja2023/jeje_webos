@@ -24,7 +24,28 @@ class CleaningService:
     def _perform_cleaning(df: pd.DataFrame, op: str, cols: List[str], params: Dict[str, Any], fill_value: Optional[str]) -> pd.DataFrame:
         """核心清洗逻辑"""
         # 执行清洗操作
-        if op == "drop_missing":
+        if op == "skip_rows":
+            # 跳过前N行
+            rows_to_skip = int(params.get("rows", 1))
+            if rows_to_skip > 0 and rows_to_skip < len(df):
+                df = df.iloc[rows_to_skip:].reset_index(drop=True)
+        elif op == "use_row_as_header":
+            # 将指定行作为标题
+            header_row = int(params.get("header_row", 1)) - 1  # 转为0索引
+            if 0 <= header_row < len(df):
+                new_columns = df.iloc[header_row].astype(str).tolist()
+                # 处理重复列名
+                seen = {}
+                for i, col in enumerate(new_columns):
+                    if col in seen:
+                        seen[col] += 1
+                        new_columns[i] = f"{col}_{seen[col]}"
+                    else:
+                        seen[col] = 0
+                df.columns = new_columns
+                # 删除标题行及之前的所有行
+                df = df.iloc[header_row + 1:].reset_index(drop=True)
+        elif op == "drop_missing":
             df = df.dropna(subset=cols)
         elif op == "fill_missing":
             if fill_value is not None:
@@ -80,6 +101,19 @@ class CleaningService:
         elif op == "drop_empty_columns":
             # 删除所有值均为空的列
             df = df.dropna(axis=1, how='all')
+        elif op == "rename_column":
+            # 列重命名
+            old_name = params.get("old_name", "")
+            new_name = params.get("new_name", "")
+            if old_name and new_name and old_name in df.columns:
+                df = df.rename(columns={old_name: new_name})
+        elif op == "drop_columns":
+            # 删除指定列
+            cols_to_drop = params.get("columns", [])
+            if cols_to_drop:
+                existing_cols = [c for c in cols_to_drop if c in df.columns]
+                if existing_cols:
+                    df = df.drop(columns=existing_cols)
         elif op == "convert_type":
             target_type = params.get("type", "string")
             for col in cols:
@@ -169,6 +203,11 @@ class CleaningService:
         
         # 根据操作类型生成描述性名称
         op_names = {
+            "skip_rows": "跳行",
+            "use_row_as_header": "设标题",
+            "rename_column": "重命名",
+            "drop_columns": "删列",
+            "convert_type": "转类型",
             "drop_missing": "去空",
             "fill_missing": "填充",
             "drop_duplicates": "去重",

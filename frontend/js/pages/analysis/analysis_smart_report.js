@@ -240,12 +240,12 @@ const AnalysisSmartReportMixin = {
     _renderChartsPanel(charts) {
         const datasets = this.state.datasets || [];
         const selectedChartSource = this.state.chartSourceDatasetId || '';
-        
+
         // 根据来源筛选图表
-        const filteredCharts = selectedChartSource 
+        const filteredCharts = selectedChartSource
             ? charts.filter(c => String(c.dataset_id) === String(selectedChartSource))
             : charts;
-        
+
         return `
             <div class="section-title">
                 <span>📈</span>
@@ -375,7 +375,7 @@ const AnalysisSmartReportMixin = {
 
     async _openReportEditor(id) {
         const report = (this.state.smartReports || []).find(r => String(r.id) === String(id));
-        
+
         // 使用 setState 触发完整重新渲染（因为要切换到编辑器视图）
         this.setState({
             editingReportId: id,
@@ -388,7 +388,7 @@ const AnalysisSmartReportMixin = {
         this.fetchAnalysisCharts().then(() => {
             console.log('[智能报告] 图表数据加载完成');
         });
-        
+
         // 初始化编辑器
         setTimeout(async () => {
             this._initTuiEditor(id);
@@ -444,7 +444,7 @@ const AnalysisSmartReportMixin = {
             if (!this._tuiEditor) return;
             const selectedFont = e.target.value;
             if (!selectedFont) return;
-            
+
             try {
                 // 插入字体样式标签
                 this._tuiEditor.insertText(`<span style="font-family: ${selectedFont}"></span>`);
@@ -498,7 +498,7 @@ const AnalysisSmartReportMixin = {
             if (!this._tuiEditor) return;
             const selectedSize = e.target.value;
             if (!selectedSize) return;
-            
+
             try {
                 // 插入字号样式标签
                 this._tuiEditor.insertText(`<span style="font-size: ${selectedSize}"></span>`);
@@ -534,7 +534,7 @@ const AnalysisSmartReportMixin = {
                 // 如果找不到对应图表，显示提示文本
                 return `\n**[图表: ${chartName}]** _(请重新插入)_\n`;
             });
-            
+
             // 清理旧的注释格式
             initialContent = initialContent.replace(/<!-- 图片已移除: ([^>]+) -->/g, (match, name) => {
                 const charts = this.state.analysisCharts || [];
@@ -582,14 +582,14 @@ const AnalysisSmartReportMixin = {
 
         // 绑定自定义工具栏事件
         this._bindCustomToolbar();
-        
+
         // 初始预览由 _openReportEditor 统一触发
     },
-    
+
     _bindCustomToolbar() {
         const toolbar = document.getElementById('custom-toolbar');
         if (!toolbar) return;
-        
+
         // 工具栏按钮点击
         toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -597,7 +597,7 @@ const AnalysisSmartReportMixin = {
                 this._executeToolbarCommand(cmd);
             });
         });
-        
+
         // 字体选择
         const fontFamily = document.getElementById('toolbar-font-family');
         if (fontFamily) {
@@ -608,7 +608,7 @@ const AnalysisSmartReportMixin = {
                 }
             });
         }
-        
+
         // 字号选择
         const fontSize = document.getElementById('toolbar-font-size');
         if (fontSize) {
@@ -619,7 +619,7 @@ const AnalysisSmartReportMixin = {
                 }
             });
         }
-        
+
         // 颜色选择
         const fontColor = document.getElementById('toolbar-font-color');
         if (fontColor) {
@@ -628,10 +628,10 @@ const AnalysisSmartReportMixin = {
             });
         }
     },
-    
+
     _executeToolbarCommand(cmd) {
         if (!this._tuiEditor) return;
-        
+
         const commands = {
             'heading': () => this._tuiEditor.insertText('\n## '),
             'bold': () => this._tuiEditor.insertText('**粗体文字**'),
@@ -645,12 +645,12 @@ const AnalysisSmartReportMixin = {
             'link': () => this._tuiEditor.insertText('[链接文字](https://example.com)'),
             'code': () => this._tuiEditor.insertText('`代码`')
         };
-        
+
         if (commands[cmd]) {
             commands[cmd]();
         }
     },
-    
+
     _insertStyledText(property, value) {
         if (!this._tuiEditor) return;
         this._tuiEditor.insertText(`<span style="${property}: ${value}">文字</span>`);
@@ -688,32 +688,32 @@ const AnalysisSmartReportMixin = {
             console.warn('未找到预览区域');
             return;
         }
-        
+
         // 使用版本号防止并发更新问题
         this._previewVersion = (this._previewVersion || 0) + 1;
         const currentVersion = this._previewVersion;
 
         try {
             const mdContent = this._tuiEditor.getMarkdown();
-            
+
             // 获取数据集数据
             let dataContext = {};
             const datasetId = document.getElementById('report-dataset-select')?.value;
             const dataRowMode = document.getElementById('report-dataset-row')?.value || 'first';
-            
+
             console.log('[预览调试] 数据集ID:', datasetId, '取值模式:', dataRowMode);
-            
+
             if (datasetId) {
                 try {
                     const res = await AnalysisApi.getDatasetData(parseInt(datasetId), { page: 1, size: 1000 });
                     console.log('[预览调试] API 返回数据:', res);
-                    
+
                     // API 返回格式: { data: { items: [...], columns: [...], total: ... } }
                     const data = res.data?.items || res.data?.data || [];
                     const columns = res.data?.columns || (data.length > 0 ? Object.keys(data[0]) : []);
-                    
+
                     console.log('[预览调试] 数据行数:', data.length, '列名:', columns);
-                    
+
                     if (data.length > 0) {
                         if (dataRowMode === 'first') {
                             dataContext = { ...data[0] };
@@ -747,8 +747,8 @@ const AnalysisSmartReportMixin = {
             let previewContent = mdContent;
             Object.keys(dataContext).forEach(varName => {
                 const placeholder = `{{${varName}}}`;
-                const value = dataContext[varName] !== null && dataContext[varName] !== undefined 
-                    ? String(dataContext[varName]) 
+                const value = dataContext[varName] !== null && dataContext[varName] !== undefined
+                    ? String(dataContext[varName])
                     : '';
                 // 使用 split + join 方法替换，避免正则表达式的问题
                 previewContent = previewContent.split(placeholder).join(value);
@@ -759,28 +759,28 @@ const AnalysisSmartReportMixin = {
             // 格式：![图表名](chart:ID)
             const chartPlaceholderPattern = /!\[([^\]]*)\]\(chart:(\d+)\)/g;
             const chartMatches = [...previewContent.matchAll(chartPlaceholderPattern)];
-            
+
             // 使用简单占位符（不含特殊字符），Markdown 解析后再替换
             let tempContent = previewContent;
             const chartPlaceholders = [];
             const timestamp = Date.now();
-            
+
             chartMatches.forEach((match, index) => {
                 const chartId = parseInt(match[2]);
                 const chartName = match[1] || '图表';
                 const containerId = `previewchart${chartId}t${timestamp}i${index}`;
                 const placeholder = `BINDCHARTPLACEHOLDER${index}BINDEND`;
-                
+
                 chartPlaceholders.push({
                     placeholder: placeholder,
                     containerId: containerId,
                     chartId: chartId,
                     chartName: chartName
                 });
-                
+
                 tempContent = tempContent.replace(match[0], placeholder);
             });
-            
+
             // 处理不完整的图片语法
             let autoIndex = 100;
             const incompleteImagePattern = /!\[([^\]]+)\](?!\()/g;
@@ -800,20 +800,20 @@ const AnalysisSmartReportMixin = {
                 }
                 return `CHARTMISSING${altText}ENDMISSING`;
             });
-            
+
             // 清理旧注释格式
             tempContent = tempContent.replace(/<!-- 图片已移除: [^>]+ -->/g, '');
             tempContent = tempContent.replace(/\*\*\[图表: ([^\]]+)\]\*\* _\(请重新插入\)_/g, 'CHARTMISSING$1ENDMISSING');
 
             // 解析 Markdown 为 HTML
             let html = this._renderMarkdownPreview(tempContent);
-            
+
             // 替换占位符为实际的图表容器
             for (const p of chartPlaceholders) {
                 const containerHtml = `<div id="${p.containerId}" class="preview-chart-container"></div>`;
                 html = html.split(p.placeholder).join(containerHtml);
             }
-            
+
             // 替换缺失图表的占位符
             html = html.replace(/CHARTMISSING([^E]+)ENDMISSING/g, (match, name) => {
                 return `<div class="chart-placeholder"><div class="icon">📊</div><p>"${name}" - 请从右侧插入图表</p></div>`;
@@ -823,7 +823,7 @@ const AnalysisSmartReportMixin = {
             if (this._previewChartInstances) {
                 Object.values(this._previewChartInstances).forEach(chart => {
                     if (chart && typeof chart.dispose === 'function') {
-                        try { chart.dispose(); } catch (e) {}
+                        try { chart.dispose(); } catch (e) { }
                     }
                 });
             }
@@ -837,56 +837,56 @@ const AnalysisSmartReportMixin = {
                 console.log('[图表预览] 跳过旧版本渲染');
                 return;
             }
-            
+
             // 渲染图表（使用保存的容器 ID）
             console.log('[图表预览] 准备渲染图表，数量:', chartPlaceholders.length, '版本:', currentVersion);
             console.log('[图表预览] echarts 可用:', !!window.echarts);
-            
+
             for (const placeholder of chartPlaceholders) {
                 if (!placeholder.containerId) continue;
-                
+
                 // 再次检查版本
                 if (this._previewVersion !== currentVersion) {
                     console.log('[图表预览] 渲染被新版本中断');
                     return;
                 }
-                
+
                 const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(placeholder.chartId));
                 console.log(`[图表预览] 查找图表 ID=${placeholder.chartId}:`, chart);
-                
+
                 if (!chart) {
                     console.warn(`[图表预览] 图表 ${placeholder.chartId} 不存在`);
                     continue;
                 }
-                
+
                 if (!window.echarts) {
                     console.warn('[图表预览] ECharts 库未加载');
                     continue;
                 }
-                
+
                 const container = document.getElementById(placeholder.containerId);
                 if (!container) {
                     console.warn(`[图表预览] 未找到容器: ${placeholder.containerId}`);
                     continue;
                 }
-                
+
                 try {
                     // 确保容器有正确的尺寸
                     container.style.cssText = 'width: 100%; height: 320px; min-height: 320px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;';
-                    
+
                     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-                    
-                    const myChart = echarts.init(container, null, { 
+
+                    const myChart = echarts.init(container, null, {
                         devicePixelRatio: window.devicePixelRatio || 1,
                         renderer: 'canvas'
                     });
-                    
+
                     // 图表的 config 是参数配置，需要根据它生成 ECharts option
                     const config = chart.config || {};
                     const chartType = chart.chart_type || 'bar';
-                    
+
                     console.log(`[图表预览] 渲染图表 "${chart.name}" 类型=${chartType}:`, config);
-                    
+
                     // 获取图表数据
                     let chartData = [];
                     if (chart.dataset_id) {
@@ -897,22 +897,22 @@ const AnalysisSmartReportMixin = {
                             console.warn('[图表预览] 获取图表数据失败:', e);
                         }
                     }
-                    
+
                     // 根据配置生成 ECharts option
                     const option = this._generateChartOption(chartType, config, chartData, chart.name);
-                    
+
                     if (!option) {
                         container.innerHTML = `<div class="chart-placeholder"><div class="icon">⚠️</div><p>无法生成图表配置</p></div>`;
                         continue;
                     }
-                    
+
                     myChart.setOption(option, true);
                     this._previewChartInstances[container.id] = myChart;
-                    
+
                     setTimeout(() => {
-                        try { myChart.resize(); } catch (e) {}
+                        try { myChart.resize(); } catch (e) { }
                     }, 100);
-                    
+
                     console.log(`[图表预览] 图表 "${chart.name}" 渲染成功`);
                 } catch (e) {
                     console.error(`[图表预览] 渲染图表 ${placeholder.chartId} 失败:`, e);
@@ -925,7 +925,7 @@ const AnalysisSmartReportMixin = {
                 this._previewResizeHandler = Utils.debounce(() => {
                     Object.values(this._previewChartInstances).forEach(chart => {
                         if (chart && typeof chart.resize === 'function') {
-                            try { chart.resize(); } catch (e) {}
+                            try { chart.resize(); } catch (e) { }
                         }
                     });
                 }, 200);
@@ -936,96 +936,53 @@ const AnalysisSmartReportMixin = {
             previewEl.innerHTML = `<div style="padding:20px;color:#f56565;">预览加载失败: ${e.message}</div>`;
         }
     },
-    
+
+    // 根据图表类型和配置生成 ECharts option（与图表分析模块保持一致）
     // 根据图表类型和配置生成 ECharts option（与图表分析模块保持一致）
     _generateChartOption(chartType, config, data, chartName) {
-        const xField = config.xField || '';
-        const yField = config.yField || '';
-        const aggregate = config.aggregate || 'count';
-        
-        if (!xField || data.length === 0) {
-            return {
-                backgroundColor: 'transparent',
-                title: { text: chartName || '图表', left: 'center', top: '40%', textStyle: { color: '#888', fontSize: 14 } },
-                graphic: {
-                    type: 'text',
-                    left: 'center',
-                    top: '55%',
-                    style: { text: '暂无数据', fontSize: 12, fill: '#aaa' }
-                }
-            };
-        }
-        
-        // 使用与图表分析模块相同的聚合逻辑
-        let aggregatedData;
-        if (window.Utils && Utils.aggregateData) {
-            aggregatedData = Utils.aggregateData(data, xField, yField, aggregate, { maxItems: 20 });
-        } else {
-            // 备用聚合逻辑
-            const countMap = {};
-            data.forEach(row => {
-                const key = String(row[xField] || '未知');
-                if (!countMap[key]) {
-                    countMap[key] = { count: 0, sum: 0 };
-                }
-                countMap[key].count++;
-                if (yField && row[yField] !== undefined) {
-                    countMap[key].sum += parseFloat(row[yField]) || 0;
-                }
-            });
-            aggregatedData = Object.entries(countMap).map(([name, v]) => ({
-                name,
-                value: aggregate === 'sum' ? v.sum : (aggregate === 'avg' ? v.sum / v.count : v.count)
-            })).slice(0, 20);
-        }
-        
-        const yLabel = yField || '数量';
-        
-        // 使用与图表分析模块 _renderStaticBaseChart 相同的配置
-        const option = {
+        // 使用 ChartFactory 统一逻辑
+
+        // 1. 数据过滤
+        const filteredData = ChartFactory.filterData(data, config);
+
+        const getEmptyOption = (msg) => ({
             backgroundColor: 'transparent',
-            tooltip: { trigger: chartType === 'pie' ? 'item' : 'axis' },
-            legend: { top: 10, textStyle: { color: '#666' } },
-            grid: { top: 70, bottom: 40, left: 60, right: 30 },
-            xAxis: chartType === 'pie' ? undefined : {
-                type: 'category',
-                data: aggregatedData.map(d => d.name),
-                axisLabel: { color: '#666', rotate: aggregatedData.length > 6 ? 30 : 0 }
-            },
-            yAxis: chartType === 'pie' ? undefined : {
-                type: 'value',
-                axisLabel: { color: '#666' },
-                splitLine: { lineStyle: { color: '#eee' } }
-            },
-            series: [{
-                name: yLabel,
-                type: chartType,
-                data: chartType === 'pie' 
-                    ? aggregatedData.map(d => ({ name: d.name, value: d.value })) 
-                    : aggregatedData.map(d => d.value),
-                radius: chartType === 'pie' ? '65%' : undefined,
-                center: chartType === 'pie' ? ['50%', '55%'] : undefined,
-                smooth: chartType === 'line',
-                itemStyle: {
-                    borderRadius: chartType === 'bar' ? [6, 6, 0, 0] : 0,
-                    color: chartType === 'line' ? '#5470c6' : (chartType === 'bar' ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: '#667eea' },
-                        { offset: 1, color: '#764ba2' }
-                    ]) : undefined)
-                },
-                areaStyle: chartType === 'line' ? {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(84, 112, 198, 0.4)' },
-                        { offset: 1, color: 'rgba(84, 112, 198, 0)' }
-                    ])
-                } : undefined,
-                label: chartType === 'pie' ? {
-                    show: true,
-                    formatter: '{b}: {d}%'
-                } : undefined
-            }]
-        };
-        
+            title: { text: chartName || '图表', left: 'center', top: '40%', textStyle: { color: '#888', fontSize: 14 } },
+            graphic: {
+                type: 'text', left: 'center', top: '55%',
+                style: { text: msg, fontSize: 12, fill: '#aaa' }
+            }
+        });
+
+        if (!filteredData || filteredData.length === 0) {
+            return getEmptyOption('暂无数据');
+        }
+
+        // 2. 生成 Option
+        let option = {};
+
+        try {
+            if (['bar', 'line', 'pie', 'scatter'].includes(chartType)) {
+                const { xField, yField, aggregate } = config;
+                if (xField) {
+                    const aggregatedData = (window.Utils && Utils.aggregateData)
+                        ? Utils.aggregateData(filteredData, xField, yField, aggregate || 'count', { maxItems: 20 })
+                        : [];
+
+                    option = ChartFactory.generateOption(chartType, aggregatedData, config, filteredData);
+                }
+            } else {
+                option = ChartFactory.generateOption(chartType, filteredData, config);
+            }
+        } catch (e) {
+            console.error('Chart generation failed:', e);
+            return getEmptyOption('生成出错: ' + e.message);
+        }
+
+        if (!option || Object.keys(option).length === 0) {
+            return getEmptyOption('配置无效或无法生成');
+        }
+
         return option;
     },
 
@@ -1066,10 +1023,10 @@ const AnalysisSmartReportMixin = {
                 return `<p>${line}</p>`;
             })
             .join('');
-        
+
         // 包装列表项
         html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
-        
+
         return html;
     },
 
@@ -1090,7 +1047,7 @@ const AnalysisSmartReportMixin = {
             });
 
             Toast.success('模板保存成功');
-            
+
             // 只更新 state 中的报告数据，不触发重新渲染
             // 因为用户还在编辑器中，不需要刷新整个列表
             try {
@@ -1099,7 +1056,7 @@ const AnalysisSmartReportMixin = {
             } catch (e) {
                 // 静默处理，不影响保存成功的提示
             }
-            
+
             return true;
         } catch (e) {
             Toast.error('保存失败: ' + e.message);
@@ -1129,19 +1086,19 @@ const AnalysisSmartReportMixin = {
             });
             this._previewChartInstances = {};
         }
-        
+
         // 清理 resize 监听器
         if (this._previewResizeHandler) {
             window.removeEventListener('resize', this._previewResizeHandler);
             this._previewResizeHandler = null;
         }
-        
+
         // 清理预览更新定时器
         if (this._previewUpdateTimer) {
             clearTimeout(this._previewUpdateTimer);
             this._previewUpdateTimer = null;
         }
-        
+
         this.setState({ editingReportId: null });
         this._tuiEditor = null;
     },
@@ -1166,7 +1123,7 @@ const AnalysisSmartReportMixin = {
             this._tuiEditor.insertText(mdImage);
 
             Toast.success('图表占位符已插入，预览时将显示实际图表');
-            
+
             // 立即更新预览以显示图表
             setTimeout(() => this._updatePreview(), 300);
         } catch (e) {
@@ -1197,14 +1154,14 @@ const AnalysisSmartReportMixin = {
             let finalMdContent = mdContent;
             const chartPlaceholderPattern = /!\[([^\]]*)\]\(chart:(\d+)\)/g;
             const chartMatches = [...finalMdContent.matchAll(chartPlaceholderPattern)];
-            
+
             if (chartMatches.length > 0) {
                 Toast.info(`正在渲染 ${chartMatches.length} 个图表为高清图片...`);
-                
+
                 for (const match of chartMatches) {
                     const chartId = parseInt(match[2]);
                     const chartName = match[1] || '图表';
-                    
+
                     try {
                         const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(chartId));
                         if (chart && window.echarts) {
@@ -1216,7 +1173,7 @@ const AnalysisSmartReportMixin = {
                                 container.id = 'hidden-chart-render-container';
                                 document.body.appendChild(container);
                             }
-                            
+
                             // 清空容器并设置样式（确保可见性以正确渲染）
                             container.innerHTML = '';
                             container.style.cssText = `
@@ -1230,7 +1187,7 @@ const AnalysisSmartReportMixin = {
                                 z-index: -9999;
                                 overflow: visible;
                             `;
-                            
+
                             // 获取图表关联的数据集数据
                             let chartData = [];
                             if (chart.dataset_id) {
@@ -1241,7 +1198,7 @@ const AnalysisSmartReportMixin = {
                                     console.warn(`获取图表数据失败: ${e.message}`);
                                 }
                             }
-                            
+
                             // 使用与预览相同的方法生成 ECharts option
                             const option = this._generateChartOption(
                                 chart.chart_type || 'bar',
@@ -1249,34 +1206,34 @@ const AnalysisSmartReportMixin = {
                                 chartData,
                                 chartName
                             );
-                            
+
                             // 初始化 ECharts 实例（使用固定宽高）
-                            const myChart = echarts.init(container, null, { 
+                            const myChart = echarts.init(container, null, {
                                 width: 800,
                                 height: 600,
                                 devicePixelRatio: 2,
                                 renderer: 'canvas'
                             });
-                            
+
                             // 设置图表配置
                             myChart.setOption(option, true);
-                            
+
                             // 强制 resize 确保尺寸正确
                             myChart.resize({ width: 800, height: 600 });
-                            
+
                             // 等待渲染完成
                             await new Promise(resolve => setTimeout(resolve, 300));
-                            
+
                             // 导出高清图片
                             const imgData = myChart.getDataURL({
                                 type: 'png',
                                 pixelRatio: 2,
                                 backgroundColor: '#fff'
                             });
-                            
+
                             // 替换占位符为实际的 base64 图片
                             finalMdContent = finalMdContent.replace(match[0], `![${chartName}](${imgData})`);
-                            
+
                             // 清理图表实例
                             myChart.dispose();
                             container.innerHTML = '';
@@ -1332,8 +1289,8 @@ const AnalysisSmartReportMixin = {
             // 替换变量
             Object.keys(variableValues).forEach(varName => {
                 const placeholder = `{{${varName}}}`;
-                const value = variableValues[varName] !== null && variableValues[varName] !== undefined 
-                    ? String(variableValues[varName]) 
+                const value = variableValues[varName] !== null && variableValues[varName] !== undefined
+                    ? String(variableValues[varName])
                     : '';
                 finalMdContent = finalMdContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
             });
@@ -1341,7 +1298,7 @@ const AnalysisSmartReportMixin = {
             // 发送处理后的内容到后端（包含变量替换和图表图片）
             // 注意：这里我们需要一个特殊的接口，或者修改现有接口支持传入内容
             // 暂时使用现有接口，但需要确保后端能正确处理图表
-            
+
             const config = {
                 data: variableValues,
                 save_record: true,
@@ -1356,19 +1313,19 @@ const AnalysisSmartReportMixin = {
                 try {
                     // 始终使用临时文件下载接口（后端现在总是在临时目录生成文件）
                     const url = `/analysis/smart-reports/download/temp/${res.data.pdf_filename}`;
-                    
+
                     const { blob, filename } = await Api.download(url);
-                    
+
                     // 验证 blob 类型和大小
                     if (!blob || blob.size === 0) {
                         throw new Error('下载的文件为空或损坏');
                     }
-                    
+
                     // 验证是否为 PDF 类型
                     if (blob.type && !blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
                         console.warn('文件类型可能不正确:', blob.type);
                     }
-                    
+
                     const downloadUrl = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = downloadUrl;
@@ -1376,7 +1333,7 @@ const AnalysisSmartReportMixin = {
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
-                    
+
                     // 延迟清理，确保下载开始
                     setTimeout(() => {
                         document.body.removeChild(link);
@@ -1478,7 +1435,7 @@ const AnalysisSmartReportMixin = {
 
         this.state.reportDatasetId = id;
         this._updateDatasourcePanel();
-        
+
         try {
             const res = await AnalysisApi.getDatasetData(id, { page: 1, size: 1 });
             if (res.data && res.data.columns) {
@@ -1497,23 +1454,23 @@ const AnalysisSmartReportMixin = {
             }
         }
     },
-    
+
     _onChartSourceChange(datasetId) {
         this.state.chartSourceDatasetId = datasetId || '';
         this._updateChartsPanel();
     },
-    
+
     _updateChartsPanel() {
         const container = document.getElementById('chart-list-container');
         if (!container) return;
-        
+
         const charts = this.state.analysisCharts || [];
         const selectedChartSource = this.state.chartSourceDatasetId || '';
-        
-        const filteredCharts = selectedChartSource 
+
+        const filteredCharts = selectedChartSource
             ? charts.filter(c => String(c.dataset_id) === String(selectedChartSource))
             : charts;
-        
+
         container.innerHTML = filteredCharts.length > 0 ? filteredCharts.map(chart => `
             <div class="chart-item btn-insert-chart" data-id="${chart.id}">
                 <div class="chart-info">
@@ -1530,30 +1487,30 @@ const AnalysisSmartReportMixin = {
             </div>
         `;
     },
-    
+
     /**
      * 只更新数据源面板的 DOM，不触发完整重新渲染
      */
     _updateDatasourcePanel() {
         const panel = document.querySelector('.report-sidebar-left');
         if (!panel) return;
-        
+
         const datasets = this.state.datasets || [];
         const selectedDataset = this.state.reportDatasetId;
         const datasetColumns = this.state.reportDatasetColumns || [];
-        
+
         console.log('[数据源面板] 更新，字段:', datasetColumns);
-        
+
         // 更新变量标签容器
         const varTagsWrapper = panel.querySelector('.var-tags-wrapper');
         if (varTagsWrapper && selectedDataset) {
-            varTagsWrapper.innerHTML = datasetColumns.length > 0 
+            varTagsWrapper.innerHTML = datasetColumns.length > 0
                 ? datasetColumns.map(col => `
                     <span class="var-tag-btn btn-insert-dataset-var" data-field="${col}">{{${col}}}</span>
                 `).join('')
                 : '<span class="text-tertiary text-xs">暂无字段</span>';
         }
-        
+
         // 如果没有选择数据集，重新渲染整个面板
         if (!selectedDataset) {
             panel.innerHTML = this._renderDatasourcePanel(datasets);

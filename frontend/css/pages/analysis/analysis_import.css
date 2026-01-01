@@ -1,103 +1,421 @@
 /* 数据导入模块样式 */
 
-/* 导入表单 */
-.import-form {
-    max-width: 600px;
-    margin: 40px auto;
+/* 现代导入卡片 */
+.import-card-modern {
     background: var(--color-bg-primary);
-    padding: 30px;
     border-radius: 16px;
     border: 1px solid var(--color-border);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-}
-
-.form-group {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    min-height: 600px;
     margin-bottom: 20px;
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+.tab-pill-group {
+    display: flex;
+    background: var(--color-bg-tertiary);
+    padding: 4px;
+    border-radius: 10px;
+}
+
+.tab-pill {
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
     color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.text-sm code {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-family: monospace;
+.tab-pill.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.3);
 }
 
-/* ==================== 数据库配置表单 ==================== */
-.db-config-grid {
+/* 数据库导入布局 */
+.db-import-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    height: 600px;
+}
+
+.db-sidebar {
+    border-right: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.db-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.status-indicator {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #444;
+    color: #999;
+}
+
+.status-indicator.online {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.db-type-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    gap: 8px;
     margin-bottom: 15px;
 }
 
-@media (max-width: 768px) {
-    .db-config-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 480px) {
-    .db-config-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ==================== 文件上传区域 ==================== */
-.file-upload-area {
-    border: 2px dashed var(--color-border);
-    border-radius: 10px;
-    padding: 30px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--color-bg-tertiary);
-}
-
-.file-upload-area:hover {
-    border-color: var(--color-primary);
-    background: var(--color-bg-hover);
-}
-
-.file-upload-placeholder {
+.db-type-option {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--color-bg-primary);
+}
+
+.db-type-option .db-type-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.db-type-option.active {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.db-type-option.active .db-type-icon {
+    color: var(--color-primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.db-type-option span {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.db-grid-inputs {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+}
+
+/* 数据表资源管理器 */
+.db-table-explorer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.explorer-header {
+    padding: 15px 24px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+}
+
+.table-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    padding: 24px;
+    align-content: start;
+}
+
+.table-card-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.table-card-item:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+}
+
+.table-card-item input {
+    margin-right: 12px;
+}
+
+.table-icon {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.table-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.explorer-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+}
+
+/* 增强版文件上传区域 */
+.file-upload-area {
+    border: 2px dashed var(--color-border);
+    border-radius: 12px;
+    padding: 60px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.03);
+    position: relative;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.file-upload-area:hover,
+.file-upload-area.dragover {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.05);
+    box-shadow: 0 0 20px rgba(var(--color-primary-rgb), 0.1);
 }
 
 .file-upload-placeholder .upload-icon {
-    font-size: 48px;
-    opacity: 0.5;
+    font-size: 64px;
+    margin-bottom: 15px;
+    display: block;
+    transition: transform 0.3s;
 }
 
-.file-upload-placeholder p {
-    margin: 0;
+.file-upload-area:hover .upload-icon {
+    transform: translateY(-5px);
+}
+
+/* 批量文件列表 */
+.batch-file-list {
+    margin-top: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-secondary);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.batch-file-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--color-border);
+    animation: slideIn 0.3s ease-out forwards;
+}
+
+.batch-file-item:last-child {
+    border-bottom: none;
+}
+
+.batch-file-item .file-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.batch-file-item .file-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.batch-file-item .file-size {
+    font-size: 12px;
     color: var(--color-text-secondary);
 }
 
-.file-upload-preview {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
+/* 预览表格样式 */
+.preview-container {
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-primary);
 }
 
-.file-upload-preview .file-icon {
-    font-size: 32px;
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
 }
 
-.file-upload-preview .file-name {
-    font-weight: 500;
-    color: var(--color-text-primary);
+.preview-table th {
+    background: var(--color-bg-tertiary);
+    padding: 12px 10px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-secondary);
+}
+
+.preview-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+/* 云端资产列表 */
+.fm-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+}
+
+.fm-file-item-modern {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.fm-file-item-modern:hover {
+    background: var(--color-bg-hover);
+}
+
+.fm-file-item-modern .file-icon-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary);
+    border-radius: 8px;
+    margin: 0 15px;
+    font-size: 20px;
+}
+
+.fm-file-item-modern .file-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fm-file-item-modern .file-meta {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+/* 搜索框增强 */
+.search-wrapper {
+    position: relative;
+    margin-bottom: 0px;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-tertiary);
+}
+
+.search-wrapper .form-control {
+    padding-left: 36px !important;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.db-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+.db-empty-state .illustration {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+/* 面包屑导航 */
+.fm-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 8px 12px;
+    background: var(--color-bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+}
+
+.breadcrumb-item {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.breadcrumb-item:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.breadcrumb-item:last-child {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    cursor: default;
+    text-decoration: none;
+}
+
+/* 文件夹项特殊样式 */
+.fm-folder-item .file-icon-box {
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #ffc107 !important;
+}
+
+.fm-folder-item:hover {
+    background: rgba(255, 193, 7, 0.05);
 }

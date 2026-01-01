@@ -78,58 +78,59 @@ class CompareService:
 
         join_on = " AND ".join([f"s.{k} = t.{k}" for k in join_keys])
         
-        # 1. 仅源数据集（Source Only）- 源中有但目标中没有
-        sql_source_only = f"""
-            SELECT s.* FROM {t1} s 
+        # 1. 仅源数据集（Source Only）
+        sql_source_only_base = f"""
+            FROM {t1} s 
             LEFT JOIN {t2} t ON {join_on}
             WHERE {" AND ".join([f"t.{k} IS NULL" for k in join_keys])}
-            LIMIT 1000
         """
-        source_only_df = duckdb_instance.fetch_df(sql_source_only)
+        source_only_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_source_only_base}").iloc[0]['cnt'])
+        source_only_df = duckdb_instance.fetch_df(f"SELECT s.* {sql_source_only_base} LIMIT 1000")
         source_only_data = clean_for_json(source_only_df.to_dict(orient='records'))
 
-        # 2. 仅目标数据集（Target Only）- 目标中有但源中没有
-        sql_target_only = f"""
-            SELECT t.* FROM {t2} t 
+        # 2. 仅目标数据集（Target Only）
+        sql_target_only_base = f"""
+            FROM {t2} t 
             LEFT JOIN {t1} s ON {join_on}
             WHERE {" AND ".join([f"s.{k} IS NULL" for k in join_keys])}
-            LIMIT 1000
         """
-        target_only_df = duckdb_instance.fetch_df(sql_target_only)
+        target_only_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_target_only_base}").iloc[0]['cnt'])
+        target_only_df = duckdb_instance.fetch_df(f"SELECT t.* {sql_target_only_base} LIMIT 1000")
         target_only_data = clean_for_json(target_only_df.to_dict(orient='records'))
 
-        # 3. 相同数据（Same）- 关键字段相同且所有比较字段也相同
-        same_data = []
+        # 3. 相同数据（Same）
         if compare_columns:
             same_conditions = [f"(s.{c} = t.{c} OR (s.{c} IS NULL AND t.{c} IS NULL))" for c in compare_columns]
-            sql_same = f"""
-                SELECT s.* FROM {t1} s 
+            sql_same_base = f"""
+                FROM {t1} s 
                 INNER JOIN {t2} t ON {join_on}
                 WHERE {" AND ".join(same_conditions)}
-                LIMIT 1000
             """
-            same_df = duckdb_instance.fetch_df(sql_same)
-            same_data = clean_for_json(same_df.to_dict(orient='records'))
         else:
-            # 如果没有比较字段（所有字段都是关键字段），则匹配的都是相同数据
-            sql_same = f"""
-                SELECT s.* FROM {t1} s 
+            sql_same_base = f"""
+                FROM {t1} s 
                 INNER JOIN {t2} t ON {join_on}
-                LIMIT 1000
             """
-            same_df = duckdb_instance.fetch_df(sql_same)
-            same_data = clean_for_json(same_df.to_dict(orient='records'))
+        
+        same_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_same_base}").iloc[0]['cnt'])
+        same_df = duckdb_instance.fetch_df(f"SELECT s.* {sql_same_base} LIMIT 1000")
+        same_data = clean_for_json(same_df.to_dict(orient='records'))
 
-        # 4. 差异数据（Different）- 关键字段相同但其他字段不同
+        # 4. 差异数据（Different）
         different_data = []
+        different_count = 0
         if compare_columns:
             diff_conditions = [f"(s.{c} != t.{c} OR (s.{c} IS NULL AND t.{c} IS NOT NULL) OR (s.{c} IS NOT NULL AND t.{c} IS NULL))" for c in compare_columns]
-            sql_different = f"""
-                SELECT s.*, 
-                       {", ".join([f"t.{c} AS _target_{c}" for c in compare_columns])}
+            sql_diff_base = f"""
                 FROM {t1} s 
                 INNER JOIN {t2} t ON {join_on}
                 WHERE {" OR ".join(diff_conditions)}
+            """
+            different_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_diff_base}").iloc[0]['cnt'])
+            sql_different = f"""
+                SELECT s.*, 
+                       {", ".join([f"t.{c} AS _target_{c}" for c in compare_columns])}
+                {sql_diff_base}
                 LIMIT 1000
             """
             different_df = duckdb_instance.fetch_df(sql_different)
@@ -144,9 +145,10 @@ class CompareService:
             "compare_columns": compare_columns,
             "join_keys": join_keys,
             "summary": {
-                "same_count": len(same_data),
-                "source_only_count": len(source_only_data),
-                "target_only_count": len(target_only_data),
-                "different_count": len(different_data)
+                "same_count": same_count,
+                "source_only_count": source_only_count,
+                "target_only_count": target_only_count,
+                "different_count": different_count
             }
         }
+

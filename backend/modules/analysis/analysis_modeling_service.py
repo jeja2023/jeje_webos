@@ -82,7 +82,7 @@ class ModelingService:
         return df.replace([np.inf, -np.inf], np.nan).astype(object).where(pd.notnull(df), None).to_dict(orient='records')
 
     @staticmethod
-    async def execute_sql(db: AsyncSession, sql: str, save_as: Optional[str] = None) -> Dict[str, Any]:
+    async def execute_sql(db: AsyncSession, sql: str, save_as: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
         """执行自定义SQL查询"""
         # 安全检查：禁止危险操作
         sql_upper = sql.upper().strip()
@@ -92,7 +92,15 @@ class ModelingService:
                 raise ValueError(f"禁止使用 {keyword} 操作")
         
         try:
-            df = duckdb_instance.fetch_df(sql)
+            # 如果是预览模式（不保存为数据集），则强制限制返回行数，防止 OOM
+            execute_sql = sql
+            if not save_as:
+                # 使用子查询方式限制行数，避免直接修改用户 SQL 可能导致的语法错误
+                # 同时也避免了解析 SQL 查找 LIMIT 关键字的复杂性
+                execute_sql = f"SELECT * FROM ({sql}) LIMIT {limit}"
+                
+            df = duckdb_instance.fetch_df(execute_sql)
+            
             # 处理时间列格式，仅替换 'T'
             for col in df.select_dtypes(include=['datetime64', 'datetimetz']).columns:
                 df[col] = df[col].astype(str).str.replace('T', ' ', regex=False)
@@ -106,7 +114,7 @@ class ModelingService:
             # 如果需要保存为新数据集
             if save_as:
                 table_name = f"user_sql_{save_as}_{int(pd.Timestamp.now().timestamp())}"
-                # 创建表并保存
+                # 创建表并保存（使用原始 SQL，保存全量数据）
                 duckdb_instance.conn.execute(f"CREATE TABLE {table_name} AS {sql}")
                 
                 # 记录到数据集表

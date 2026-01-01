@@ -39,11 +39,11 @@ const AnalysisChartMixin = {
                     </button>
                 </div>
                 
-                <div class="charts-layout" style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start;">
+                <div class="charts-layout" style="display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start;">
                     <!-- 左侧：配置面板 -->
-                    <div class="chart-config-panel bg-card rounded-xl border p-20 shadow-sm">
-                        <div class="config-section mb-20">
-                            <h4 class="mt-0 mb-12 text-sm">数据源</h4>
+                    <div class="chart-config-panel bg-card rounded-xl border p-20 shadow-sm" style="max-height: calc(100vh - 180px); overflow-y: auto;">
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">📁 数据源</h4>
                             <div class="form-group">
                                 <select id="chart-dataset" class="form-control">
                                     <option value="">请选择数据集...</option>
@@ -52,21 +52,95 @@ const AnalysisChartMixin = {
                             </div>
                         </div>
                         
-                        <div class="config-section mb-20">
-                            <h4 class="mt-0 mb-12 text-sm">图表类型</h4>
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">📊 图表类型</h4>
                             <div class="chart-type-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
                                 ${this._renderChartTypeButtons()}
                             </div>
                         </div>
                         
-                        <div class="config-section mb-20">
-                            <h4 class="mt-0 mb-12 text-sm">数据映射</h4>
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">🔗 数据映射</h4>
                             <div id="chart-mapping-fields">
                                 ${this._renderMappingFields()}
                             </div>
                         </div>
+
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">✏️ 图表标题</h4>
+                            <input type="text" id="chart-custom-title" class="form-control form-control-sm" placeholder="留空自动生成标题" value="${this.state.chartCustomTitle || ''}">
+                        </div>
+
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">🎨 配色方案</h4>
+                            <select id="chart-color-scheme" class="form-control form-control-sm">
+                                <option value="default" ${this.state.chartColorScheme === 'default' ? 'selected' : ''}>默认配色</option>
+                                <option value="warm" ${this.state.chartColorScheme === 'warm' ? 'selected' : ''}>暖色调</option>
+                                <option value="cool" ${this.state.chartColorScheme === 'cool' ? 'selected' : ''}>冷色调</option>
+                                <option value="rainbow" ${this.state.chartColorScheme === 'rainbow' ? 'selected' : ''}>彩虹色</option>
+                                <option value="mono" ${this.state.chartColorScheme === 'mono' ? 'selected' : ''}>单色渐变</option>
+                                <option value="business" ${this.state.chartColorScheme === 'business' ? 'selected' : ''}>商务蓝</option>
+                            </select>
+                        </div>
+
+                        <div class="config-section mb-15">
+                            <h4 class="mt-0 mb-10 text-sm">⚙️ 高级选项</h4>
+                            <div class="flex-column gap-8" style="font-size: 12px;">
+                                <label class="flex-center gap-8 cursor-pointer">
+                                    <input type="checkbox" id="chart-show-label" ${this.state.chartShowLabel ? 'checked' : ''}>
+                                    <span>显示数据标签</span>
+                                </label>
+                                <label class="flex-center gap-8 cursor-pointer">
+                                    <input type="checkbox" id="chart-stacked" ${this.state.chartStacked ? 'checked' : ''}>
+                                    <span>堆叠模式 (柱状/面积)</span>
+                                </label>
+                                <label class="flex-center gap-8 cursor-pointer">
+                                    <input type="checkbox" id="chart-dual-axis" ${this.state.chartDualAxis ? 'checked' : ''}>
+                                    <span>双Y轴模式</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="config-section mb-15" id="chart-multi-series-section" style="display: ${['bar', 'line'].includes(chartType) ? 'block' : 'none'};">
+                            <h4 class="mt-0 mb-10 text-sm">📈 多系列对比</h4>
+                            <div class="form-group mb-8">
+                                <label class="text-xs text-secondary mb-5">附加Y轴字段 (可选)</label>
+                                <select id="chart-y2-field" class="form-control form-control-sm"><option value="">不使用</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="text-xs text-secondary mb-5">第三Y轴字段 (可选)</label>
+                                <select id="chart-y3-field" class="form-control form-control-sm"><option value="">不使用</option></select>
+                            </div>
+                        </div>
+
+                        <div class="config-section mb-15" id="chart-filter-section">
+                            <h4 class="mt-0 mb-10 text-sm">🔍 数据筛选</h4>
+                            <div class="form-group mb-8">
+                                <label class="text-xs text-secondary mb-5">排除项 (常用)</label>
+                                <input type="text" id="chart-exclude-values" class="form-control form-control-sm" placeholder="合计, 总计, 小计 (逗号分隔)" value="${this.state.chartExcludeValues || ''}">
+                                <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 3px;">*排除X轴中包含这些值的项</div>
+                            </div>
+                            <div class="form-group mb-8">
+                                <label class="text-xs text-secondary mb-5">高级筛选字段</label>
+                                <select id="chart-filter-field" class="form-control form-control-sm"><option value="">不筛选</option></select>
+                            </div>
+                            <div class="form-group mb-8" id="chart-filter-value-group" style="display: none;">
+                                <label class="text-xs text-secondary mb-5">筛选条件</label>
+                                <div class="flex gap-5">
+                                <select id="chart-filter-op" class="form-control form-control-sm" style="width: 80px;">
+                                        <option value="eq">=</option>
+                                        <option value="ne">≠</option>
+                                        <option value="gt">></option>
+                                        <option value="lt"><</option>
+                                        <option value="contains">包含</option>
+                                        <option value="notcontains">不含</option>
+                                    </select>
+                                    <input type="text" id="chart-filter-value" class="form-control form-control-sm" placeholder="值">
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div class="flex-column gap-10 mt-25">
+                        <div class="flex-column gap-10 mt-20">
                             <button class="btn btn-primary w-100" id="btn-generate-chart" style="transition: all 0.1s ease;">🎨 生成图表</button>
                             <button class="btn btn-outline-primary w-100" id="btn-save-chart" 
                                     ${!this.state.hasGeneratedChart ? 'disabled' : ''}
@@ -283,6 +357,19 @@ const AnalysisChartMixin = {
         const aggregate = document.getElementById('chart-aggregate')?.value;
         const { chartType } = this.state;
 
+        // 获取高级选项
+        const customTitle = document.getElementById('chart-custom-title')?.value.trim();
+        const colorScheme = document.getElementById('chart-color-scheme')?.value || 'default';
+        const showLabel = document.getElementById('chart-show-label')?.checked || false;
+        const stacked = document.getElementById('chart-stacked')?.checked || false;
+        const dualAxis = document.getElementById('chart-dual-axis')?.checked || false;
+        const y2Field = document.getElementById('chart-y2-field')?.value;
+        const y3Field = document.getElementById('chart-y3-field')?.value;
+        const excludeValuesStr = document.getElementById('chart-exclude-values')?.value.trim();
+        const filterField = document.getElementById('chart-filter-field')?.value;
+        const filterOp = document.getElementById('chart-filter-op')?.value || 'eq';
+        const filterValue = document.getElementById('chart-filter-value')?.value;
+
         if (!datasetId) {
             Toast.error('请选择数据集');
             return;
@@ -314,9 +401,23 @@ const AnalysisChartMixin = {
         Toast.info('正在生成图表...');
 
         // 获取数据
-        const data = await this.fetchChartData(parseInt(datasetId));
+        let data = await this.fetchChartData(parseInt(datasetId));
         if (!data || data.length === 0) {
             Toast.error('数据集为空');
+            return;
+        }
+
+        // 应用数据过滤 (排除项 和 高级筛选)
+        data = ChartFactory.filterData(data, {
+            excludeValues: excludeValuesStr,
+            filterField,
+            filterOp,
+            filterValue,
+            xField
+        });
+
+        if (data.length === 0) {
+            Toast.error('过滤后数据为空');
             return;
         }
 
@@ -328,27 +429,48 @@ const AnalysisChartMixin = {
             yField,
             aggregate,
             xFields: selectedFields.length > 0 ? selectedFields : undefined,
-            forecastSteps
+            forecastSteps,
+            customTitle: customTitle || '',
+            colorScheme: colorScheme || 'default',
+            showLabel: !!showLabel,
+            stacked: !!stacked,
+            dualAxis: !!dualAxis,
+            y2Field,
+            y3Field,
+            filterField,
+            filterOp,
+            filterValue,
+            excludeValues: excludeValuesStr || ''
         };
 
-        // 根据图表类型处理数据
-        switch (chartType) {
-            case 'histogram':
-                this.renderHistogram(data, xField);
-                break;
-            case 'boxplot':
-                this.renderBoxplot(data, xField);
-                break;
-            case 'heatmap':
-                this.renderHeatmap(data, selectedFields);
-                break;
-            case 'forecast':
-                this.renderForecast(data, xField, yField, forecastSteps);
-                break;
-            default:
-                // 基础图表（柱状图、饼图、折线图、散点图）
+        // 初始化图表容器
+        const result = this._initChartContainer('chart-container', 'chartInstance');
+        if (!result) return;
+        const { instance } = result;
+
+        // 生成图表 Option
+        let option = {};
+
+        try {
+            if (['bar', 'line', 'pie', 'scatter'].includes(chartType)) {
+                // 基础图表需要先聚合数据
                 const aggregatedData = this.aggregateData(data, xField, yField, aggregate);
-                this.renderEChart(chartType, aggregatedData, xField, yField || '数量');
+                option = ChartFactory.generateOption(chartType, aggregatedData, this.state.chartConfig, data);
+            } else {
+                // 专业图表直接使用数据
+                option = ChartFactory.generateOption(chartType, data, this.state.chartConfig);
+            }
+
+            // 渲染图表
+            if (option && Object.keys(option).length > 0) {
+                instance.setOption(option, true);
+                this._finalizeChartRender(instance, '图表生成成功');
+            } else {
+                Toast.error('图表生成失败：配置无效或数据不足');
+            }
+        } catch (e) {
+            console.error(e);
+            Toast.error(`生成出错: ${e.message}`);
         }
 
         // 生成成功后启用保存按钮（不触发完整重新渲染）
@@ -373,182 +495,15 @@ const AnalysisChartMixin = {
      * 渲染 ECharts 基础图表 (柱状、饼图、折线、散点)
      * 使用统一的容器初始化方法，简化逻辑
      */
-    renderEChart(chartType, data, xLabel, yLabel) {
-        // 使用统一的容器初始化方法
-        const result = this._initChartContainer('chart-container', 'chartInstance');
-        if (!result) return;
-        
-        const { container, instance } = result;
-        
-        // 立即渲染图表配置
-        this._renderChartOption(instance, chartType, data, xLabel, yLabel);
-        
-        // 使用 setTimeout 确保 resize 在渲染后执行
-        setTimeout(() => {
-            if (instance) {
-                try {
-                    const rect = container.getBoundingClientRect();
-                    
-                    // 如果尺寸为0，尝试修复
-                    if (rect.width === 0 || rect.height === 0) {
-                        const parent = container.parentElement;
-                        const parentWidth = parent ? (parent.offsetWidth - 60) : 800;
-                        container.style.width = `${Math.max(parentWidth, 600)}px`;
-                        container.style.height = '500px';
-                    }
-                    
-                    instance.resize();
-                } catch (e) {
-                    // 静默处理 resize 错误
-                }
-            }
-        }, 100);
-    },
-    
-    _renderChartOption(instance, chartType, data, xLabel, yLabel) {
-        if (!instance) {
-            Toast.error('图表初始化失败，请刷新页面重试');
-            return;
-        }
 
-        if (!data || data.length === 0) {
-            Toast.error('图表数据为空，无法生成图表');
-            return;
-        }
-        
-        const names = data.map(d => d.name);
-        const values = data.map(d => d.value);
+    /**
+     * 渲染带高级选项的 ECharts 图表
+     * 支持：自定义标题、配色方案、数据标签、堆叠、双Y轴、多系列对比
+     */
 
-        let option = {};
 
-        // 通用配色
-        const colors = [
-            '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
-            '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#4992ff'
-        ];
+    // Old render functions removed
 
-        switch (chartType) {
-            case 'bar':
-                option = {
-                    title: { text: `${xLabel} 分布统计`, left: 'center', textStyle: { color: '#fff' } },
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                    xAxis: {
-                        type: 'category',
-                        data: names,
-                        axisLabel: { rotate: names.length > 8 ? 45 : 0, color: '#aaa' }
-                    },
-                    yAxis: { type: 'value', name: yLabel, axisLabel: { color: '#aaa' } },
-                    series: [{
-                        name: yLabel,
-                        type: 'bar',
-                        data: values,
-                        itemStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                { offset: 0, color: '#5470c6' },
-                                { offset: 1, color: '#91cc75' }
-                            ]),
-                            borderRadius: [4, 4, 0, 0]
-                        },
-                        emphasis: { itemStyle: { color: '#fac858' } }
-                    }]
-                };
-                break;
-
-            case 'pie':
-                option = {
-                    title: { text: `${xLabel} 占比分析`, left: 'center', textStyle: { color: '#fff' } },
-                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-                    legend: { orient: 'vertical', left: 'left', textStyle: { color: '#aaa' } },
-                    series: [{
-                        name: xLabel,
-                        type: 'pie',
-                        radius: ['40%', '70%'],
-                        center: ['55%', '55%'],
-                        avoidLabelOverlap: true,
-                        itemStyle: {
-                            borderRadius: 10,
-                            borderColor: '#1a1a2e',
-                            borderWidth: 2
-                        },
-                        label: { show: true, formatter: '{b}: {d}%', color: '#fff' },
-                        emphasis: {
-                            label: { show: true, fontSize: 16, fontWeight: 'bold' }
-                        },
-                        data: data.map((d, i) => ({
-                            name: d.name,
-                            value: d.value,
-                            itemStyle: { color: colors[i % colors.length] }
-                        }))
-                    }]
-                };
-                break;
-
-            case 'line':
-                option = {
-                    title: { text: `${xLabel} 趋势分析`, left: 'center', textStyle: { color: '#fff' } },
-                    tooltip: { trigger: 'axis' },
-                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                    xAxis: {
-                        type: 'category',
-                        data: names,
-                        axisLabel: { rotate: names.length > 8 ? 45 : 0, color: '#aaa' }
-                    },
-                    yAxis: { type: 'value', name: yLabel, axisLabel: { color: '#aaa' } },
-                    series: [{
-                        name: yLabel,
-                        type: 'line',
-                        data: values,
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 8,
-                        lineStyle: { width: 3 },
-                        itemStyle: { color: '#5470c6' },
-                        areaStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
-                                { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
-                            ])
-                        }
-                    }]
-                };
-                break;
-
-            case 'scatter':
-                option = {
-                    title: { text: `${xLabel} vs ${yLabel}`, left: 'center', textStyle: { color: '#fff' } },
-                    tooltip: { trigger: 'item', formatter: (p) => `${p.data[0]}: ${p.data[1]}` },
-                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                    xAxis: { type: 'category', data: names, axisLabel: { rotate: 45, color: '#aaa' } },
-                    yAxis: { type: 'value', name: yLabel, axisLabel: { color: '#aaa' } },
-                    series: [{
-                        type: 'scatter',
-                        data: data.map(d => [d.name, d.value]),
-                        symbolSize: (val) => Math.min(30, Math.max(10, val[1] / 10)),
-                        itemStyle: {
-                            color: new echarts.graphic.RadialGradient(0.5, 0.5, 0.5, [
-                                { offset: 0, color: '#fac858' },
-                                { offset: 1, color: '#ee6666' }
-                            ])
-                        }
-                    }]
-                };
-                break;
-        }
-
-        // 设置图表配置
-        try {
-            instance.setOption(option, true);
-            Toast.success('图表生成成功');
-        } catch (e) {
-            Toast.error(`图表配置失败: ${e.message}`);
-            return;
-        }
-        
-        // 响应式调整（避免重复添加监听器）
-        this._ensureResizeHandler('chartInstance', '_chartResizeHandler');
-    },
-    
     /**
      * 确保 resize 监听器已添加（避免重复添加）
      * @param {string} instanceKey - 实例键名
@@ -579,7 +534,7 @@ const AnalysisChartMixin = {
 
         // 清除容器内容
         container.innerHTML = '';
-        
+
         // 统一设置容器样式
         container.style.position = 'relative';
         container.style.width = '100%';
@@ -657,346 +612,59 @@ const AnalysisChartMixin = {
 
             const xSelect = document.getElementById('chart-x-field');
             const ySelect = document.getElementById('chart-y-field');
+            const y2Select = document.getElementById('chart-y2-field');
+            const y3Select = document.getElementById('chart-y3-field');
+            const filterSelect = document.getElementById('chart-filter-field');
 
             const optionsHtml = columns.map(c => `<option value="${c}">${c}</option>`).join('');
+            const emptyOption = '<option value="">选择字段...</option>';
+            const noUseOption = '<option value="">不使用</option>';
+            const noFilterOption = '<option value="">不筛选</option>';
 
             if (xSelect) {
                 // 检查是否为多选（热力图）
                 if (xSelect.multiple) {
                     xSelect.innerHTML = optionsHtml;
                 } else {
-                    xSelect.innerHTML = '<option value="">选择字段...</option>' + optionsHtml;
+                    xSelect.innerHTML = emptyOption + optionsHtml;
                 }
             }
             if (ySelect) {
-                ySelect.innerHTML = '<option value="">选择字段...</option>' + optionsHtml;
+                ySelect.innerHTML = emptyOption + optionsHtml;
+            }
+            // 多系列字段
+            if (y2Select) {
+                y2Select.innerHTML = noUseOption + optionsHtml;
+            }
+            if (y3Select) {
+                y3Select.innerHTML = noUseOption + optionsHtml;
+            }
+            // 筛选字段
+            if (filterSelect) {
+                filterSelect.innerHTML = noFilterOption + optionsHtml;
             }
         } catch (e) {
             // 静默处理获取字段失败
         }
     },
 
-    /**
-     * 渲染直方图
-     */
-    renderHistogram(data, field) {
-        const result = this._initChartContainer('chart-container', 'chartInstance');
-        if (!result) return;
-        
-        const { instance } = result;
-        // 立即渲染，不使用延迟
-        this._renderHistogramData(instance, data, field);
-    },
-    
-    _renderHistogramData(instance, data, field) {
-        if (!instance) return;
-
-        const values = data
-            .map(row => parseFloat(row[field]))
-            .filter(v => !isNaN(v));
-
-        if (values.length === 0) {
-            Toast.error('所选字段没有有效的数值数据');
-            return;
-        }
-
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const binCount = Math.min(20, Math.ceil(Math.sqrt(values.length)));
-        const binWidth = (max - min) / binCount || 1;
-
-        const bins = Array(binCount).fill(0);
-        const binLabels = [];
-
-        for (let i = 0; i < binCount; i++) {
-            const start = min + i * binWidth;
-            const end = start + binWidth;
-            binLabels.push(`${start.toFixed(1)}-${end.toFixed(1)}`);
-        }
-
-        values.forEach(v => {
-            const binIndex = Math.min(Math.floor((v - min) / binWidth), binCount - 1);
-            bins[binIndex]++;
-        });
-
-        const option = {
-            title: { text: `${field} 分布直方图`, left: 'center', textStyle: { color: '#fff' } },
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-            grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: binLabels,
-                axisLabel: { rotate: 45, color: '#aaa', fontSize: 10 }
-            },
-            yAxis: { type: 'value', name: '频数', axisLabel: { color: '#aaa' } },
-            series: [{
-                name: '频数',
-                type: 'bar',
-                data: bins,
-                itemStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: '#667eea' },
-                        { offset: 1, color: '#764ba2' }
-                    ])
-                },
-                barWidth: '90%'
-            }]
-        };
-
-        instance.setOption(option, true);
-        
-        // resize 和成功提示
-        setTimeout(() => {
-            if (instance) instance.resize();
-        }, 100);
-        Toast.success('直方图生成成功');
-        
-        // 响应式调整
-        this._ensureResizeHandler('chartInstance', '_chartResizeHandler');
-    },
-
-    /**
-     * 渲染箱线图
-     */
-    renderBoxplot(data, field) {
-        const result = this._initChartContainer('chart-container', 'chartInstance');
-        if (!result) return;
-        
-        const { instance } = result;
-        // 立即渲染，不使用延迟
-        this._renderBoxplotData(instance, data, field);
-    },
-    
-    _renderBoxplotData(instance, data, field) {
-        if (!instance) return;
-
-        const values = data
-            .map(row => parseFloat(row[field]))
-            .filter(v => !isNaN(v))
-            .sort((a, b) => a - b);
-
-        if (values.length < 5) {
-            Toast.error('数据量不足，无法生成箱线图（至少需要5条数据）');
-            return;
-        }
-
-        const n = values.length;
-        const q1 = values[Math.floor(n * 0.25)];
-        const q2 = values[Math.floor(n * 0.5)];
-        const q3 = values[Math.floor(n * 0.75)];
-        const min = values[0];
-        const max = values[n - 1];
-        const iqr = q3 - q1;
-        const lowerWhisker = Math.max(min, q1 - 1.5 * iqr);
-        const upperWhisker = Math.min(max, q3 + 1.5 * iqr);
-
-        const outliers = values.filter(v => v < lowerWhisker || v > upperWhisker);
-
-        const option = {
-            title: { text: `${field} 箱线图分析`, left: 'center', textStyle: { color: '#fff' } },
-            tooltip: {
-                trigger: 'item',
-                formatter: (params) => {
-                    if (params.seriesType === 'boxplot') {
-                        return `
-                            <strong>${field}</strong><br/>
-                            最大值: ${upperWhisker.toFixed(2)}<br/>
-                            Q3: ${q3.toFixed(2)}<br/>
-                            中值: ${q2.toFixed(2)}<br/>
-                            Q1: ${q1.toFixed(2)}<br/>
-                            最小值: ${lowerWhisker.toFixed(2)}
-                        `;
-                    }
-                    return `异常值: ${params.data[1]}`;
-                }
-            },
-            grid: { left: '10%', right: '10%', bottom: '15%', top: '15%' },
-            xAxis: { type: 'category', data: [field], axisLabel: { color: '#aaa' } },
-            yAxis: { type: 'value', name: '数值', axisLabel: { color: '#aaa' } },
-            series: [
-                {
-                    name: '箱线图',
-                    type: 'boxplot',
-                    data: [[lowerWhisker, q1, q2, q3, upperWhisker]],
-                    itemStyle: { color: '#91cc75', borderColor: '#5470c6' }
-                },
-                {
-                    name: '异常值',
-                    type: 'scatter',
-                    data: outliers.map(v => [field, v]),
-                    itemStyle: { color: '#ee6666' },
-                    symbolSize: 10
-                }
-            ]
-        };
-
-        instance.setOption(option, true);
-        
-        // resize 和成功提示
-        setTimeout(() => {
-            if (instance) instance.resize();
-        }, 100);
-        Toast.success('箱线图生成成功');
-        
-        // 响应式调整
-        this._ensureResizeHandler('chartInstance', '_chartResizeHandler');
-    },
-
-    /**
-     * 渲染热力图
-     */
-    renderHeatmap(data, fields) {
-        const result = this._initChartContainer('chart-container', 'chartInstance');
-        if (!result) return;
-        
-        const { instance } = result;
-        // 立即渲染，不使用延迟
-        this._renderHeatmapData(instance, data, fields);
-    },
-    
-    _renderHeatmapData(instance, data, fields) {
-        if (!instance) return;
-
-        const matrix = [];
-        const fieldData = {};
-        fields.forEach(f => {
-            fieldData[f] = data.map(row => parseFloat(row[f])).filter(v => !isNaN(v));
-        });
-
-        const calcCorrelation = (x, y) => {
-            const length = Math.min(x.length, y.length);
-            if (length < 2) return 0;
-            const meanX = x.slice(0, length).reduce((a, b) => a + b, 0) / length;
-            const meanY = y.slice(0, length).reduce((a, b) => a + b, 0) / length;
-            let num = 0, denX = 0, denY = 0;
-            for (let i = 0; i < length; i++) {
-                const dx = x[i] - meanX, dy = y[i] - meanY;
-                num += dx * dy; denX += dx * dx; denY += dy * dy;
-            }
-            const den = Math.sqrt(denX * denY);
-            return den === 0 ? 0 : num / den;
-        };
-
-        fields.forEach((f1, i) => {
-            fields.forEach((f2, j) => {
-                const corr = calcCorrelation(fieldData[f1], fieldData[f2]);
-                matrix.push([i, j, Math.round(corr * 100) / 100]);
-            });
-        });
-
-        const option = {
-            title: { text: '相关性热力图', left: 'center', textStyle: { color: '#fff' } },
-            tooltip: {
-                position: 'top',
-                formatter: (p) => `${fields[p.data[0]]} ↔ ${fields[p.data[1]]}<br/>相关系数: ${p.data[2]}`
-            },
-            grid: { left: '15%', right: '10%', bottom: '15%', top: '10%' },
-            xAxis: { type: 'category', data: fields, axisLabel: { rotate: 45, color: '#aaa', fontSize: 11 } },
-            yAxis: { type: 'category', data: fields, axisLabel: { color: '#aaa', fontSize: 11 } },
-            visualMap: {
-                min: -1, max: 1, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
-                inRange: { color: ['#3b82f6', '#1e293b', '#ef4444'] },
-                textStyle: { color: '#aaa' }
-            },
-            series: [{
-                name: '相关系数', type: 'heatmap', data: matrix,
-                label: { show: true, formatter: (p) => p.data[2].toFixed(2), color: '#fff', fontSize: 11 }
-            }]
-        };
-
-        instance.setOption(option, true);
-        
-        // resize 和成功提示
-        setTimeout(() => {
-            if (instance) instance.resize();
-        }, 100);
-        Toast.success('热力图生成成功');
-        
-        // 响应式调整
-        this._ensureResizeHandler('chartInstance', '_chartResizeHandler');
-    },
-
-    /**
-     * 渲染趋势预测图
-     */
-    renderForecast(data, xField, yField, forecastSteps = 5) {
-        const result = this._initChartContainer('chart-container', 'chartInstance');
-        if (!result) return;
-        
-        const { instance } = result;
-        // 立即渲染，不使用延迟
-        this._renderForecastData(instance, data, xField, yField, forecastSteps);
-    },
-    
-    _renderForecastData(instance, data, xField, yField, forecastSteps) {
-        if (!instance) return;
-
-        const xValues = data.map(row => String(row[xField]));
-        const yValues = data.map(row => parseFloat(row[yField])).filter(v => !isNaN(v));
-
-        if (yValues.length < 3) {
-            Toast.error('数据量不足，无法进行预测（至少需要3条数据）');
-            return;
-        }
-
-        const avgDiff = [];
-        for (let i = 1; i < yValues.length; i++) {
-            avgDiff.push(yValues[i] - yValues[i - 1]);
-        }
-        const trend = avgDiff.length > 0 ? avgDiff.reduce((a, b) => a + b, 0) / avgDiff.length : 0;
-
-        const forecastX = [], forecastY = [];
-        let curY = yValues[yValues.length - 1];
-        for (let i = 1; i <= forecastSteps; i++) {
-            forecastX.push(`预${i}`);
-            curY += trend;
-            forecastY.push(Math.round(curY * 100) / 100);
-        }
-
-        const option = {
-            title: { text: `${yField} 趋势预测`, left: 'center', textStyle: { color: '#fff' } },
-            tooltip: { trigger: 'axis' },
-            legend: { data: ['历史数据', '预测数据'], bottom: 0, textStyle: { color: '#aaa' } },
-            xAxis: { type: 'category', data: [...xValues, ...forecastX], axisLabel: { rotate: 45, color: '#aaa' } },
-            yAxis: { type: 'value', name: yField, axisLabel: { color: '#aaa' } },
-            series: [
-                { name: '历史数据', type: 'line', data: [...yValues, ...Array(forecastSteps).fill(null)], smooth: true, itemStyle: { color: '#5470c6' } },
-                { name: '预测数据', type: 'line', data: [...Array(yValues.length - 1).fill(null), yValues[yValues.length - 1], ...forecastY], smooth: true, itemStyle: { color: '#91cc75' }, lineStyle: { type: 'dashed' } }
-            ]
-        };
-
-        instance.setOption(option, true);
-        
-        // resize 和成功提示
-        setTimeout(() => {
-            if (instance) instance.resize();
-        }, 100);
-        Toast.success(`预测完成，预测了未来 ${forecastSteps} 步`);
-        
-        // 响应式调整
-        this._ensureResizeHandler('chartInstance', '_chartResizeHandler');
-    },
+    // Old helper functions removed
 
     /**
      * 保存当前图表配置
      */
     async saveJsonChart() {
         const { chartType, chartConfig } = this.state;
-        
+
         // 从 state 中读取配置（在 generateChart 时已保存）
         if (!chartConfig || !chartConfig.datasetId) {
             return Toast.error('请先生成图表');
         }
 
-        const { datasetId, xField, yField, aggregate, xFields, forecastSteps } = chartConfig;
-
-        const config = {
-            xField,
-            yField,
-            aggregate,
-            forecastSteps,
-            xFields
-        };
+        // 提取 datasetId 并复制完整配置，确保自定义标题、颜色、筛选等高级选项都被保存
+        const datasetId = chartConfig.datasetId;
+        const config = { ...chartConfig };
+        delete config.datasetId;
 
         Modal.show({
             title: '保存图表',
@@ -1024,14 +692,14 @@ const AnalysisChartMixin = {
                         description
                     });
                     Toast.success('图表保存成功');
-                    
+
                     // 保存成功后刷新图表列表
                     if (this.state.showChartHub) {
                         setTimeout(() => {
                             this.updateSavedChartsList();
                         }, 300);
                     }
-                    
+
                     return true;
                 } catch (e) {
                     Toast.error('保存失败: ' + e.message);
@@ -1070,13 +738,13 @@ const AnalysisChartMixin = {
 
         try {
             const res = await AnalysisApi.getCharts();
-            
+
             // 检查响应格式
             if (!res || !res.data) {
                 container.innerHTML = '<div class="text-danger p-20">图表库同步失败：响应格式错误</div>';
                 return;
             }
-            
+
             const charts = Array.isArray(res.data) ? res.data : [];
             this.state.savedCharts = charts;
 
@@ -1090,7 +758,7 @@ const AnalysisChartMixin = {
                             ➕ 去创建图表
                         </button>
                     </div>`;
-                
+
                 // 绑定"去创建图表"按钮
                 setTimeout(() => {
                     const btn = document.getElementById('btn-goto-generator-from-empty');
@@ -1129,16 +797,17 @@ const AnalysisChartMixin = {
                                 <span class="text-tertiary" style="font-size: 10px;">${c.created_at ? Utils.formatDate(c.created_at) : '未知'}</span>
                             </div>
                             <div class="flex gap-8">
-                                <button class="btn btn-primary btn-xs flex-1 btn-view-saved-chart" data-id="${c.id}">🔍 查看图表</button>
+                                <button class="btn btn-primary btn-xs flex-1 btn-view-saved-chart" data-id="${c.id}">🔍 查看</button>
+                                <button class="btn btn-secondary btn-xs btn-refresh-chart" data-id="${c.id}" title="使用最新数据刷新图表">🔄</button>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
-            
+
             // 更新容器内容
             container.innerHTML = html;
-            
+
             // 重新绑定事件（因为 innerHTML 会清除事件监听器）
             this._rebindChartCardEvents();
         } catch (e) {
@@ -1148,7 +817,7 @@ const AnalysisChartMixin = {
             </div>`;
         }
     },
-    
+
     _rebindChartCardEvents() {
         // 重新绑定图表卡片的事件（因为 innerHTML 会清除事件监听器）
         // 这些事件已经在 bindChartEvents 中通过 delegate 绑定
@@ -1280,6 +949,23 @@ const AnalysisChartMixin = {
             }
         });
 
+        // 筛选字段变化时显示/隐藏筛选条件区域
+        this.delegate('change', '#chart-filter-field', (e, el) => {
+            const filterValueGroup = document.getElementById('chart-filter-value-group');
+            if (filterValueGroup) {
+                filterValueGroup.style.display = el.value ? 'block' : 'none';
+            }
+        });
+
+        // 图表类型切换时显示/隐藏多系列区域
+        this.delegate('click', '.chart-type-btn', (e, el) => {
+            const chartType = el.dataset.chartType;
+            const multiSeriesSection = document.getElementById('chart-multi-series-section');
+            if (multiSeriesSection) {
+                multiSeriesSection.style.display = ['bar', 'line'].includes(chartType) ? 'block' : 'none';
+            }
+        });
+
         // 删除已保存图表
         this.delegate('click', '.btn-delete-saved-chart', async (e, el) => {
             if (!confirm('确定要删除该图表配置吗？')) return;
@@ -1291,6 +977,27 @@ const AnalysisChartMixin = {
                 Toast.error('删除失败');
             }
         });
+
+        // 刷新图表（重新获取最新数据渲染）
+        this.delegate('click', '.btn-refresh-chart', async (e, el) => {
+            const chartId = parseInt(el.dataset.id);
+            const chart = this.state.savedCharts?.find(c => c.id === chartId);
+            if (!chart) {
+                Toast.error('图表配置不存在');
+                return;
+            }
+
+            Toast.info('正在刷新图表数据...');
+
+            // 直接进入查看模式并重新渲染
+            this.setState({ viewingChartId: chartId });
+
+            // 延时渲染图表，确保容器已就绪
+            setTimeout(async () => {
+                await this.renderChartByConfig('viewer-chart-container', chart);
+                Toast.success('图表已使用最新数据刷新');
+            }, 100);
+        });
     },
 
     /**
@@ -1301,62 +1008,63 @@ const AnalysisChartMixin = {
         if (!container) return;
 
         // 获取数据
-        const data = await this.fetchChartData(chart.dataset_id);
+        let data = await this.fetchChartData(chart.dataset_id);
         if (!data || data.length === 0) {
             container.innerHTML = '<div class="flex-center h-100 text-secondary">数据集为空或无法加载</div>';
+            return;
+        }
+
+        const config = chart.config || {};
+
+        // 应用数据过滤 (确保查看保存的图表也支持排除项和筛选)
+        data = ChartFactory.filterData(data, config);
+
+        if (data.length === 0) {
+            container.innerHTML = '<div class="flex-center h-100 text-secondary">筛选后数据为空</div>';
             return;
         }
 
         // 使用统一的容器初始化方法
         const result = this._initChartContainer(containerId, 'viewerChartInstance');
         if (!result) return;
-        
-        const { instance: chartInstance } = result;
-        const config = chart.config || {};
 
-        switch (chart.chart_type) {
-            case 'histogram':
-                if (config.xField) {
-                    this._renderStaticHistogram(chartInstance, data, config.xField);
-                } else {
-                    chartInstance.setOption({ title: { text: '配置不完整：缺少字段', left: 'center', textStyle: { color: '#888' } } });
-                }
-                break;
-            case 'boxplot':
-                if (config.xField) {
-                    this._renderStaticBoxplot(chartInstance, data, config.xField);
-                } else {
-                    chartInstance.setOption({ title: { text: '配置不完整：缺少字段', left: 'center', textStyle: { color: '#888' } } });
-                }
-                break;
-            case 'heatmap':
-                const fields = config.xFields || (config.xField ? [config.xField] : []);
-                if (fields.length >= 2) {
-                    this._renderStaticHeatmap(chartInstance, data, fields);
-                } else {
-                    chartInstance.setOption({ title: { text: '配置不完整：热力图需要至少2个字段', left: 'center', textStyle: { color: '#888' } } });
-                }
-                break;
-            case 'forecast':
-                if (config.xField && config.yField) {
-                    this._renderStaticForecast(chartInstance, data, config.xField, config.yField, config.forecastSteps || 5);
-                } else {
-                    chartInstance.setOption({ title: { text: '配置不完整：缺少字段', left: 'center', textStyle: { color: '#888' } } });
-                }
-                break;
-            default:
-                // 基础图表需要 xField
+        const { instance: chartInstance } = result;
+
+        // 生成图表 Option
+        let option = {};
+        const chartType = chart.chart_type;
+
+        try {
+            if (['bar', 'line', 'pie', 'scatter'].includes(chartType)) {
                 if (config.xField) {
                     const aggregatedData = Utils.aggregateData(data, config.xField, config.yField, config.aggregate, { maxItems: 20 });
-                    this._renderStaticBaseChart(chartInstance, chart.chart_type, aggregatedData, config.xField, config.yField || '数量');
+                    option = ChartFactory.generateOption(chartType, aggregatedData, config, data);
                 } else {
-                    chartInstance.setOption({ title: { text: '配置不完整：缺少维度字段', left: 'center', textStyle: { color: '#888' } } });
+                    option = { title: { text: '配置不完整：缺少维度字段', left: 'center', textStyle: { color: '#888' } } };
                 }
+            } else {
+                option = ChartFactory.generateOption(chartType, data, config);
+            }
+
+            if (option && Object.keys(option).length > 0) {
+                chartInstance.setOption(option, true);
+                this._finalizeChartRender(chartInstance);
+            } else {
+                chartInstance.setOption({
+                    title: { text: '配置无效或数据不足', left: 'center', textStyle: { color: '#888' } },
+                    backgroundColor: 'transparent'
+                }, true);
+            }
+        } catch (e) {
+            console.error(`渲染图表出错: ${e.message}`);
+            chartInstance.setOption({
+                title: { text: '图表渲染出错', left: 'center', textStyle: { color: '#888' } }
+            });
         }
 
         // 使用统一的 resize 处理
         this._finalizeChartRender(chartInstance, null);
-        
+
         // 添加 resize 监听器（避免重复添加）
         this._ensureResizeHandler('viewerChartInstance', '_viewerResizeHandler');
     },

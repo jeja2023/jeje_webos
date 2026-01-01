@@ -1,47 +1,257 @@
-/* 数据比对模块样式 */
+/* 数据比对模块样式 - 现代化回归版 */
 
-/* 比对面板 */
-.compare-panel {
+.compare-page {
+    background: var(--color-bg-deep);
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 20px;
-    gap: 20px;
+    gap: 12px;
+    padding: 16px;
     overflow: hidden;
 }
 
-.compare-selector {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
-    gap: 15px;
-    align-items: flex-start;
-    background: var(--color-bg-primary);
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-}
-
-.diff-header {
+/* 顶部卡片区域 */
+.compare-header-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 12px;
+    flex-shrink: 0;
+    align-items: stretch;
 }
 
-.diff-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.compare-card {
+    background: var(--color-bg-secondary);
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.compare-source-card,
+.compare-target-card {
+    flex: 1;
+    min-width: 0;
+}
+
+.compare-source-card {
+    border-top: 3px solid #3b82f6;
+}
+
+.compare-target-card {
+    border-top: 3px solid #f59e0b;
+}
+
+.compare-config-card {
+    border-top: 3px solid #8b5cf6;
+    width: 240px;
+    flex-shrink: 0;
+}
+
+.compare-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preview-container {
+    height: 100px;
+    overflow: auto;
+    border-radius: 6px;
+    background: var(--color-bg-secondary);
+    border: 1px inset var(--color-border-light);
+}
+
+/* 结果摘要栏 - 高级精细版 */
+.compare-summary-bar {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 0 16px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin: 4px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.compare-stats-group {
+    display: flex;
+    align-items: center;
     gap: 20px;
 }
 
-.diff-card {
+.compare-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s;
     background: var(--color-bg-secondary);
-    border-radius: 10px;
-    padding: 15px;
-    border: 1px solid var(--color-border);
 }
 
-/* 结果卡片 */
-.result-card {
-    background: var(--color-bg-primary) !important;
+.compare-stat-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.compare-stat-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.compare-stat-value {
+    font-weight: 700;
+    font-size: 15px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* 结果明细网格 */
+.compare-results {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 12px;
+    min-height: 0;
+}
+
+.result-panel-modern {
+    background: var(--color-bg-secondary);
+    border-radius: 10px;
     border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-header {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.panel-body {
+    flex: 1;
+    overflow: auto;
+}
+
+/* 现代表格样式 */
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.modern-table th {
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-secondary);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+    z-index: 5;
+}
+
+.modern-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--color-border-light);
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.diff-highlight {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.target-val {
+    color: #f59e0b;
+    font-style: italic;
+    margin-left: 4px;
+    font-size: 11px;
+}
+
+/* 下拉菜单系统 - 修复混乱 */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    display: none;
+    min-width: 160px;
+    padding: 5px 0;
+    margin: 5px 0 0;
+    list-style: none;
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: dropdownSlide 0.2s ease-out;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 8px 15px;
+    clear: both;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    text-align: inherit;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+    text-decoration: none;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-bg-secondary);
+}
+
+.dropdown-divider {
+    height: 1px;
+    margin: 5px 0;
+    overflow: hidden;
+    background-color: var(--color-border-light);
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

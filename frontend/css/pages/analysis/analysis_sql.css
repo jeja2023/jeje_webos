@@ -192,7 +192,7 @@
 }
 
 .builder-footer-right .flex {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
 }
 
 /* 辅助构建盒子 */

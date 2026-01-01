@@ -112,10 +112,14 @@ const AnalysisSmartTableMixin = {
                             <h2 class="m-0">${table.name}</h2>
                         </div>
                         <div class="flex gap-10">
+                            <div class="search-box-container mr-10">
+                                <input type="text" id="smart-row-search" class="form-control form-control-sm" placeholder="搜索本表数据..." value="${this.state.smartRowSearch || ''}">
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="btn-add-smart-table-row">➕ 添加数据</button>
+                            <button class="btn btn-outline-primary btn-sm" id="btn-edit-smart-table-fields">⚙️ 字段管理</button>
+                            <button class="btn btn-outline-primary btn-sm" id="btn-export-smart-table" title="导出为 CSV">📤 导出 CSV</button>
                             <button class="btn btn-outline-primary btn-sm" id="btn-sync-smart-table" title="同步数据到数据集">${table.dataset_id ? '🔄 同步数据集' : '📦 导入数据集'}</button>
                             <button class="btn btn-ghost btn-sm" id="btn-refresh-smart-table" title="刷新数据">🔄 刷新</button>
-                            <button class="btn btn-outline-primary btn-sm" id="btn-edit-smart-table-fields">⚙️ 字段管理</button>
-                            <button class="btn btn-primary btn-sm" id="btn-add-smart-table-row">➕ 添加数据</button>
                         </div>
                     </div>
                 </div>
@@ -124,26 +128,152 @@ const AnalysisSmartTableMixin = {
                     <table class="premium-table">
                         <thead>
                             <tr>
-                                ${table.fields.map(f => `<th>${f.label || f.name}${f.type === 'calculated' ? ' ⚡' : ''}</th>`).join('')}
+                                ${table.fields.map(f => {
+            const sortField = this.state.smartTableSort?.field;
+            const sortOrder = this.state.smartTableSort?.order;
+            const isSorted = sortField === f.name;
+            const sortIcon = isSorted ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+            return `<th class="sortable-smart-th" data-field="${f.name}" style="cursor: pointer;" title="点击排序">${f.label || f.name}${f.type === 'calculated' ? ' ⚡' : ''}${sortIcon}${f.required ? ' <span style="color: var(--color-danger);">*</span>' : ''}</th>`;
+        }).join('')}
                                 <th width="100">操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.map(row => `
-                                <tr>
-                                    ${table.fields.map(f => `<td>${formatCellValue(f, row)}</td>`).join('')}
-                                    <td>
-                                        <div class="flex gap-5">
-                                            <button class="btn btn-ghost btn-xs btn-edit-smart-row" data-id="${row.id}">✏️</button>
-                                            <button class="btn btn-ghost btn-xs btn-delete-smart-row" data-id="${row.id}">🗑️</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                            ${data.length === 0 ? `<tr><td colspan="${table.fields.length + 1}" class="text-center p-20">暂无数据</td></tr>` : ''}
+                            ${(() => {
+                let filteredData = data;
+                if (this.state.smartRowSearch) {
+                    const search = this.state.smartRowSearch.toLowerCase();
+                    filteredData = data.filter(row =>
+                        table.fields.some(f => String(row[f.name] || '').toLowerCase().includes(search))
+                    );
+                }
+
+                // 应用排序
+                if (this.state.smartTableSort?.field) {
+                    const sf = this.state.smartTableSort.field;
+                    const so = this.state.smartTableSort.order;
+                    filteredData = [...filteredData].sort((a, b) => {
+                        const va = a[sf] ?? '';
+                        const vb = b[sf] ?? '';
+                        const numA = parseFloat(va), numB = parseFloat(vb);
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            return so === 'asc' ? numA - numB : numB - numA;
+                        }
+                        return so === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+                    });
+                }
+
+                // 计算合计（基于全部筛选后数据）
+                const totals = {};
+                table.fields.forEach(f => {
+                    if (f.type === 'number' || f.type === 'calculated') {
+                        let sum = 0;
+                        filteredData.forEach(row => {
+                            const val = formatCellValue(f, row);
+                            const num = parseFloat(String(val).replace(/[^\d.-]/g, ''));
+                            if (!isNaN(num)) sum += num;
+                        });
+                        totals[f.name] = sum;
+                    }
+                });
+
+                const totalFiltered = filteredData.length;
+
+                // 分页处理
+                const pageSize = this.state.smartTablePageSize || 20;
+                const currentPage = this.state.smartTablePage || 1;
+                const totalPages = Math.ceil(totalFiltered / pageSize);
+                const startIdx = (currentPage - 1) * pageSize;
+                const pagedData = filteredData.slice(startIdx, startIdx + pageSize);
+
+                // 条件格式辅助函数
+                const getConditionalStyle = (field, value) => {
+                    if (!field.conditionalFormat) return '';
+                    const numVal = parseFloat(String(value).replace(/[^\d.-]/g, ''));
+                    if (isNaN(numVal)) return '';
+
+                    const cf = field.conditionalFormat;
+                    if (cf.type === 'threshold') {
+                        if (cf.high !== undefined && numVal >= cf.high) return 'background: rgba(34, 197, 94, 0.2); color: #16a34a;';
+                        if (cf.low !== undefined && numVal <= cf.low) return 'background: rgba(239, 68, 68, 0.2); color: #dc2626;';
+                    } else if (cf.type === 'gradient') {
+                        // 简单渐变：根据数值范围计算颜色
+                        const min = cf.min || 0, max = cf.max || 100;
+                        const ratio = Math.max(0, Math.min(1, (numVal - min) / (max - min)));
+                        const r = Math.round(239 - ratio * 205);
+                        const g = Math.round(68 + ratio * 129);
+                        const b = Math.round(68 + ratio * 26);
+                        return `background: rgba(${r}, ${g}, ${b}, 0.2);`;
+                    }
+                    return '';
+                };
+
+                return pagedData.map(row => `
+                                    <tr>
+                                        ${table.fields.map(f => {
+                    const cellVal = formatCellValue(f, row);
+                    const style = getConditionalStyle(f, cellVal);
+                    return `<td style="${style}">${cellVal}</td>`;
+                }).join('')}
+                                        <td>
+                                            <div class="flex gap-5">
+                                                <button class="btn btn-ghost btn-xs btn-edit-smart-row" data-id="${row.id}">✏️</button>
+                                                <button class="btn btn-ghost btn-xs btn-delete-smart-row" data-id="${row.id}">🗑️</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('') + (pagedData.length > 0 && table.config?.showSummary !== false ? `
+                                    <tr class="table-summary-row" style="background: var(--color-bg-secondary); font-weight: bold;">
+                                        ${table.fields.map((f, i) => {
+                    if (i === 0) return `<td>合计 (${totalFiltered} 行)</td>`;
+                    if (totals[f.name] !== undefined) {
+                        const precision = f.precision !== undefined ? f.precision : 2;
+                        return `<td>${totals[f.name].toFixed(precision)}${f.showPercent ? '%' : ''}</td>`;
+                    }
+                    return `<td>-</td>`;
+                }).join('')}
+                                        <td></td>
+                                    </tr>
+                                ` : pagedData.length === 0 ? `<tr><td colspan="${table.fields.length + 1}" class="text-center p-20">暂无数据</td></tr>` : '') + `
+                                <!-- 分页信息存储 -->
+                                <script type="text/template" id="smart-table-page-info" data-total="${totalFiltered}" data-pages="${totalPages}" data-current="${currentPage}" data-size="${pageSize}"></script>
+                                `;
+            })()}
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- 分页控件 -->
+                ${(() => {
+                const pageSize = this.state.smartTablePageSize || 20;
+                const currentPage = this.state.smartTablePage || 1;
+                const totalFiltered = data.length;
+                const totalPages = Math.ceil(totalFiltered / pageSize);
+
+                if (totalFiltered <= pageSize) return '';
+
+                return `
+                    <div class="p-15 border-top flex-between" style="background: var(--color-bg-secondary);">
+                        <div class="flex-center gap-10">
+                            <span class="text-secondary text-sm">每页</span>
+                            <select id="smart-table-page-size" class="form-control form-control-sm" style="width: 70px;">
+                                <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                                <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
+                                <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                                <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+                            </select>
+                            <span class="text-secondary text-sm">条，共 ${totalFiltered} 条</span>
+                        </div>
+                        <div class="flex-center gap-5">
+                            <button class="btn btn-ghost btn-sm smart-table-page-btn" data-page="1" ${currentPage <= 1 ? 'disabled' : ''}>首页</button>
+                            <button class="btn btn-ghost btn-sm smart-table-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+                            <span class="mx-10 text-sm">第 ${currentPage} / ${totalPages} 页</span>
+                            <button class="btn btn-ghost btn-sm smart-table-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+                            <button class="btn btn-ghost btn-sm smart-table-page-btn" data-page="${totalPages}" ${currentPage >= totalPages ? 'disabled' : ''}>末页</button>
+                        </div>
+                    </div>
+                    `;
+            })()}
             </div>
         `;
     },
@@ -160,12 +290,14 @@ const AnalysisSmartTableMixin = {
         const renderFields = () => {
             return fields.map((f, i) => {
                 const isCalc = f.type === 'calculated';
+                const isNumber = f.type === 'number' || f.type === 'calculated';
                 // 如果没有 key，自动生成一个 (保持后台逻辑，但前端隐藏)
                 if (!f.name) f.name = `col_${Math.random().toString(36).substr(2, 6)}`;
 
                 return `
-                <div class="field-setup-item p-12 mb-10 border-radius-sm bg-light relative ${isCalc && !f._collapsed ? 'wide' : 'half'}" data-index="${i}">
+                <div class="field-setup-item p-12 mb-10 border-radius-sm bg-light relative ${isCalc && !f._collapsed ? 'wide' : 'half'}" data-index="${i}" draggable="true" ondragstart="AnalysisPage.prototype.handleFieldDragStart(event, ${i})" ondragover="AnalysisPage.prototype.handleFieldDragOver(event)" ondrop="AnalysisPage.prototype.handleFieldDrop(event, ${i})">
                     <div class="flex gap-10 align-items-center">
+                        <div class="field-drag-handle" style="cursor: grab; padding: 5px; color: var(--color-text-secondary);" title="拖拽排序">⋮⋮</div>
                         <div class="flex-center font-bold text-primary" style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: white; font-size: 12px;">${i + 1}</div>
                         <div style="flex: 1.5;">
                             <input type="text" class="form-control form-control-sm field-label" placeholder="字段名称 (如: 语文)" value="${f.label || ''}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'label', this.value)">
@@ -179,8 +311,23 @@ const AnalysisSmartTableMixin = {
                                 <option value="calculated" ${f.type === 'calculated' ? 'selected' : ''}>⚡ 自动计算</option>
                             </select>
                         </div>
+                        ${!isCalc ? `
+                        <label class="flex-center gap-4 cursor-pointer text-xs" title="设为必填字段">
+                            <input type="checkbox" ${f.required ? 'checked' : ''} onchange="AnalysisPage.prototype.updateFieldState(${i}, 'required', this.checked)">
+                            必填
+                        </label>
+                        ` : ''}
+                        ${isNumber ? `
+                        <button class="btn btn-ghost btn-xs" onclick="AnalysisPage.prototype.showConditionalFormatModal(${i})" title="条件格式">🎨</button>
+                        ` : ''}
                         <button class="btn btn-ghost btn-xs text-danger" onclick="AnalysisPage.prototype.removeField(${i})" title="移除字段">✕</button>
                     </div>
+
+                    ${f.type === 'select' ? `
+                        <div class="mt-8">
+                            <input type="text" class="form-control form-control-sm" placeholder="选项配置，用英文逗号分隔 (如: 优秀,良好,及格)" value="${f.options || ''}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'options', this.value)">
+                        </div>
+                    ` : ''}
 
                     ${isCalc ? `
                         <div class="calc-config mt-10 p-12 bg-white border-radius-sm" style="display: ${f._collapsed ? 'none' : 'block'};">
@@ -359,14 +506,128 @@ const AnalysisSmartTableMixin = {
             document.getElementById('fields-setup-container').innerHTML = renderFields();
         };
 
+        // 拖拽排序相关
+        let draggedFieldIndex = null;
+
+        AnalysisPage.prototype.handleFieldDragStart = (event, index) => {
+            draggedFieldIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            event.target.style.opacity = '0.5';
+        };
+
+        AnalysisPage.prototype.handleFieldDragOver = (event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        };
+
+        AnalysisPage.prototype.handleFieldDrop = (event, targetIndex) => {
+            event.preventDefault();
+            event.target.style.opacity = '1';
+            if (draggedFieldIndex === null || draggedFieldIndex === targetIndex) return;
+
+            // 交换字段位置
+            const draggedField = fields[draggedFieldIndex];
+            fields.splice(draggedFieldIndex, 1);
+            fields.splice(targetIndex, 0, draggedField);
+            draggedFieldIndex = null;
+
+            document.getElementById('fields-setup-container').innerHTML = renderFields();
+        };
+
+        // 条件格式配置弹窗
+        AnalysisPage.prototype.showConditionalFormatModal = (index) => {
+            const field = fields[index];
+            const cf = field.conditionalFormat || {};
+
+            Modal.show({
+                title: `条件格式 - ${field.label || field.name}`,
+                width: '450px',
+                content: `
+                    <div class="form-group mb-15">
+                        <label class="mb-5 font-bold">格式类型</label>
+                        <select id="cf-type" class="form-control">
+                            <option value="">无</option>
+                            <option value="threshold" ${cf.type === 'threshold' ? 'selected' : ''}>阈值高亮</option>
+                            <option value="gradient" ${cf.type === 'gradient' ? 'selected' : ''}>颜色渐变</option>
+                        </select>
+                    </div>
+                    <div id="cf-threshold-config" style="display: ${cf.type === 'threshold' ? 'block' : 'none'};">
+                        <div class="form-group mb-10">
+                            <label class="mb-5">高值阈值 (≥ 此值显示绿色)</label>
+                            <input type="number" id="cf-high" class="form-control" value="${cf.high || ''}" placeholder="如: 90">
+                        </div>
+                        <div class="form-group mb-10">
+                            <label class="mb-5">低值阈值 (≤ 此值显示红色)</label>
+                            <input type="number" id="cf-low" class="form-control" value="${cf.low || ''}" placeholder="如: 60">
+                        </div>
+                    </div>
+                    <div id="cf-gradient-config" style="display: ${cf.type === 'gradient' ? 'block' : 'none'};">
+                        <div class="form-group mb-10">
+                            <label class="mb-5">最小值</label>
+                            <input type="number" id="cf-min" class="form-control" value="${cf.min || 0}" placeholder="如: 0">
+                        </div>
+                        <div class="form-group mb-10">
+                            <label class="mb-5">最大值</label>
+                            <input type="number" id="cf-max" class="form-control" value="${cf.max || 100}" placeholder="如: 100">
+                        </div>
+                    </div>
+                `,
+                onConfirm: () => {
+                    const type = document.getElementById('cf-type').value;
+                    if (!type) {
+                        delete fields[index].conditionalFormat;
+                    } else if (type === 'threshold') {
+                        const high = parseFloat(document.getElementById('cf-high').value);
+                        const low = parseFloat(document.getElementById('cf-low').value);
+                        fields[index].conditionalFormat = {
+                            type: 'threshold',
+                            high: isNaN(high) ? undefined : high,
+                            low: isNaN(low) ? undefined : low
+                        };
+                    } else if (type === 'gradient') {
+                        fields[index].conditionalFormat = {
+                            type: 'gradient',
+                            min: parseFloat(document.getElementById('cf-min').value) || 0,
+                            max: parseFloat(document.getElementById('cf-max').value) || 100
+                        };
+                    }
+                    document.getElementById('fields-setup-container').innerHTML = renderFields();
+                    return true;
+                }
+            });
+
+            // 绑定类型切换事件
+            setTimeout(() => {
+                const typeSelect = document.getElementById('cf-type');
+                if (typeSelect) {
+                    typeSelect.onchange = () => {
+                        const type = typeSelect.value;
+                        document.getElementById('cf-threshold-config').style.display = type === 'threshold' ? 'block' : 'none';
+                        document.getElementById('cf-gradient-config').style.display = type === 'gradient' ? 'block' : 'none';
+                    };
+                }
+            }, 100);
+        };
+
         // Modal Logic
         Modal.show({
             title: isEdit ? '表格结构设计' : '新建智能表格',
             width: '850px',
             content: `
                 <div class="form-group mb-20 p-20 bg-soft-primary border-radius-sm">
-                    <label class="font-bold mb-8 block">表格名称</label>
-                    <input type="text" id="smart-table-name" class="form-control form-control-lg" value="${table?.name || ''}" placeholder="请输入表格名称，如：销售统计表">
+                    <div class="flex-between align-items-center">
+                        <div style="flex: 1; margin-right: 20px;">
+                            <label class="font-bold mb-8 block">表格名称</label>
+                            <input type="text" id="smart-table-name" class="form-control form-control-lg" value="${table?.name || ''}" placeholder="请输入表格名称，如：销售统计表">
+                        </div>
+                        <div style="width: 180px;">
+                            <label class="font-bold mb-8 block">额外配置</label>
+                            <label class="flex-center gap-8 cursor-pointer p-8 bg-white border border-radius-sm" style="font-size: 13px;">
+                                <input type="checkbox" id="smart-table-show-summary" ${table?.config?.showSummary !== false ? 'checked' : ''}>
+                                开启底部自动合计
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group p-x-20">
                     <div class="flex-between align-items-center mb-15">
@@ -390,7 +651,10 @@ const AnalysisSmartTableMixin = {
                 }
 
                 try {
-                    const payload = { name, fields };
+                    const config = {
+                        showSummary: document.getElementById('smart-table-show-summary').checked
+                    };
+                    const payload = { name, fields, config };
                     if (isEdit) {
                         await Api.put(`/analysis/smart-tables/${table.id}`, payload);
                         Toast.success('修改成功');
@@ -533,20 +797,34 @@ const AnalysisSmartTableMixin = {
             title: isEdit ? '编辑数据' : '添加数据',
             width: '900px',
             content: `
+                ${!isEdit && self.state.smartTableData?.length > 0 ? `
+                <div class="mb-15">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-copy-last-row">📋 复制上一行数据</button>
+                </div>
+                ` : ''}
                 <div class="smart-row-form">
                     ${table.fields.map(f => {
                 const isCalc = f.type === 'calculated';
+                const requiredMark = f.required ? '<span style="color: var(--color-danger);"> *</span>' : '';
                 return `
                         <div class="form-group mb-0">
-                            <label class="text-sm text-secondary mb-5 block">${f.label || f.name} ${isCalc ? '⚡' : ''}</label>
+                            <label class="text-sm text-secondary mb-5 block">${f.label || f.name}${requiredMark} ${isCalc ? '⚡' : ''}</label>
                             ${f.type === 'date' ? `
-                                <input type="date" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="date" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
                             ` : f.type === 'number' ? `
-                                <input type="number" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="number" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
+                            ` : f.type === 'select' ? `
+                                <select class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}">
+                                    <option value="">-- 请选择 --</option>
+                                    ${(f.options || '').split(/[,，]/).filter(opt => opt.trim()).map(opt => {
+                    const trimmed = opt.trim();
+                    return `<option value="${trimmed}" ${rowData && rowData[f.name] === trimmed ? 'selected' : ''}>${trimmed}</option>`;
+                }).join('')}
+                                </select>
                             ` : isCalc ? `
                                 <input type="text" class="form-control row-input row-calc-input" data-name="${f.name}" data-type="${f.type}" value="${rowData ? rowData[f.name] || '' : ''}" readonly placeholder="自动计算" style="background: var(--color-bg-secondary);">
                             ` : `
-                                <input type="text" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="text" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
                             `}
                         </div>
                     `}).join('')}
@@ -555,9 +833,18 @@ const AnalysisSmartTableMixin = {
             onConfirm: async () => {
                 const inputs = document.querySelectorAll('.row-input');
                 const data = {};
-                inputs.forEach(input => {
+
+                // 必填验证
+                for (const input of inputs) {
+                    const isRequired = input.dataset.required === 'true';
+                    const value = input.value?.trim();
+                    if (isRequired && !value) {
+                        Toast.error(`请填写必填字段: ${input.dataset.label || input.dataset.name}`);
+                        input.focus();
+                        return false;
+                    }
                     data[input.dataset.name] = input.value;
-                });
+                }
 
                 try {
                     if (isEdit) {
@@ -575,8 +862,29 @@ const AnalysisSmartTableMixin = {
             }
         });
 
-        // Modal.show 之后立即设置计算（使用 setTimeout 确保 DOM 渲染完成）
-        setTimeout(setupCalculation, 150);
+        // Modal.show 之后设置计算和复制按钮
+        setTimeout(() => {
+            setupCalculation();
+
+            // 绑定复制上一行按钮
+            const copyBtn = document.getElementById('btn-copy-last-row');
+            if (copyBtn) {
+                copyBtn.onclick = () => {
+                    const lastRow = self.state.smartTableData?.[self.state.smartTableData.length - 1];
+                    if (!lastRow) return Toast.info('没有可复制的数据');
+
+                    document.querySelectorAll('.row-input:not(.row-calc-input)').forEach(input => {
+                        const fieldName = input.dataset.name;
+                        if (lastRow[fieldName] !== undefined) {
+                            input.value = lastRow[fieldName];
+                        }
+                    });
+                    // 触发计算字段更新
+                    document.querySelector('.smart-row-form')?.dispatchEvent(new Event('input', { bubbles: true }));
+                    Toast.success('已复制上一行数据');
+                };
+            }
+        }, 150);
     },
 
     async fetchSmartTables() {
@@ -669,9 +977,36 @@ const AnalysisSmartTableMixin = {
             }
         });
 
+        // 表头排序
+        this.delegate('click', '.sortable-smart-th', (e, el) => {
+            const field = el.dataset.field;
+            const currentSort = this.state.smartTableSort;
+
+            let newOrder = 'asc';
+            if (currentSort?.field === field) {
+                // 同一字段反转排序方向
+                newOrder = currentSort.order === 'asc' ? 'desc' : 'asc';
+            }
+
+            this.setState({ smartTableSort: { field, order: newOrder } });
+        });
+
+        // 分页按钮
+        this.delegate('click', '.smart-table-page-btn', (e, el) => {
+            if (el.disabled) return;
+            const page = parseInt(el.dataset.page);
+            this.setState({ smartTablePage: page });
+        });
+
+        // 每页条数
+        this.delegate('change', '#smart-table-page-size', (e) => {
+            const size = parseInt(e.target.value);
+            this.setState({ smartTablePageSize: size, smartTablePage: 1 });
+        });
+
         // 返回列表
         this.delegate('click', '#btn-back-to-smart-tables', () => {
-            this.setState({ currentSmartTable: null, smartTableData: [] });
+            this.setState({ currentSmartTable: null, smartTableData: [], smartTableSort: null, smartTablePage: 1, smartRowSearch: '' });
         });
 
         // 字段管理
@@ -702,6 +1037,64 @@ const AnalysisSmartTableMixin = {
             } catch (e) {
                 Toast.error('删除失败');
             }
+        });
+
+        // 搜索行 (防抖优化)
+        let _searchTimer;
+        this.delegate('input', '#smart-row-search', (e) => {
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(() => {
+                this.setState({ smartRowSearch: e.target.value });
+            }, 500); // 停止输入 500ms 后再更新状态
+        });
+
+        // 导出 CSV
+        this.delegate('click', '#btn-export-smart-table', () => {
+            const table = this.state.currentSmartTable;
+            const data = this.state.smartTableData || [];
+            if (!table || data.length === 0) return Toast.info('没有数据可导出');
+
+            // 格式化单元格辅助函数（复用逻辑）
+            const formatVal = (field, row) => {
+                let val = row[field.name];
+                if (field.type === 'calculated' && field.formula) {
+                    try {
+                        const context = {};
+                        table.fields.forEach(f => {
+                            if (f.type !== 'calculated' && f.label) {
+                                const numVal = parseFloat(row[f.name]);
+                                context[f.label] = isNaN(numVal) ? 0 : numVal;
+                            }
+                        });
+                        let evalFormula = field.formula;
+                        const sortedKeys = Object.keys(context).sort((a, b) => b.length - a.length);
+                        sortedKeys.forEach(key => {
+                            evalFormula = evalFormula.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(context[key]));
+                        });
+                        const result = eval(evalFormula);
+                        if (typeof result === 'number' && !isNaN(result)) {
+                            val = result.toFixed(field.precision !== undefined ? field.precision : 2);
+                            if (field.showPercent) val += '%';
+                        }
+                    } catch (e) { }
+                }
+                return `"${String(val || '').replace(/"/g, '""')}"`;
+            };
+
+            const headers = table.fields.map(f => `"${f.label || f.name}"`).join(',');
+            const rows = data.map(row => {
+                return table.fields.map(f => formatVal(f, row)).join(',');
+            });
+            const csvContent = "\ufeff" + [headers, ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${table.name}_${new Date().getTime()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
     }
 };

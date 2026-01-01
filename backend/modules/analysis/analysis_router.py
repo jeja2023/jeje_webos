@@ -13,7 +13,8 @@ from core.security import get_current_user, TokenData, require_permission
 from schemas.response import success, error
 from .analysis_schemas import (
     DatasetCreate, DatasetUpdate, DatasetResponse,
-    ImportFileRequest, ImportDatabaseRequest, DbTablesRequest,
+    ImportFileRequest, ImportPreviewRequest, BatchImportFileRequest,
+    ImportDatabaseRequest, DbTablesRequest,
     CompareRequest, CleaningRequest,
     ModelingSummaryRequest, ModelingCorrelationRequest, ModelingAggregateRequest,
     ModelingSqlRequest,
@@ -83,6 +84,48 @@ async def import_file(
         }, "导入成功")
     except Exception as e:
         return error(message=str(e))
+
+@router.post("/import/preview")
+async def import_preview(
+    req: ImportPreviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:import"))
+):
+    """文件预览"""
+    try:
+        result = await ImportService.preview_file(db, req.file_id, req.source)
+        return success(result)
+    except Exception as e:
+        return error(message=str(e))
+
+@router.post("/import/batch-files")
+async def import_batch_files(
+    req: BatchImportFileRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:import"))
+):
+    """批量文件导入"""
+    results = []
+    errors = []
+    for item in req.items:
+        try:
+            dataset = await ImportService.import_from_file(
+                db, item.name, item.file_id, item.options, source=item.source
+            )
+            results.append({
+                "id": dataset.id,
+                "name": dataset.name,
+                "row_count": dataset.row_count
+            })
+        except Exception as e:
+            errors.append({"name": item.name, "error": str(e)})
+    
+    return success({
+        "success": results,
+        "failed": errors,
+        "count": len(results),
+        "total": len(req.items)
+    }, "处理完成")
 
 @router.post("/import/database")
 async def import_database(
@@ -305,7 +348,29 @@ async def delete_dataset(
     deleted = await ImportService.delete_dataset(db, dataset_id)
     if deleted:
         return success(None, "删除成功")
+    if deleted:
+        return success(None, "删除成功")
     return error("数据集不存在")
+
+@router.put("/datasets/{dataset_id}")
+async def update_dataset(
+    dataset_id: int,
+    req: DatasetUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:import"))
+):
+    """更新数据集信息"""
+    try:
+        updated = await ImportService.update_dataset(db, dataset_id, req.model_dump(exclude_unset=True))
+        return success({
+            "id": updated.id,
+            "name": updated.name,
+            "table_name": updated.table_name,
+            "row_count": updated.row_count,
+            "config": updated.config
+        }, "更新成功")
+    except Exception as e:
+        return error(str(e))
 
 # --- 数据清洗 ---
 @router.post("/clean")
@@ -393,7 +458,7 @@ async def execute_sql(
 ):
     """SQL建模 - 执行自定义SQL查询"""
     try:
-        result = await ModelingService.execute_sql(db, req.sql, req.save_as)
+        result = await ModelingService.execute_sql(db, req.sql, req.save_as, req.limit)
         return success(result)
     except Exception as e:
         return error(str(e))

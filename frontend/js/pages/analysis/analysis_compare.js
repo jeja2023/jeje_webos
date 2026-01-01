@@ -17,111 +17,151 @@ const AnalysisCompareMixin = {
         const hasCommonColumns = commonColumns.length > 0;
 
         return `
-            <div class="compare-page" style="display: flex; flex-direction: column; height: 100%; gap: 10px; padding: 10px; overflow: hidden;">
-                <!-- 页面标题 -->
-                <div class="flex-between mb-10" style="flex-shrink: 0;">
-                    <h2>数据比对</h2>
-                </div>
-                
-                <!-- 顶部：选择和预览区域 (高度收缩以腾出空间) -->
-                <div class="compare-top" style="display: flex; gap: 8px; flex-shrink: 0;">
+            <div class="compare-page">
+                <!-- 顶部配置区域 -->
+                <div class="compare-header-row">
                     <!-- 数据集1 -->
-                    <fieldset class="compare-fieldset" style="flex: 1; border: 1px solid #3b82f6; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; min-width: 0;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #3b82f6;">数据集1</legend>
-                        <select id="compare-source" class="form-control form-control-sm" style="width: 100%; margin-bottom: 4px; height: 28px; font-size: 12px;">
-                            <option value="">选择数据集...</option>
-                            ${this.state.datasets.map(d => `<option value="${d.id}" ${compareSourceId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
-                        </select>
-                        <div class="preview-area" style="height: 100px; overflow: auto; font-size: 11px; border: 1px solid var(--color-border-light); border-radius: 4px; background: rgba(0,0,0,0.02);">
+                    <div class="compare-card compare-source-card">
+                        <div class="compare-card-title">
+                            <span>🔵 数据集 1 (源)</span>
+                            <select id="compare-source" class="form-control-sm" style="width: 150px; border: none; background: transparent; font-weight: bold;">
+                                <option value="">选择数据集...</option>
+                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareSourceId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="preview-container">
                             ${this.renderDatasetPreview('source')}
                         </div>
-                    </fieldset>
+                    </div>
                     
                     <!-- 数据集2 -->
-                    <fieldset class="compare-fieldset" style="flex: 1; border: 1px solid #f59e0b; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; min-width: 0;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #f59e0b;">数据集2</legend>
-                        <select id="compare-target" class="form-control form-control-sm" style="width: 100%; margin-bottom: 4px; height: 28px; font-size: 12px;">
-                            <option value="">选择数据集...</option>
-                            ${this.state.datasets.map(d => `<option value="${d.id}" ${compareTargetId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
-                        </select>
-                        <div class="preview-area" style="height: 100px; overflow: auto; font-size: 11px; border: 1px solid var(--color-border-light); border-radius: 4px; background: rgba(0,0,0,0.02);">
+                    <div class="compare-card compare-target-card">
+                        <div class="compare-card-title">
+                            <span>🟠 数据集 2 (目标)</span>
+                            <select id="compare-target" class="form-control-sm" style="width: 150px; border: none; background: transparent; font-weight: bold;">
+                                <option value="">选择数据集...</option>
+                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareTargetId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="preview-container">
                             ${this.renderDatasetPreview('target')}
                         </div>
-                    </fieldset>
+                    </div>
                     
-                    <!-- 关联主键 -->
-                    <fieldset class="compare-fieldset" style="width: 160px; border: 1px solid var(--color-border); border-radius: 6px; padding: 6px; flex-shrink: 0;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: var(--color-primary);">关联主键</legend>
-                        ${hasCommonColumns ? `
-                            <div style="height: 70px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;">
-                                ${commonColumns.map(col => `
-                                    <label style="display: flex; align-items: center; font-size: 11px; cursor: pointer; white-space: nowrap;">
-                                        <input type="checkbox" class="compare-key-checkbox" value="${col}" 
-                                            ${compareSelectedKeys.includes(col) ? 'checked' : ''} style="margin-right: 4px;">
-                                        ${col}
-                                    </label>
-                                `).join('')}
-                            </div>
-                            <div class="text-xs text-secondary mt-5" style="transform: scale(0.85); transform-origin: left;">全不选则比对全部字段</div>
-                        ` : `<span class="text-secondary text-sm">请先选择数据集</span>`}
-                    </fieldset>
-                    
-                    <div style="display: flex; align-items: center; flex-shrink: 0;">
-                        <button class="btn btn-primary" id="btn-run-compare" ${!hasCommonColumns ? 'disabled' : ''}>执行比对</button>
+                    <!-- 关联配置 -->
+                    <div class="compare-card compare-config-card">
+                        <div class="compare-card-title">🔗 关联主键</div>
+                        <div style="flex: 1; overflow-y: auto; padding-right: 5px;">
+                            ${hasCommonColumns ? `
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    ${commonColumns.map(col => `
+                                        <label style="display: flex; align-items: center; font-size: 11px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" class="compare-key-checkbox" value="${col}" 
+                                                ${compareSelectedKeys.includes(col) ? 'checked' : ''} style="margin-right: 6px;">
+                                            ${col}
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            ` : `<div class="text-secondary text-xs p-10 text-center">请先选择具有公共字段的数据集</div>`}
+                        </div>
+                        <button class="btn btn-primary btn-sm mt-10" id="btn-run-compare" ${!hasCommonColumns ? 'disabled' : ''} style="width: 100%;">
+                            开始执行比对
+                        </button>
                     </div>
                 </div>
                 
-                <!-- 比对摘要 -->
-                <div class="compare-summary-bar" style="display: flex; align-items: center; gap: 12px; padding: 4px 15px; background: var(--color-bg-primary); border-radius: 4px; font-size: 12px; flex-shrink: 0;">
-                    <span style="color: var(--color-text-secondary);">比对结果：</span>
+                <!-- 比对结果摘要 (只在有结果时显示详细) -->
+                <div class="compare-summary-bar">
                     ${compareResult ? `
-                        <span>相同: <b class="text-success">${compareResult.summary.same_count}</b></span>
-                        <span>仅①: <b class="text-info">${compareResult.summary.source_only_count}</b></span>
-                        <span>仅②: <b class="text-warning">${compareResult.summary.target_only_count}</b></span>
-                        <span>差异: <b class="text-danger">${compareResult.summary.different_count}</b></span>
-                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                            <span style="font-size: 11px;">📥 导出:</span>
-                            <select id="compare-export-select" class="form-control form-control-sm" style="width: auto; height: 26px; padding: 0 8px; font-size: 11px;">
-                                <option value="">选择导出项...</option>
-                                <option value="all">📦 全部数据</option>
-                                <option value="same">✅ 相同记录 (${compareResult.summary.same_count})</option>
-                                <option value="source_only">🔵 仅数据集1 (${compareResult.summary.source_only_count})</option>
-                                <option value="target_only">🟠 仅数据集2 (${compareResult.summary.target_only_count})</option>
-                                <option value="different">🔴 差异记录 (${compareResult.summary.different_count})</option>
-                            </select>
+                        <div class="compare-stats-group">
+                            <div class="compare-stat-item" title="完全一致的记录">
+                                <i class="ri-checkbox-circle-line" style="color: #10b981;"></i>
+                                <span class="compare-stat-label">相同:</span>
+                                <span class="compare-stat-value" style="color: #10b981;">${compareResult.summary.same_count}</span>
+                            </div>
+                            <div class="compare-stat-item" title="仅在源数据集中存在的记录">
+                                <i class="ri-arrow-left-circle-line" style="color: #3b82f6;"></i>
+                                <span class="compare-stat-label">仅源1:</span>
+                                <span class="compare-stat-value" style="color: #3b82f6;">${compareResult.summary.source_only_count}</span>
+                            </div>
+                            <div class="compare-stat-item" title="仅在目标数据集中存在的记录">
+                                <i class="ri-arrow-right-circle-line" style="color: #f59e0b;"></i>
+                                <span class="compare-stat-label">仅源2:</span>
+                                <span class="compare-stat-value" style="color: #f59e0b;">${compareResult.summary.target_only_count}</span>
+                            </div>
+                            <div class="compare-stat-item" title="主键相同但内容有差异的记录">
+                                <i class="ri-error-warning-line" style="color: #ef4444;"></i>
+                                <span class="compare-stat-label">差异:</span>
+                                <span class="compare-stat-value" style="color: #ef4444;">${compareResult.summary.different_count}</span>
+                            </div>
                         </div>
-                    ` : '<span class="text-secondary">等待比对结果...</span>'}
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-xs dropdown-toggle" type="button" style="border-radius: 15px; height: 30px; padding: 0 15px; font-size: 12px; display: flex; align-items: center; gap: 6px; border-color: var(--color-border);">
+                                <i class="ri-download-2-line"></i> 导出结果 <i class="ri-arrow-down-s-line"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <div class="dropdown-item export-action" data-export-type="all"><i class="ri-archive-line mr-5"></i> 打包全部导出 (.csv)</div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item export-action" data-export-type="same"><i class="ri-checkbox-circle-fill text-success mr-5"></i> 相同记录 (${compareResult.summary.same_count})</div>
+                                <div class="dropdown-item export-action" data-export-type="source_only"><i class="ri-arrow-left-circle-fill text-primary mr-5"></i> 仅源数据集 (${compareResult.summary.source_only_count})</div>
+                                <div class="dropdown-item export-action" data-export-type="target_only"><i class="ri-arrow-right-circle-fill text-warning mr-5"></i> 仅目标数据集 (${compareResult.summary.target_only_count})</div>
+                                <div class="dropdown-item export-action" data-export-type="different"><i class="ri-error-warning-fill text-danger mr-5"></i> 差异记录 (${compareResult.summary.different_count})</div>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="flex-center gap-10 text-secondary" style="font-size: 13px; opacity: 0.8;">
+                            <i class="ri-information-line"></i>
+                            <span>完成数据源选择和主键配置后，点击右上方“开始执行比对”即可查看详情</span>
+                        </div>
+                    `}
                 </div>
                 
-                <!-- 底部比对结果 (最大限度占用高度) -->
-                <div class="compare-results" style="flex: 1; display: flex; gap: 8px; min-height: 0; overflow: hidden;">
-                    <fieldset class="result-panel" style="flex: 1; border: 1px solid #3b82f6; border-radius: 6px; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #3b82f6;">仅数据集1 ${compareResult ? `(${compareResult.summary.source_only_count})` : ''}</legend>
-                        <div style="flex: 1; overflow: auto; padding: 4px; background: rgba(59, 130, 246, 0.02);">
+                <!-- 结果明细面板 -->
+                <div class="compare-results">
+                    <!-- 仅源数据集 -->
+                    <div class="result-panel-modern">
+                        <div class="panel-header" style="color: #3b82f6;">
+                            <span>🔵 仅数据源1 ${compareResult ? `(${compareResult.summary.source_only_count})` : ''}</span>
+                            <span class="text-xs font-normal">目标数据集中不存在</span>
+                        </div>
+                        <div class="panel-body">
                             ${this.renderComparePanel('source_only')}
                         </div>
-                    </fieldset>
+                    </div>
                     
-                    <fieldset class="result-panel" style="flex: 1; border: 1px solid #f59e0b; border-radius: 6px; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #f59e0b;">仅数据集2 ${compareResult ? `(${compareResult.summary.target_only_count})` : ''}</legend>
-                        <div style="flex: 1; overflow: auto; padding: 4px; background: rgba(245, 158, 11, 0.02);">
+                    <!-- 仅目标数据集 -->
+                    <div class="result-panel-modern">
+                        <div class="panel-header" style="color: #f59e0b;">
+                            <span>🟠 仅数据源2 ${compareResult ? `(${compareResult.summary.target_only_count})` : ''}</span>
+                            <span class="text-xs font-normal">源数据集中不存在</span>
+                        </div>
+                        <div class="panel-body">
                             ${this.renderComparePanel('target_only')}
                         </div>
-                    </fieldset>
-                    
-                    <fieldset class="result-panel" style="flex: 1; border: 1px solid #10b981; border-radius: 6px; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #10b981;">相同记录 ${compareResult ? `(${compareResult.summary.same_count})` : ''}</legend>
-                        <div style="flex: 1; overflow: auto; padding: 4px; background: rgba(16, 185, 129, 0.02);">
+                    </div>
+
+                    <!-- 相同记录 -->
+                    <div class="result-panel-modern">
+                        <div class="panel-header" style="color: #10b981;">
+                            <span>🟢 全量一致 ${compareResult ? `(${compareResult.summary.same_count})` : ''}</span>
+                            <span class="text-xs font-normal">所有比对字段均完全吻合</span>
+                        </div>
+                        <div class="panel-body">
                             ${this.renderComparePanel('same')}
                         </div>
-                    </fieldset>
-                    
-                    <fieldset class="result-panel" style="flex: 1; border: 1px solid #ef4444; border-radius: 6px; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <legend style="padding: 0 8px; font-size: 11px; color: #ef4444;">差异记录 ${compareResult ? `(${compareResult.summary.different_count})` : ''}</legend>
-                        <div style="flex: 1; overflow: auto; padding: 4px; background: rgba(239, 68, 68, 0.02);">
+                    </div>
+
+                    <!-- 差异记录 -->
+                    <div class="result-panel-modern">
+                        <div class="panel-header" style="color: #ef4444;">
+                            <span>🔴 差异记录 ${compareResult ? `(${compareResult.summary.different_count})` : ''}</span>
+                            <span class="text-xs font-normal">关键字段相同但内容不同</span>
+                        </div>
+                        <div class="panel-body">
                             ${this.renderComparePanel('different')}
                         </div>
-                    </fieldset>
+                    </div>
                 </div>
             </div>
         `;
@@ -133,7 +173,7 @@ const AnalysisCompareMixin = {
     renderComparePanel(type) {
         const result = this.state.compareResult;
         if (!result) {
-            return '<div class="text-center text-secondary text-sm p-10">等待比对...</div>';
+            return '<div class="text-center text-secondary text-sm p-40">等待比对执行...</div>';
         }
 
         let data = [];
@@ -145,32 +185,39 @@ const AnalysisCompareMixin = {
         }
 
         if (data.length === 0) {
-            return '<div class="text-center text-secondary text-sm p-10">无数据</div>';
+            return '<div class="text-center text-secondary text-sm p-40"><i class="fas fa-ghost mb-10 d-block" style="font-size: 24px; opacity: 0.3;"></i>空空如也</div>';
         }
 
         const columns = Object.keys(data[0]).filter(k => !k.startsWith('_target_'));
-        const targetCols = Object.keys(data[0]).filter(k => k.startsWith('_target_'));
 
         return `
-            <div class="text-xs text-secondary mb-5">显示前 ${Math.min(data.length, 50)} 条</div>
-            <table class="mini-table" style="width: 100%; font-size: 11px; border-collapse: collapse;">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        ${columns.map(c => `<th style="padding: 3px 5px; border-bottom: 1px solid var(--color-border); text-align: left; white-space: nowrap;">${c}</th>`).join('')}
-                        ${type === 'different' ? targetCols.map(c => `<th style="padding: 3px 5px; border-bottom: 1px solid var(--color-border); color: #f59e0b; text-align: left; white-space: nowrap;">${c.replace('_target_', '→')}</th>`).join('') : ''}
+                        ${columns.map(c => `<th>${c}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
                     ${data.slice(0, 50).map(row => `
                         <tr>
-                            ${columns.map(c => `<td style="padding: 2px 5px; border-bottom: 1px solid var(--color-border); white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis;">${row[c] ?? ''}</td>`).join('')}
-                            ${type === 'different' ? targetCols.map(c => `<td style="padding: 2px 5px; border-bottom: 1px solid var(--color-border); color: #f59e0b; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis;">${row[c] ?? ''}</td>`).join('') : ''}
+                            ${columns.map(c => {
+            let val = row[c] ?? '';
+            if (type === 'different') {
+                const targetVal = row['_target_' + c];
+                if (targetVal !== undefined && targetVal !== val) {
+                    return `<td><span class="diff-highlight" title="目标值: ${targetVal}">${val}</span><span class="target-val">→ ${targetVal}</span></td>`;
+                }
+            }
+            return `<td>${val}</td>`;
+        }).join('')}
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
+            ${data.length > 50 ? `<div class="text-center p-10 text-xs text-secondary bg-light">仅显示前 50 条记录，完整数据请点击导出查看</div>` : ''}
         `;
     },
+
 
     /**
      * 渲染数据集预览
@@ -186,21 +233,21 @@ const AnalysisCompareMixin = {
         const items = previewData.items || [];
 
         return `
-            <table style="width: 100%; border-collapse: collapse;">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        ${columns.map(c => `<th style="padding: 3px 6px; border-bottom: 1px solid var(--color-border); text-align: left; white-space: nowrap; font-size: 11px; background: var(--color-bg-hover);">${c}</th>`).join('')}
+                        ${columns.map(c => `<th>${c}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
                     ${items.slice(0, 5).map(row => `
                         <tr>
-                            ${columns.map(c => `<td style="padding: 2px 6px; border-bottom: 1px solid var(--color-border); white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">${row[c] ?? ''}</td>`).join('')}
+                            ${columns.map(c => `<td>${row[c] ?? ''}</td>`).join('')}
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
-            <div class="text-xs text-secondary" style="padding: 4px 0;">共 ${previewData.total || items.length} 条记录</div>
+            <div class="text-xs text-secondary" style="padding: 4px 8px;">共 ${previewData.total || items.length} 条记录</div>
         `;
     },
 
@@ -302,6 +349,8 @@ const AnalysisCompareMixin = {
         URL.revokeObjectURL(url);
     },
 
+
+
     /**
      * 绑定比对相关事件
      */
@@ -339,7 +388,7 @@ const AnalysisCompareMixin = {
             } catch (err) { Toast.error(err.message); }
         });
 
-        // 比对 - 数据集选择变化时加载字段 (使用 change 而非 click)
+        // 比对 - 数据集选择变化时加载字段
         this.delegate('change', '#compare-source', async (e, el) => {
             const sourceId = el.value;
             if (sourceId) {
@@ -349,7 +398,8 @@ const AnalysisCompareMixin = {
                         compareSourceId: sourceId,
                         compareSourceColumns: res.data?.columns || [],
                         compareSourcePreview: res.data,
-                        compareSelectedKeys: []
+                        compareSelectedKeys: [],
+                        compareResult: null // 选择变化时重置结果
                     });
                 } catch (err) {
                     this.setState({ compareSourceId: sourceId, compareSourceColumns: [], compareSourcePreview: null, compareSelectedKeys: [] });
@@ -368,7 +418,8 @@ const AnalysisCompareMixin = {
                         compareTargetId: targetId,
                         compareTargetColumns: res.data?.columns || [],
                         compareTargetPreview: res.data,
-                        compareSelectedKeys: []
+                        compareSelectedKeys: [],
+                        compareResult: null // 选择变化时重置结果
                     });
                 } catch (err) {
                     this.setState({ compareTargetId: targetId, compareTargetColumns: [], compareTargetPreview: null, compareSelectedKeys: [] });
@@ -385,15 +436,34 @@ const AnalysisCompareMixin = {
             this.setState({ compareSelectedKeys: selectedKeys });
         });
 
-        // 比对 - 导出选择变化
-        this.delegate('change', '#compare-export-select', (e, el) => {
-            const type = el.value;
+        // 比对 - 结果导出
+        this.delegate('click', '.export-action', (e, el) => {
+            e.preventDefault(); // 防止 href="#" 跳转
+            const type = el.dataset.exportType;
             if (type) {
                 this.exportCompareData(type);
-                el.value = ''; // 重置为默认选项
             }
         });
+
+        // 下拉菜单 Toggle
+        this.delegate('click', '.dropdown-toggle', (e, el) => {
+            e.stopPropagation();
+            const menu = el.nextElementSibling;
+            if (menu && menu.classList.contains('dropdown-menu')) {
+                // 关闭其他已打开的菜单
+                document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+                    if (m !== menu) m.classList.remove('show');
+                });
+                menu.classList.toggle('show');
+            }
+        });
+
+        // 点击外部关闭下拉菜单
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        });
     }
+
 };
 
 // 将方法混入到 AnalysisPage 原型（如果已定义）

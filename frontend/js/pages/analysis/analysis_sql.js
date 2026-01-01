@@ -277,7 +277,7 @@ const AnalysisSqlMixin = {
         const { columns, rows, row_count } = sqlResult;
         return `
             <div class="sql-result-info text-sm text-secondary mb-10">
-                共 ${row_count} 条记录 ${row_count > 100 ? '（仅显示前100条）' : ''}
+                预览模式：显示前 ${row_count} 条记录 ${row_count >= 1000 ? '（结果集可能已被截断）' : ''}。如需完整结果请点击“保存为数据集”。
             </div>
             <div class="sql-result-table-wrapper">
                 <table class="premium-table">
@@ -285,7 +285,7 @@ const AnalysisSqlMixin = {
                         <tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr>
                     </thead>
                     <tbody>
-                        ${rows.slice(0, 100).map(row => `
+                        ${rows.slice(0, 200).map(row => `
                             <tr>${columns.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>
                         `).join('')}
                     </tbody>
@@ -321,12 +321,12 @@ const AnalysisSqlMixin = {
         this.setState({ sqlQuery: sql, sqlExecuting: true, sqlResult: null });
 
         try {
-            const res = await AnalysisApi.executeSql({ sql });
+            const res = await AnalysisApi.executeSql({ sql, limit: 1000 });
             this.setState({
                 sqlResult: res.data,
                 sqlExecuting: false
             });
-            Toast.success(`查询成功，返回 ${res.data?.row_count || 0} 条记录`);
+            Toast.success(`查询成功，已为您展示前 ${res.data?.row_count || 0} 条结果(预览)`);
         } catch (err) {
             this.setState({ sqlExecuting: false });
             Toast.error(err.message || '查询失败');

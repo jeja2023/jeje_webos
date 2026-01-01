@@ -61,6 +61,7 @@ class AnalysisSmartTable(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255))
     fields: Mapped[dict] = mapped_column(JSON) # 字段名、类型、描述等列表
+    config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 表格级别配置
     dataset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True) # 关联的数据集ID
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)

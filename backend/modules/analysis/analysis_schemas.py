@@ -13,6 +13,8 @@ class DatasetCreate(DatasetBase):
 class DatasetUpdate(DatasetBase):
     name: Optional[str] = None
     source_type: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
 
 class DatasetResponse(DatasetBase):
     id: int
@@ -29,6 +31,13 @@ class ImportFileRequest(BaseModel):
     file_id: int  # 文件ID
     source: Optional[str] = "upload"  # 文件来源: 'upload'=新上传(sys_files), 'filemanager'=文件管理(fm_files)
     options: Optional[Dict[str, Any]] = None
+
+class ImportPreviewRequest(BaseModel):
+    file_id: int
+    source: Optional[str] = "upload"
+
+class BatchImportFileRequest(BaseModel):
+    items: List[ImportFileRequest]
 
 class ImportDatabaseRequest(BaseModel):
     name: str
@@ -80,6 +89,7 @@ class ModelingAggregateRequest(BaseModel):
 class ModelingSqlRequest(BaseModel):
     sql: str  # 用户自定义SQL语句
     save_as: Optional[str] = None  # 可选：保存结果为新数据集
+    limit: Optional[int] = 1000    # 仅在预览模式（save_as为None）下生效
 
 # --- ETL 模型管理 ---
 class ModelBase(BaseModel):
@@ -149,6 +159,7 @@ class DashboardResponse(DashboardBase):
 class SmartTableBase(BaseModel):
     name: str
     fields: List[Dict[str, Any]] # e.g. [{"name": "age", "type": "number", "label": "年龄"}]
+    config: Optional[Dict[str, Any]] = None # e.g. {"showSummary": true}
 
 class SmartTableCreate(SmartTableBase):
     pass
@@ -156,6 +167,7 @@ class SmartTableCreate(SmartTableBase):
 class SmartTableUpdate(BaseModel):
     name: Optional[str] = None
     fields: Optional[List[Dict[str, Any]]] = None
+    config: Optional[Dict[str, Any]] = None
     dataset_id: Optional[int] = None
 
 class SmartTableResponse(SmartTableBase):

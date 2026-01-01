@@ -15,7 +15,12 @@ const AnalysisCleaningMixin = {
             'format_datetime': '时间格式化',
             'round_numeric': '数值保留小数',
             'to_lowercase': '转为小写',
-            'to_uppercase': '转为大写'
+            'to_uppercase': '转为大写',
+            'skip_rows': '跳过前N行',
+            'use_row_as_header': '指定行作为标题',
+            'rename_column': '列重命名',
+            'drop_columns': '删除指定列',
+            'convert_type': '数据类型转换'
         };
         return labels[op] || op;
     },
@@ -51,21 +56,44 @@ const AnalysisCleaningMixin = {
                             <div class="form-group mb-12">
                                 <label class="mb-6" style="display: block; font-size: 11px; color: var(--color-text-secondary); font-weight: 500;">清洗操作</label>
                                 <select id="clean-op" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;">
-                                    <option value="drop_missing">❌ 删除空值行</option>
-                                    <option value="fill_missing">🎨 填充空值</option>
-                                    <option value="drop_duplicates">👯 删除重复项</option>
-                                    <option value="drop_empty_columns">🧹 删除全空列</option>
-                                    <option value="trim_whitespace">✂️ 去除两端空白</option>
-                                    <option value="replace_text">🔍 文本批量替换</option>
-                                    <option value="format_datetime">📅 时间格式化</option>
-                                    <option value="round_numeric">🔢 数值保留小数</option>
-                                    <option value="to_lowercase">abc 转为小写</option>
-                                    <option value="to_uppercase">ABC 转为大写</option>
+                                    <optgroup label="📋 行操作">
+                                        <option value="skip_rows">⏭️ 跳过前N行</option>
+                                        <option value="use_row_as_header">📌 指定行作为标题</option>
+                                        <option value="drop_missing">❌ 删除空值行</option>
+                                        <option value="drop_duplicates">👯 删除重复行</option>
+                                    </optgroup>
+                                    <optgroup label="📊 列操作">
+                                        <option value="rename_column">✏️ 列重命名</option>
+                                        <option value="drop_columns">🗑️ 删除指定列</option>
+                                        <option value="drop_empty_columns">🧹 删除全空列</option>
+                                        <option value="convert_type">🔄 数据类型转换</option>
+                                    </optgroup>
+                                    <optgroup label="✏️ 单元格值处理">
+                                        <option value="fill_missing">🎨 填充空值</option>
+                                        <option value="trim_whitespace">✂️ 去除两端空白</option>
+                                        <option value="replace_text">🔍 文本批量替换</option>
+                                        <option value="to_lowercase">abc 转为小写</option>
+                                        <option value="to_uppercase">ABC 转为大写</option>
+                                        <option value="format_datetime">📅 时间格式化</option>
+                                        <option value="round_numeric">🔢 数值保留小数</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         
                             <!-- 动态参数区域 -->
                             <div id="clean-params-container">
+                                <div class="form-group mb-12" id="skip-rows-group" style="display: block;">
+                                    <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">跳过行数</label>
+                                    <input type="number" id="clean-skip-rows" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" value="1" min="0" max="100" placeholder="如: 1">
+                                    <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 4px;">*跳过数据开头的N行（如标题前的说明行）</div>
+                                </div>
+
+                                <div class="form-group mb-12" id="header-row-group" style="display: none;">
+                                    <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">标题所在行号</label>
+                                    <input type="number" id="clean-header-row" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" value="1" min="1" max="100" placeholder="如: 1">
+                                    <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 4px;">*将第N行的内容作为列标题</div>
+                                </div>
+
                                 <div class="form-group mb-12" id="fill-value-group" style="display: none;">
                                     <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">填充值</label>
                                     <input type="text" id="clean-fill-value" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" placeholder="空值替换为...">
@@ -91,6 +119,33 @@ const AnalysisCleaningMixin = {
                                 <div class="form-group mb-12" id="round-params-group" style="display: none;">
                                     <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">保留位数</label>
                                     <input type="number" id="clean-decimals" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" value="2" min="0" max="10">
+                                </div>
+
+                                <div id="rename-column-group" style="display: none;">
+                                    <div class="form-group mb-12">
+                                        <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">原列名</label>
+                                        <input type="text" id="clean-old-col-name" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" placeholder="如: UNNAMED: 1">
+                                    </div>
+                                    <div class="form-group mb-12">
+                                        <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">新列名</label>
+                                        <input type="text" id="clean-new-col-name" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" placeholder="如: 销售额">
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-12" id="drop-columns-group" style="display: none;">
+                                    <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">要删除的列名</label>
+                                    <input type="text" id="clean-drop-cols" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;" placeholder="列1, 列2 (逗号分隔)">
+                                    <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 4px;">*多个列用英文逗号分隔</div>
+                                </div>
+
+                                <div class="form-group mb-12" id="convert-type-group" style="display: none;">
+                                    <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">目标类型</label>
+                                    <select id="clean-target-type" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;">
+                                        <option value="string">文本 (String)</option>
+                                        <option value="numeric">数字 (Numeric)</option>
+                                        <option value="datetime">日期时间 (DateTime)</option>
+                                    </select>
+                                    <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 4px;">*请在下方"适用列"中指定要转换的列</div>
                                 </div>
                             </div>
                             <div class="form-group mb-12">
@@ -235,10 +290,15 @@ const AnalysisCleaningMixin = {
         this.delegate('change', '#clean-op', (e, el) => {
             const op = el.value;
             const groups = {
+                'skip_rows': 'skip-rows-group',
+                'use_row_as_header': 'header-row-group',
                 'fill_missing': 'fill-value-group',
                 'replace_text': 'replace-params-group',
                 'format_datetime': 'time-format-group',
-                'round_numeric': 'round-params-group'
+                'round_numeric': 'round-params-group',
+                'rename_column': 'rename-column-group',
+                'drop_columns': 'drop-columns-group',
+                'convert_type': 'convert-type-group'
             };
             Object.values(groups).forEach(id => {
                 const group = document.getElementById(id);
@@ -261,7 +321,28 @@ const AnalysisCleaningMixin = {
             };
 
             // 提取参数
-            if (op === 'fill_missing') {
+            if (op === 'skip_rows') {
+                const rows = parseInt(document.getElementById('clean-skip-rows').value);
+                if (isNaN(rows) || rows < 0) return Toast.error('请输入有效的跳过行数');
+                task.params.rows = rows;
+            } else if (op === 'use_row_as_header') {
+                const row = parseInt(document.getElementById('clean-header-row').value);
+                if (isNaN(row) || row < 1) return Toast.error('请输入有效的标题行号');
+                task.params.header_row = row;
+            } else if (op === 'rename_column') {
+                const oldName = document.getElementById('clean-old-col-name').value.trim();
+                const newName = document.getElementById('clean-new-col-name').value.trim();
+                if (!oldName || !newName) return Toast.error('请输入原列名和新列名');
+                task.params.old_name = oldName;
+                task.params.new_name = newName;
+            } else if (op === 'drop_columns') {
+                const dropCols = document.getElementById('clean-drop-cols').value.trim();
+                if (!dropCols) return Toast.error('请输入要删除的列名');
+                task.params.columns = dropCols.split(',').map(c => c.trim());
+            } else if (op === 'convert_type') {
+                task.params.type = document.getElementById('clean-target-type').value;
+                if (!colsStr) return Toast.error('请在"适用列"中指定要转换类型的列');
+            } else if (op === 'fill_missing') {
                 const val = document.getElementById('clean-fill-value').value;
                 if (!val) return Toast.error('请输入填充值');
                 task.fill_value = val;

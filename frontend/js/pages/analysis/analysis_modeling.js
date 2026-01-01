@@ -125,8 +125,13 @@ const AnalysisModelingMixin = {
             <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="typecast" data-label="类型转换"><span class="op-icon">🔄</span><span>转换</span></div>
             <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="split" data-label="字段拆分"><span class="op-icon">✂️</span><span>拆分</span></div>
 
-            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">高级脚本</div>
-            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sql" data-label="SQL查询"><span class="op-icon">💾</span><span>SQL</span></div>
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">文本与数学</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="text_ops" data-label="文本处理"><span class="op-icon">🔤</span><span>文本</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="math_ops" data-label="数学运算"><span class="op-icon">✖️</span><span>数学</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">高级分析</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="window" data-label="窗口函数"><span class="op-icon">🪟</span><span>窗口</span></div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sql" data-label="SQL脚本"><span class="op-icon">💻</span><span>SQL</span></div>
         `;
     },
 
@@ -156,9 +161,15 @@ const AnalysisModelingMixin = {
                 <!-- 原有的三栏布局 -->
                 <div class="etl-main-content flex flex-1 overflow-hidden">
                     <!-- 1. 算子面板 -->
-                    <div class="etl-operators" style="width: 220px; border-right: 1px solid var(--color-border);">
-                        <div class="etl-panel-header p-10 font-bold border-bottom">数据算子库</div>
-                        <div class="etl-operator-list p-10 overflow-y-auto" style="height: calc(100% - 40px); display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; align-content: start;">
+                    <div class="etl-operators" style="width: 260px; border-right: 1px solid var(--color-border);">
+                <div class="etl-panel-header p-10 font-bold border-bottom flex-between align-center">
+                    <span>数据算子库</span>
+                </div>
+                <!-- 搜索框 -->
+                <div class="p-10 border-bottom">
+                    <input type="text" class="form-control form-control-sm w-100" id="etl-op-search" placeholder="🔍 搜索算子...">
+                </div>
+                        <div class="etl-operator-list p-10 overflow-y-auto" style="height: calc(100% - 40px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-content: start;">
                                 ${this._renderOperatorsList()} 
                         </div>
                     </div>
@@ -788,6 +799,66 @@ const AnalysisModelingMixin = {
         this.delegate('dragend', '.etl-operator', (e, el) => {
             el.style.opacity = '1';
         });
+
+        // ----------------------------------------------------
+        // 优化功能：算子搜索
+        // ----------------------------------------------------
+        this.delegate('input', '#etl-op-search', (e) => {
+            const val = e.target.value.trim().toLowerCase();
+            const items = document.querySelectorAll('.etl-operator-list .etl-operator');
+            const groups = document.querySelectorAll('.etl-operator-list .opt-group-label');
+
+            items.forEach(item => {
+                const label = item.dataset.label || '';
+                const type = item.dataset.type || '';
+                const text = item.textContent || '';
+
+                if (!val || label.includes(val) || type.includes(val) || text.includes(val)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // 如果整个分组都没了，是否隐藏分组标题？简单起见暂时保留，或后续优化
+        });
+
+        // ----------------------------------------------------
+        // 优化功能：键盘快捷键支持 (Delete 删除)
+        // ----------------------------------------------------
+        if (!this._keyboardEventsBound) {
+            this._keyboardEventsBound = true;
+            document.addEventListener('keydown', (e) => {
+                // 仅在 Modeling Tab 且焦点不在输入框时生效
+                if (this.state.activeTab !== 'modeling' || !this.state.currentModel) return;
+
+                const activeTag = document.activeElement.tagName.toLowerCase();
+                if (activeTag === 'input' || activeTag === 'textarea' || document.activeElement.contentEditable === 'true') {
+                    return;
+                }
+
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    const { selectedNodeId, selectedConnIndex } = this.state;
+
+                    if (selectedNodeId) {
+                        e.preventDefault();
+                        if (confirm('确定要删除选中的节点吗？')) {
+                            this.deleteETLNode(selectedNodeId);
+                        }
+                    } else if (selectedConnIndex !== null) {
+                        e.preventDefault();
+                        if (confirm('确定要移除选中的连线吗？')) {
+                            const conns = [...(this.state.modelConnections || [])];
+                            if (conns[selectedConnIndex]) {
+                                conns.splice(selectedConnIndex, 1);
+                                this.setState({ modelConnections: conns, selectedConnIndex: null });
+                                Toast.success('连线已移除');
+                            }
+                        }
+                    }
+                }
+            });
+        }
     },
 
     /**
@@ -1490,6 +1561,67 @@ const AnalysisModelingMixin = {
                 `);
                 break;
 
+            /* ========== 新增算子配置 ========== */
+            case 'text_ops':
+                fields = renderGroup('目标字段',
+                    this._renderFieldChips(availableFields, node.data?.targetCol, 'cfg-text-col', true)
+                ) + renderGroup('文本操作', `
+                    <select class="form-control w-100" id="cfg-text-func">
+                        <option value="UPPER" ${node.data?.func === 'UPPER' ? 'selected' : ''}>转大写 (UPPER)</option>
+                        <option value="LOWER" ${node.data?.func === 'LOWER' ? 'selected' : ''}>转小写 (LOWER)</option>
+                        <option value="TRIM" ${node.data?.func === 'TRIM' ? 'selected' : ''}>去首尾空格 (TRIM)</option>
+                        <option value="LENGTH" ${node.data?.func === 'LENGTH' ? 'selected' : ''}>计算长度 (LENGTH)</option>
+                        <option value="REVERSE" ${node.data?.func === 'REVERSE' ? 'selected' : ''}>反转文本 (REVERSE)</option>
+                    </select>
+                `) + renderGroup('新字段名', `
+                    <input type="text" class="form-control w-100" id="cfg-text-new-name" 
+                           placeholder="留空则覆盖原字段" value="${node.data?.newCol || ''}">
+                `);
+                break;
+
+            case 'math_ops':
+                fields = renderGroup('应用数学公式', `
+                     <div class="config-card p-10 bg-secondary border-radius-sm">
+                        <div class="mb-10">目标字段 = </div>
+                        <div class="flex gap-5 align-center mb-10">
+                            ${this._renderFieldChips(availableFields, node.data?.fieldA, 'cfg-math-field-a', true)}
+                            <select class="form-control" id="cfg-math-op" style="width: 70px;">
+                                <option value="+" ${node.data?.op === '+' ? 'selected' : ''}>加 (+)</option>
+                                <option value="-" ${node.data?.op === '-' ? 'selected' : ''}>减 (-)</option>
+                                <option value="*" ${node.data?.op === '*' ? 'selected' : ''}>乘 (*)</option>
+                                <option value="/" ${node.data?.op === '/' ? 'selected' : ''}>除 (/)</option>
+                                <option value="%" ${node.data?.op === '%' ? 'selected' : ''}>取模 (%)</option>
+                            </select>
+                            <input type="text" class="form-control flex-1" id="cfg-math-val" 
+                                   placeholder="数值" value="${node.data?.value || ''}">
+                        </div>
+                        <div class="text-xs text-secondary mt-5">* 仅支持简单二元运算</div>
+                     </div>
+                `) + renderGroup('结果存入新字段', `
+                    <input type="text" class="form-control w-100" id="cfg-math-new-name" 
+                           placeholder="例如: calc_result" value="${node.data?.newCol || ''}">
+                `);
+                break;
+
+            case 'window':
+                fields = renderGroup('窗口函数类型', `
+                    <select class="form-control w-100" id="cfg-window-func">
+                         <option value="ROW_NUMBER" ${node.data?.func === 'ROW_NUMBER' ? 'selected' : ''}>行号 (Row Number)</option>
+                         <option value="RANK" ${node.data?.func === 'RANK' ? 'selected' : ''}>排名 (Rank)</option>
+                         <option value="DENSE_RANK" ${node.data?.func === 'DENSE_RANK' ? 'selected' : ''}>密集排名 (Dense Rank)</option>
+                         <option value="LEAD" ${node.data?.func === 'LEAD' ? 'selected' : ''}>下 N 行 (Lead)</option>
+                         <option value="LAG" ${node.data?.func === 'LAG' ? 'selected' : ''}>上 N 行 (Lag)</option>
+                    </select>
+                `) + renderGroup('分组字段 (Partition By)',
+                    this._renderFieldChips(availableFields, node.data?.partitionBy, 'cfg-window-partition')
+                ) + renderGroup('排序字段 (Order By)',
+                    this._renderFieldChips(availableFields, node.data?.orderBy, 'cfg-window-order')
+                ) + renderGroup('目标新字段名', `
+                    <input type="text" class="form-control w-100" id="cfg-window-new-name" 
+                           placeholder="例如: rank_idx" value="${node.data?.newCol || ''}">
+                `);
+                break;
+
             default:
                 fields = `<div class="text-secondary text-center p-20">高级配置功能正在开发中...</div>`;
         }
@@ -1578,11 +1710,11 @@ const AnalysisModelingMixin = {
             // 动态生成表头
             const cols = Object.keys(previewData[0]);
             content = `
-                <div class="text-xs text-secondary mb-10 flex-between">
+                <div class="text-xs text-secondary mb-10 flex-between flex-shrink-0">
                     <span>⚡ 实时计算结果 (Top ${previewData.length})</span>
                     <span>字段数: ${cols.length}</span>
                 </div>
-                <div class="modal-body-scroll border-top">
+                <div class="etl-preview-body bg-secondary rounded p-10">
                     <table class="premium-table" style="width: 100%;">
                         <thead>
                             <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>
@@ -1599,8 +1731,25 @@ const AnalysisModelingMixin = {
 
         return `
             <div class="modal-overlay active">
-                <div class="modal-content modal-large bg-primary">
-                    <div class="flex-between mb-15">
+                <style>
+                    /* 局部样式覆盖，参考数据导入预览 */
+                    .etl-preview-modal-content {
+                        width: 90% !important;
+                        max-width: none !important;
+                        height: 85vh !important;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .etl-preview-body {
+                        flex: 1;
+                        overflow: auto;
+                        min-height: 0; /* 关键：用于 flex item 内部滚动 */
+                        border-top: 1px solid var(--color-border);
+                        margin-top: 10px;
+                    }
+                </style>
+                <div class="modal-content modal-large bg-primary etl-preview-modal-content">
+                    <div class="flex-between mb-15 flex-shrink-0">
                         <div class="flex align-center gap-10">
                             <h3>🔍 数据实时预览: ${node.data?.label || node.type}</h3>
                             <span class="badge badge-secondary text-xs">PREVIEW</span>
@@ -1608,7 +1757,7 @@ const AnalysisModelingMixin = {
                         <button class="btn-icon btn-ghost" id="btn-close-preview">×</button>
                     </div>
                     ${content}
-                    <div class="flex justify-end pt-10 border-top mt-auto">
+                    <div class="flex justify-end pt-10 border-top mt-auto flex-shrink-0">
                         <button class="btn btn-primary" id="btn-close-preview">关闭</button>
                     </div>
                 </div>

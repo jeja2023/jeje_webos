@@ -22,7 +22,8 @@ class SmartTableService:
     async def create_table(db: AsyncSession, data: SmartTableCreate) -> AnalysisSmartTable:
         table = AnalysisSmartTable(
             name=data.name,
-            fields=data.fields
+            fields=data.fields,
+            config=data.config
         )
         db.add(table)
         await db.commit()
@@ -39,6 +40,8 @@ class SmartTableService:
             table.name = data.name
         if data.fields is not None:
             table.fields = data.fields
+        if data.config is not None:
+            table.config = data.config
         await db.commit()
         await db.refresh(table)
         return table

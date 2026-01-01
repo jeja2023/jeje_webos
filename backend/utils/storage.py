@@ -248,8 +248,12 @@ class StorageManager:
                     normalized_ext = ext_mapping.get(ext, ext)
                     normalized_detected = ext_mapping.get(detected_ext, detected_ext)
                     
-                    # 如果检测到的类型与扩展名不匹配，拒绝
-                    if normalized_ext != normalized_detected:
+                    # 允许常见的图片格式互换 (例如 .jpg 文件实际是 .png)
+                    image_types = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'}
+                    is_image_swap = (normalized_ext in image_types and normalized_detected in image_types)
+
+                    # 如果检测到的类型与扩展名不匹配，且不是允许的图片互换，则拒绝
+                    if normalized_ext != normalized_detected and not is_image_swap:
                         return False, f"文件类型不匹配：扩展名为 {ext}，但实际文件类型为 {detected_ext}（{kind.mime}）。可能存在安全风险。"
             except Exception as e:
                 logger.warning(f"文件内容验证失败: {e}")
