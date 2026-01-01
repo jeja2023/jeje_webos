@@ -60,7 +60,7 @@ class StorageManager:
         self.modules_dir = self.root_dir / "modules"
         self.system_dir = self.root_dir / "system"
         
-        # 向后兼容：旧的 upload_dir 指向根目录，但建议业务迁移到 public
+        # 兼容性属性：upload_dir 以后应指向 self.root_dir，作为解析相对路径的基准
         self.upload_dir = self.root_dir 
         
         self.max_size = settings.max_upload_size
@@ -161,46 +161,55 @@ class StorageManager:
         
         return success
 
-    def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachment") -> Tuple[str, str]:
+    def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachment", module: Optional[str] = None, sub_type: str = "uploads") -> Tuple[str, str]:
         """
-        生成唯一文件名 (默认在 public 目录下)
+        生成唯一文件名，遵循 6.3 存储规则
+        
+        规则优先级:
+        1. 如果指定了 module: modules/{module}/{sub_type}/user_{user_id}/filename
+        2. 如果指定了 user_id 且不是 avatar: users/user_{user_id}/{sub_type}/filename
+        3. 如果是 avatar 或无 user_id: public/{category}/filename
         
         Args:
             original_filename: 原始文件名
-            user_id: 用户ID（可选，用于目录分类）
-            category: 业务分类（avatar, blog, note, attachment 等）
+            user_id: 用户ID
+            category: 业务分类 (avatar, blog, note, attachment)
+            module: 模块名 (可选)
+            sub_type: 子类型 (uploads, exports, temp, archive)
         
         Returns:
             (相对路径, 完整路径)
         """
-        # 获取文件扩展名
         ext = Path(original_filename).suffix.lower().lstrip('.')
-        
-        # 生成唯一ID
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.{ext}" if ext else file_id
         
-        # 确定相对于 root_dir 的路径
-        # 默认放在 public 命名空间下
-        root_namespace = "public"
-        dir_name = category if category else "files"
-        if dir_name == "avatar":
-            dir_name = "avatars"
-        
-        base_dir = self.public_dir / dir_name
-        base_dir.mkdir(parents=True, exist_ok=True)
-        
-        if category == "avatar" and user_id:
-            relative_path = f"{root_namespace}/{dir_name}/{filename}"
-            full_path = base_dir / filename
+        if module:
+            # 模块专用路径: modules/{module}/{sub_type}/user_{user_id}/filename
+            rel_dir = f"modules/{module}/{sub_type}"
+            if user_id:
+                rel_dir += f"/user_{user_id}"
+            base_dir = self.root_dir / rel_dir
+        elif user_id and category != "avatar":
+            # 用户私有路径: users/user_{user_id}/{sub_type}/filename
+            rel_dir = f"users/user_{user_id}/{sub_type}"
+            base_dir = self.root_dir / rel_dir
         else:
-            date_dir = datetime.now().strftime("%Y/%m")
-            date_full_path = base_dir / date_dir
-            date_full_path.mkdir(parents=True, exist_ok=True)
-            relative_path = f"{root_namespace}/{dir_name}/{date_dir}/{filename}"
-            full_path = date_full_path / filename
+            # 公共路径: public/{category}/filename
+            dir_name = "avatars" if category == "avatar" else (category if category else "attachments")
+            rel_dir = f"public/{dir_name}"
+            # 公共附件按年月做一层哈希，避免单目录文件过多
+            if category != "avatar":
+                date_dir = datetime.now().strftime("%Y/%m")
+                rel_dir += f"/{date_dir}"
+            base_dir = self.root_dir / rel_dir
+
+        base_dir.mkdir(parents=True, exist_ok=True)
+        full_path = base_dir / filename
+        relative_path = Path(rel_dir) / filename
         
-        return relative_path, str(full_path)
+        return str(relative_path).replace('\\', '/'), str(full_path)
+
     
     def validate_file(self, filename: str, size: int, content: Optional[bytes] = None) -> Tuple[bool, Optional[str]]:
         """

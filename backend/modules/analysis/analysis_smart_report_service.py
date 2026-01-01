@@ -28,20 +28,17 @@ settings = get_settings()
 
 # 获取存储管理器
 storage_manager = get_storage_manager()
-# 基础模块目录（不含用户ID，用于确保目录存在）
-REPORT_DIR = storage_manager.get_module_dir("report")
-TEMP_DIR = storage_manager.get_module_dir("report", "temp")
-ARCHIVE_DIR = storage_manager.get_module_dir("report", "archive")
+# 基础模块名
+MODULE_NAME = "report"
 
 
 class SmartReportService:
     """智能报告服务类"""
     
     @staticmethod
-    def _ensure_dirs():
-        """确保存储目录存在"""
-        for d in [REPORT_DIR, TEMP_DIR, ARCHIVE_DIR]:
-            os.makedirs(d, exist_ok=True)
+    def _get_dir(sub_dir: str = "", user_id: Optional[int] = None) -> Path:
+        """获取规范的报告存储目录"""
+        return storage_manager.get_module_dir(MODULE_NAME, sub_dir=sub_dir, user_id=user_id)
     
     # ==================== 模板管理 ====================
     
@@ -60,7 +57,6 @@ class SmartReportService:
     @staticmethod
     async def create_report(db: AsyncSession, name: str) -> AnalysisSmartReport:
         """创建新报告模板"""
-        SmartReportService._ensure_dirs()
         report = AnalysisSmartReport(
             name=name,
             template_vars=[],
@@ -119,61 +115,22 @@ class SmartReportService:
         import glob
         logger = logging.getLogger(__name__)
         
-        # 先获取所有关联记录并删除其文件
-        res = await db.execute(
-            select(AnalysisSmartReportRecord).where(AnalysisSmartReportRecord.report_id == report_id)
-        )
-        records = res.scalars().all()
-        
-        for record in records:
-            # 删除 PDF 文件及相关文件
-            if record.pdf_file_path:
-                for storage_dir in [TEMP_DIR, ARCHIVE_DIR]:
-                    file_path = os.path.join(str(storage_dir), record.pdf_file_path)
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            logger.info(f"已删除 PDF 文件: {file_path}")
-                            
-                            # 同时删除相关的调试文件和图片目录
-                            file_dir = os.path.dirname(file_path)
-                            file_base = os.path.basename(file_path).replace('.pdf', '')
-                            
-                            # 删除 debug.html 文件
-                            debug_file = os.path.join(file_dir, f"{file_base}_debug.html")
-                            if os.path.exists(debug_file):
-                                os.remove(debug_file)
-                            
-                            # 删除 images 目录
-                            images_dir = os.path.join(file_dir, f"images_{file_base}")
-                            if os.path.exists(images_dir):
-                                shutil.rmtree(images_dir)
-                                
-                        except Exception as e:
-                            logger.warning(f"删除 PDF 文件失败: {file_path}, 错误: {e}")
-            
-            # 删除 DOCX 文件
-            if record.docx_file_path:
-                for storage_dir in [TEMP_DIR, ARCHIVE_DIR]:
-                    file_path = os.path.join(str(storage_dir), record.docx_file_path)
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            logger.info(f"已删除 DOCX 文件: {file_path}")
-                        except Exception as e:
-                            logger.warning(f"删除 DOCX 文件失败: {file_path}, 错误: {e}")
-        
-        # 删除所有用户目录下的该报告目录
-        for storage_dir in [TEMP_DIR, ARCHIVE_DIR]:
-            # 查找所有 user_*/report_{id} 目录
-            pattern = os.path.join(str(storage_dir), f"user_*/report_{report_id}")
-            for report_dir in glob.glob(pattern):
-                if os.path.exists(report_dir):
-                    try:
-                        shutil.rmtree(report_dir)
-                        logger.info(f"已删除报告目录: {report_dir}")
-                    except Exception as e:
-                        logger.warning(f"删除报告目录失败: {report_dir}, 错误: {e}")
+        # 删除所有用户目录下的该报告子目录
+        # 遍历 storage/modules/report 下的所有子目录 (temp, archive)
+        module_root = storage_manager.modules_dir / MODULE_NAME
+        if module_root.exists():
+            for sub_dir_name in ["temp", "archive"]:
+                sub_root = module_root / sub_dir_name
+                if sub_root.exists():
+                    # 查找所有 user_*/report_{id} 目录
+                    pattern = os.path.join(str(sub_root), f"user_*/report_{report_id}")
+                    for report_dir in glob.glob(pattern):
+                        if os.path.exists(report_dir):
+                            try:
+                                shutil.rmtree(report_dir)
+                                logger.info(f"已删除报告目录: {report_dir}")
+                            except Exception as e:
+                                logger.warning(f"删除报告目录失败: {report_dir}, 错误: {e}")
         
         # 删除数据库中的关联记录
         await db.execute(delete(AnalysisSmartReportRecord).where(AnalysisSmartReportRecord.report_id == report_id))
@@ -457,8 +414,6 @@ class SmartReportService:
             content_md: 可选的处理后的 Markdown 内容（如果提供，则使用此内容而不是模板内容）
             user_id: 用户ID（用于文件目录隔离）
         """
-        SmartReportService._ensure_dirs()
-        
         report = await SmartReportService.get_report(db, report_id)
         if not report:
             raise Exception("报告模板不存在")
@@ -477,28 +432,28 @@ class SmartReportService:
         user_dir_name = f"user_{effective_user_id}"
         
         # 获取用户级别的模块目录
-        temp_user_dir = storage_manager.get_module_dir("report", "temp", effective_user_id)
-        archive_user_dir = storage_manager.get_module_dir("report", "archive", effective_user_id)
+        temp_user_dir = SmartReportService._get_dir("temp", effective_user_id)
+        archive_user_dir = SmartReportService._get_dir("archive", effective_user_id)
         
         # 在用户目录下创建报告子目录
-        temp_report_dir = os.path.join(str(temp_user_dir), f"report_{report_id}")
-        archive_report_dir = os.path.join(str(archive_user_dir), f"report_{report_id}")
-        os.makedirs(temp_report_dir, exist_ok=True)
-        os.makedirs(archive_report_dir, exist_ok=True)
+        temp_report_dir = temp_user_dir / f"report_{report_id}"
+        archive_report_dir = archive_user_dir / f"report_{report_id}"
+        temp_report_dir.mkdir(parents=True, exist_ok=True)
+        archive_report_dir.mkdir(parents=True, exist_ok=True)
         
         # 1. 变量替换（如果内容中还有未替换的变量）
         filled_md = SmartReportService._fill_variables(base_md, data_context)
         
         # 2. 生成 PDF (优先使用 WeasyPrint，失败时回退到 xhtml2pdf)
         pdf_filename = f"{file_base}.pdf"
-        # 存储相对路径（包含用户ID和报告ID子目录）
-        pdf_relative_path = f"{user_dir_name}/report_{report_id}/{pdf_filename}"
-        pdf_path = os.path.join(temp_report_dir, pdf_filename)
+        # 存储相对路径：user_{id}/report_{id}/filename.pdf (相对于 modules/report/temp 或 archive)
+        pdf_relative_path = f"user_{effective_user_id}/report_{report_id}/{pdf_filename}"
+        pdf_path = temp_report_dir / pdf_filename
         pdf_success = False
         
         # 创建临时目录用于存储转换后的图片
-        images_temp_dir = os.path.join(temp_report_dir, f"images_{file_base}")
-        os.makedirs(images_temp_dir, exist_ok=True)
+        images_temp_dir = temp_report_dir / f"images_{file_base}"
+        images_temp_dir.mkdir(parents=True, exist_ok=True)
         
         # 方法1: 尝试使用 WeasyPrint (高质量，但需要 GTK+ 库)
         try:
@@ -658,8 +613,8 @@ class SmartReportService:
             try:
                 # 复制文件到归档目录
                 import shutil
-                archive_pdf_path = os.path.join(archive_report_dir, pdf_filename)
-                shutil.copy2(pdf_path, archive_pdf_path)
+                archive_pdf_path = archive_report_dir / pdf_filename
+                shutil.copy2(str(pdf_path), str(archive_pdf_path))
                 
                 # 清理 base64 图片数据，只保留文本内容（避免数据库存储过大）
                 clean_content = SmartReportService._clean_base64_images(filled_md)
@@ -716,33 +671,43 @@ class SmartReportService:
         
         record = await SmartReportService.get_record(db, record_id)
         if record:
-            # 删除本地 PDF 文件及相关文件（临时目录和归档目录都检查）
+            # 删除 PDF 文件及相关文件
             if record.pdf_file_path:
-                for storage_dir in [TEMP_DIR, ARCHIVE_DIR]:
-                    file_path = os.path.join(str(storage_dir), record.pdf_file_path)
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            logger.info(f"已删除 PDF 文件: {file_path}")
-                            
-                            # 同时删除相关的调试文件和图片目录
-                            file_dir = os.path.dirname(file_path)
-                            file_base = os.path.basename(file_path).replace('.pdf', '')
-                            
-                            # 删除 debug.html 文件
-                            debug_file = os.path.join(file_dir, f"{file_base}_debug.html")
-                            if os.path.exists(debug_file):
-                                os.remove(debug_file)
-                                logger.info(f"已删除调试文件: {debug_file}")
-                            
-                            # 删除 images 目录
-                            images_dir = os.path.join(file_dir, f"images_{file_base}")
-                            if os.path.exists(images_dir):
-                                shutil.rmtree(images_dir)
-                                logger.info(f"已删除图片目录: {images_dir}")
-                                
-                        except Exception as e:
-                            logger.warning(f"删除文件失败: {file_path}, 错误: {e}")
+                # 记录可能属于任何用户，所以我们需要遍历检查（虽然通常就是 record 用户）
+                # 这里假设 record 所属模块为 report，通过数据库记录的路径定位
+                # 注意：record.pdf_file_path 现在只包含 report_{id}/xxx.pdf
+                # 我们需要确定 user_id。如果记录中没有 user_id，则需要从报告模板或关联关系获取。
+                # 由于 record 目前没有直接的 user_id，我们通过报告模板来查找可能的用户目录
+                # 或者更简单：因为我们有 path 模式，可以在 temp 和 archive 目录下 glob
+                module_root = storage_manager.modules_dir / MODULE_NAME
+                for sub_dir_name in ["temp", "archive"]:
+                    sub_root = module_root / sub_dir_name
+                    if sub_root.exists():
+                        # 查找所有 user_*/{record.pdf_file_path}
+                        pattern = os.path.join(str(sub_root), "user_*", record.pdf_file_path)
+                        for file_path_str in glob.glob(pattern):
+                            file_path = Path(file_path_str)
+                            if file_path.exists():
+                                try:
+                                    file_path.unlink()
+                                    logger.info(f"已删除 PDF 文件: {file_path}")
+                                    
+                                    # 同时删除相关的调试文件和图片目录
+                                    file_dir = file_path.parent
+                                    file_base = file_path.name.replace('.pdf', '')
+                                    
+                                    # 删除 debug.html 文件
+                                    debug_file = file_dir / f"{file_base}_debug.html"
+                                    if debug_file.exists():
+                                        debug_file.unlink()
+                                    
+                                    # 删除 images 目录
+                                    images_dir = file_dir / f"images_{file_base}"
+                                    if images_dir.exists():
+                                        shutil.rmtree(images_dir)
+                                        
+                                except Exception as e:
+                                    logger.warning(f"删除文件失败: {file_path}, 错误: {e}")
             
             # 删除本地 DOCX 文件（如果有）
             if record.docx_file_path:

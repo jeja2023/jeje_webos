@@ -1036,14 +1036,23 @@ async def download_temp_report(
         import os
         
         storage_manager = get_storage_manager()
-        storage_dir = storage_manager.get_module_dir("report", "temp")
-        full_path = storage_dir / file_path
+        # 强制用户隔离：临时文件必须位于用户自己的 temp 目录下
+        storage_dir = storage_manager.get_module_dir("report", "temp", user_id=current_user.user_id)
         
-        # 安全检查：确保路径在存储目录内
+        # 处理 file_path，它可能包含 user_{id} 前缀（如果来自 generate_report 的 pdf_relative_path）
+        # 我们的目标是相对于 storage_dir (已经包含 user_{id}) 解析
+        inner_path = file_path
+        user_prefix = f"user_{current_user.user_id}/"
+        if inner_path.startswith(user_prefix):
+            inner_path = inner_path[len(user_prefix):]
+            
+        full_path = storage_dir / inner_path
+        
+        # 安全检查：确保路径在用户的存储目录内
         try:
             full_path.resolve().relative_to(storage_dir.resolve())
         except ValueError:
-            return error(403, "非法路径")
+            return error(403, "非法路径或无权访问他人临时文件")
         
         if not full_path.exists():
             return error(404, "文件不存在或已过期")
@@ -1101,11 +1110,18 @@ async def download_record_docx(
             
         from utils.storage import get_storage_manager
         storage_manager = get_storage_manager()
+        # 归档文件存储在 archive 根目录下，record.docx_file_path 包含了 user_id 子路径
         storage_dir = storage_manager.get_module_dir("report", "archive")
         file_path = storage_dir / record.docx_file_path
         
+        # 安全检查
+        if not current_user.role in ("admin", "manager"):
+             # 非管理员只能访问自己的归档文件
+             if not record.docx_file_path.startswith(f"user_{current_user.user_id}/"):
+                 return error(403, "无权访问此归档文件")
+
         if not file_path.exists():
-            return error("文件已丢失", code=404)
+            return error(404, "文件已丢失", code=404)
             
         return FileResponse(
             path=file_path,
@@ -1135,8 +1151,14 @@ async def download_record_pdf(
         storage_dir = storage_manager.get_module_dir("report", "archive")
         file_path = storage_dir / record.pdf_file_path
         
+        # 安全检查
+        if not current_user.role in ("admin", "manager"):
+             # 非管理员只能访问自己的归档文件
+             if not record.pdf_file_path.startswith(f"user_{current_user.user_id}/"):
+                 return error(403, "无权访问此归档文件")
+
         if not file_path.exists():
-            return error("文件已丢失", code=404)
+            return error(404, "文件已丢失", code=404)
             
         return FileResponse(
             path=file_path,

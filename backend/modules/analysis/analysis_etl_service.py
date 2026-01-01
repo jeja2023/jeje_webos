@@ -26,33 +26,28 @@ class ETLExecutionService:
     _cache_dir: Optional[str] = None
     
     @classmethod
-    def _get_cache_dir(cls) -> str:
-        """获取缓存目录路径"""
-        if cls._cache_dir is None:
-            import tempfile
-            from pathlib import Path
-            # 使用系统临时目录下的专用子目录
-            cache_path = Path(tempfile.gettempdir()) / "jeje_etl_cache"
-            cache_path.mkdir(parents=True, exist_ok=True)
-            cls._cache_dir = str(cache_path)
-            
-            # 初始化时尝试清理过期缓存
-            cls._cleanup_old_cache()
-            
-        return cls._cache_dir
+    def _get_cache_dir(cls, user_id: Optional[int] = None) -> str:
+        """获取缓存目录路径，遵循 6.3 存储规范"""
+        from utils.storage import get_storage_manager
+        storage = get_storage_manager()
+        
+        # 使用规范路径：modules/analysis/temp/user_{id}/
+        cache_path = storage.get_module_dir("analysis", sub_dir="temp", user_id=user_id)
+        
+        # 初始化时尝试清理过期缓存（仅针对当前用户的目录）
+        cls._cleanup_old_cache(str(cache_path))
+        
+        return str(cache_path)
 
     @classmethod
-    def _cleanup_old_cache(cls):
+    def _cleanup_old_cache(cls, cache_dir_str: str):
         """清理超过24小时的旧缓存文件"""
         try:
             import time
             import os
             from pathlib import Path
             
-            if not cls._cache_dir:
-                return
-
-            cache_path = Path(cls._cache_dir)
+            cache_path = Path(cache_dir_str)
             if not cache_path.exists():
                 return
                 
@@ -76,12 +71,12 @@ class ETLExecutionService:
             logger.warning(f"清理旧缓存失败: {e}")
     
     @classmethod
-    def _get_cache_file_path(cls, key: str) -> str:
+    def _get_cache_file_path(cls, key: str, user_id: Optional[int] = None) -> str:
         """获取缓存文件路径"""
         import hashlib
         # 使用 MD5 哈希作为文件名，避免特殊字符问题
         file_hash = hashlib.md5(key.encode()).hexdigest()
-        return f"{cls._get_cache_dir()}/{file_hash}.parquet"
+        return f"{cls._get_cache_dir(user_id)}/{file_hash}.parquet"
     
     @classmethod
     def clear_cache(cls, model_id: Optional[int] = None):

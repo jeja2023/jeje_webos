@@ -621,38 +621,35 @@ async def upload_file(
     from datetime import datetime
     from utils.storage import get_storage_manager
 
-    # 检查文件类型
-    allowed_extensions = [".csv", ".xlsx", ".xls"]
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail=f"不支持的文件类型，仅支持: {', '.join(allowed_extensions)}")
-
-    # 使用 StorageManager 获取模块专属目录
+    # 使用 StorageManager 生成规范的文件名和目录
     storage_manager = get_storage_manager()
-    storage_dir = storage_manager.get_module_dir("datalens")
+    
+    # 验证文件大小和类型
+    content = await file.read()
+    is_valid, error_msg = storage_manager.validate_file(file.filename, len(content), content)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
 
-    # 生成文件名
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_filename = f"{timestamp}_{user.user_id}_{file.filename}"
-    file_path_obj = storage_dir / safe_filename
-    file_path = str(file_path_obj)
+    # 生成存储路径 (存储于 modules/datalens/uploads/user_{id}/)
+    relative_path, full_path = storage_manager.generate_filename(
+        file.filename, 
+        user.user_id, 
+        module="datalens", 
+        sub_type="uploads"
+    )
 
     # 保存文件
-    content = await file.read()
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content)
-
-    # 获取相对于 storage 根目录的路径，便于数据库存储
     try:
-        relative_path = os.path.relpath(file_path, storage_manager.root_dir)
-        # 统一使用正斜杠
-        relative_path = relative_path.replace("\\", "/")
-    except ValueError:
-        relative_path = file_path
+        # generate_filename 已经创建了父目录
+        async with aiofiles.open(full_path, "wb") as f:
+            await f.write(content)
+    except Exception as e:
+        logger.error(f"保存 DataLens 文件失败: {e}")
+        raise HTTPException(status_code=500, detail="文件保存失败")
 
-    logger.info(f"用户 {user.username} 上传了文件: {file.filename} -> {relative_path}")
+    logger.info(f"用户 {user.username} 上传了 DataLens 文件: {file.filename} -> {relative_path}")
     return success(data={
-        "file_path": relative_path,  # 数据库中存储相对路径更稳健
+        "file_path": relative_path,
         "file_name": file.filename,
         "file_size": len(content)
     }, message="文件上传成功")
@@ -686,31 +683,39 @@ async def get_lens_image(
             raise HTTPException(status_code=500, detail=f"获取远程图片失败: {str(e)}")
 
     # 2. 处理本地路径
+    storage_manager = get_storage_manager()
+    
+    # 获取规范化的路径
+    if base_path:
+        # 如果提供了 base_path，可能是外部路径，需要格外小心
+        # 这里为了安全，我们要求最终生成的 path 也必须在 storage 目录下（或者根据业务需求定）
+        try:
+            potential_path = Path(base_path) / path.lstrip("/\\")
+            file_path = potential_path.resolve()
+        except:
+            raise HTTPException(status_code=400, detail="无效的路径格式")
+    else:
+        # 默认作为 storage 下的相对路径处理
+        file_path = storage_manager.get_file_path(path)
+        if not file_path:
+             raise HTTPException(status_code=404, detail="图片路径不存在或非法访问")
+
+    # 路径安全深度校验 (防跨站提权)
+    if not storage_manager._is_safe_path(file_path):
+        logger.warning(f"用户 {user.username} 尝试访问越权路径: {file_path}")
+        raise HTTPException(status_code=403, detail="禁止访问此目录下的文件")
+
     # 安全检查：只允许特定的扩展名
     allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"}
-    _, ext = os.path.splitext(path.lower())
-    if ext not in allowed_exts:
+    if file_path.suffix.lower() not in allowed_exts:
         raise HTTPException(status_code=400, detail="不支持的图片类型")
 
-    # 路径搜索逻辑
-    final_path = path
-
-    # 优先级 0: 如果提供了 base_path，优先尝试拼接
-    if base_path:
-        # 移除路径开头可能存在的 / 或 \
-        clean_rel_path = path.lstrip("/\\")
-        potential_path = os.path.join(base_path, clean_rel_path)
-        if os.path.exists(potential_path):
-            final_path = potential_path
-
-    # 最终检查文件是否存在
-    if not os.path.exists(final_path):
-        # 尝试相对于系统根目录或项目目录
-        raise HTTPException(status_code=404, detail=f"图片文件不存在: {path}")
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图片文件不存在")
 
     # 获取 MIME 类型
-    mime_type, _ = guess_type(path)
+    mime_type, _ = guess_type(str(file_path))
     if not mime_type or not mime_type.startswith("image/"):
         mime_type = "image/jpeg"
 
-    return FileResponse(final_path, media_type=mime_type)
+    return FileResponse(str(file_path), media_type=mime_type)
