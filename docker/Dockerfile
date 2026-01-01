@@ -14,6 +14,8 @@
 # 运行:
 #   docker-compose -f docker/docker-compose.yml up -d
 #
+# 版本: v2.1.3
+# 更新时间: 2026-01-01
 # ============================================================
 
 FROM python:3.12-slim
