@@ -1,4 +1,4 @@
-﻿"""
+"""
 智能报告服务 (Markdown + WeasyPrint 版)
 
 使用 Toast UI Editor (Markdown) 作为前端编辑器

@@ -38,7 +38,7 @@
     - 连接用户与管理员的沟通桥梁，内置状态追踪工作流。
 - **📢 公告**：
     - 支持全站公告推送、置顶显示、过期自动下架。
-- **�️ 系统管理**：
+- **⚙️ 系统管理**：
     - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）。
     - **系统监控**：CPU、内存、磁盘实时仪表盘。
     - **审计日志**：全量操作行为记录。
@@ -112,7 +112,7 @@
    ```
  ## 📂 项目结构 (Project Structure)
 
-JeJe WebOS 采用前后端分离的目录结构，后端负责核心逻辑与 API，前端负责桌面 UI 渲染。
+ JeJe WebOS 采用前后端分离的目录结构，后端负责核心逻辑与 API，前端负责桌面 UI 渲染。
 
 ```text
 jeje_webos/
@@ -159,6 +159,7 @@ jeje_webos/
 ├── docker/                       # 🐳 容器化配置
 │   ├── docker-compose.yml        # 服务编排
 │   ├── Dockerfile                # 后端镜像构建
+│   └── env_docker                # 生产环境配置示例
 │   └── env_docker                # 生产环境配置示例
 └── storage/                      # 💾 数据持久化 (Uploads, Backups, DB Data)
 ```
@@ -219,7 +220,7 @@ python scripts/create_module.py todo_list 待办事项
 
 ---
 
-## � 文档与规范
+## 📖 文档与规范
 
 - **[开发规范](./开发规范.md)**：包含核心架构、代码规范、模块开发指南与前端开发手册。
 
