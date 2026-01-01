@@ -277,14 +277,24 @@ class AnalysisPage extends Component {
         }
         if (this.state.activeTab === 'smart-report') {
             if (!this.state.smartReports) this.fetchSmartReports();
+            // 如果处于编辑状态，确保编辑器被恢复（处理 DOM 重绘导致编辑器丢失的问题）
+            if (this.state.editingReportId && this._restoreSmartReportEditor) {
+                this._restoreSmartReportEditor();
+            }
         }
     }
 
     async fetchDatasets() {
+        if (this.state.loadingDatasets) return;
+        this.state.loadingDatasets = true;
         try {
             const res = await AnalysisApi.getDatasets();
-            this.setState({ datasets: res.data || [] });
+            this.setState({
+                datasets: res.data || [],
+                loadingDatasets: false
+            });
         } catch (e) {
+            this.state.loadingDatasets = false;
             Toast.error('获取数据集失败');
         }
     }

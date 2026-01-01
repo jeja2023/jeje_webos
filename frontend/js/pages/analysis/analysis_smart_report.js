@@ -35,6 +35,9 @@ const AnalysisSmartReportMixin = {
                         <p class="text-secondary">使用 Markdown 编辑器创建高清专业报告</p>
                     </div>
                     <div class="flex gap-10">
+                        <button class="btn btn-secondary" id="btn-import-report">
+                            📥 导入模板
+                        </button>
                         <button class="btn btn-primary" id="btn-create-report">
                             ➕ 新建模板
                         </button>
@@ -68,6 +71,10 @@ const AnalysisSmartReportMixin = {
                     <div class="flex gap-8 mt-12">
                         <button class="btn btn-primary btn-sm flex-1 btn-edit-template" data-id="${report.id}">✏️ 编辑设计</button>
                         <button class="btn btn-secondary btn-sm flex-1 btn-view-history" data-id="${report.id}">📂 历史记录</button>
+                    </div>
+                    <div class="flex gap-8 mt-8">
+                        <button class="btn btn-outline btn-sm flex-1 btn-export-template" data-id="${report.id}" title="导出模板">📤 导出</button>
+                        <button class="btn btn-outline btn-sm flex-1 btn-duplicate-template" data-id="${report.id}" title="复制模板">📋 复制</button>
                     </div>
                 </div>
             </div>
@@ -104,7 +111,19 @@ const AnalysisSmartReportMixin = {
                         <h3 class="m-0 text-md truncate" style="max-width: 300px;">${report.name}</h3>
                         <span class="badge badge-info">${vars.length} 个变量</span>
                     </div>
-                    <div class="flex gap-10">
+                    <div class="flex gap-10 align-center">
+                        <div class="preview-mode-switcher">
+                            <button class="mode-btn ${(!this.state.previewMode || this.state.previewMode === 'edit') ? 'active' : ''}" id="btn-edit-mode" title="编辑模式">
+                                <span>✏️</span> 编辑
+                            </button>
+                            <button class="mode-btn ${this.state.previewMode === 'split' ? 'active' : ''}" id="btn-split-mode" title="分屏模式">
+                                <span>📑</span> 分屏
+                            </button>
+                            <button class="mode-btn ${this.state.previewMode === 'preview' ? 'active' : ''}" id="btn-preview-mode" title="预览模式">
+                                <span>👁️</span> 预览
+                            </button>
+                        </div>
+                        <div style="width: 1px; height: 24px; background: var(--color-border);"></div>
                         <button class="btn btn-outline-primary btn-sm btn-save-template" data-id="${report.id}">💾 保存设计</button>
                         <button class="btn btn-primary btn-sm btn-generate-report" data-id="${report.id}">📥 高清 PDF 导出</button>
                     </div>
@@ -118,8 +137,10 @@ const AnalysisSmartReportMixin = {
                     
                     <!-- 中间主区域：编辑器 + 预览 -->
                     <div class="report-center-area">
+
+                        
                         <!-- 编辑器区域 -->
-                        <div class="report-editor-section">
+                        <div class="report-editor-section ${this.state.previewMode === 'preview' ? 'hidden' : ''}">
                             <div class="section-header">
                                 <span class="header-icon">✏️</span>
                                 <span class="header-title">Markdown 编辑</span>
@@ -172,12 +193,20 @@ const AnalysisSmartReportMixin = {
                         </div>
                         
                         <!-- 预览区域 -->
-                        <div class="report-preview-section">
+                        <div class="report-preview-section ${this.state.previewMode === 'edit' ? 'hidden' : ''}">
                             <div class="section-header">
                                 <span class="header-icon">👁️</span>
                                 <span class="header-title">实时预览</span>
+                                <div class="preview-actions">
+                                    <button class="btn-preview-refresh btn-ghost btn-sm" id="btn-refresh-preview" title="刷新预览">
+                                        🔄
+                                    </button>
+                                    <button class="btn-preview-zoom btn-ghost btn-sm" id="btn-zoom-preview" title="全屏预览">
+                                        🔍
+                                    </button>
+                                </div>
                             </div>
-                            <div id="report-preview-content" class="preview-body"></div>
+                            <div id="report-preview-content" class="preview-body pdf-preview-style"></div>
                         </div>
                     </div>
 
@@ -337,6 +366,15 @@ const AnalysisSmartReportMixin = {
         this._smartReportEventsBound = true;
 
         this.delegate('click', '#btn-create-report, #btn-create-report-empty', () => this._createNewReport());
+        this.delegate('click', '#btn-import-report', () => this._importReport());
+        this.delegate('click', '.btn-export-template', (e) => {
+            const id = e.target.closest('.btn-export-template')?.dataset.id;
+            if (id) this._exportReport(parseInt(id));
+        });
+        this.delegate('click', '.btn-duplicate-template', (e) => {
+            const id = e.target.closest('.btn-duplicate-template')?.dataset.id;
+            if (id) this._duplicateReport(parseInt(id));
+        });
         this.delegate('click', '.btn-edit-template', (e, el) => this._openReportEditor(el.dataset.id));
         this.delegate('click', '.btn-view-history', (e, el) => this._viewReportHistory(el.dataset.id));
         this.delegate('click', '.btn-delete-template', (e, el) => this._deleteReport(el.dataset.id));
@@ -369,6 +407,13 @@ const AnalysisSmartReportMixin = {
         this.delegate('click', '.btn-delete-record', (e, el) => this._deleteRecord(el.dataset.id));
         this.delegate('click', '.btn-download-pdf', (e, el) => this._downloadRecord(el.dataset.id, 'pdf'));
         this.delegate('click', '.btn-view-full-content', (e, el) => this._viewRecordContent(el.dataset.id));
+
+        // 预览模式切换
+        this.delegate('click', '#btn-edit-mode', () => this._switchPreviewMode('edit'));
+        this.delegate('click', '#btn-split-mode', () => this._switchPreviewMode('split'));
+        this.delegate('click', '#btn-preview-mode', () => this._switchPreviewMode('preview'));
+        this.delegate('click', '#btn-refresh-preview', () => this._updatePreview());
+        this.delegate('click', '#btn-zoom-preview', () => this._toggleFullscreenPreview());
     },
 
     // ==================== 编辑器核心逻辑 ====================
@@ -381,13 +426,22 @@ const AnalysisSmartReportMixin = {
             editingReportId: id,
             reportDatasetId: report ? report.dataset_id : null,
             reportDatasetRow: report ? report.data_row : 'first',
-            reportDatasetColumns: [] // 初始化为空，等待加载
+            reportDatasetColumns: [], // 初始化为空，等待加载
+            previewMode: this.state.previewMode || 'split' // 默认分屏模式
         });
 
-        // 先加载图表数据
+        // 先加载图表数据和数据集
         this.fetchAnalysisCharts().then(() => {
             console.log('[智能报告] 图表数据加载完成');
         });
+
+        // 确保数据集已加载（用于下拉框）
+        if (this.state.datasets.length === 0 && this.fetchDatasets) {
+            this.fetchDatasets();
+        }
+
+        // 重置当前编辑器内容缓存
+        this._currentEditorContent = null;
 
         // 初始化编辑器
         setTimeout(async () => {
@@ -512,12 +566,43 @@ const AnalysisSmartReportMixin = {
         return wrapper;
     },
 
+    /**
+     * 恢复编辑器（用于 DOM 更新后重建编辑器）
+     */
+    _restoreSmartReportEditor() {
+        if (!this.state.editingReportId) return;
+
+        const container = document.getElementById('tui-editor-container');
+        if (!container) return;
+
+        // 检查容器是否为空（说明需要重新初始化）
+        if (container.innerHTML.trim() === '') {
+            console.log('[智能报告] 检测到编辑器 DOM 丢失，正在恢复...');
+            this._initTuiEditor(this.state.editingReportId);
+        }
+    },
+
     _initTuiEditor(reportId) {
         const container = document.getElementById('tui-editor-container');
         if (!container) return;
 
+        // 如果编辑器实例存在且容器不再包含它（DOM被重置），清理旧实例
+        if (this._tuiEditor && !document.body.contains(this._tuiEditor.layout)) {
+            try { this._tuiEditor.destroy(); } catch (e) { }
+            this._tuiEditor = null;
+        }
+
+        // 如果编辑器已经正确初始化在当前容器中，无需重建
+        if (this._tuiEditor && container.contains(this._tuiEditor.layout)) {
+            return;
+        }
+
         const report = (this.state.smartReports || []).find(r => String(r.id) === String(reportId));
-        let initialContent = report?.content_md || '# ' + (report?.name || '报告') + '\n\n开始设计您的报告...';
+
+        // 优先使用缓存的编辑内容（防止重绘丢失进度），否则使用报告原始内容
+        let initialContent = this._currentEditorContent !== null && this._currentEditorContent !== undefined
+            ? this._currentEditorContent
+            : (report?.content_md || '# ' + (report?.name || '报告') + '\n\n开始设计您的报告...');
 
         // 清理 base64 图片（避免编辑器显示超长乱码字符串）
         // 尝试将 base64 图片还原为图表占位符
@@ -562,6 +647,26 @@ const AnalysisSmartReportMixin = {
             toolbarItems: [], // 隐藏默认工具栏
             events: {
                 change: () => {
+                    // 实时保存内容，防止重绘丢失
+                    this._currentEditorContent = this._tuiEditor.getMarkdown();
+
+                    // 实时检测变量
+                    this._detectVariables();
+
+                    // 更新预览（防抖）
+                    if (this._previewUpdateTimer) {
+                        clearTimeout(this._previewUpdateTimer);
+                    }
+                    this._previewUpdateTimer = setTimeout(() => {
+                        this._updatePreview();
+                    }, 400);
+                },
+                keydown: () => { // 补充 keydown/keyup 事件以增强实时性
+                    // 实时保存内容
+                    if (this._tuiEditor) {
+                        this._currentEditorContent = this._tuiEditor.getMarkdown();
+                    }
+
                     if (this._previewUpdateTimer) {
                         clearTimeout(this._previewUpdateTimer);
                     }
@@ -584,6 +689,82 @@ const AnalysisSmartReportMixin = {
         this._bindCustomToolbar();
 
         // 初始预览由 _openReportEditor 统一触发
+
+        // 初始变量检测
+        setTimeout(() => this._detectVariables(), 500);
+    },
+
+    /**
+     * 实时检测变量
+     */
+    _detectVariables() {
+        if (!this._tuiEditor) return;
+
+        const mdContent = this._tuiEditor.getMarkdown();
+        if (!mdContent) return;
+
+        // 检测所有 {{变量名}} 格式的变量
+        const variablePattern = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
+        const matches = [...mdContent.matchAll(variablePattern)];
+        const detectedVars = [...new Set(matches.map(m => m[1]))];
+
+        // 更新状态中的变量列表（如果变化）
+        const reportId = this.state.editingReportId;
+        if (reportId) {
+            const report = (this.state.smartReports || []).find(r => String(r.id) === String(reportId));
+            if (report) {
+                const currentVars = report.template_vars || [];
+                const currentVarNames = currentVars.map(v => typeof v === 'string' ? v : v.name || v);
+
+                // 如果检测到的变量与当前不同，更新UI提示
+                if (detectedVars.length !== currentVarNames.length ||
+                    !detectedVars.every(v => currentVarNames.includes(v))) {
+                    // 更新变量数量显示
+                    const varsBadge = document.querySelector(`[data-report-id="${reportId}"] .badge-info, .badge-info`);
+                    if (varsBadge) {
+                        varsBadge.textContent = `${detectedVars.length} 个变量`;
+                    }
+
+                    // 在编辑器顶部显示提示（如果变量未在数据源中）
+                    this._showVariableHint(detectedVars);
+                }
+            }
+        }
+    },
+
+    /**
+     * 显示变量提示
+     */
+    _showVariableHint(detectedVars) {
+        // 移除旧的提示
+        const oldHint = document.getElementById('variable-hint-panel');
+        if (oldHint) oldHint.remove();
+
+        if (detectedVars.length === 0) return;
+
+        // 获取数据源列名
+        const datasetColumns = this.state.reportDatasetColumns || [];
+        const missingVars = detectedVars.filter(v => !datasetColumns.includes(v));
+
+        if (missingVars.length === 0) return; // 所有变量都在数据源中
+
+        // 创建提示面板
+        const hintPanel = document.createElement('div');
+        hintPanel.id = 'variable-hint-panel';
+        hintPanel.className = 'variable-hint-panel';
+        hintPanel.innerHTML = `
+            <div class="hint-content">
+                <span class="hint-icon">💡</span>
+                <span class="hint-text">检测到 ${missingVars.length} 个未配置的变量：${missingVars.join(', ')}</span>
+                <button class="hint-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+
+        // 插入到编辑器上方
+        const editorContainer = document.getElementById('tui-editor-container');
+        if (editorContainer && editorContainer.parentElement) {
+            editorContainer.parentElement.insertBefore(hintPanel, editorContainer);
+        }
     },
 
     _bindCustomToolbar() {
@@ -689,9 +870,18 @@ const AnalysisSmartReportMixin = {
             return;
         }
 
+        // 如果预览区域被隐藏，不更新（节省性能）
+        const previewSection = document.querySelector('.report-preview-section');
+        if (previewSection && previewSection.classList.contains('hidden')) {
+            return;
+        }
+
         // 使用版本号防止并发更新问题
         this._previewVersion = (this._previewVersion || 0) + 1;
         const currentVersion = this._previewVersion;
+
+        // 显示加载状态
+        previewEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">正在更新预览...</div>';
 
         try {
             const mdContent = this._tuiEditor.getMarkdown();
@@ -829,8 +1019,8 @@ const AnalysisSmartReportMixin = {
             }
             this._previewChartInstances = {};
 
-            // 更新预览 HTML（图表容器已在上面的替换中创建）
-            previewEl.innerHTML = html;
+            // 更新预览 HTML（全部包裹在一个 A4 纸张容器中）
+            previewEl.innerHTML = `<div class="report-paper">${html}</div>`;
 
             // 检查是否有新的预览请求（版本号变化则跳过）
             if (this._previewVersion !== currentVersion) {
@@ -986,48 +1176,129 @@ const AnalysisSmartReportMixin = {
         return option;
     },
 
-    // 渲染 Markdown 预览（使用简单的 Markdown 解析）
+    // 渲染 Markdown 预览（使用增强的 Markdown 解析）
     _renderMarkdownPreview(mdContent) {
-        // 简单的 Markdown 转 HTML（用于预览）
-        // 注意：这里使用简化版本，完整版本应该使用专业的 Markdown 解析器
-        let html = mdContent
-            // 代码块（需要在其他替换之前处理）
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // 标题
-            .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
-            .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
-            .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            // 粗体
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/__(.*?)__/g, '<strong>$1</strong>')
-            // 斜体
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/_(.*?)_/g, '<em>$1</em>')
-            // 图片（包括 base64）- 需要处理多行的情况
-            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; display: block; margin: 15px auto; border-radius: 4px;">')
-            // 链接
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-            // 列表
-            .replace(/^\* (.*$)/gim, '<li>$1</li>')
-            .replace(/^- (.*$)/gim, '<li>$1</li>')
-            .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
-            // 段落和换行
-            .split('\n')
-            .map(line => {
-                if (line.trim() === '') return '<br>';
-                if (line.match(/^<[h|li|pre|code]/)) return line;
-                return `<p>${line}</p>`;
-            })
-            .join('');
+        if (!mdContent) return '';
 
-        // 包装列表项
-        html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+        let html = mdContent;
+
+        // 1. 代码块（需要在其他替换之前处理）
+        html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
+            return `<pre><code class="language-${lang || ''}">${this._escapeHtml(code)}</code></pre>`;
+        });
+        html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+        // 2. 表格处理
+        html = html.replace(/\|(.+)\|\n\|[-\s|:]+\|\n((?:\|.+\|\n?)+)/g, (match, header, rows) => {
+            const headers = header.split('|').filter(h => h.trim()).map(h => `<th>${h.trim()}</th>`).join('');
+            const rowLines = rows.trim().split('\n');
+            const body = rowLines.map(row => {
+                const cells = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+                return `<tr>${cells}</tr>`;
+            }).join('');
+            return `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+        });
+
+        // 3. 引用块
+        html = html.replace(/^> (.+)$/gim, '<blockquote>$1</blockquote>');
+        // 合并连续的引用块
+        html = html.replace(/<\/blockquote>\s*<blockquote>/g, '<br>');
+
+        // 4. 水平线
+        html = html.replace(/^---$/gim, '<hr>');
+        html = html.replace(/^\*\*\*$/gim, '<hr>');
+
+        // 5. 标题
+        html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
+        html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
+        html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // 6. 粗体和斜体（需要在链接和图片之前处理）
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+        html = html.replace(/~~(.*?)~~/g, '<del>$1</del>');
+
+        // 7. 图片（包括 base64）
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; display: block; margin: 15px auto; border-radius: 4px;">');
+
+        // 8. 链接
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+        // 9. 有序列表和无序列表
+        const lines = html.split('\n');
+        let inList = false;
+        let listType = null;
+        let listItems = [];
+        const processedLines = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const orderedMatch = line.match(/^(\d+)\.\s+(.+)$/);
+            const unorderedMatch = line.match(/^[-*+]\s+(.+)$/);
+
+            if (orderedMatch) {
+                if (!inList || listType !== 'ol') {
+                    if (inList) {
+                        processedLines.push(`</${listType}>`);
+                    }
+                    inList = true;
+                    listType = 'ol';
+                    listItems = [];
+                }
+                listItems.push(`<li>${orderedMatch[2]}</li>`);
+            } else if (unorderedMatch) {
+                if (!inList || listType !== 'ul') {
+                    if (inList) {
+                        processedLines.push(`</${listType}>`);
+                    }
+                    inList = true;
+                    listType = 'ul';
+                    listItems = [];
+                }
+                listItems.push(`<li>${unorderedMatch[1]}</li>`);
+            } else {
+                if (inList) {
+                    processedLines.push(`<${listType}>${listItems.join('')}</${listType}>`);
+                    inList = false;
+                    listType = null;
+                    listItems = [];
+                }
+                processedLines.push(line);
+            }
+        }
+
+        if (inList) {
+            processedLines.push(`<${listType}>${listItems.join('')}</${listType}>`);
+        }
+
+        html = processedLines.join('\n');
+
+        // 10. 段落处理（将连续的非空行包装为段落）
+        html = html.split('\n').map(line => {
+            line = line.trim();
+            if (!line) return '';
+            // 如果已经是HTML标签，直接返回
+            if (line.match(/^<(h[1-6]|p|div|ul|ol|li|pre|code|blockquote|hr|table|img|a|strong|em|del)/)) {
+                return line;
+            }
+            return `<p>${line}</p>`;
+        }).filter(line => line).join('\n');
 
         return html;
+    },
+
+    /**
+     * HTML转义
+     */
+    _escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
 
     async _saveTemplate(reportId) {
@@ -1156,37 +1427,21 @@ const AnalysisSmartReportMixin = {
             const chartMatches = [...finalMdContent.matchAll(chartPlaceholderPattern)];
 
             if (chartMatches.length > 0) {
-                Toast.info(`正在渲染 ${chartMatches.length} 个图表为高清图片...`);
+                // 显示进度提示
+                const progressToast = Toast.loading(`正在渲染 ${chartMatches.length} 个图表为高清图片...`, 0);
 
-                for (const match of chartMatches) {
-                    const chartId = parseInt(match[2]);
-                    const chartName = match[1] || '图表';
+                try {
+                    // 并行处理所有图表
+                    const renderPromises = chartMatches.map(async (match, index) => {
+                        const chartId = parseInt(match[2]);
+                        const chartName = match[1] || '图表';
 
-                    try {
-                        const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(chartId));
-                        if (chart && window.echarts) {
-                            // 使用隐藏容器渲染图表并获取 base64 图片
-                            let container = document.getElementById('hidden-chart-render-container');
-                            if (!container) {
-                                // 如果容器不存在，动态创建
-                                container = document.createElement('div');
-                                container.id = 'hidden-chart-render-container';
-                                document.body.appendChild(container);
+                        try {
+                            const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(chartId));
+                            if (!chart || !window.echarts) {
+                                console.warn(`图表 ${chartId} 不存在或 ECharts 未加载`);
+                                return { match, imageData: null, error: `图表 "${chartName}" 不存在或无法加载` };
                             }
-
-                            // 清空容器并设置样式（确保可见性以正确渲染）
-                            container.innerHTML = '';
-                            container.style.cssText = `
-                                position: fixed;
-                                left: 0;
-                                top: 0;
-                                width: 800px;
-                                height: 600px;
-                                opacity: 0;
-                                pointer-events: none;
-                                z-index: -9999;
-                                overflow: visible;
-                            `;
 
                             // 获取图表关联的数据集数据
                             let chartData = [];
@@ -1196,56 +1451,115 @@ const AnalysisSmartReportMixin = {
                                     chartData = dataRes.data?.items || dataRes.data?.data || [];
                                 } catch (e) {
                                     console.warn(`获取图表数据失败: ${e.message}`);
+                                    return { match, imageData: null, error: `获取图表数据失败: ${e.message}` };
                                 }
                             }
 
-                            // 使用与预览相同的方法生成 ECharts option
-                            const option = this._generateChartOption(
-                                chart.chart_type || 'bar',
-                                chart.config || {},
-                                chartData,
-                                chartName
-                            );
+                            // 检查缓存
+                            const cache = window.ChartRenderCache || null;
+                            let imgData = null;
 
-                            // 初始化 ECharts 实例（使用固定宽高）
-                            const myChart = echarts.init(container, null, {
-                                width: 800,
-                                height: 600,
-                                devicePixelRatio: 2,
-                                renderer: 'canvas'
-                            });
+                            if (cache) {
+                                imgData = cache.get(chartId, chartData);
+                            }
 
-                            // 设置图表配置
-                            myChart.setOption(option, true);
+                            // 如果缓存未命中，渲染图表
+                            if (!imgData) {
+                                // 创建独立的容器（每个图表使用独立容器，支持并行渲染）
+                                const container = document.createElement('div');
+                                container.id = `hidden-chart-render-${chartId}-${Date.now()}`;
+                                container.style.cssText = `
+                                    position: fixed;
+                                    left: ${(index % 3) * 900}px;
+                                    top: ${Math.floor(index / 3) * 700}px;
+                                    width: 800px;
+                                    height: 600px;
+                                    opacity: 0;
+                                    pointer-events: none;
+                                    z-index: -9999;
+                                    overflow: visible;
+                                `;
+                                document.body.appendChild(container);
 
-                            // 强制 resize 确保尺寸正确
-                            myChart.resize({ width: 800, height: 600 });
+                                try {
+                                    // 使用与预览相同的方法生成 ECharts option
+                                    const option = this._generateChartOption(
+                                        chart.chart_type || 'bar',
+                                        chart.config || {},
+                                        chartData,
+                                        chartName
+                                    );
 
-                            // 等待渲染完成
-                            await new Promise(resolve => setTimeout(resolve, 300));
+                                    // 初始化 ECharts 实例（使用固定宽高）
+                                    const myChart = echarts.init(container, null, {
+                                        width: 800,
+                                        height: 600,
+                                        devicePixelRatio: 2,
+                                        renderer: 'canvas'
+                                    });
 
-                            // 导出高清图片
-                            const imgData = myChart.getDataURL({
-                                type: 'png',
-                                pixelRatio: 2,
-                                backgroundColor: '#fff'
-                            });
+                                    // 设置图表配置
+                                    myChart.setOption(option, true);
 
-                            // 替换占位符为实际的 base64 图片
-                            finalMdContent = finalMdContent.replace(match[0], `![${chartName}](${imgData})`);
+                                    // 强制 resize 确保尺寸正确
+                                    myChart.resize({ width: 800, height: 600 });
 
-                            // 清理图表实例
-                            myChart.dispose();
-                            container.innerHTML = '';
-                        } else {
-                            console.warn(`图表 ${chartId} 不存在或 ECharts 未加载`);
-                            Toast.warning(`图表 "${chartName}" 不存在或无法加载`);
+                                    // 等待渲染完成
+                                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                                    // 导出高清图片
+                                    imgData = myChart.getDataURL({
+                                        type: 'png',
+                                        pixelRatio: 2,
+                                        backgroundColor: '#fff'
+                                    });
+
+                                    // 保存到缓存
+                                    if (cache && imgData) {
+                                        cache.set(chartId, chartData, imgData);
+                                    }
+
+                                    // 清理图表实例和容器
+                                    myChart.dispose();
+                                    document.body.removeChild(container);
+                                } catch (renderError) {
+                                    // 清理容器
+                                    if (container.parentNode) {
+                                        document.body.removeChild(container);
+                                    }
+                                    throw renderError;
+                                }
+                            }
+
+                            return { match, imageData: imgData, error: null };
+                        } catch (e) {
+                            console.error(`渲染图表 ${chartId} 失败:`, e);
+                            return { match, imageData: null, error: `图表 "${chartName}" 渲染失败：${e.message}` };
                         }
-                    } catch (e) {
-                        console.error(`渲染图表 ${chartId} 失败:`, e);
-                        Toast.warning(`图表 "${chartName}" 渲染失败：${e.message}`);
-                        // 保留占位符，让后端处理或显示错误
+                    });
+
+                    // 等待所有图表渲染完成
+                    const results = await Promise.all(renderPromises);
+
+                    // 更新进度提示
+                    progressToast.update(`正在处理 ${results.length} 个图表结果...`);
+
+                    // 替换占位符
+                    for (const result of results) {
+                        if (result.imageData) {
+                            finalMdContent = finalMdContent.replace(result.match[0], `![${result.match[1] || '图表'}](${result.imageData})`);
+                        } else if (result.error) {
+                            Toast.warning(result.error);
+                            // 保留占位符，让后端处理或显示错误
+                        }
                     }
+
+                    // 关闭进度提示
+                    progressToast.close();
+                } catch (e) {
+                    progressToast.close();
+                    console.error('图表渲染过程出错:', e);
+                    Toast.error('图表渲染过程出错: ' + e.message);
                 }
             }
 
@@ -1306,52 +1620,80 @@ const AnalysisSmartReportMixin = {
                 content_md: finalMdContent // 传入处理后的内容（包含图表图片）
             };
 
-            const res = await Api.post(`/analysis/smart-reports/${reportId}/generate`, config);
-            if (res.data && res.data.pdf_filename) {
-                Toast.success('报告生成成功！');
-                // 使用 Api.download 方法下载文件，自动携带认证 token
-                try {
-                    // 始终使用临时文件下载接口（后端现在总是在临时目录生成文件）
-                    const url = `/analysis/smart-reports/download/temp/${res.data.pdf_filename}`;
+            // 显示生成进度提示
+            const generateToast = Toast.loading('正在生成 PDF 文件，请稍候...', 0);
 
-                    const { blob, filename } = await Api.download(url);
+            try {
+                const res = await Api.post(`/analysis/smart-reports/${reportId}/generate`, config);
 
-                    // 验证 blob 类型和大小
-                    if (!blob || blob.size === 0) {
-                        throw new Error('下载的文件为空或损坏');
+                if (res.data && res.data.pdf_filename) {
+                    generateToast.update('PDF 生成成功，正在准备下载...');
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    generateToast.close();
+                    Toast.success('报告生成成功！');
+                    // 使用 Api.download 方法下载文件，自动携带认证 token
+                    try {
+                        // 始终使用临时文件下载接口（后端现在总是在临时目录生成文件）
+                        const url = `/analysis/smart-reports/download/temp/${res.data.pdf_filename}`;
+
+                        const { blob, filename } = await Api.download(url);
+
+                        // 验证 blob 类型和大小
+                        if (!blob || blob.size === 0) {
+                            throw new Error('下载的文件为空或损坏');
+                        }
+
+                        // 验证是否为 PDF 类型
+                        if (blob.type && !blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
+                            console.warn('文件类型可能不正确:', blob.type);
+                        }
+
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = filename || res.data.pdf_filename;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+
+                        // 延迟清理，确保下载开始
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(downloadUrl);
+                        }, 100);
+                    } catch (e) {
+                        console.error('PDF 下载错误:', e);
+                        Toast.error('下载失败: ' + e.message);
                     }
-
-                    // 验证是否为 PDF 类型
-                    if (blob.type && !blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
-                        console.warn('文件类型可能不正确:', blob.type);
+                    // 刷新历史列表
+                    if (this.state.historyReportId) {
+                        this._viewReportHistory(this.state.historyReportId);
                     }
-
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = downloadUrl;
-                    link.download = filename || res.data.pdf_filename;
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-                    link.click();
-
-                    // 延迟清理，确保下载开始
-                    setTimeout(() => {
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(downloadUrl);
-                    }, 100);
-                } catch (e) {
-                    console.error('PDF 下载错误:', e);
-                    Toast.error('下载失败: ' + e.message);
+                } else {
+                    generateToast.close();
+                    Toast.error('报告生成失败：未返回 PDF 文件名');
                 }
-                // 刷新历史列表
-                if (this.state.historyReportId) {
-                    this._viewReportHistory(this.state.historyReportId);
+            } catch (e) {
+                generateToast.close();
+                console.error('报告生成异常:', e);
+
+                // 提供更详细的错误信息
+                let errorMsg = '报告生成失败';
+                if (e.response && e.response.data && e.response.data.message) {
+                    errorMsg += ': ' + e.response.data.message;
+                } else if (e.message) {
+                    errorMsg += ': ' + e.message;
                 }
-            } else {
-                Toast.error('报告生成失败');
+
+                Toast.error(errorMsg);
             }
         } catch (e) {
-            Toast.error('后端处理异常: ' + e.message);
+            console.error('报告生成过程异常:', e);
+            let errorMsg = '后端处理异常';
+            if (e.message) {
+                errorMsg += ': ' + e.message;
+            }
+            Toast.error(errorMsg);
         }
     },
 
@@ -1397,6 +1739,125 @@ const AnalysisSmartReportMixin = {
             });
         } else {
             Toast.info('该记录未保存全文内容');
+        }
+    },
+
+    /**
+     * 导入报告模板
+     */
+    async _importReport() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const loadingToast = Toast.loading('正在导入模板...', 0);
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const res = await Api.post('/analysis/smart-reports/import', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                loadingToast.close();
+                if (res.data) {
+                    Toast.success('模板导入成功！');
+                    await this.fetchSmartReports();
+                } else {
+                    Toast.error('导入失败: ' + (res.message || '未知错误'));
+                }
+            } catch (e) {
+                Toast.close();
+                Toast.error('导入失败: ' + e.message);
+            }
+        };
+        input.click();
+    },
+
+    /**
+     * 导出报告模板
+     */
+    async _exportReport(reportId) {
+        try {
+            const loadingToast = Toast.loading('正在导出模板...', 0);
+            const url = `/analysis/smart-reports/${reportId}/export`;
+            const { blob, filename } = await Api.download(url);
+
+            loadingToast.close();
+
+            // 创建下载链接
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename || 'report_template.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(downloadUrl);
+
+            Toast.success('模板导出成功！');
+        } catch (e) {
+            Toast.close();
+            Toast.error('导出失败: ' + e.message);
+        }
+    },
+
+    /**
+     * 复制报告模板
+     */
+    async _duplicateReport(reportId) {
+        if (!confirm('确定要复制此模板吗？')) return;
+
+        try {
+            const loadingToast = Toast.loading('正在复制模板...', 0);
+            const res = await Api.post(`/analysis/smart-reports/${reportId}/duplicate`);
+
+            loadingToast.close();
+            if (res.data) {
+                Toast.success('模板复制成功！');
+                await this.fetchSmartReports();
+            } else {
+                Toast.error('复制失败: ' + (res.message || '未知错误'));
+            }
+        } catch (e) {
+            Toast.close();
+            Toast.error('复制失败: ' + e.message);
+        }
+    },
+
+    /**
+     * 切换预览模式
+     * @param {string} mode - 'edit' | 'split' | 'preview'
+     */
+    _switchPreviewMode(mode) {
+        this.setState({ previewMode: mode });
+
+        // 如果切换到预览模式，立即更新预览
+        if (mode === 'preview') {
+            setTimeout(() => this._updatePreview(), 100);
+        }
+    },
+
+    /**
+     * 全屏预览切换
+     */
+    _toggleFullscreenPreview() {
+        const previewSection = document.querySelector('.report-preview-section');
+        if (!previewSection) return;
+
+        if (previewSection.classList.contains('fullscreen')) {
+            // 退出全屏
+            previewSection.classList.remove('fullscreen');
+            document.exitFullscreen?.();
+        } else {
+            // 进入全屏
+            previewSection.classList.add('fullscreen');
+            previewSection.requestFullscreen?.();
         }
     },
 

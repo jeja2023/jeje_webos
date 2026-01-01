@@ -206,6 +206,23 @@ async def lifespan(app: FastAPI):
         logger.info(f"✅ JWT旧密钥自动清理已启用（检查时间: {cleanup_hour:02d}:{current_settings.jwt_rotate_check_minute:02d}）")
     
     # 10. 发布启动事件
+    # 注册智能报告临时文件清理任务（每天凌晨2点执行）
+    try:
+        from modules.analysis.analysis_smart_report_service import SmartReportService
+        async def cleanup_report_temp_files():
+            """清理智能报告临时文件"""
+            SmartReportService.cleanup_old_temp_files(days=7)
+        
+        await scheduler.schedule_daily(
+            cleanup_report_temp_files,
+            hour=2,
+            minute=0,
+            name="清理智能报告临时文件"
+        )
+        logger.info("✅ 已注册智能报告临时文件清理任务（每天 02:00 执行）")
+    except Exception as e:
+        logger.warning(f"⚠️  注册智能报告清理任务失败: {e}")
+    
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
     
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")

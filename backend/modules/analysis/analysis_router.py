@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission
@@ -957,6 +958,127 @@ async def delete_smart_report(
     except Exception as e:
         return error(str(e))
 
+@router.get("/smart-reports/{report_id}/export")
+async def export_smart_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:view"))
+):
+    """导出报告模板为JSON文件"""
+    try:
+        report = await SmartReportService.get_report(db, report_id)
+        if not report:
+            return error("报告模板不存在", code=404)
+        
+        export_data = {
+            "version": "1.0",
+            "name": report.name,
+            "content_md": report.content_md,
+            "template_vars": report.template_vars or [],
+            "dataset_id": report.dataset_id,
+            "data_row": report.data_row,
+            "exported_at": datetime.now().isoformat()
+        }
+        
+        import json
+        from fastapi.responses import Response
+        
+        json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
+        return Response(
+            content=json_str,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="{report.name}_template.json"'
+            }
+        )
+    except Exception as e:
+        return error(str(e))
+
+@router.post("/smart-reports/import")
+async def import_smart_report(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """从JSON文件导入报告模板"""
+    try:
+        import json
+        
+        # 读取文件内容
+        content = await file.read()
+        try:
+            import_data = json.loads(content.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            return error(f"JSON格式错误: {str(e)}")
+        
+        # 验证数据格式
+        if "name" not in import_data or "content_md" not in import_data:
+            return error("模板文件格式不正确，缺少必要字段")
+        
+        # 创建新模板
+        name = import_data.get("name", "导入的模板")
+        # 如果名称已存在，添加时间戳
+        existing_reports = await SmartReportService.get_reports(db)
+        existing_names = {r.name for r in existing_reports}
+        if name in existing_names:
+            from datetime import datetime
+            name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        report = await SmartReportService.create_report(db, name)
+        
+        # 更新模板内容
+        await SmartReportService.update_template_content(
+            db,
+            report.id,
+            content_md=import_data.get("content_md", ""),
+            template_vars=import_data.get("template_vars", []),
+            dataset_id=import_data.get("dataset_id"),
+            data_row=import_data.get("data_row")
+        )
+        
+        return success(SmartReportResponse.model_validate(report).model_dump(), "模板导入成功")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return error(str(e))
+
+@router.post("/smart-reports/{report_id}/duplicate")
+async def duplicate_smart_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_permission("analysis:model"))
+):
+    """复制报告模板"""
+    try:
+        report = await SmartReportService.get_report(db, report_id)
+        if not report:
+            return error("报告模板不存在", code=404)
+        
+        # 创建新模板
+        new_name = f"{report.name}_副本"
+        existing_reports = await SmartReportService.get_reports(db)
+        existing_names = {r.name for r in existing_reports}
+        counter = 1
+        while new_name in existing_names:
+            new_name = f"{report.name}_副本_{counter}"
+            counter += 1
+        
+        new_report = await SmartReportService.create_report(db, new_name)
+        
+        # 复制内容
+        await SmartReportService.update_template_content(
+            db,
+            new_report.id,
+            content_md=report.content_md or "",
+            template_vars=report.template_vars or [],
+            dataset_id=report.dataset_id,
+            data_row=report.data_row
+        )
+        
+        return success(SmartReportResponse.model_validate(new_report).model_dump(), "模板复制成功")
+    except Exception as e:
+        return error(str(e))
+
 
 @router.post("/smart-reports/{report_id}/rescan-variables")
 async def rescan_report_variables(
@@ -1003,10 +1125,29 @@ async def generate_smart_report(
         
         # 返回文件名，前端通过单独的 download 接口下载
         return success(result)
+    except ValueError as e:
+        # 参数错误
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"报告生成参数错误: {e}")
+        return error(f"参数错误: {str(e)}")
+    except FileNotFoundError as e:
+        # 文件未找到
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"报告生成文件错误: {e}")
+        return error(f"文件错误: {str(e)}")
     except Exception as e:
+        # 其他异常
+        import logging
         import traceback
-        traceback.print_exc()
-        return error(str(e))
+        logger = logging.getLogger(__name__)
+        logger.error(f"报告生成失败: {e}\n{traceback.format_exc()}")
+        # 返回更友好的错误信息
+        error_msg = str(e)
+        if "WeasyPrint" in error_msg or "xhtml2pdf" in error_msg:
+            error_msg = "PDF 生成失败，请检查 PDF 生成库是否正确安装"
+        return error(error_msg)
 
 @router.post("/smart-reports/{report_id}/preview")
 async def preview_smart_report(

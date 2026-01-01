@@ -40,6 +40,56 @@ class SmartReportService:
         """获取规范的报告存储目录"""
         return storage_manager.get_module_dir(MODULE_NAME, sub_dir=sub_dir, user_id=user_id)
     
+    @staticmethod
+    def cleanup_old_temp_files(days: int = 7):
+        """
+        清理超过指定天数的临时文件
+        
+        Args:
+            days: 保留天数，默认7天
+        """
+        import logging
+        import time
+        import shutil
+        
+        logger = logging.getLogger(__name__)
+        
+        temp_dir = storage_manager.get_module_dir(MODULE_NAME, "temp")
+        if not os.path.exists(str(temp_dir)):
+            return
+        
+        cutoff_time = time.time() - (days * 24 * 3600)
+        deleted_count = 0
+        deleted_size = 0
+        
+        try:
+            for root, dirs, files in os.walk(str(temp_dir)):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        # 检查文件修改时间
+                        if os.path.getmtime(file_path) < cutoff_time:
+                            file_size = os.path.getsize(file_path)
+                            os.remove(file_path)
+                            deleted_count += 1
+                            deleted_size += file_size
+                    except Exception as e:
+                        logger.warning(f"删除临时文件失败: {file_path}, 错误: {e}")
+                
+                # 清理空目录
+                for dir_name in dirs:
+                    dir_path = os.path.join(root, dir_name)
+                    try:
+                        if not os.listdir(dir_path):
+                            os.rmdir(dir_path)
+                    except Exception:
+                        pass
+            
+            if deleted_count > 0:
+                logger.info(f"已清理 {deleted_count} 个临时文件，释放空间: {deleted_size / 1024 / 1024:.2f} MB")
+        except Exception as e:
+            logger.error(f"清理临时文件过程出错: {e}")
+    
     # ==================== 模板管理 ====================
     
     @staticmethod
@@ -579,17 +629,15 @@ class SmartReportService:
                 logger = logging.getLogger(__name__)
                 logger.error(f"PDF 生成失败 (WeasyPrint 和 xhtml2pdf 都失败): {e}")
         
-        # 清理临时图片目录（暂时保留用于调试，生产环境应启用清理）
-        # 注意：调试文件（_debug.html）和临时图片目录会保留，方便排查问题
-        # 生产环境建议启用以下代码自动清理
-        # if os.path.exists(images_temp_dir):
-        #     try:
-        #         import shutil
-        #         shutil.rmtree(images_temp_dir)
-        #     except Exception as e:
-        #         import logging
-        #         logger = logging.getLogger(__name__)
-        #         logger.warning(f"清理临时图片目录失败: {e}")
+        # 清理临时图片目录（生成成功后自动清理）
+        # 注意：如果生成失败，保留临时文件用于调试
+        if pdf_success and os.path.exists(images_temp_dir):
+            try:
+                import shutil
+                shutil.rmtree(images_temp_dir)
+                logger.debug(f"已清理临时图片目录: {images_temp_dir}")
+            except Exception as e:
+                logger.warning(f"清理临时图片目录失败: {e}")
         
         if not pdf_success:
             pdf_filename = None
