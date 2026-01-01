@@ -522,21 +522,21 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 50px;
-    /* 预留右侧按钮空间，防止遮挡 */
+    padding-right: 15px;
+    /* 基本间距 */
 }
 
 .node-actions-mini {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
     display: flex;
     align-items: center;
-    gap: 4px;
-    opacity: 0.6;
-    /* 提高默认可见度 */
+    gap: 8px;
+    /* 增加按钮间距，防止重叠 */
+    margin-left: auto;
+    opacity: 0.8;
     transition: opacity 0.2s;
+    background: rgba(var(--color-bg-tertiary-rgb), 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .etl-node:hover .node-actions-mini {
@@ -611,7 +611,7 @@
     align-items: center;
 }
 
-/* 连接端口 */
+/* 连接端口 - 左右布局（输入在左，输出在右）*/
 .node-port {
     width: 12px;
     height: 12px;
@@ -619,26 +619,87 @@
     border: 2px solid var(--color-border);
     border-radius: 50%;
     position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translateY(-50%);
     cursor: crosshair;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 10;
 }
 
+/* 极大增加热区，不需要精准打击 */
+.node-port::after {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    right: -15px;
+    bottom: -15px;
+    border-radius: 50%;
+    /* background: rgba(255,0,0,0.1); 可视化调试用 */
+}
+
 .node-port:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    transform: translateX(-50%) scale(1.4);
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    background: var(--color-primary) !important;
+    border-color: #fff !important;
+    transform: translateY(-50%) scale(1.8);
+    box-shadow: 0 0 15px var(--color-primary);
+    z-index: 11;
 }
 
+/* 输入端口 - 左侧 */
 .port-in {
-    top: -6px;
+    left: -8px;
 }
 
+/* 多输入端口支持 (Join/Union) - 上下分布在左侧 */
+.port-in-left {
+    left: -8px !important;
+    top: 30% !important;
+}
+
+.port-in-right {
+    left: -8px !important;
+    top: 70% !important;
+}
+
+/* 输出端口 - 右侧 */
 .port-out {
-    bottom: -6px;
+    right: -8px;
+    left: auto;
+}
+
+/* 连线时的磁吸和引导效果 */
+.etl-canvas-container.connecting-active .etl-node {
+    border-style: dashed;
+    opacity: 0.8;
+}
+
+.etl-canvas-container.connecting-active .etl-node:hover {
+    border-style: solid;
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.etl-canvas-container.connecting-active .etl-node .node-port.port-in {
+    animation: port-pulse 1.5s infinite;
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    transform: translateY(-50%) scale(1.3);
+}
+
+@keyframes port-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
 }
 
 

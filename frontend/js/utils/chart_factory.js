@@ -112,7 +112,8 @@ class ChartFactory {
         const { xField, yField, customTitle, colorScheme, showLabel, stacked, dualAxis, y2Field, y3Field, xFields, forecastSteps } = config;
 
         // 准备通用参数
-        const colors = this.getColorScheme(colorScheme);
+        // 支持传入自定义颜色数组或预定义方案名
+        const colors = Array.isArray(colorScheme) ? colorScheme : this.getColorScheme(colorScheme);
         const options = { customTitle, colors, showLabel, stacked, dualAxis, y2Field, y3Field, forecastSteps };
 
         let option = {};
@@ -135,6 +136,9 @@ class ChartFactory {
             case 'pie':
             case 'scatter':
                 option = this._getBasicChartOption(type, data, rawData, xField, yField, options);
+                break;
+            case 'gauge':
+                option = this._getGaugeOption(data, yField, options);
                 break;
             default:
                 console.warn('Unknown chart type:', type);
@@ -241,14 +245,14 @@ class ChartFactory {
             });
 
             const addExtraSeries = (field, colorIndex) => {
-                // Warning: rawData usage here implies we need access, which we are passing
+                // 警告：这里使用 rawData 需要确保其被传入
                 const vals = names.map(name => {
-                    const match = rawData.filter(r => String(r[Object.keys(r)[0]]) === name); // Simplistic matching
-                    // Better matching if provided xLabel key? but rawData is array of objects
-                    // In analysis_chart.js logic: xLabel.split(' ')[0] || names[0] ...
-                    // Actually analysis_chart logic for y2Data matching was:
+                    const match = rawData.filter(r => String(r[Object.keys(r)[0]]) === name); // 简单的匹配逻辑
+                    // 更好的匹配需要明确的 xLabel 键，但 rawData 可能是对象数组
+                    // analysis_chart.js 的逻辑: xLabel.split(' ')[0] || names[0] ...
+                    // 实际上 analysis_chart 对 y2Data 的匹配逻辑是:
                     // const match = rawData.filter(r => String(r[Object.keys(r)[0]]) === name);
-                    // This assumes first key is X. Let's try to be consistent.
+                    // 这假设第一个键是 X 轴。我们尽量保持一致。
                     if (match.length === 0) return 0;
                     return match.reduce((sum, r) => sum + (parseFloat(r[field]) || 0), 0) / (match.length || 1);
                 });
@@ -256,7 +260,7 @@ class ChartFactory {
                 series.push({
                     name: field,
                     type: chartType,
-                    yAxisIndex: dualAxis && colorIndex === 1 ? 1 : 0, // dualAxis only for y2
+                    yAxisIndex: dualAxis && colorIndex === 1 ? 1 : 0, // 双轴仅用于 y2
                     data: vals.map((v, i) => ({ value: v, itemStyle: { color: colors[colorIndex] } })),
                     smooth: chartType === 'line',
                     stack: stacked ? 'total' : undefined,
@@ -505,6 +509,42 @@ class ChartFactory {
                     label: { show: showLabel, position: 'top', color: '#91cc75' }
                 }
             ]
+        };
+    }
+
+    static _getGaugeOption(data, field, options) {
+        const { customTitle, colors } = options;
+        // Gauge 数据通常取平均值或最新值
+        const values = data.map(d => d.value || 0);
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
+        const val = Math.round(avg * 10) / 10;
+
+        const mainColor = (colors && colors[0]) ? colors[0] : '#60a5fa';
+
+        const title = customTitle || '仪表盘';
+
+        return {
+            backgroundColor: 'transparent',
+            title: { text: title, left: 'center', top: 'bottom', textStyle: { color: '#fff', fontSize: 16 } },
+            series: [{
+                type: 'gauge',
+                center: ['50%', '55%'],
+                radius: '80%',
+                progress: { show: true, width: 12, itemStyle: { color: mainColor } },
+                axisLine: { lineStyle: { width: 12, color: [[1, '#333']] } },
+                axisTick: { show: false },
+                splitLine: { length: 8, lineStyle: { width: 2, color: '#666' } },
+                axisLabel: { distance: 16, color: '#999', fontSize: 10 },
+                pointer: { show: true, length: '60%', itemStyle: { color: 'auto' } },
+                detail: {
+                    valueAnimation: true,
+                    fontSize: 24,
+                    offsetCenter: [0, '70%'],
+                    color: '#fff',
+                    formatter: '{value}'
+                },
+                data: [{ value: val }]
+            }]
         };
     }
 }

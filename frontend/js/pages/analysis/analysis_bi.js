@@ -118,6 +118,41 @@ class AnalysisBIPage extends Component {
             const widgetId = el.closest('.bi-widget').dataset.widgetId;
             this.deleteWidget(widgetId);
         });
+
+        // 大屏模式切换
+        this.delegate('click', '#btn-fullscreen', () => this.toggleFullScreen(true));
+        this.delegate('click', '#fullscreen-exit-btn button', () => this.toggleFullScreen(false));
+    }
+
+    // 切换大屏模式
+    toggleFullScreen(enable) {
+        const view = document.querySelector('.bi-dashboard-view');
+        if (!view) return;
+
+        if (enable) {
+            // 进入全屏
+            if (view.requestFullscreen) {
+                view.requestFullscreen();
+            } else if (view.webkitRequestFullscreen) {
+                view.webkitRequestFullscreen();
+            }
+            view.classList.add('data-screen-mode');
+            document.getElementById('fullscreen-exit-btn').classList.remove('display-none');
+
+            // 自动强制重绘所有图表以适应尺寸
+            setTimeout(() => this.renderAllCharts(), 500);
+        } else {
+            // 退出全屏
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            view.classList.remove('data-screen-mode');
+            document.getElementById('fullscreen-exit-btn').classList.add('display-none');
+
+            setTimeout(() => this.renderAllCharts(), 500);
+        }
     }
 
     render() {
@@ -197,6 +232,7 @@ class AnalysisBIPage extends Component {
                         </div>
                     </div>
                     <div class="toolbar-right flex gap-10">
+                        <button class="btn btn-sm btn-ghost" id="btn-fullscreen" title="进入全屏演示">🖥️ 大屏演示</button>
                         ${editMode ? `
                             <button class="btn btn-secondary btn-sm" id="btn-add-widget">➕ 添加组件</button>
                             <button class="btn btn-primary btn-sm" id="btn-save-dashboard">💾 保存修改</button>
@@ -215,6 +251,11 @@ class AnalysisBIPage extends Component {
                             <p class="text-secondary text-lg">画布空空如也。点击右上方“设计”按钮开始添加图表组件。</p>
                         </div>
                     ` : widgets.map(w => this.renderWidget(w)).join('')}
+                </div>
+
+                <!-- 大屏模式退出按钮 (默认隐藏) -->
+                <div id="fullscreen-exit-btn" class="fixed top-20 right-20 z-50 display-none">
+                    <button class="btn btn-secondary btn-sm shadow-lg opacity-80 hover:opacity-100">❌ 退出大屏</button>
                 </div>
             </div>
         `;
@@ -300,10 +341,52 @@ class AnalysisBIPage extends Component {
             }
 
             container.innerHTML = '';
-            const chart = echarts.init(container, document.body.classList.contains('dark') ? 'dark' : 'light');
+            container.innerHTML = '';
+            // 检测大屏模式，强制使用 dark 主题
+            const isDataScreen = document.querySelector('.data-screen-mode') !== null;
+            const themeMode = (document.body.classList.contains('dark') || isDataScreen) ? 'dark' : 'light';
+
+            const chart = echarts.init(container, themeMode);
+            // 如果是大屏模式，手动覆盖背景透明
+            if (isDataScreen) {
+                chart.setOption({ backgroundColor: 'transparent' });
+            }
             this.chartInstances[widget.id] = chart;
 
-            const option = this.buildChartOption(widget, data);
+            chart.setOption({ backgroundColor: 'transparent' });
+            this.chartInstances[widget.id] = chart;
+
+            // 1. 数据筛选与聚合
+            const { chartType, xField, yField, y2Field, stacked, showLabel, aggregateType, theme = 'blue' } = widget.config || {};
+
+            // 使用 ChartFactory 进行数据预处理（筛选/排除）
+            const filteredData = ChartFactory.filterData(data, widget.config || {});
+            const aggregated = this.aggregateData(filteredData, xField, yField, aggregateType || 'count');
+
+            // 2. 颜色映射 (BI 主题色 -> ChartFactory 颜色数组)
+            const biColors = {
+                blue: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'],
+                green: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0'],
+                orange: ['#f59e0b', '#fbbf24', '#fcd34d', '#fde68a'],
+                purple: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'],
+                red: ['#ef4444', '#f87171', '#fca5a5', '#fecaca'],
+                multi: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6']
+            };
+            const colorScheme = biColors[theme] || biColors.blue;
+
+            // 3. 使用 ChartFactory 生成 Option
+            const option = ChartFactory.generateOption(chartType, aggregated, {
+                xField: 'name', // 聚合后的字段名固定为 name
+                yField: 'value', // 聚合后的字段名固定为 value
+                y2Field: y2Field, // 次要 Y 轴字段 (如果存在)
+                dualAxis: !!y2Field, // 是否启用双轴
+                stacked: stacked, // 是否堆叠
+                showLabel: showLabel, // 是否显示标签
+                colorScheme: colorScheme, // 传入数组
+                customTitle: ' ' // 隐藏 ChartFactory 的内部标题，因为 Widget 外部有标题
+            }, filteredData); // 关键：传入筛选后的 filteredData 作为 rawData
+
+            // 4. 应用 Option
             chart.setOption(option);
 
             // 使用防抖的 resize 监听器（全局共享）
@@ -318,94 +401,7 @@ class AnalysisBIPage extends Component {
         }
     }
 
-    buildChartOption(widget, data) {
-        const { chartType, xField, yField, aggregateType, theme = 'blue' } = widget.config || {};
-        const aggregated = this.aggregateData(data, xField, yField, aggregateType || 'count');
-        const names = aggregated.map(d => d.name);
-        const values = aggregated.map(d => d.value);
-
-        const isDark = document.body.classList.contains('dark');
-        const textColor = isDark ? '#aaa' : '#666';
-
-        // 颜色主题定义
-        const colors = {
-            blue: ['#3b82f6', '#60a5fa'],
-            green: ['#10b981', '#34d399'],
-            orange: ['#f59e0b', '#fbbf24'],
-            purple: ['#8b5cf6', '#a78bfa'],
-            red: ['#ef4444', '#f87171'],
-            multi: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6']
-        };
-        const activeColor = colors[theme] || colors.blue;
-        const mainColor = activeColor[0];
-
-        // 渐变色生成 (仅单色主题)
-        let itemStyleColor = mainColor;
-        if (theme !== 'multi') {
-            itemStyleColor = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: activeColor[0] },
-                { offset: 1, color: activeColor[1] || activeColor[0] }
-            ]);
-        }
-
-        const baseOption = {
-            backgroundColor: 'transparent',
-            tooltip: { trigger: chartType === 'pie' ? 'item' : 'axis' },
-            grid: { left: '5%', right: '5%', bottom: '10%', top: '15%', containLabel: true },
-            color: theme === 'multi' ? activeColor : [mainColor]
-        };
-
-        const seriesItemStyle = {
-            borderRadius: [4, 4, 0, 0],
-            color: itemStyleColor
-        };
-
-        switch (chartType) {
-            case 'bar':
-                return {
-                    ...baseOption,
-                    xAxis: { type: 'category', data: names, axisLabel: { color: textColor, rotate: names.length > 5 ? 30 : 0 } },
-                    yAxis: { type: 'value', axisLabel: { color: textColor }, splitLine: { lineStyle: { type: 'dashed', opacity: 0.1 } } },
-                    series: [{ type: 'bar', data: values, itemStyle: seriesItemStyle }]
-                };
-            case 'line':
-                return {
-                    ...baseOption,
-                    xAxis: { type: 'category', data: names, axisLabel: { color: textColor } },
-                    yAxis: { type: 'value', axisLabel: { color: textColor }, splitLine: { lineStyle: { type: 'dashed', opacity: 0.1 } } },
-                    series: [{ type: 'line', data: values, smooth: true, areaStyle: { opacity: 0.2 }, itemStyle: { color: mainColor } }]
-                };
-            case 'pie':
-                return {
-                    ...baseOption,
-                    series: [{
-                        type: 'pie',
-                        radius: ['45%', '75%'],
-                        avoidLabelOverlap: false,
-                        itemStyle: { borderRadius: 10, borderColor: isDark ? '#111' : '#fff', borderWidth: 2 },
-                        label: { show: false, position: 'center' },
-                        emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
-                        data: aggregated.map(d => ({ name: d.name, value: d.value }))
-                    }]
-                };
-            case 'gauge':
-                const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
-                return {
-                    series: [{
-                        type: 'gauge',
-                        progress: { show: true, width: 10 },
-                        axisLine: { lineStyle: { width: 10 } },
-                        axisTick: { show: false },
-                        splitLine: { length: 8, lineStyle: { width: 2, color: '#999' } },
-                        axisLabel: { distance: 15, color: '#999', fontSize: 10 },
-                        detail: { valueAnimation: true, fontSize: 20, offsetCenter: [0, '60%'], color: isDark ? '#fff' : '#000' },
-                        data: [{ value: Math.round(avg * 10) / 10 }]
-                    }]
-                };
-            default:
-                return baseOption;
-        }
-    }
+    // buildChartOption 已移除，逻辑迁移至 ChartFactory
 
     aggregateData(data, xField, yField, aggregateType) {
         // 委托给 Utils.aggregateData，BI 仪表盘默认显示 15 项
@@ -606,6 +602,8 @@ class AnalysisBIPage extends Component {
             if (res.code === 200) {
                 Toast.success('仪表盘已持久化到服务器');
                 this.setState({ currentDashboard: res.data });
+                // 【核心修复】保存触发重绘后，必须重新初始化图表实例
+                setTimeout(() => this.renderAllCharts(), 100);
             } else {
                 throw new Error(res.message);
             }
@@ -637,105 +635,48 @@ class AnalysisBIPage extends Component {
             } catch (e) { console.error(e); }
         }
 
-        // 辅助函数：生成选中状态
-        const sel = (val, target) => val === target ? 'selected' : '';
+        // 准备初始值
+        const initialValues = {
+            title: widget.title,
+            datasetId: widget.datasetId,
+            size: widget.size,
+            ...(widget.config || {})
+        };
+
+        // 生成表单 HTML
+        const contentHtml = ChartConfigUI.getFormHtml({
+            values: initialValues,
+            datasets: datasets,
+            fieldOptions: fieldOptions,
+            showLayoutConfig: true // BI 模块需要布局配置
+        });
 
         Modal.show({
             title: '编辑组件配置',
             width: 500,
-            content: `
-                 <div class="form-group mb-10">
-                    <label class="text-xs">标题</label>
-                    <input type="text" id="cfg-w-title" class="form-control" value="${Utils.escapeHtml(widget.title)}">
-                </div>
-                <div class="form-group mb-10">
-                    <label class="text-xs">数据集</label>
-                    <select id="cfg-w-dataset" class="form-control">
-                        <option value="">请选择...</option>
-                        ${datasets.map(d => `<option value="${d.id}" ${sel(d.id, widget.datasetId)}>${d.name}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="form-group mb-10">
-                    <label class="text-xs">图表类型</label>
-                    <select id="cfg-w-type" class="form-control">
-                        <option value="bar" ${sel('bar', config.chartType)}>柱状图</option>
-                        <option value="line" ${sel('line', config.chartType)}>折线图</option>
-                        <option value="pie" ${sel('pie', config.chartType)}>饼图</option>
-                        <option value="gauge" ${sel('gauge', config.chartType)}>仪表盘</option>
-                    </select>
-                </div>
-                <div class="flex gap-10 mb-10">
-                    <div class="flex-1">
-                        <label class="text-xs">X轴 (分类)</label>
-                        <select id="cfg-w-x" class="form-control">
-                            ${fieldOptions}
-                        </select>
-                    </div>
-                    <div class="flex-1">
-                        <label class="text-xs">Y轴 (数值)</label>
-                        <select id="cfg-w-y" class="form-control">
-                            ${fieldOptions}
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group mb-10">
-                    <label class="text-xs">聚合</label>
-                    <select id="cfg-w-agg" class="form-control">
-                        <option value="none" ${sel('none', config.aggregateType)}>不聚合</option>
-                        <option value="count" ${sel('count', config.aggregateType)}>计数 (Count)</option>
-                        <option value="sum" ${sel('sum', config.aggregateType)}>求和 (Sum)</option>
-                        <option value="avg" ${sel('avg', config.aggregateType)}>平均 (Avg)</option>
-                         <option value="max" ${sel('max', config.aggregateType)}>最大 (Max)</option>
-                        <option value="min" ${sel('min', config.aggregateType)}>最小 (Min)</option>
-                    </select>
-                </div>
-                 <div class="form-group mb-10">
-                    <label class="text-xs">颜色主题</label>
-                    <select id="cfg-w-theme" class="form-control">
-                        <option value="blue" ${sel('blue', config.theme)}>🔵 商务蓝</option>
-                        <option value="green" ${sel('green', config.theme)}>🟢 清新绿</option>
-                        <option value="orange" ${sel('orange', config.theme)}>🟠 活力橙</option>
-                        <option value="purple" ${sel('purple', config.theme)}>🟣 优雅紫</option>
-                        <option value="red" ${sel('red', config.theme)}>🔴 警示红</option>
-                        <option value="multi" ${sel('multi', config.theme)}>🌈 多彩混合</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="text-xs">布局大小</label>
-                    <select id="cfg-w-size" class="form-control">
-                        <option value="small" ${sel('small', widget.size)}>小 (1x2)</option>
-                        <option value="medium" ${sel('medium', widget.size)}>中 (2x2)</option>
-                        <option value="large" ${sel('large', widget.size)}>大 (3x2)</option>
-                        <option value="wide" ${sel('wide', widget.size)}>最宽 (6x1)</option>
-                    </select>
-                </div>
-            `,
+            content: contentHtml,
             onConfirm: () => {
-                const title = document.getElementById('cfg-w-title').value.trim();
-                const datasetId = document.getElementById('cfg-w-dataset').value;
-                const chartType = document.getElementById('cfg-w-type').value;
-                const xField = document.getElementById('cfg-w-x').value;
-                const yField = document.getElementById('cfg-w-y').value;
-                const agg = document.getElementById('cfg-w-agg').value;
-                const theme = document.getElementById('cfg-w-theme').value;
-                const size = document.getElementById('cfg-w-size').value;
+                // 使用 ChartConfigUI 统一获取值
+                const values = ChartConfigUI.getFormValues();
 
-                if (!title || !datasetId || !xField) {
+                if (!values.title || !values.datasetId || !values.xField) {
                     Toast.error('缺少必填配置');
                     return false;
                 }
 
+                const size = values.size;
                 const colSpan = size === 'small' ? 2 : size === 'medium' ? 2 : size === 'large' ? 3 : 6;
                 const rowSpan = size === 'wide' ? 1 : 2;
 
                 const updated = this.state.widgets.map(w => w.id === id ? {
                     ...w,
-                    title,
-                    datasetId: parseInt(datasetId),
-                    size,
+                    title: values.title,
+                    datasetId: parseInt(values.datasetId),
+                    size: values.size,
                     colSpan,
                     rowSpan,
-                    config: { chartType, xField, yField, aggregateType: agg, theme }
+                    // 将其余配置存入 config
+                    config: values
                 } : w);
 
                 this.setState({ widgets: updated });
@@ -744,14 +685,8 @@ class AnalysisBIPage extends Component {
             }
         });
 
-        // 绑定后处理：设置字段的回显值
+        // 绑定后处理：监听数据集变化
         setTimeout(() => {
-            const elX = document.getElementById('cfg-w-x');
-            const elY = document.getElementById('cfg-w-y');
-            if (elX) elX.value = config.xField || '';
-            if (elY) elY.value = config.yField || '';
-
-            // 监听数据集变化
             const dsSelect = document.getElementById('cfg-w-dataset');
             if (dsSelect) {
                 dsSelect.addEventListener('change', async (e) => {
@@ -760,8 +695,8 @@ class AnalysisBIPage extends Component {
                     try {
                         const res = await AnalysisApi.getDatasetData(dsId, { page: 1, size: 1 });
                         const options = (res.data?.columns || []).map(c => `<option value="${c}">${c}</option>`).join('');
-                        document.getElementById('cfg-w-x').innerHTML = options;
-                        document.getElementById('cfg-w-y').innerHTML = options;
+                        // 使用 ChartConfigUI 统一更新所有字段下拉框
+                        ChartConfigUI.updateFieldOptions(options);
                     } catch (err) { }
                 });
             }

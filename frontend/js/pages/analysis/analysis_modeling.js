@@ -275,9 +275,20 @@ const AnalysisModelingMixin = {
         }
 
         try {
-            const datasets = this.state.datasets || [];
-            const ds = datasets.find(d => d.name === datasetName);
-            if (!ds) return [];
+            let datasets = this.state.datasets || [];
+
+            // 如果 state 中没有 datasets，尝试获取一次
+            if (datasets.length === 0) {
+                const dsRes = await AnalysisApi.getDatasets();
+                datasets = dsRes.data || [];
+                this.setState({ datasets });
+            }
+
+            const ds = datasets.find(d => d.name === datasetName || d.table_name === datasetName);
+            if (!ds) {
+                console.warn(`未找到名为 ${datasetName} 的数据集`);
+                return [];
+            }
 
             const res = await AnalysisApi.getDatasetData(ds.id, { page: 1, size: 1 });
             const cols = res.data?.columns || [];
@@ -294,31 +305,62 @@ const AnalysisModelingMixin = {
     async _getAvailableColumnsForNode(nodeId) {
         const { modelNodes = [], modelConnections = [] } = this.state;
         const node = modelNodes.find(n => n.id === nodeId);
-        if (!node) return [];
 
-        // 寻找上游节点
-        const conn = modelConnections.find(c => c.targetId === nodeId);
-        if (!conn) {
+        // 找到连接到当前节点的所有上游连线
+        const upConns = modelConnections.filter(c => c.targetId === nodeId);
+
+        if (upConns.length === 0) {
             // 如果没有上游，且自己是 source 类型，从数据集取
-            if (node.type === 'source' && node.data?.table) {
-                return await this._fetchDatasetColumns(node.data.table);
+            if (node?.type === 'source') {
+                // 优先从 DOM 读取当前选中的表（用户可能刚刚选择但未保存）
+                const selectEl = document.getElementById('cfg-source-table');
+                const tableName = selectEl?.value || node.data?.table;
+                if (tableName) {
+                    return await this._fetchDatasetColumns(tableName);
+                }
             }
             return [];
         }
 
-        // 递归找上游的根数据源（简化逻辑：找到根 source）
+        // 收集所有分支的字段
+        let allFields = [];
+        for (const conn of upConns) {
+            // 改进：这里不直接找 root source，而是逐级向上，直到找到有字段的节点
+            // 这样未来可以支持在中间节点进行 Select/Rename 后的字段过滤
+            const branchFields = await this._findBranchSourceFields(conn.sourceId);
+            allFields = allFields.concat(branchFields);
+        }
+
+        // 去重并标准化格式
+        const uniqueFields = [];
+        const seen = new Set();
+        allFields.forEach(f => {
+            const fObj = typeof f === 'string' ? { name: f } : f;
+            if (fObj && fObj.name && !seen.has(fObj.name)) {
+                uniqueFields.push(fObj);
+                seen.add(fObj.name);
+            }
+        });
+
+        return uniqueFields;
+    },
+
+    // 递归寻找分支的最上游数据源字段
+    async _findBranchSourceFields(nodeId) {
+        const { modelNodes = [], modelConnections = [] } = this.state;
         let currentId = nodeId;
         let visited = new Set();
+
         while (currentId && !visited.has(currentId)) {
             visited.add(currentId);
             const n = modelNodes.find(item => item.id === currentId);
             if (n?.type === 'source' && n.data?.table) {
                 return await this._fetchDatasetColumns(n.data.table);
             }
+            // 向上找一个连线（假设处理链是单线或合并点）
             const upConn = modelConnections.find(c => c.targetId === currentId);
             currentId = upConn ? upConn.sourceId : null;
         }
-
         return [];
     },
 
@@ -327,6 +369,12 @@ const AnalysisModelingMixin = {
      */
     async enterModelEdit(modelId) {
         try {
+            // 确保 datasets 已加载（用于 source 节点的下拉选择）
+            if (!this.state.datasets || this.state.datasets.length === 0) {
+                const dsRes = await AnalysisApi.getDatasets();
+                this.setState({ datasets: dsRes.data || [] });
+            }
+
             const res = await AnalysisApi.getModel(modelId);
             const model = res.data;
 
@@ -342,6 +390,7 @@ const AnalysisModelingMixin = {
                 modelNodes: nodes,
                 modelConnections: connections,
                 selectedNodeId: null,
+                selectedNodeConfigHtml: null,
                 etlLogs: []
             });
 
@@ -557,6 +606,16 @@ const AnalysisModelingMixin = {
             await this._previewNode(nodeId);
         });
 
+        // 节点删除按钮点击
+        this.delegate('mousedown', '.btn-node-delete', (e, el) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const nodeId = el.closest('.etl-node').dataset.nodeId;
+            if (confirm('确定要删除此节点及其连接吗？')) {
+                this.deleteETLNode(nodeId);
+            }
+        });
+
         // 切换控制台
         this.delegate('click', '#btn-toggle-console', () => {
             this.setState({ isConsoleOpen: !this.state.isConsoleOpen });
@@ -693,6 +752,17 @@ const AnalysisModelingMixin = {
             const input = document.getElementById(targetId);
             if (!input) return;
 
+            // 【即时反馈】点击后立即切换 Chip 样式，增强响应感，避免等待 reload
+            if (single) {
+                // 单选模式：移除同容器内其他 active
+                const container = el.closest('.field-chips-container');
+                container.querySelectorAll('.visual-field-chip').forEach(chip => chip.classList.remove('active'));
+                el.classList.add('active');
+            } else {
+                // 多选模式：直接切换
+                el.classList.toggle('active');
+            }
+
             let vals = input.value.split(',').map(v => v.trim()).filter(v => v);
             if (single) {
                 vals = [col];
@@ -703,7 +773,8 @@ const AnalysisModelingMixin = {
 
             input.value = vals.join(', ');
             const { selectedNodeId } = this.state;
-            if (selectedNodeId) await this._saveNodeConfig(true);
+            // 使用 skipReload 模式保存，避免全量 HTML 重绘导致跳动
+            if (selectedNodeId) await this._saveNodeConfig(true, true);
         });
 
         // 通用表单输入实时同步 (防止重绘丢失)
@@ -869,6 +940,10 @@ const AnalysisModelingMixin = {
     async _loadNodeConfig(nodeId, showLoading = true) {
         if (!nodeId) return;
 
+        // 【优化】记录当前配置面板的滚动位置，防止重绘跳动
+        const panel = document.getElementById('etl-config-panel-content');
+        const scrollPos = panel ? panel.scrollTop : 0;
+
         // 如果需要显示加载状态或当前无 HTML，则清空
         if (showLoading || !this.state.selectedNodeConfigHtml) {
             this.setState({ selectedNodeId: nodeId, selectedNodeConfigHtml: null });
@@ -879,7 +954,16 @@ const AnalysisModelingMixin = {
         const node = (this.state.modelNodes || []).find(n => n.id === nodeId);
         if (node) {
             const html = await this.renderETLNodeConfig(node);
+
+            // 使用异步更新确保 DOM 已渲染后恢复滚动条
             this.setState({ selectedNodeConfigHtml: html });
+
+            if (panel) {
+                setTimeout(() => {
+                    const newPanel = document.getElementById('etl-config-panel-content');
+                    if (newPanel) newPanel.scrollTop = scrollPos;
+                }, 0);
+            }
         }
     },
 
@@ -887,7 +971,7 @@ const AnalysisModelingMixin = {
      * 保存当前选中节点的配置
      * @param {boolean} silentMode 静默模式，不弹出 Toast 提示
      */
-    async _saveNodeConfig(silentMode = false) {
+    async _saveNodeConfig(silentMode = false, skipReload = false) {
         const { selectedNodeId, modelNodes } = this.state;
         const node = modelNodes.find(n => n.id === selectedNodeId);
         if (!node) return;
@@ -895,8 +979,13 @@ const AnalysisModelingMixin = {
         let updates = {};
         const getValue = (id) => {
             const el = document.getElementById(id);
-            return el ? el.value : (node.data ? node.data[id.replace('cfg-', '').replace('-', '')] : null);
+            // 改进：如果 DOM 不存在（可能刚删除或切走），优先从 node.data 取，防止清空数据
+            if (!el) return (node.data ? node.data[id.replace('cfg-', '').replace('-', '')] : null);
+            return el.value;
         };
+
+        // ... 之前的 switch 逻辑保持不变 ...
+        // (注：为节省 token，这里不重复展示 switch 内部)
 
         // 根据节点类型读取配置
         switch (node.type) {
@@ -962,13 +1051,13 @@ const AnalysisModelingMixin = {
                 updates.mapping = `${updates.oldCol}:${updates.newCol}`;
                 break;
             case 'join':
-                updates.joinTable = getValue('cfg-join-table');
                 updates.joinType = getValue('cfg-join-type');
                 updates.leftOn = getValue('cfg-join-left');
                 updates.rightOn = getValue('cfg-join-right');
+                updates.leftOutputCols = getValue('cfg-join-left-output');
+                updates.rightOutputCols = getValue('cfg-join-right-output');
                 break;
             case 'union':
-                updates.tables = getValue('cfg-union-table');
                 updates.unionMode = getValue('cfg-union-mode');
                 break;
             case 'fillna':
@@ -996,6 +1085,23 @@ const AnalysisModelingMixin = {
                 updates.values = getValue('cfg-pivot-values');
                 updates.aggFunc = getValue('cfg-pivot-func');
                 break;
+            case 'text_ops':
+                updates.targetCol = getValue('cfg-text-col');
+                updates.func = getValue('cfg-text-func');
+                updates.newCol = getValue('cfg-text-new-name');
+                break;
+            case 'math_ops':
+                updates.fieldA = getValue('cfg-math-field-a');
+                updates.op = getValue('cfg-math-op');
+                updates.value = getValue('cfg-math-val');
+                updates.newCol = getValue('cfg-math-new-name');
+                break;
+            case 'window':
+                updates.func = getValue('cfg-window-func');
+                updates.partitionBy = getValue('cfg-window-partition');
+                updates.orderBy = getValue('cfg-window-order');
+                updates.newCol = getValue('cfg-window-new-name');
+                break;
         }
 
         // 通用：更新节点标签
@@ -1007,10 +1113,40 @@ const AnalysisModelingMixin = {
             updates.outputColumns = getValue('cfg-output-cols');
         }
 
-        this.updateETLNodeData(node.id, updates);
+        if (skipReload) {
+            // 【核心修复】skipReload 模式下，我们要彻底避免 setState 触发的重绘
+            // 1. 直接修改 state 中的数据对象引用 (绕过 React/Mixin 的 Diff 机制)
+            const nodeIndex = this.state.modelNodes.findIndex(n => n.id === node.id);
+            if (nodeIndex !== -1) {
+                // 原地合并 data
+                const originalData = this.state.modelNodes[nodeIndex].data || {};
+                this.state.modelNodes[nodeIndex].data = { ...originalData, ...updates };
+            }
 
-        // 保存后刷新一次配置面板 HTML 以同步状态 (静默刷新，防止跳动)
-        await this._loadNodeConfig(node.id, false);
+            // 2. 将当前 DOM 的最新状态（Value, Active Class）反向同步到 HTML 缓存字符串
+            // 这样即使未来因其他原因触发了重绘，也会使用这个包含最新状态的 HTML
+            const panelContent = document.getElementById('etl-config-panel-content');
+            if (panelContent) {
+                // 同步 Input value 到 attribute (innerHTML 默认只包含 attribute)
+                panelContent.querySelectorAll('input').forEach(inp => inp.setAttribute('value', inp.value));
+
+                // 同步 Select selected
+                panelContent.querySelectorAll('select').forEach(sel => {
+                    const val = sel.value;
+                    sel.querySelectorAll('option').forEach(opt => {
+                        if (opt.value === val) opt.setAttribute('selected', 'selected');
+                        else opt.removeAttribute('selected');
+                    });
+                });
+
+                // 更新缓存
+                this.state.selectedNodeConfigHtml = panelContent.innerHTML;
+            }
+        } else {
+            // 正常模式：走标准更新流程 (会触发 setState -> render)
+            this.updateETLNodeData(node.id, updates);
+            await this._loadNodeConfig(node.id, false);
+        }
 
         if (!silentMode) Toast.success('节点配置已保存');
     },
@@ -1045,24 +1181,37 @@ const AnalysisModelingMixin = {
         const isRunning = node.status === 'running';
         const hasError = node.status === 'error';
 
+        // 动态标签：如果是 source 且已选表，直接显示表名
+        let displayLabel = node.data?.label || node.type;
+        if (node.type === 'source' && node.data?.table) {
+            displayLabel = node.data.table;
+        }
+
+        // 双输入端口支持 (Join / Union)
+        const isMultiInput = node.type === 'join' || node.type === 'union';
+        const portsHtml = isMultiInput
+            ? '<div class="node-port port-in port-in-left"></div><div class="node-port port-in port-in-right"></div>'
+            : '<div class="node-port port-in"></div>';
+
         return `
             <div class="etl-node ${node.status || ''} ${isSelected ? 'selected' : ''}" 
                  data-node-id="${node.id}"
                  style="left: ${node.x}px; top: ${node.y}px; border-left: 4px solid ${nodeColor};">
-                <div class="node-port port-in"></div>
+                ${portsHtml}
                 <div class="node-head" style="background: linear-gradient(90deg, ${nodeColor}20, transparent);">
                     <span class="node-icon">${icons[node.type] || '📦'}</span>
-                    <span class="node-label" title="${Utils.escapeHtml(node.data?.label || node.type)}">${node.data?.label || node.type}</span>
+                    <span class="node-label" style="max-width: 120px;" title="${Utils.escapeHtml(displayLabel)}">${displayLabel}</span>
                     <div class="node-actions-mini">
-                         <span class="btn-node-run" title="运行此节点">▶️</span>
-                         ${isExecuted ? `<span class="btn-node-preview" title="预览数据">👁️</span>` : ''}
+                         <span class="btn-node-run" title="运行此节点" style="color: #10b981;">▶️</span>
+                         <span class="btn-node-preview" title="预览数据" style="color: var(--color-primary); ${isExecuted ? '' : 'display:none;'}">👁️</span>
+                         <span class="btn-node-delete" title="删除节点" style="color: #ef4444;">🗑️</span>
                     </div>
                     ${isRunning ? '<div class="node-spinner"></div>' : ''}
-                    ${isExecuted ? '<span class="node-status" title="已执行">✅</span>' : ''}
+                    ${isExecuted ? '<span class="node-status" title="已成功">✅</span>' : ''}
                     ${hasError ? '<span class="node-status" title="执行失败">❌</span>' : ''}
                 </div>
                 <div class="node-info">
-                    ${isExecuted && node.data?._rowCount ? `📊 ${node.data._rowCount} 行` : this.getNodeSummary(node)}
+                    ${isExecuted && node.data?._rowCount ? `📊 ${node.data._rowCount} 行数据` : this.getNodeSummary(node)}
                 </div>
                 <div class="node-port port-out" style="background: ${nodeColor}; border-color: ${nodeColor};"></div>
             </div>
@@ -1099,26 +1248,45 @@ const AnalysisModelingMixin = {
     },
 
     /**
-     * 渲染ETL连接线
+     * 渲染ETL连接线 - 左右布局（从右侧输出到左侧输入）
      */
     renderETLConnections(connections, nodes) {
         const { selectedConnIndex } = this.state;
+
+        // 用于跟踪每个节点已有多少个输入连线，以便分配上下端口
+        const portOccupation = {};
+
         return connections.map((conn, index) => {
             const src = nodes.find(n => n.id === conn.sourceId);
             const tgt = nodes.find(n => n.id === conn.targetId);
             if (!src || !tgt) return '';
 
-            // 精确计算连接点（x 居中，y 分别位于顶部和底部边缘）
-            const nodeWidth = 150;  // 与 CSS .etl-node width 保持一致
-            const nodeMinHeight = 70; // 与 CSS .etl-node height 保持一致
+            // 使用实际的 CSS 尺寸
+            const nodeWidth = 200;
+            const nodeHeight = 86;
 
-            const x1 = src.x + nodeWidth / 2;
-            const y1 = src.y + nodeMinHeight; // 出发点在底部
-            const x2 = tgt.x + nodeWidth / 2;
-            const y2 = tgt.y; // 到达点在顶部
+            // 出发点：右侧中心（输出端口）
+            const x1 = src.x + nodeWidth;
+            const y1 = src.y + nodeHeight / 2;
 
-            // 使用三次贝塞尔曲线
-            const d = `M ${x1} ${y1} C ${x1} ${y1 + 40}, ${x2} ${y2 - 40}, ${x2} ${y2}`;
+            // 到达点：左侧（输入端口）
+            const x2 = tgt.x;
+            let y2 = tgt.y + nodeHeight / 2; // 默认中心
+
+            // JOIN/UNION 节点有两个输入端口（上下分布）
+            if (tgt.type === 'join' || tgt.type === 'union') {
+                const occupationIdx = portOccupation[tgt.id] || 0;
+                if (occupationIdx === 0) {
+                    y2 = tgt.y + nodeHeight * 0.3; // 30% 处（上端口）
+                } else {
+                    y2 = tgt.y + nodeHeight * 0.7; // 70% 处（下端口）
+                }
+                portOccupation[tgt.id] = occupationIdx + 1;
+            }
+
+            // 使用水平方向的三次贝塞尔曲线
+            const ctrlOffset = Math.max(50, Math.abs(x2 - x1) * 0.3);
+            const d = `M ${x1} ${y1} C ${x1 + ctrlOffset} ${y1}, ${x2 - ctrlOffset} ${y2}, ${x2} ${y2}`;
             const isSelected = selectedConnIndex === index;
 
             // 计算中点用于放置删除按钮
@@ -1148,11 +1316,12 @@ const AnalysisModelingMixin = {
     },
 
     /**
-     * 渲染拖拽中的临时连线
+     * 渲染拖拽中的临时连线 - 水平方向
      */
     renderTempConnection(temp) {
         const { x1, y1, x2, y2 } = temp;
-        const d = `M ${x1} ${y1} C ${x1} ${y1 + 40}, ${x2} ${y2 - 40}, ${x2} ${y2}`;
+        const ctrlOffset = Math.max(40, Math.abs(x2 - x1) * 0.3);
+        const d = `M ${x1} ${y1} C ${x1 + ctrlOffset} ${y1}, ${x2 - ctrlOffset} ${y2}, ${x2} ${y2}`;
         return `<path class="etl-temp-line" d="${d}" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="5,5" fill="none" />`;
     },
 
@@ -1201,17 +1370,39 @@ const AnalysisModelingMixin = {
             </div>
         `;
 
+        // 检查上游连接状态
+        const hasUpstreamConnection = (this.state.modelConnections || []).some(c => c.targetId === node.id);
+
+        // 渲染无可用字段时的提示
+        const renderNoFieldsHint = (nodeTypeName = '此节点') => renderGroup(`${nodeTypeName}配置`, `
+            <div class="text-secondary text-xs p-15 bg-hover border-radius-5 text-center">
+                <div class="text-2xl mb-10">⚠️</div>
+                <div class="font-bold mb-5">${hasUpstreamConnection ? '上游数据源未配置' : '未连接上游节点'}</div>
+                <div>${hasUpstreamConnection ? '请先在上游的输入节点中选择数据集' : '请先将此节点连接到一个已配置的输入节点'}</div>
+            </div>
+        `);
+
         let fields = '';
+
+        // 确保 datasets 可用
+        const datasets = this.state.datasets || [];
 
         switch (node.type) {
             /* ========== 数据输入输出 ========== */
             case 'source':
+                const sourceHasTable = node.data?.table && availableFields.length > 0;
                 fields = renderGroup('数据来源表', `
                     <select class="form-control w-100" id="cfg-source-table">
                         <option value="">请选择数据集...</option>
-                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.table === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                        ${datasets.length === 0 ? '<option value="" disabled>暂无可用数据集，请先导入数据</option>' : ''}
+                        ${datasets.map(d => `<option value="${d.name}" ${node.data?.table === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
                     </select>
-                `, '选择系统内已注册的数据集作为起始输入');
+                `, '选择系统内已注册的数据集作为起始输入') + (sourceHasTable ? renderGroup('数据源字段预览', `
+                    <div class="field-chips-container" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 5px; background: var(--color-bg-secondary); border-radius: 6px;">
+                        ${availableFields.slice(0, 30).map(f => `<span style="padding: 3px 8px; border-radius: 12px; border: 1px solid var(--color-border); font-size: 10px; background: var(--color-bg-primary);">${f.name}</span>`).join('')}
+                        ${availableFields.length > 30 ? `<span style="padding: 3px 8px; font-size: 10px; color: var(--color-text-secondary);">...及其他 ${availableFields.length - 30} 个字段</span>` : ''}
+                    </div>
+                `, `共 ${availableFields.length} 个字段`) : '');
                 break;
 
             case 'sink':
@@ -1232,6 +1423,11 @@ const AnalysisModelingMixin = {
 
             /* ========== 数据筛选与过滤 ========== */
             case 'filter':
+                // 检查是否有可用字段，如果没有则显示提示
+                if (availableFields.length === 0) {
+                    fields = renderNoFieldsHint('过滤条件');
+                    break;
+                }
                 let conditions = node.data?.conditions || [];
                 // 兼容旧数据
                 if (conditions.length === 0 && node.data?.field) {
@@ -1461,30 +1657,128 @@ const AnalysisModelingMixin = {
                 break;
 
             case 'join':
-                // 动态获取右表字段
-                let rightFields = [];
-                if (node.data?.joinTable) {
-                    rightFields = await this._fetchDatasetColumns(node.data.joinTable);
-                    rightFields = rightFields.map(f => typeof f === 'string' ? { name: f } : f);
+                const joinUpConns = this.state.modelConnections.filter(c => c.targetId === node.id);
+                let leftFields = [], rightFields = [];
+                let leftSourceName = '左侧源', rightSourceName = '右侧源';
+
+                // 辅助函数：获取分支的真实数据源名称
+                const getBranchSourceName = (startNodeId) => {
+                    let currentId = startNodeId;
+                    let visited = new Set();
+                    while (currentId && !visited.has(currentId)) {
+                        visited.add(currentId);
+                        const n = this.state.modelNodes.find(item => item.id === currentId);
+                        if (n?.type === 'source' && n.data?.table) {
+                            return n.data.table;
+                        }
+                        const upConn = this.state.modelConnections.find(c => c.targetId === currentId);
+                        currentId = upConn ? upConn.sourceId : null;
+                    }
+                    return null;
+                };
+
+                // 标准化字段格式
+                const normalizeFields = (fields) => {
+                    if (!fields) return [];
+                    return fields.map(f => {
+                        if (typeof f === 'string') return { name: f };
+                        if (typeof f === 'object' && f.name) return f;
+                        return { name: String(f) };
+                    });
+                };
+
+                if (joinUpConns.length >= 2) {
+                    const leftRealSource = getBranchSourceName(joinUpConns[0].sourceId);
+                    const rightRealSource = getBranchSourceName(joinUpConns[1].sourceId);
+                    leftSourceName = leftRealSource || '数据源A';
+                    rightSourceName = rightRealSource || '数据源B';
+
+                    try {
+                        const rawLeftFields = await this._findBranchSourceFields(joinUpConns[0].sourceId);
+                        const rawRightFields = await this._findBranchSourceFields(joinUpConns[1].sourceId);
+                        leftFields = normalizeFields(rawLeftFields);
+                        rightFields = normalizeFields(rawRightFields);
+                    } catch (e) {
+                        console.error('获取 JOIN 字段失败:', e);
+                    }
                 }
+
+                // 渲染关联条件配置
+                const renderJoinCondition = () => {
+                    if (joinUpConns.length < 2) {
+                        return `
+                            <div class="config-card p-15 bg-secondary border-radius-sm text-center">
+                                <div class="text-2xl mb-10">🔗</div>
+                                <div class="text-error font-bold mb-5">未完成连接</div>
+                                <div class="text-xs text-secondary">请将两个数据源节点连接到此关联节点</div>
+                            </div>
+                        `;
+                    }
+
+                    const leftOptions = leftFields.map(f =>
+                        `<option value="${f.name}" ${node.data?.leftOn === f.name ? 'selected' : ''}>${f.name}</option>`
+                    ).join('');
+                    const rightOptions = rightFields.map(f =>
+                        `<option value="${f.name}" ${node.data?.rightOn === f.name ? 'selected' : ''}>${f.name}</option>`
+                    ).join('');
+
+                    return `
+                        <div class="config-card p-15 bg-secondary border-radius-sm">
+                            <div class="text-xs text-tertiary mb-10">设置关联条件 (类似 SQL: ON 左表.字段 = 右表.字段)</div>
+                            <div class="flex align-center gap-10 mb-10">
+                                <div style="flex: 1;">
+                                    <div class="text-xs text-secondary mb-5">⬅️ ${leftSourceName}</div>
+                                    <select class="form-control w-100" id="cfg-join-left">
+                                        <option value="">选择左侧关联字段...</option>
+                                        ${leftOptions}
+                                    </select>
+                                </div>
+                                <div class="text-xl font-bold text-primary" style="padding-top: 20px;">=</div>
+                                <div style="flex: 1;">
+                                    <div class="text-xs text-secondary mb-5">➡️ ${rightSourceName}</div>
+                                    <select class="form-control w-100" id="cfg-join-right">
+                                        <option value="">选择右侧关联字段...</option>
+                                        ${rightOptions}
+                                    </select>
+                                </div>
+                            </div>
+                            ${node.data?.leftOn && node.data?.rightOn ? `
+                                <div class="text-xs text-success mt-10 p-5 bg-hover border-radius-sm font-mono">
+                                    ✅ ${leftSourceName}.${node.data.leftOn} = ${rightSourceName}.${node.data.rightOn}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                };
+
+                // 渲染左右表输出字段选择
+                const renderOutputFieldsSection = () => {
+                    if (joinUpConns.length < 2) return '';
+
+                    return `
+                        <div class="join-output-fields mt-15">
+                            <div class="text-sm font-bold text-secondary mb-10">📤 选择输出字段</div>
+                            <div class="config-card p-10 bg-secondary border-radius-sm mb-10">
+                                <div class="text-xs text-tertiary mb-5">⬅️ 左表字段 (${leftSourceName})</div>
+                                ${this._renderFieldChips(leftFields, node.data?.leftOutputCols, 'cfg-join-left-output')}
+                            </div>
+                            <div class="config-card p-10 bg-secondary border-radius-sm">
+                                <div class="text-xs text-tertiary mb-5">➡️ 右表字段 (${rightSourceName})</div>
+                                ${this._renderFieldChips(rightFields, node.data?.rightOutputCols, 'cfg-join-right-output')}
+                            </div>
+                            <div class="text-xs text-tertiary mt-5">💡 不选择任何字段则输出该表全部字段</div>
+                        </div>
+                    `;
+                };
 
                 fields = renderGroup('关联类型', `
                     <select class="form-control w-100" id="cfg-join-type">
-                        <option value="inner" ${node.data?.joinType === 'inner' ? 'selected' : ''}>内连接 (Inner Join)</option>
-                        <option value="left" ${node.data?.joinType === 'left' ? 'selected' : ''}>左连接 (Left Join)</option>
-                        <option value="right" ${node.data?.joinType === 'right' ? 'selected' : ''}>右连接 (Right Join)</option>
-                        <option value="full" ${node.data?.joinType === 'full' ? 'selected' : ''}>全连接 (Full Outer)</option>
+                        <option value="inner" ${node.data?.joinType === 'inner' ? 'selected' : ''}>内连接 (Inner Join) - 仅匹配行</option>
+                        <option value="left" ${node.data?.joinType === 'left' ? 'selected' : ''}>左连接 (Left Join) - 保留左表所有行</option>
+                        <option value="right" ${node.data?.joinType === 'right' ? 'selected' : ''}>右连接 (Right Join) - 保留右表所有行</option>
+                        <option value="full" ${node.data?.joinType === 'full' ? 'selected' : ''}>全连接 (Full Outer) - 保留所有行</option>
                     </select>
-                `) + renderGroup('右表选择', `
-                    <select class="form-control w-100" id="cfg-join-table">
-                        <option value="">选择要关联的数据集...</option>
-                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.joinTable === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
-                    </select>
-                `, '当前流为左表，请选择右表') + renderGroup('关联键配置 - 左表',
-                    this._renderFieldChips(availableFields, node.data?.leftOn, 'cfg-join-left', true)
-                ) + renderGroup('关联键配置 - 右表',
-                    this._renderFieldChips(rightFields, node.data?.rightOn, 'cfg-join-right', true)
-                );
+                `) + renderGroup('关联条件', renderJoinCondition()) + renderOutputFieldsSection();
                 break;
 
             case 'fillna':
@@ -1515,12 +1809,24 @@ const AnalysisModelingMixin = {
                 break;
 
             case 'union':
-                fields = renderGroup('合并表', `
-                    <select class="form-control w-100" id="cfg-union-table">
-                        <option value="">选择要合并的数据集...</option>
-                        ${this.state.datasets.map(d => `<option value="${d.name}" ${node.data?.tables === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
-                    </select>
-                `, '选择要与当前流合并的另一个数据集') + renderGroup('合并模式', `
+                const unionUpConns = this.state.modelConnections.filter(c => c.targetId === node.id);
+
+                let unionInfo = '';
+                if (unionUpConns.length >= 2) {
+                    unionInfo = renderGroup('合并状态', `
+                        <div class="config-card p-10 bg-secondary border-radius-sm text-xs">
+                             已检测到 <b>${unionUpConns.length}</b> 路分支输入
+                        </div>
+                    `);
+                } else {
+                    unionInfo = `
+                        <div class="config-card p-10 bg-secondary border-radius-sm text-xs text-error">
+                             ⚠️ 请至少连接两个及以上节点到合并算子
+                        </div>
+                    `;
+                }
+
+                fields = unionInfo + renderGroup('合并模式', `
                     <select class="form-control w-100" id="cfg-union-mode">
                         <option value="ALL" ${node.data?.unionMode === 'ALL' ? 'selected' : ''}>保留重复 (UNION ALL)</option>
                         <option value="DISTINCT" ${node.data?.unionMode === 'DISTINCT' ? 'selected' : ''}>去重合并 (UNION)</option>
@@ -1626,8 +1932,9 @@ const AnalysisModelingMixin = {
                 fields = `<div class="text-secondary text-center p-20">高级配置功能正在开发中...</div>`;
         }
 
-        // 对于非 sink 节点，添加输出字段选择器
-        if (node.type !== 'sink') {
+        // 对于非 sink/join 节点，添加输出字段选择器
+        // JOIN 节点已经有专门的左右表输出字段选择器，不需要通用选择器
+        if (node.type !== 'sink' && node.type !== 'join') {
             fields += `
                 <div class="output-columns-section mt-15 pt-15 border-top">
                     ${renderGroup('输出字段 (可选)',
@@ -2027,7 +2334,7 @@ const AnalysisModelingMixin = {
     /**
      * 运行ETL作业
      */
-    runETLJob() {
+    async runETLJob() {
         const nodes = this.state.modelNodes || [];
         const connections = this.state.modelConnections || [];
         const currentModel = this.state.currentModel;
@@ -2049,10 +2356,44 @@ const AnalysisModelingMixin = {
         this.setState({ modelNodes: resetNodes });
 
         this.addETLLog('info', '🚀 启动全部运行...');
-        this.addETLLog('info', `检测到 ${nodes.length} 个处理节点`);
 
-        // 按拓扑顺序执行（从源节点开始）
-        this.executeAllNodesSequentially(0, nodes, connections, currentModel);
+        // 关键逻辑：在“全部运行”前先清除后端缓存，确保获取最新结果
+        try {
+            await AnalysisApi.clearETLCache(currentModel.id);
+            this.addETLLog('info', '已清理执行缓存，准备开始新一轮计算');
+        } catch (e) {
+            console.warn('清理缓存失败:', e);
+        }
+
+        // 简单拓扑排序：找到所有 source 节点 -> 运行 -> 它们的下游 -> 运行
+        // 这里采用层次运行策略，确保逻辑正确
+        const sortedNodes = this._topologicalSort(nodes, connections);
+        this.addETLLog('info', `任务分析完成，执行序列长度: ${sortedNodes.length}`);
+
+        this.executeAllNodesSequentially(0, sortedNodes, connections, currentModel);
+    },
+
+    // 基础拓扑排序实现
+    _topologicalSort(nodes, connections) {
+        const sorted = [];
+        const visited = new Set();
+        const nodesMap = {};
+        nodes.forEach(n => nodesMap[n.id] = n);
+
+        const visit = (nodeId) => {
+            if (visited.has(nodeId)) return;
+            // 找到所有上游
+            const upstreams = connections.filter(c => c.targetId === nodeId).map(c => c.sourceId);
+            upstreams.forEach(upId => visit(upId));
+
+            visited.add(nodeId);
+            if (nodesMap[nodeId]) {
+                sorted.push(nodesMap[nodeId]);
+            }
+        };
+
+        nodes.forEach(n => visit(n.id));
+        return sorted;
     },
 
     /**
@@ -2140,12 +2481,15 @@ const AnalysisModelingMixin = {
         if (!srcNode || !canvas) return;
 
         const rect = canvas.getBoundingClientRect();
-        const startX = srcNode.x + 70;
-        const startY = srcNode.y + 55;
+        const container = document.querySelector('.etl-canvas-container');
+        if (container) container.classList.add('connecting-active');
+
+        const startX = srcNode.x + 100; // 200/2
+        const startY = srcNode.y + 86;  // bottom
 
         const move = (ev) => {
-            const x2 = ev.clientX - rect.left;
-            const y2 = ev.clientY - rect.top;
+            const x2 = (ev.clientX - rect.left) / (this.state.canvasZoom || 1);
+            const y2 = (ev.clientY - rect.top) / (this.state.canvasZoom || 1);
             this.setState({
                 tempConnection: { x1: startX, y1: startY, x2, y2 }
             });
@@ -2155,14 +2499,25 @@ const AnalysisModelingMixin = {
             document.removeEventListener('mousemove', move);
             document.removeEventListener('mouseup', up);
 
-            // 检查松开点是否在另一个节点的输入端口上
-            const targetEl = ev.target.closest('.node-port.port-in');
-            if (targetEl) {
-                const targetNodeId = targetEl.closest('.etl-node').dataset.nodeId;
-                if (targetNodeId !== sourceId) {
-                    this.addETLConnection(sourceId, targetNodeId);
-                }
+            if (container) container.classList.remove('connecting-active');
+
+            // 增强检测：优先检查是否落在端口上，其次检查是否落在整个节点框内
+            const portEl = ev.target.closest('.node-port.port-in');
+            const nodeEl = ev.target.closest('.etl-node');
+
+            let targetNodeId = null;
+            if (portEl) {
+                targetNodeId = portEl.closest('.etl-node').dataset.nodeId;
+            } else if (nodeEl) {
+                // 如果落在节点上但没精准命中圆点，也视为连接成功（极大提升体验）
+                targetNodeId = nodeEl.dataset.nodeId;
             }
+
+            if (targetNodeId && targetNodeId !== sourceId) {
+                this.addETLConnection(sourceId, targetNodeId);
+                Toast.success('连接成功');
+            }
+
             this.setState({ tempConnection: null });
         };
 

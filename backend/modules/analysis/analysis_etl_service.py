@@ -214,14 +214,18 @@ class ETLExecutionService:
         logger.info(f"开始执行节点: {node_id} (类型: {node_type})")
         
         try:
-            # 获取上游数据
-            upstream_df = await cls._get_upstream_data(
+            # 获取所有上游数据 (支持多路径输入，如 Join/Union)
+            upstream_dfs = await cls._get_all_upstream_data(
                 db, model_id, node_id, nodes, connections
             )
             
+            # 为了兼容性，如果没有或只有一个上游，取出第一个作为 upstream_df
+            upstream_df = upstream_dfs[0] if upstream_dfs else pd.DataFrame()
+            
             # 根据节点类型执行不同的逻辑
             result_df = await cls._process_node(
-                db, node_type, node_data, upstream_df, nodes, connections
+                db, node_type, node_data, upstream_df, nodes, connections, 
+                all_upstream_dfs=upstream_dfs
             )
             
             # 缓存结果
@@ -307,6 +311,51 @@ class ETLExecutionService:
         return cls.get_cached_result(model_id, source_id).copy()
     
     @classmethod
+    async def _get_all_upstream_data(
+        cls,
+        db: AsyncSession,
+        model_id: int,
+        node_id: str,
+        nodes: List[Dict],
+        connections: List[Dict]
+    ) -> List[pd.DataFrame]:
+        """获取所有上游节点的数据列表"""
+        # 找到所有连接到当前节点的上游连线
+        upstream_conns = [c for c in connections if c.get('targetId') == node_id]
+        
+        if not upstream_conns:
+            return []
+        
+        results = []
+        for conn in upstream_conns:
+            source_id = conn.get('sourceId')
+            
+            # 1. 检查缓存
+            cached = cls.get_cached_result(model_id, source_id)
+            if cached is not None:
+                results.append(cached.copy())
+                continue
+                
+            # 2. 递归执行
+            upstream_node = next((n for n in nodes if n.get('id') == source_id), None)
+            if not upstream_node:
+                continue
+                
+            res = await cls.execute_node(
+                db, model_id, upstream_node, {'nodes': nodes, 'connections': connections}
+            )
+            
+            if res.get('success'):
+                # 从缓存重新获取执行结果
+                df = cls.get_cached_result(model_id, source_id)
+                if df is not None:
+                    results.append(df.copy())
+            else:
+                logger.error(f"递归执行上游节点失败: {source_id}")
+                
+        return results
+    
+    @classmethod
     async def _process_node(
         cls,
         db: AsyncSession,
@@ -314,7 +363,8 @@ class ETLExecutionService:
         node_data: Dict[str, Any],
         upstream_df: pd.DataFrame,
         nodes: List[Dict],
-        connections: List[Dict]
+        connections: List[Dict],
+        all_upstream_dfs: List[pd.DataFrame] = None
     ) -> pd.DataFrame:
         """根据节点类型处理数据"""
         
@@ -352,9 +402,9 @@ class ETLExecutionService:
         elif node_type == 'split':
             result = cls._execute_split(upstream_df, node_data)
         elif node_type == 'join':
-            result = await cls._execute_join(db, upstream_df, node_data)
+            result = await cls._execute_join(db, upstream_df, node_data, all_upstream_dfs)
         elif node_type == 'union':
-            result = await cls._execute_union(db, upstream_df, node_data)
+            result = await cls._execute_union(db, upstream_df, node_data, all_upstream_dfs)
         elif node_type == 'pivot':
             result = cls._execute_pivot(upstream_df, node_data)
         elif node_type == 'text_ops':
@@ -886,96 +936,100 @@ class ETLExecutionService:
         return result
     
     @classmethod
-    async def _execute_join(cls, db: AsyncSession, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
-        """执行关联节点 (DuckDB Pushdown 优化版)"""
-        import uuid
-        join_table = node_data.get('joinTable', '')
+    async def _execute_join(
+        cls, 
+        db: AsyncSession, 
+        df: pd.DataFrame, 
+        node_data: Dict,
+        all_upstream_dfs: List[pd.DataFrame] = None
+    ) -> pd.DataFrame:
+        """执行关联节点 (严格双流关联，支持选择输出字段)"""
         join_type = node_data.get('joinType', 'inner')
         left_on = node_data.get('leftOn', '')
         right_on = node_data.get('rightOn', '')
+        left_output_cols = node_data.get('leftOutputCols', '')
+        right_output_cols = node_data.get('rightOutputCols', '')
         
-        if not join_table or not left_on or not right_on:
-            raise ValueError("关联配置不完整")
+        # 必须有两个及以上上游输入
+        if not all_upstream_dfs or len(all_upstream_dfs) < 2:
+            raise ValueError("关联算子至少需要连接两个上游节点（左表和右表）")
         
-        # 获取右表信息
-        result = await db.execute(
-            select(AnalysisDataset).where(AnalysisDataset.name == join_table)
-        )
-        dataset = result.scalar_one_or_none()
+        left_df = df  # 第一个上游为左表
+        right_df = all_upstream_dfs[1]  # 第二个上游为右表
         
-        if not dataset:
-            raise ValueError(f"关联数据集不存在: {join_table}")
+        if not left_on or not right_on:
+            raise ValueError("关联配置不完整: 请配置左/右关联字段")
+        
+        # 解析用户选择的输出字段
+        def parse_cols(cols_str, df_cols, join_key):
+            """解析输出字段列表，确保关联键始终包含"""
+            if not cols_str or not cols_str.strip():
+                return list(df_cols)  # 未选择则输出全部
+            cols = [c.strip() for c in cols_str.split(',') if c.strip()]
+            # 确保关联键始终存在
+            if join_key and join_key not in cols:
+                cols.insert(0, join_key)
+            # 只保留实际存在的列
+            valid_cols = [c for c in cols if c in df_cols]
+            return valid_cols if valid_cols else list(df_cols)
+        
+        # 根据用户选择筛选左右表的列
+        left_cols = parse_cols(left_output_cols, left_df.columns, left_on)
+        right_cols = parse_cols(right_output_cols, right_df.columns, right_on)
+        
+        # 筛选后的 DataFrame
+        left_df_filtered = left_df[left_cols].copy()
+        right_df_filtered = right_df[right_cols].copy()
         
         # 映射 Join 类型
         type_map = {
-            'inner': 'INNER',
-            'left': 'LEFT',
-            'right': 'RIGHT',
-            'full': 'FULL',
-            'outer': 'FULL'
+            'inner': 'inner', 'left': 'left', 'right': 'right', 
+            'full': 'outer', 'outer': 'outer'
         }
-        sql_join_type = type_map.get(join_type.lower(), 'INNER')
+        how = type_map.get(join_type.lower(), 'inner')
         
-        # 注册左表为临时视图
-        temp_left_name = f"temp_join_left_{uuid.uuid4().hex[:8]}"
-        duckdb_instance.conn.register(temp_left_name, df)
+        logger.info(f"JOIN 执行开始:")
+        logger.info(f"  左表: {len(left_df_filtered)} 行 x {len(left_df_filtered.columns)} 列 ({left_cols})")
+        logger.info(f"  右表: {len(right_df_filtered)} 行 x {len(right_df_filtered.columns)} 列 ({right_cols})")
+        logger.info(f"  条件: {left_on} = {right_on}, 类型: {how}")
         
         try:
-            # 构建 SQL 查询
-            # 注意：DuckDB 会自动处理同名列（通常添加后缀或保留）
-            # 使用双引号包裹列名以处理特殊字符
-            sql = f"""
-                SELECT * 
-                FROM {temp_left_name} t1
-                {sql_join_type} JOIN {dataset.table_name} t2
-                ON t1."{left_on}" = t2."{right_on}"
-            """
-            
-            logger.info(f"Join 节点 (SQL Pushdown): {sql_join_type} JOIN {join_table}")
-            result_df = duckdb_instance.fetch_df(sql)
+            # 使用 _left 和 _right 后缀区分同名字段
+            result_df = left_df_filtered.merge(
+                right_df_filtered, 
+                left_on=left_on, 
+                right_on=right_on, 
+                how=how,
+                suffixes=('_left', '_right')
+            )
+            logger.info(f"JOIN 成功: 结果 {len(result_df)} 行 x {len(result_df.columns)} 列")
+            logger.info(f"JOIN 结果字段: {result_df.columns.tolist()}")
             return result_df
-            
         except Exception as e:
-            logger.error(f"Join 执行失败: {e}")
-            # 回退到 Pandas 模式（防止 SQL 兼容性问题）
-            logger.info("回退到 Pandas 内存 Join 模式")
-            right_df = duckdb_instance.fetch_df(f"SELECT * FROM {dataset.table_name}")
-            how_map = {'inner': 'inner', 'left': 'left', 'right': 'right', 'full': 'outer', 'outer': 'outer'}
-            return df.merge(right_df, left_on=left_on, right_on=right_on, how=how_map.get(join_type, 'inner'))
-            
-        finally:
-            try:
-                duckdb_instance.conn.unregister(temp_left_name)
-            except:
-                pass
+            logger.error(f"关联执行过程出错: {e}")
+            raise ValueError(f"关联失败: {str(e)}")
     
     @classmethod
-    async def _execute_union(cls, db: AsyncSession, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
-        """执行合并节点"""
-        union_table = node_data.get('tables', '')
+    async def _execute_union(
+        cls, 
+        db: AsyncSession, 
+        df: pd.DataFrame, 
+        node_data: Dict,
+        all_upstream_dfs: List[pd.DataFrame] = None
+    ) -> pd.DataFrame:
+        """执行合并节点 (严格多分支合并)"""
         union_mode = node_data.get('unionMode', 'ALL')
         
-        if not union_table:
-            raise ValueError("未配置合并表")
+        # 必须有两个及以上上游输入
+        if not all_upstream_dfs or len(all_upstream_dfs) < 2:
+            raise ValueError("合并算子至少需要连接两个上游节点")
         
-        # 获取另一个表数据
-        result = await db.execute(
-            select(AnalysisDataset).where(AnalysisDataset.name == union_table)
-        )
-        dataset = result.scalar_one_or_none()
-        
-        if not dataset:
-            raise ValueError(f"合并数据集不存在: {union_table}")
-        
-        other_df = duckdb_instance.fetch_df(f"SELECT * FROM {dataset.table_name}")
-        
-        # 执行合并
-        result = pd.concat([df, other_df], ignore_index=True)
+        result = pd.concat(all_upstream_dfs, ignore_index=True)
         
         if union_mode == 'DISTINCT':
             result = result.drop_duplicates()
         
-        logger.info(f"Union 节点: {union_mode}, 结果行数: {len(result)}")
+        logger.info(f"多流合并成功: {union_mode}, 总行数: {len(result)}")
         return result
     
     @classmethod

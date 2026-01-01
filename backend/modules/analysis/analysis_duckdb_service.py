@@ -3,6 +3,7 @@ import duckdb
 import logging
 from typing import List, Dict, Any, Optional
 import pandas as pd
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +31,33 @@ class DuckDBService:
         # 使用 DEBUG 级别避免在 Uvicorn reloader 中重复输出
         logger.debug(f"DuckDB 存储初始化: {self.db_path}")
 
+
     def ensure_connection(self):
         """确保连接已建立（用于初始化时创建数据库文件）"""
         if self._conn is None:
-            try:
-                # DuckDB 默认是线程安全的，但在高并发写时由于是文件锁定，建议谨慎
-                # 如果文件不存在，DuckDB 会自动创建
-                self._conn = duckdb.connect(self.db_path)
-                logger.info(f"DuckDB 数据库已创建/连接: {self.db_path}")
-            except Exception as e:
-                logger.error(f"DuckDB 连接失败: {e}")
-                raise
+            import time
+            max_retries = 5
+            retry_delay = 1.0  # 秒
+            
+            for attempt in range(max_retries):
+                try:
+                    # DuckDB 默认是线程安全的，但在 Windows 上由于文件锁定，不支持多进程同时读写
+                    self._conn = duckdb.connect(self.db_path)
+                    logger.info(f"DuckDB 数据库已连接: {self.db_path}")
+                    break
+                except Exception as e:
+                    err_msg = str(e)
+                    if "IO Error" in err_msg and "already open" in err_msg:
+                        if attempt < max_retries - 1:
+                            logger.warning(f"DuckDB 文件锁冲突，等待 {retry_delay} 秒后重试... (尝试 {attempt + 1}/{max_retries})")
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            logger.error(f"❌ DuckDB 文件锁冲突！数据库文件被另一个进程占用。")
+                            logger.error(f"请检查并关闭多余的 Python 后端进程。")
+                            raise HTTPException(status_code=500, detail="数据库文件被锁定，请确保只运行了一个后端实例。")
+                    logger.error(f"DuckDB 连接失败: {e}")
+                    raise
         return self._conn
     
     @property

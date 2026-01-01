@@ -446,3 +446,148 @@
         gap: 12px;
     }
 }
+
+/* ========== 🚀 大屏演示模式 (Data Screen) ========== */
+.data-screen-mode {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    /* 覆盖所有层级 */
+    background: #0f172a url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill-opacity="0.05"><path d="M0 0h100v100H0z" fill="none"/><path d="M0 0h1v1H0zM20 20h1v1H20zM40 40h1v1H40zM60 60h1v1H60zM80 80h1v1H80z" fill="%23ffffff"/></svg>') !important;
+    /* 网格纹理 */
+    color: #e2e8f0;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 隐藏无关 UI */
+.data-screen-mode .dashboard-toolbar {
+    background: transparent;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    pointer-events: none;
+    /* 让鼠标穿透 */
+}
+
+.data-screen-mode .toolbar-left,
+.data-screen-mode .toolbar-right,
+.data-screen-mode #btn-back-list {
+    display: none !important;
+}
+
+/* 只保留标题，并居中放大 */
+.data-screen-mode .dashboard-toolbar h3 {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: #38bdf8;
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+    letter-spacing: 4px;
+    margin-top: 20px;
+    background: linear-gradient(to bottom, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    pointer-events: auto;
+}
+
+/* 画布样式 */
+.data-screen-mode .widget-canvas {
+    background: transparent;
+    padding: 80px 40px 40px 40px;
+    /* 留出标题空间 */
+    grid-gap: 24px;
+    height: 100vh;
+    overflow: hidden;
+    /* 禁止滚动，要求布局完美适配 */
+}
+
+/* Widget 卡片科技化 */
+.data-screen-mode .bi-widget {
+    background: rgba(30, 41, 59, 0.6);
+    /* 半透明深蓝 */
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 4px;
+    /* 更锐利的圆角 */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(56, 189, 248, 0.05);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: visible;
+    /* 允许装饰溢出 */
+}
+
+/* 四角装饰 */
+.data-screen-mode .bi-widget::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid #38bdf8;
+    border-left: 2px solid #38bdf8;
+    z-index: 2;
+}
+
+.data-screen-mode .bi-widget::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 2px solid #38bdf8;
+    border-right: 2px solid #38bdf8;
+    z-index: 2;
+}
+
+/* 头部样式 */
+.data-screen-mode .widget-header {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.1), transparent);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    padding: 10px 15px;
+}
+
+.data-screen-mode .widget-title {
+    color: #e2e8f0;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: 1px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.data-screen-mode .widget-title::before {
+    content: '💠';
+    margin-right: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* 退出按钮 */
+#fullscreen-exit-btn button {
+    background: rgba(15, 23, 42, 0.8);
+    color: #94a3b8;
+    border: 1px solid #334155;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s;
+}
+
+#fullscreen-exit-btn button:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.display-none {
+    display: none !important;
+}
