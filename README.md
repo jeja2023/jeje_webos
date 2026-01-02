@@ -283,5 +283,5 @@ MIT License. Copyright (c) 2025 JeJe WebOS.
 ## 📧 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- GitHub Issues: [提交问题](https://github.com/jeja2023/jeje-webos/issues)
+- GitHub Issues: [提交问题](https://github.com/jeja2023/jeje_webos/issues)
 - Email: jejajeja2023@gmail.com
