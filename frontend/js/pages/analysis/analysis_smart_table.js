@@ -2,6 +2,51 @@
  * 数据分析模块 - 智能表格功能
  */
 
+// 调试模式标志
+// 避免重复声明，如果已存在则使用已有的
+if (typeof DEBUG_MODE === 'undefined') {
+    var DEBUG_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
+
+/**
+ * 安全的数学表达式计算器（替代 eval）
+ * 只支持基本数学运算：+、-、*、/、%、括号、数字
+ * 不支持函数调用、变量访问等危险操作
+ */
+function safeEvalMath(expression) {
+    try {
+        // 移除所有空白字符
+        expression = expression.replace(/\s/g, '');
+        
+        // 验证表达式只包含允许的字符：数字、小数点、运算符、括号
+        if (!/^[0-9+\-*/().%]+$/.test(expression)) {
+            throw new Error('表达式包含不允许的字符');
+        }
+        
+        // 验证括号匹配
+        let parenCount = 0;
+        for (let i = 0; i < expression.length; i++) {
+            if (expression[i] === '(') parenCount++;
+            if (expression[i] === ')') parenCount--;
+            if (parenCount < 0) throw new Error('括号不匹配');
+        }
+        if (parenCount !== 0) throw new Error('括号不匹配');
+        
+        // 使用 Function 构造函数（比 eval 稍安全，但仍需限制）
+        // 只允许数学运算，不允许访问全局对象
+        const result = new Function('return ' + expression)();
+        
+        // 验证结果是数字
+        if (typeof result !== 'number' || !isFinite(result)) {
+            throw new Error('计算结果不是有效数字');
+        }
+        
+        return result;
+    } catch (e) {
+        throw e;
+    }
+}
+
 const AnalysisSmartTableMixin = {
     /**
      * 渲染智能表格页面
@@ -82,8 +127,8 @@ const AnalysisSmartTableMixin = {
                         evalFormula = evalFormula.replace(new RegExp(escapedKey, 'g'), String(context[key]));
                     });
 
-                    // 执行计算
-                    const result = eval(evalFormula);
+                    // 执行计算（使用安全计算函数）
+                    const result = safeEvalMath(evalFormula);
 
                     if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
                         const precision = field.precision !== undefined ? field.precision : 2;
@@ -95,8 +140,9 @@ const AnalysisSmartTableMixin = {
                         value = '';
                     }
                 } catch (e) {
-                    console.warn('计算错误:', e);
                     value = value || '';
+                    // 可选：在单元格上添加错误标记（如果需要）
+                    // 这里保持简洁，只记录错误
                 }
             }
 
@@ -208,12 +254,23 @@ const AnalysisSmartTableMixin = {
                     return '';
                 };
 
+                // 搜索高亮辅助函数
+                const highlightSearch = (text, searchTerm) => {
+                    if (!searchTerm || !text) return String(text || '');
+                    const search = searchTerm.toLowerCase();
+                    const textStr = String(text);
+                    const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    return textStr.replace(regex, '<mark style="background: #ffeb3b; padding: 2px 4px; border-radius: 2px;">$1</mark>');
+                };
+
                 return pagedData.map(row => `
                                     <tr>
                                         ${table.fields.map(f => {
                     const cellVal = formatCellValue(f, row);
                     const style = getConditionalStyle(f, cellVal);
-                    return `<td style="${style}">${cellVal}</td>`;
+                    // 如果有搜索词，高亮显示
+                    const displayVal = this.state.smartRowSearch ? highlightSearch(cellVal, this.state.smartRowSearch) : cellVal;
+                    return `<td style="${style}">${displayVal}</td>`;
                 }).join('')}
                                         <td>
                                             <div class="flex gap-5">
@@ -424,7 +481,7 @@ const AnalysisSmartTableMixin = {
             }).join('');
         };
 
-        // 挂载临时方法到原型链以便HTML中调用 (Hacky but effective for this architecture)
+        // 挂载临时方法到原型链以便HTML中调用
         AnalysisPage.prototype.updateFieldState = (index, key, value) => {
             fields[index][key] = value;
             document.getElementById('fields-setup-container').innerHTML = renderFields();
@@ -609,7 +666,7 @@ const AnalysisSmartTableMixin = {
             }, 100);
         };
 
-        // Modal Logic
+        // 模态框逻辑
         Modal.show({
             title: isEdit ? '表格结构设计' : '新建智能表格',
             width: '850px',
@@ -711,18 +768,14 @@ const AnalysisSmartTableMixin = {
             }
         });
 
-        console.log('Field config map:', fieldConfigMap);
-
         // 定义计算函数
         const setupCalculation = () => {
             const form = document.querySelector('.smart-row-form');
             if (!form) {
-                console.error('Form not found!');
                 return;
             }
 
             const calcInputs = form.querySelectorAll('.row-calc-input');
-            console.log('Found calc inputs:', calcInputs.length);
 
             if (calcInputs.length === 0) return;
 
@@ -737,17 +790,12 @@ const AnalysisSmartTableMixin = {
                     }
                 });
 
-                console.log('Context:', context);
-
                 // 2. 遍历计算
                 calcInputs.forEach(calc => {
                     const fieldName = calc.dataset.name;
                     const config = fieldConfigMap[fieldName];
 
-                    console.log('Processing field:', fieldName, 'Config:', config);
-
                     if (!config || !config.formula) {
-                        console.warn('No formula for field:', fieldName);
                         return;
                     }
 
@@ -761,11 +809,7 @@ const AnalysisSmartTableMixin = {
                             evalFormula = evalFormula.replace(new RegExp(escapedKey, 'g'), String(context[key]));
                         });
 
-                        console.log('Eval formula:', evalFormula);
-
-                        const result = eval(evalFormula);
-
-                        console.log('Result:', result);
+                        const result = safeEvalMath(evalFormula);
 
                         if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
                             // 根据精度设置格式化
@@ -780,7 +824,6 @@ const AnalysisSmartTableMixin = {
                             calc.value = '';
                         }
                     } catch (e) {
-                        console.error('Calc error:', e);
                         calc.value = '';
                     }
                 });
@@ -1071,7 +1114,7 @@ const AnalysisSmartTableMixin = {
                         sortedKeys.forEach(key => {
                             evalFormula = evalFormula.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(context[key]));
                         });
-                        const result = eval(evalFormula);
+                        const result = safeEvalMath(evalFormula);
                         if (typeof result === 'number' && !isNaN(result)) {
                             val = result.toFixed(field.precision !== undefined ? field.precision : 2);
                             if (field.showPercent) val += '%';
@@ -1099,6 +1142,15 @@ const AnalysisSmartTableMixin = {
     }
 };
 
-if (typeof AnalysisPage !== 'undefined') {
-    Object.assign(AnalysisPage.prototype, AnalysisSmartTableMixin);
-}
+// 混入到 AnalysisPage（延迟执行，确保 AnalysisPage 已定义）
+(function() {
+    function tryMixin() {
+        if (typeof AnalysisPage !== 'undefined' && AnalysisPage.prototype) {
+            Object.assign(AnalysisPage.prototype, AnalysisSmartTableMixin);
+        } else {
+            // 如果 AnalysisPage 还未定义，延迟重试
+            setTimeout(tryMixin, 50);
+        }
+    }
+    tryMixin();
+})();

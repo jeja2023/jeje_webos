@@ -28,7 +28,11 @@ class AnalysisBIPage extends Component {
             const res = await AnalysisApi.getDatasets();
             this.setState({ datasets: res.data || [] });
         } catch (e) {
-            console.error('获取数据集失败', e);
+            // 如果是401错误，API层已经处理了跳转，这里静默处理
+            if (e.message && e.message.includes('登录')) {
+                return; // 已跳转登录页，不需要显示错误
+            }
+            // 其他错误静默处理
         }
     }
 
@@ -42,9 +46,11 @@ class AnalysisBIPage extends Component {
                 throw new Error(res.message);
             }
         } catch (e) {
-            console.error('加载仪表盘失败', e);
             this.setState({ loading: false });
-            Toast.error('加载列表失败: ' + e.message);
+            // 如果是401错误，API层已经处理了跳转，不需要显示错误
+            if (e.message && !e.message.includes('登录')) {
+                Toast.error('加载列表失败: ' + e.message);
+            }
         }
     }
 
@@ -322,17 +328,24 @@ class AnalysisBIPage extends Component {
             let data;
 
             if (!this._dataCache) this._dataCache = {};
-            if (this._dataCache[cacheKey]) {
-                data = this._dataCache[cacheKey];
+            if (!this._dataCacheTimestamps) this._dataCacheTimestamps = {};
+            
+            const cacheEntry = this._dataCache[cacheKey];
+            const cacheTimestamp = this._dataCacheTimestamps[cacheKey];
+            const cacheTTL = 30000; // 30秒缓存时间
+            
+            // 检查缓存是否有效（存在且未过期）
+            if (cacheEntry && cacheTimestamp && (Date.now() - cacheTimestamp < cacheTTL)) {
+                data = cacheEntry;
             } else {
                 const res = await AnalysisApi.getDatasetData(widget.datasetId, {
                     page: 1,
                     size: 500
                 });
                 data = res.data?.items || [];
-                // 缓存 30 秒
+                // 缓存数据和时间戳
                 this._dataCache[cacheKey] = data;
-                setTimeout(() => { delete this._dataCache[cacheKey]; }, 30000);
+                this._dataCacheTimestamps[cacheKey] = Date.now();
             }
 
             if (data.length === 0) {
@@ -409,10 +422,25 @@ class AnalysisBIPage extends Component {
     }
 
     disposeAllCharts() {
+        // 清理所有图表实例
         Object.values(this.chartInstances).forEach(chart => {
             if (chart) chart.dispose();
         });
         this.chartInstances = {};
+        
+        // 清理 resize 监听器
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+            this._resizeHandler = null;
+        }
+        
+        // 清理数据缓存
+        if (this._dataCache) {
+            this._dataCache = {};
+        }
+        if (this._dataCacheTimestamps) {
+            this._dataCacheTimestamps = {};
+        }
     }
 
     showCreateDashboardModal() {
@@ -632,7 +660,9 @@ class AnalysisBIPage extends Component {
                 if (res.data?.columns) {
                     fieldOptions = res.data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                // 获取字段失败，静默处理
+            }
         }
 
         // 准备初始值

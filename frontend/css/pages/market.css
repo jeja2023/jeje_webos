@@ -257,10 +257,10 @@
 }
 
 /* 兼容深色模式 */
-[class*="theme-dark"] .app-icon-box {
+[class*="theme-neon"] .app-icon-box {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
-[class*="theme-dark"] .app-icon-box::after {
+[class*="theme-neon"] .app-icon-box::after {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
 }

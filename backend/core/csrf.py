@@ -99,7 +99,7 @@ def get_csrf_token_from_request(request: Request) -> Optional[str]:
     if token:
         return token
     
-    # 从 Form Data 获取
+    # 从表单数据获取
     if hasattr(request, "form"):
         try:
             form_data = request.form()
@@ -108,7 +108,7 @@ def get_csrf_token_from_request(request: Request) -> Optional[str]:
         except Exception:
             pass
     
-    # 从 Query Parameter 获取
+    # 从查询参数获取
     token = request.query_params.get("csrf_token")
     if token:
         return token

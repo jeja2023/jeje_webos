@@ -81,14 +81,12 @@ class ProfilePage extends Component {
                     <div class="profile-left">
                         <div class="card profile-card-compact">
                             <div class="profile-header-compact">
-                                <div class="profile-avatar-large" id="avatarUploadTrigger" style="position: relative; cursor: pointer; overflow: hidden;">
+                                <div class="profile-avatar-large" id="avatarUploadTrigger">
                                     ${user.avatar ?
-                `<img src="${user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token')}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">` :
+                `<img src="${user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token')}" alt="Avatar">` :
                 initials
             }
-                                    <div class="avatar-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; opacity: 0; transition: opacity 0.2s;">
-                                        📷
-                                    </div>
+                                    <div class="avatar-overlay">📷</div>
                                 </div>
                                 <input type="file" id="avatarInput" accept="image/*" style="display: none;">
                                 <div class="profile-basic">
@@ -99,16 +97,17 @@ class ProfilePage extends Component {
                             </div>
                             <div class="profile-stats-inline">
                                 <div class="stat-inline">
-                                    <span class="stat-label">注册</span>
-                                    <span class="stat-value">${Utils.formatDate(user.created_at, 'YYYY-MM-DD')}</span>
+                                    <span class="stat-label">注册时间</span>
+                                    <span class="stat-value">${user.created_at ? Utils.formatDate(user.created_at, 'YYYY-MM-DD') : '-'}</span>
                                 </div>
                                 <div class="stat-inline">
-                                    <span class="stat-label">登录</span>
-                                    <span class="stat-value">${user.last_login ? Utils.timeAgo(user.last_login) : '从未'}</span>
+                                    <span class="stat-label">最后登录</span>
+                                    <span class="stat-value">${user.last_login ? Utils.timeAgo(user.last_login) : '从未登录'}</span>
                                 </div>
                                 <div class="stat-inline status-horizontal">
-                                    <span class="stat-label">状态</span>
-                                    <span class="status-dot ${user.is_active ? 'active' : 'inactive'}"></span>
+                                    <span class="stat-label">账户状态</span>
+                                    <span class="status-dot ${user.is_active !== false ? 'active' : 'inactive'}"></span>
+                                    <span class="stat-value" style="font-size: 12px; margin-left: 4px;">${user.is_active !== false ? '正常' : '已禁用'}</span>
                                 </div>
                             </div>
                         </div>
@@ -136,9 +135,9 @@ class ProfilePage extends Component {
                                 <div class="security-item-compact">
                                     <div class="security-info">
                                         <span class="security-title">登录密码</span>
-                                        <span class="security-desc">定期更换提高安全性</span>
+                                        <span class="security-desc">定期更换密码可以提高账户安全性，建议每3-6个月更换一次</span>
                                     </div>
-                                    <button class="btn btn-secondary btn-sm" id="changePasswordBtn">修改</button>
+                                    <button class="btn btn-secondary btn-sm" id="changePasswordBtn">修改密码</button>
                                 </div>
                             </div>
                         </div>
@@ -154,20 +153,26 @@ class ProfilePage extends Component {
             <div class="info-list">
                 <div class="info-item">
                     <span class="info-label">用户名</span>
-                    <span class="info-value">${Utils.escapeHtml(user.username)}</span>
+                    <span class="info-value">${Utils.escapeHtml(user.username || '-')}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">昵称</span>
-                    <span class="info-value">${Utils.escapeHtml(user.nickname) || '-'}</span>
+                    <span class="info-value">${Utils.escapeHtml(user.nickname) || '未设置'}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">手机号</span>
-                    <span class="info-value">${Utils.escapeHtml(user.phone) || '-'}</span>
+                    <span class="info-value">${Utils.escapeHtml(user.phone) || '未绑定'}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">角色</span>
                     <span class="info-value">${this.getRoleName(user.role)}</span>
                 </div>
+                ${user.email ? `
+                <div class="info-item">
+                    <span class="info-label">邮箱</span>
+                    <span class="info-value">${Utils.escapeHtml(user.email)}</span>
+                </div>
+                ` : ''}
             </div>
         `;
     }

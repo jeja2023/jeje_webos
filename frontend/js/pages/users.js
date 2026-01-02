@@ -627,7 +627,8 @@ class UserListPage extends Component {
                         <h1 class="page-title">用户管理</h1>
                         <p class="page-desc">共 ${total} 个用户</p>
                     </div>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('users', '用户管理') : ''}
                         <button class="btn btn-primary" id="createUserBtn">
                             ➕ 添加用户
                         </button>
@@ -1398,8 +1399,10 @@ class PendingUsersPage extends Component {
     }
 
     afterUpdate() {
-        // 待审核用户页面不需要在更新后重新绑定事件
-        // 因为事件委托绑定在容器上，DOM 更新不影响事件监听
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

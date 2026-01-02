@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1", tags=["系统设置"])
 def _default_settings():
     settings = get_settings()
     return SystemSettingInfo(
-        theme_mode="dark",
+        theme_mode="neon",
         password_min_length=8,
         jwt_expire_minutes=settings.jwt_expire_minutes,
         login_fail_lock=5,

@@ -14,6 +14,19 @@ logger = logging.getLogger(__name__)
 class CleaningService:
     @staticmethod
     async def get_dataset(db: AsyncSession, dataset_id: int) -> AnalysisDataset:
+        """
+        获取数据集
+        
+        Args:
+            db: 数据库会话
+            dataset_id: 数据集ID
+        
+        Returns:
+            数据集对象
+        
+        Raises:
+            ValueError: 如果数据集不存在
+        """
         result = await db.execute(select(AnalysisDataset).where(AnalysisDataset.id == dataset_id))
         dataset = result.scalar_one_or_none()
         if not dataset:
@@ -129,7 +142,16 @@ class CleaningService:
 
     @staticmethod
     async def apply_cleaning(db: AsyncSession, req: Any) -> Dict[str, Any]:
-        """应用数据清洗操作（支持多个步骤）"""
+        """
+        应用数据清洗操作（支持多个步骤）
+        
+        Args:
+            db: 数据库会话
+            req: 清洗请求对象（包含 dataset_id, operations, save_mode 等）
+        
+        Returns:
+            清洗结果字典（包含 row_count, columns, preview 等）
+        """
         dataset = await CleaningService.get_dataset(db, req.dataset_id)
         table_name = dataset.table_name
         
@@ -245,8 +267,22 @@ class CleaningService:
         }
 
     @staticmethod
-    async def export_cleaning(db: AsyncSession, req: Any) -> io.BytesIO:
-        """执行清洗并返回导出数据 (CSV)"""
+    async def export_cleaning(
+        db: AsyncSession, 
+        req: Any, 
+        format: str = 'csv'
+    ) -> io.BytesIO:
+        """
+        执行清洗并返回导出数据（支持 CSV、Excel、JSON）
+        
+        Args:
+            db: 数据库会话
+            req: 清洗请求对象
+            format: 导出格式 ('csv', 'excel', 'json')
+        
+        Returns:
+            导出数据的 BytesIO 对象
+        """
         dataset = await CleaningService.get_dataset(db, req.dataset_id)
         table_name = dataset.table_name
         df = duckdb_instance.fetch_df(f"SELECT * FROM {table_name}")
@@ -273,6 +309,25 @@ class CleaningService:
             df = CleaningService._perform_cleaning(df, curr_op, curr_cols, curr_params, curr_fill)
         
         output = io.BytesIO()
-        df.to_csv(output, index=False, encoding='utf-8-sig')
+        
+        if format == 'csv':
+            df.to_csv(output, index=False, encoding='utf-8-sig')
+        elif format == 'excel':
+            try:
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Sheet1')
+            except ImportError:
+                raise ValueError("Excel 导出需要安装 openpyxl: pip install openpyxl")
+        elif format == 'json':
+            # 处理日期时间类型
+            for col in df.select_dtypes(include=['datetime64', 'datetimetz']).columns:
+                df[col] = df[col].astype(str).str.replace('T', ' ', regex=False)
+            # 处理 NaN/Inf
+            df = df.replace([np.inf, -np.inf], np.nan)
+            json_str = df.to_json(orient='records', date_format='iso', force_ascii=False)
+            output.write(json_str.encode('utf-8'))
+        else:
+            raise ValueError(f"不支持的导出格式: {format}")
+        
         output.seek(0)
         return output

@@ -182,7 +182,10 @@ class RolesPage extends Component {
                         <h1 class="page-title">用户组</h1>
                         <p class="page-desc">用户组定义模块及子功能的允许范围，用户在组内可再收紧</p>
                     </div>
-                    <button class="btn btn-primary" id="createRole">新建用户组</button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('roles', '角色管理') : ''}
+                        <button class="btn btn-primary" id="createRole">新建用户组</button>
+                    </div>
                 </div>
                 <div class="card">
                     ${loading ? '<div class="loading"></div>' : roles.length === 0 ? `
@@ -241,9 +244,17 @@ class RolesPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
     bindEvents() {
         if (this.container && !this.container._bindedRoles) {

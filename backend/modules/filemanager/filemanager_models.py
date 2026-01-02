@@ -58,5 +58,5 @@ class VirtualFile(Base):
     created_at = Column(DateTime, default=datetime.now, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
     
-    # 注意：代码中直接使用 folder_id 进行查询，不需要 relationship
+    # 代码中直接使用 folder_id 进行查询，不需要 relationship
     # 如果需要访问 folder 对象，可以通过 folder_id 查询 VirtualFolder

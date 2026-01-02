@@ -18,7 +18,7 @@ const AnalysisApi = {
     getDbTables: (data) => Api.post('/analysis/import/db-tables', data),
     // 清洗与建模
     clean: (data) => Api.post('/analysis/clean', data),
-    exportCleaned: (data) => Api.post('/analysis/clean/export', data, { responseType: 'blob' }),
+    exportCleaned: (data, format = 'csv') => Api.post(`/analysis/clean/export?format=${format}`, data, { responseType: 'blob' }),
     getSummary: (data) => Api.post('/analysis/model/summary', data),
     getCorrelation: (data) => Api.post('/analysis/model/correlation', data),
     getAggregate: (data) => Api.post('/analysis/model/aggregate', data),
@@ -204,10 +204,32 @@ class AnalysisPage extends Component {
     }
 
     afterMount() {
+        // 添加全局错误处理
+        this._setupErrorHandling();
+        
         this.fetchDatasets();
         this.bindEvents();
         // 绑定数据工具事件
         if (this.bindDataToolsEvents) this.bindDataToolsEvents();
+    }
+    
+    /**
+     * 设置全局错误处理
+     */
+    _setupErrorHandling() {
+        // 捕获未处理的 Promise 错误
+        window.addEventListener('unhandledrejection', (event) => {
+            // 只在分析页面时处理
+            if (this.state && this.state.activeTab) {
+                // 显示错误信息
+                if (event.reason && event.reason.message) {
+                    Toast.error('操作失败: ' + event.reason.message);
+                } else {
+                    Toast.error('操作失败，请稍后重试');
+                }
+                event.preventDefault(); // 阻止默认的错误输出
+            }
+        });
     }
 
     afterUpdate() {
@@ -216,6 +238,13 @@ class AnalysisPage extends Component {
             if (this.bindModelingEvents) this.bindModelingEvents();
             // 必须每次更新都尝试初始化，因为 DOM 可能已被重绘
             this.initETLCanvasDrop();
+        } else {
+            // 切换到其他标签页时，清理键盘事件监听器（如果存在）
+            if (this._keyboardEventHandler && this._keyboardEventsBound) {
+                document.removeEventListener('keydown', this._keyboardEventHandler);
+                this._keyboardEventsBound = false;
+                this._keyboardEventHandler = null;
+            }
         }
         if (this.state.activeTab === 'sql') {
             if (!this.state.sqlTablesLoaded) {
@@ -295,7 +324,10 @@ class AnalysisPage extends Component {
             });
         } catch (e) {
             this.state.loadingDatasets = false;
-            Toast.error('获取数据集失败');
+            // 如果是401错误，API层已经处理了跳转，不需要显示错误
+            if (e.message && !e.message.includes('登录')) {
+                Toast.error('获取数据集失败');
+            }
         }
     }
 
@@ -396,7 +428,7 @@ class AnalysisPage extends Component {
                     // 已存在则切换方向
                     sortMap[field] = sortMap[field] === 'asc' ? 'desc' : 'asc';
                 } else {
-                    // 新增排序字段
+                    // 添加排序字段
                     sortMap[field] = 'asc';
                 }
             } else {
@@ -483,7 +515,7 @@ class AnalysisPage extends Component {
             this.setState({ activeTab: 'datasets', currentDataset: null });
         });
 
-        // 提示建模未上线
+        // 建模功能未上线
         this.delegate('click', '.btn-start-modeling', () => {
             Toast.info('建模暂未上线');
         });
@@ -624,6 +656,10 @@ class AnalysisPage extends Component {
             <div class="analysis-container">
                 <div class="analysis-sidebar">
                     <div class="analysis-menu">
+                        <div class="analysis-menu-header" style="padding: 12px 16px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600; font-size: 14px;">数据分析</span>
+                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('analysis', '数据分析') : ''}
+                        </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'bi' ? 'active' : ''}" data-tab="bi">
                             <span>🎯</span> 数据大屏
                         </div>

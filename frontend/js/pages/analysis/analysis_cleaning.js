@@ -187,16 +187,30 @@ const AnalysisCleaningMixin = {
                                         <button class="btn btn-sm btn-primary" id="btn-save-cleaned" style="width: 100%; height: 34px;">
                                             💾 保存到数据库
                                         </button>
-                                        <button class="btn btn-sm btn-secondary" id="btn-export-cleaned" style="width: 100%; height: 34px;">
-                                            📥 导出当前预览
-                                        </button>
+                                        <div class="flex gap-5" style="width: 100%;">
+                                            <select id="export-format" class="form-control form-control-sm" style="flex: 1; height: 34px; font-size: 12px;">
+                                                <option value="csv">CSV</option>
+                                                <option value="excel">Excel</option>
+                                                <option value="json">JSON</option>
+                                            </select>
+                                            <button class="btn btn-sm btn-secondary" id="btn-export-cleaned" style="flex: 1; height: 34px;">
+                                                📥 导出
+                                            </button>
+                                        </div>
                                     ` : `
                                         <div class="text-center w-100 py-4 text-success" style="font-weight: 500; background: rgba(var(--color-success-rgb), 0.1); border-radius: 4px;">
                                             🎉 已保存至数据管理
                                         </div>
-                                        <button class="btn btn-sm btn-primary" id="btn-export-cleaned" data-id="${cleanResult.id}" style="width: 100%; height: 34px; margin-top: 4px;">
-                                            📥 导出正式文件
-                                        </button>
+                                        <div class="flex gap-5" style="width: 100%; margin-top: 4px;">
+                                            <select id="export-format-saved" class="form-control form-control-sm" style="flex: 1; height: 34px; font-size: 12px;">
+                                                <option value="csv">CSV</option>
+                                                <option value="excel">Excel</option>
+                                                <option value="json">JSON</option>
+                                            </select>
+                                            <button class="btn btn-sm btn-primary" id="btn-export-cleaned-saved" data-id="${cleanResult.id}" style="flex: 1; height: 34px;">
+                                                📥 导出
+                                            </button>
+                                        </div>
                                     `}
                                 </div>
                             </div>
@@ -404,16 +418,38 @@ const AnalysisCleaningMixin = {
             } catch (err) { Toast.error(err.message || '保存失败'); }
         });
 
-        // 导出结果
+        // 导出结果（预览模式）
         this.delegate('click', '#btn-export-cleaned', async () => {
             try {
                 const payload = this.getCleaningParams();
-                Toast.info('正在准备导出文件...');
-                const blob = await AnalysisApi.exportCleaned(payload);
+                const format = document.getElementById('export-format')?.value || 'csv';
+                const extMap = { csv: 'csv', excel: 'xlsx', json: 'json' };
+                Toast.info(`正在准备导出${format.toUpperCase()}文件...`);
+                const blob = await AnalysisApi.exportCleaned(payload, format);
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `cleaned_data_${new Date().getTime()}.csv`;
+                a.download = `cleaned_data_${new Date().getTime()}.${extMap[format]}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                Toast.success('✅ 导出成功');
+            } catch (err) { Toast.error(err.message || '导出失败'); }
+        });
+
+        // 导出结果（已保存模式）
+        this.delegate('click', '#btn-export-cleaned-saved', async () => {
+            try {
+                const payload = this.getCleaningParams();
+                const format = document.getElementById('export-format-saved')?.value || 'csv';
+                const extMap = { csv: 'csv', excel: 'xlsx', json: 'json' };
+                Toast.info(`正在准备导出${format.toUpperCase()}文件...`);
+                const blob = await AnalysisApi.exportCleaned(payload, format);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cleaned_data_${new Date().getTime()}.${extMap[format]}`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);

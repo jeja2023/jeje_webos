@@ -320,7 +320,7 @@ def register_exception_handlers(app):
                 "type": error["type"]
             })
         
-        # 打印验证错误以便调试
+        # 记录验证错误
         print(f"\n{'='*60}")
         print(f"🟡 请求验证失败: {request.url.path}")
         print(f"验证错误: {errors}")

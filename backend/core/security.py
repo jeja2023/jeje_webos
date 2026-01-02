@@ -15,7 +15,7 @@ from .config import get_settings
 
 settings = get_settings()
 
-# Bearer令牌认证 (设置为 auto_error=False, 以便支持从 Query 参数中读取 token)
+# Bearer令牌认证，设置为 auto_error=False 以支持从 Query 参数中读取 token
 security = HTTPBearer(auto_error=False)
 
 
@@ -182,19 +182,66 @@ async def get_current_user(
 
 
 def require_permission(permission: str):
-    """权限检查装饰器工厂"""
+    """
+    权限检查装饰器工厂，支持通配符匹配
+    
+    权限检查规则：
+    1. role="admin" 的用户自动拥有所有权限（即使 permissions 被收紧）
+    2. role="manager" 的用户根据 permissions 字段判断（可被收紧权限）
+    3. 其他用户根据 permissions 字段判断
+    
+    权限格式支持：
+    - "*" : 所有权限
+    - "module.*" : 模块所有权限
+    - "module.action" : 具体操作权限
+    - "module.submodule.*" : 多层通配符
+    """
     async def permission_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
-        if permission not in user.permissions and user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"缺少权限: {permission}"
-            )
-        return user
+        # 系统管理员（role="admin"）自动拥有所有权限
+        # 即使 permissions 被收紧，admin 角色仍然拥有所有权限
+        if user.role == "admin":
+            return user
+        
+        # 业务管理员（role="manager"）和其他用户根据 permissions 字段判断
+        # 检查精确匹配
+        if permission in user.permissions:
+            return user
+        
+        # 检查通配符匹配
+        # 1. 如果用户有 "*" 权限，允许所有操作
+        if "*" in user.permissions:
+            return user
+        
+        # 2. 如果用户有 "module.*" 权限，允许该模块的所有操作
+        if "." in permission:
+            module = permission.split(".")[0]
+            module_wildcard = f"{module}.*"
+            if module_wildcard in user.permissions:
+                return user
+        
+        # 3. 检查多层通配符（如 datalens.source.* 匹配 datalens.source.manage）
+        parts = permission.split(".")
+        for i in range(len(parts) - 1, 0, -1):
+            wildcard = ".".join(parts[:i]) + ".*"
+            if wildcard in user.permissions:
+                return user
+        
+        # 权限不足
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"缺少权限: {permission}"
+        )
     return permission_checker
 
 
 def require_admin():
-    """仅允许系统管理员访问（role=admin）"""
+    """
+    仅允许系统管理员访问（role=admin）
+    
+    说明：
+    - admin: 系统管理员，拥有所有系统级权限，权限不可被收紧
+    - manager: 业务管理员，拥有业务权限，但权限可以被收紧
+    """
     async def admin_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role != "admin":
             raise HTTPException(
@@ -206,7 +253,14 @@ def require_admin():
 
 
 def require_manager():
-    """允许业务管理员及以上访问（role=manager 或 admin）"""
+    """
+    允许业务管理员及以上访问（role=manager 或 admin）
+    
+    说明：
+    - admin: 系统管理员，拥有所有权限
+    - manager: 业务管理员，拥有业务权限（可被收紧）
+    - 两者的区别：admin 可以执行系统级操作（如用户管理、系统设置），manager 只能执行业务操作
+    """
     async def manager_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role not in ("manager", "admin"):
             raise HTTPException(

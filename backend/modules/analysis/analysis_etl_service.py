@@ -22,6 +22,12 @@ class ETLExecutionService:
     # 临时表缓存 - 存储节点执行结果（内存缓存）
     _node_cache: Dict[str, pd.DataFrame] = {}
     
+    # 缓存访问时间记录（用于 LRU 策略）
+    _cache_access_time: Dict[str, float] = {}
+    
+    # 内存缓存最大大小（MB）
+    _max_cache_size_mb: int = 500  # 500MB
+    
     # 磁盘缓存目录
     _cache_dir: Optional[str] = None
     
@@ -90,6 +96,9 @@ class ETLExecutionService:
             keys_to_remove = [k for k in cls._node_cache.keys() if k.startswith(prefix)]
             for k in keys_to_remove:
                 del cls._node_cache[k]
+                # 清除访问时间记录
+                if k in cls._cache_access_time:
+                    del cls._cache_access_time[k]
                 # 清除磁盘缓存
                 cache_file = cls._get_cache_file_path(k)
                 if os.path.exists(cache_file):
@@ -97,6 +106,7 @@ class ETLExecutionService:
         else:
             # 清空所有内存缓存
             cls._node_cache.clear()
+            cls._cache_access_time.clear()
             # 清空磁盘缓存目录
             cache_dir = Path(cls._get_cache_dir())
             if cache_dir.exists():
@@ -112,10 +122,14 @@ class ETLExecutionService:
     @classmethod
     def get_cached_result(cls, model_id: int, node_id: str) -> Optional[pd.DataFrame]:
         """获取缓存的节点结果（优先内存，其次磁盘）"""
+        import time
+        
         key = cls.get_cache_key(model_id, node_id)
         
         # 1. 检查内存缓存
         if key in cls._node_cache:
+            # 更新访问时间
+            cls._cache_access_time[key] = time.time()
             return cls._node_cache[key]
         
         # 2. 检查磁盘缓存
@@ -124,9 +138,11 @@ class ETLExecutionService:
             import os
             if os.path.exists(cache_file):
                 df = pd.read_parquet(cache_file)
+                # 检查内存缓存大小，如果超限则清理最久未使用的
+                cls._ensure_cache_size_limit()
                 # 加载到内存缓存
                 cls._node_cache[key] = df
-                logger.debug(f"从磁盘加载缓存: {key}")
+                cls._cache_access_time[key] = time.time()
                 return df
         except Exception as e:
             logger.warning(f"读取磁盘缓存失败: {e}")
@@ -134,18 +150,59 @@ class ETLExecutionService:
         return None
     
     @classmethod
+    def _ensure_cache_size_limit(cls):
+        """确保内存缓存不超过大小限制（LRU 策略）"""
+        import time
+        import sys
+        
+        # 计算当前缓存总大小（粗略估算）
+        total_size_mb = 0
+        for df in cls._node_cache.values():
+            # 估算 DataFrame 大小（MB）
+            total_size_mb += sys.getsizeof(df) / (1024 * 1024)
+            # 加上数据大小（粗略估算）
+            if len(df) > 0:
+                total_size_mb += (len(df) * len(df.columns) * 8) / (1024 * 1024)  # 假设每列8字节
+        
+        # 如果超过限制，清理最久未使用的缓存
+        if total_size_mb > cls._max_cache_size_mb:
+            # 按访问时间排序，删除最久未使用的
+            sorted_keys = sorted(cls._cache_access_time.items(), key=lambda x: x[1])
+            deleted_count = 0
+            for key, _ in sorted_keys:
+                if total_size_mb <= cls._max_cache_size_mb * 0.8:  # 清理到 80%
+                    break
+                if key in cls._node_cache:
+                    df = cls._node_cache[key]
+                    size_mb = sys.getsizeof(df) / (1024 * 1024)
+                    if len(df) > 0:
+                        size_mb += (len(df) * len(df.columns) * 8) / (1024 * 1024)
+                    del cls._node_cache[key]
+                    del cls._cache_access_time[key]
+                    total_size_mb -= size_mb
+                    deleted_count += 1
+            
+            if deleted_count > 0:
+                logger.info(f"内存缓存已清理 {deleted_count} 项，当前大小: {total_size_mb:.2f}MB")
+    
+    @classmethod
     def set_cached_result(cls, model_id: int, node_id: str, df: pd.DataFrame):
         """缓存节点结果（同时写入内存和磁盘）"""
+        import time
+        
         key = cls.get_cache_key(model_id, node_id)
         
-        # 1. 写入内存缓存
-        cls._node_cache[key] = df
+        # 1. 检查内存缓存大小，如果超限则清理
+        cls._ensure_cache_size_limit()
         
-        # 2. 异步写入磁盘缓存（使用 Parquet 格式，高效且支持大文件）
+        # 2. 写入内存缓存
+        cls._node_cache[key] = df
+        cls._cache_access_time[key] = time.time()
+        
+        # 3. 异步写入磁盘缓存（使用 Parquet 格式，高效且支持大文件）
         try:
             cache_file = cls._get_cache_file_path(key)
             df.to_parquet(cache_file, index=False)
-            logger.debug(f"节点结果已持久化: {key}")
         except Exception as e:
             logger.warning(f"磁盘缓存写入失败: {e}")
         
@@ -194,7 +251,7 @@ class ETLExecutionService:
         graph_config: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        执行单个节点
+        执行单个节点（带超时保护）
         
         Args:
             db: 数据库会话
@@ -205,6 +262,8 @@ class ETLExecutionService:
         Returns:
             执行结果，包含数据预览
         """
+        import asyncio
+        
         node_id = node.get('id')
         node_type = node.get('type')
         node_data = node.get('data', {})
@@ -213,44 +272,68 @@ class ETLExecutionService:
         
         logger.info(f"开始执行节点: {node_id} (类型: {node_type})")
         
+        # 节点执行超时设置（60秒）
+        node_timeout = 60.0
+        
+        async def _execute_node_internal():
+            try:
+                # 获取所有上游数据 (支持多路径输入，如 Join/Union)
+                upstream_dfs = await cls._get_all_upstream_data(
+                    db, model_id, node_id, nodes, connections
+                )
+                
+                # 为了兼容性，如果没有或只有一个上游，取出第一个作为 upstream_df
+                upstream_df = upstream_dfs[0] if upstream_dfs else pd.DataFrame()
+                
+                # 根据节点类型执行不同的逻辑
+                result_df = await cls._process_node(
+                    db, node_type, node_data, upstream_df, nodes, connections, 
+                    all_upstream_dfs=upstream_dfs
+                )
+                
+                # 缓存结果
+                cls.set_cached_result(model_id, node_id, result_df)
+                
+                # 返回预览数据
+                preview_rows = min(50, len(result_df))
+                preview_df = result_df.head(preview_rows)
+                
+                # 处理特殊值
+                preview_data = cls._df_to_records(preview_df)
+                
+                return {
+                    "success": True,
+                    "node_id": node_id,
+                    "node_type": node_type,
+                    "row_count": len(result_df),
+                    "column_count": len(result_df.columns),
+                    "columns": result_df.columns.tolist(),
+                    "preview": preview_data,
+                    "preview_count": preview_rows
+                }
+            except Exception as e:
+                logger.warning(f"节点 {node_id} 执行失败: {e}")
+                return {
+                    "success": False,
+                    "node_id": node_id,
+                    "node_type": node_type,
+                    "error": str(e)
+                }
+        
         try:
-            # 获取所有上游数据 (支持多路径输入，如 Join/Union)
-            upstream_dfs = await cls._get_all_upstream_data(
-                db, model_id, node_id, nodes, connections
-            )
-            
-            # 为了兼容性，如果没有或只有一个上游，取出第一个作为 upstream_df
-            upstream_df = upstream_dfs[0] if upstream_dfs else pd.DataFrame()
-            
-            # 根据节点类型执行不同的逻辑
-            result_df = await cls._process_node(
-                db, node_type, node_data, upstream_df, nodes, connections, 
-                all_upstream_dfs=upstream_dfs
-            )
-            
-            # 缓存结果
-            cls.set_cached_result(model_id, node_id, result_df)
-            
-            # 返回预览数据
-            preview_rows = min(50, len(result_df))
-            preview_df = result_df.head(preview_rows)
-            
-            # 处理特殊值
-            preview_data = cls._df_to_records(preview_df)
-            
+            # 使用超时保护执行节点
+            result = await asyncio.wait_for(_execute_node_internal(), timeout=node_timeout)
+            return result
+        except asyncio.TimeoutError:
+            logger.error(f"节点 {node_id} 执行超时（{node_timeout}秒）")
             return {
-                "success": True,
+                "success": False,
                 "node_id": node_id,
                 "node_type": node_type,
-                "row_count": len(result_df),
-                "column_count": len(result_df.columns),
-                "columns": result_df.columns.tolist(),
-                "preview": preview_data,
-                "preview_count": preview_rows
+                "error": f"节点执行超时（{node_timeout}秒），请检查节点配置或数据量是否过大"
             }
-            
         except Exception as e:
-            logger.error(f"节点 {node_id} 执行失败: {e}")
+            logger.warning(f"节点 {node_id} 执行失败: {e}")
             return {
                 "success": False,
                 "node_id": node_id,
@@ -351,7 +434,7 @@ class ETLExecutionService:
                 if df is not None:
                     results.append(df.copy())
             else:
-                logger.error(f"递归执行上游节点失败: {source_id}")
+                logger.warning(f"递归执行上游节点失败: {source_id}")
                 
         return results
     
@@ -537,7 +620,7 @@ class ETLExecutionService:
             return df
             
         except Exception as e:
-            logger.error(f"Sink 节点保存失败: {e}")
+            logger.warning(f"Sink 节点保存失败: {e}")
             raise ValueError(f"保存失败: {str(e)}")
     
     @classmethod
@@ -808,7 +891,11 @@ class ETLExecutionService:
         elif op == '*':
             result[new_column] = col_a * col_b
         elif op == '/':
-            result[new_column] = col_a / col_b.replace(0, np.nan)
+            # 处理除零：如果col_b是Series，使用replace；如果是标量，直接处理
+            if isinstance(col_b, pd.Series):
+                result[new_column] = col_a / col_b.replace(0, np.nan)
+            else:
+                result[new_column] = col_a / (col_b if col_b != 0 else np.nan)
         
         logger.info(f"Calculate 节点: {new_column} = {field_a} {op} {value}")
         return result
@@ -1006,7 +1093,7 @@ class ETLExecutionService:
             logger.info(f"JOIN 结果字段: {result_df.columns.tolist()}")
             return result_df
         except Exception as e:
-            logger.error(f"关联执行过程出错: {e}")
+            logger.warning(f"关联执行过程出错: {e}")
             raise ValueError(f"关联失败: {str(e)}")
     
     @classmethod
@@ -1058,10 +1145,27 @@ class ETLExecutionService:
     @classmethod
     def _execute_sql(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
         """执行 SQL 节点"""
-        query = node_data.get('query', '')
+        query = node_data.get('query', '').strip()
         
         if not query:
             return df
+        
+        # 安全检查：禁止危险操作
+        sql_upper = query.upper().strip()
+        forbidden_keywords = [
+            'DROP', 'DELETE', 'TRUNCATE', 'ALTER', 'CREATE DATABASE', 
+            'INSERT', 'UPDATE', 'CREATE TABLE', 'CREATE VIEW',
+            'EXEC', 'EXECUTE', 'CALL', 'GRANT', 'REVOKE'
+        ]
+        
+        # 检查是否包含危险关键字
+        for keyword in forbidden_keywords:
+            if keyword in sql_upper:
+                raise ValueError(f"禁止使用 {keyword} 操作，SQL 节点只允许 SELECT 查询")
+        
+        # 验证必须是 SELECT 语句（允许 WITH 子句）
+        if not sql_upper.startswith('SELECT') and not sql_upper.startswith('WITH'):
+            raise ValueError("SQL 节点只允许 SELECT 或 WITH 查询语句")
         
         # 将输入数据注册为临时表 'input'
         duckdb_instance.conn.register('input', df)
@@ -1188,7 +1292,7 @@ class ETLExecutionService:
             
             # 构建函数调用
             if func in ['LEAD', 'LAG']:
-                # See thought above about LEAD/LAG args
+                # LEAD/LAG 函数的参数处理
                 if not order_by:
                      raise ValueError(f"{func} 函数需要指定排序列(Order By)作为操作对象")
                 target_col = order_by.split(',')[0].strip()

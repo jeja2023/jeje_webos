@@ -23,9 +23,9 @@ class TestDataLensManifest:
     def test_manifest_permissions(self):
         """测试权限声明"""
         from modules.datalens.datalens_manifest import manifest
-        assert "datalens:view" in manifest.permissions
-        assert "datalens:create" in manifest.permissions
-        assert "datalens:source:manage" in manifest.permissions
+        assert "datalens.view" in manifest.permissions
+        assert "datalens.create" in manifest.permissions
+        assert "datalens.source.manage" in manifest.permissions
 
 
 class TestDataSourceConnector:

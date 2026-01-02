@@ -13,7 +13,7 @@ from sqlalchemy import select
 from core.database import get_db
 from core.security import require_admin, TokenData, decode_token
 from models.account import User
-from models.message import Message
+from models.notification import Notification
 from models.storage import FileRecord
 from schemas.response import success
 from utils.import_export import DataExporter, DataImporter
@@ -100,15 +100,15 @@ async def export_users(
             media_type="application/json",
             headers={"Content-Disposition": f'attachment; filename="users_{timestamp}.json"'}
         )
-@router.get("/message")
-async def export_messages(
+@router.get("/notification")
+async def export_notifications(
     format: str = "csv",
     user_id: Optional[int] = None,
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    导出信息数据
+    导出通知数据
     
     仅系统管理员可执行
     支持格式: csv, json, xlsx
@@ -120,26 +120,26 @@ async def export_messages(
         raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
     
     # 构建查询
-    query = select(Message)
+    query = select(Notification)
     if user_id:
-        query = query.where(Message.user_id == user_id)
+        query = query.where(Notification.user_id == user_id)
     
     result = await db.execute(query)
-    messages = result.scalars().all()
+    notifications = result.scalars().all()
     
     # 转换为字典列表
     data = []
-    for msg in messages:
+    for notif in notifications:
         data.append({
-            "ID": msg.id,
-            "用户ID": msg.user_id,
-            "标题": msg.title,
-            "内容": msg.content or "",
-            "类型": msg.type,
-            "已读": "是" if msg.is_read else "否",
-            "阅读时间": msg.read_at.strftime("%Y-%m-%d %H:%M:%S") if msg.read_at else "",
-            "操作链接": msg.action_url or "",
-            "创建时间": msg.created_at.strftime("%Y-%m-%d %H:%M:%S") if msg.created_at else ""
+            "ID": notif.id,
+            "用户ID": notif.user_id,
+            "标题": notif.title,
+            "内容": notif.content or "",
+            "类型": notif.type,
+            "已读": "是" if notif.is_read else "否",
+            "阅读时间": notif.read_at.strftime("%Y-%m-%d %H:%M:%S") if notif.read_at else "",
+            "操作链接": notif.action_url or "",
+            "创建时间": notif.created_at.strftime("%Y-%m-%d %H:%M:%S") if notif.created_at else ""
         })
     
     # 导出
@@ -151,21 +151,21 @@ async def export_messages(
         return StreamingResponse(
             file_stream,
             media_type="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="messages_{timestamp}.csv"'}
+            headers={"Content-Disposition": f'attachment; filename="notifications_{timestamp}.csv"'}
         )
     elif format in ("xlsx", "excel"):
-        file_stream = exporter.export_to_excel(data, sheet_name="信息数据")
+        file_stream = exporter.export_to_excel(data, sheet_name="通知数据")
         return StreamingResponse(
             file_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="messages_{timestamp}.xlsx"'}
+            headers={"Content-Disposition": f'attachment; filename="notifications_{timestamp}.xlsx"'}
         )
     else:  # json
         json_content = exporter.export_to_json(data)
         return Response(
             content=json_content,
             media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="messages_{timestamp}.json"'}
+            headers={"Content-Disposition": f'attachment; filename="notifications_{timestamp}.json"'}
         )
 
 

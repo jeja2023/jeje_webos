@@ -495,20 +495,10 @@ async def batch_delete(
 async def download_file(
     file_id: int,
     token: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("filemanager.download"))
 ):
     """下载文件（需要 filemanager.download 权限）"""
-    user = get_user_from_token(token)
-    # 权限检查：admin 直接通过，或者有 filemanager.download 或 filemanager.* 权限
-    perms = user.permissions or []
-    has_perm = (
-        user.role == "admin" or 
-        "filemanager.download" in perms or 
-        "filemanager.*" in perms or
-        "*" in perms
-    )
-    if not has_perm:
-        raise HTTPException(status_code=403, detail="缺少权限: filemanager.download")
     service = FileManagerService(db, user.user_id)
     
     file = await service.get_file(file_id)
@@ -532,20 +522,10 @@ async def download_file(
 async def preview_file(
     file_id: int,
     token: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("filemanager.download"))
 ):
     """预览文件（在线查看，不触发下载，需要 filemanager.download 权限）"""
-    user = get_user_from_token(token)
-    # 权限检查：admin 直接通过，或者有 filemanager.download 或 filemanager.* 权限
-    perms = user.permissions or []
-    has_perm = (
-        user.role == "admin" or 
-        "filemanager.download" in perms or 
-        "filemanager.*" in perms or
-        "*" in perms
-    )
-    if not has_perm:
-        raise HTTPException(status_code=403, detail="缺少权限: filemanager.download")
     service = FileManagerService(db, user.user_id)
     
     file = await service.get_file(file_id)

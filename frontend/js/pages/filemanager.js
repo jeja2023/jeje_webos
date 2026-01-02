@@ -69,7 +69,10 @@ class FileManagerPage extends Component {
         try {
             const res = await Api.get('/filemanager/stats');
             if (res.code === 200) {
-                this.setState({ stats: res.data });
+                // 确保配额信息正确传递
+                const stats = res.data || {};
+                // 记录存储统计信息
+                this.setState({ stats });
             }
         } catch (err) {
             console.error('加载统计失败', err);
@@ -105,6 +108,24 @@ class FileManagerPage extends Component {
                     </div>
                     
                     <div class="fm-toolbar-right">
+                        <!-- 存储配额信息 -->
+                        ${stats ? `
+                        <div class="fm-quota-info" style="display: flex; align-items: center; gap: 8px; margin-right: 16px; padding: 6px 12px; background: var(--color-bg-secondary, rgba(0,0,0,0.05)); border-radius: 8px; font-size: 13px;">
+                            <span style="color: var(--color-text-secondary);">💾 存储:</span>
+                            <span style="font-weight: 500;">${this.formatSize(stats.total_size)}</span>
+                            ${stats.storage_quota && stats.storage_quota > 0 ? `
+                            <span style="color: var(--color-text-secondary);">/</span>
+                            <span style="color: var(--color-text-secondary);">${this.formatSize(stats.storage_quota)}</span>
+                            <div style="width: 60px; height: 4px; background: var(--color-bg-tertiary, rgba(0,0,0,0.1)); border-radius: 2px; overflow: hidden; margin-left: 4px;">
+                                <div style="height: 100%; background: ${stats.used_percentage > 90 ? 'var(--color-danger, #ff4444)' : stats.used_percentage > 70 ? 'var(--color-warning, #ffaa00)' : 'var(--color-primary, #0066ff)'}; width: ${Math.min(stats.used_percentage || 0, 100)}%; transition: width 0.3s;"></div>
+                            </div>
+                            <span style="color: var(--color-text-secondary); font-size: 12px;">${stats.used_percentage ? stats.used_percentage.toFixed(1) : 0}%</span>
+                            ` : `
+                            <span style="color: var(--color-text-secondary); font-size: 12px; margin-left: 4px;">(无限制)</span>
+                            `}
+                        </div>
+                        ` : ''}
+                        
                         <!-- 搜索 -->
                         <div class="fm-search">
                             <span class="fm-search-icon">🔍</span>
@@ -125,6 +146,7 @@ class FileManagerPage extends Component {
                         </div>
                         
                         <!-- 操作按钮 -->
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('filemanager', '文件管理') : ''}
                         <button class="btn btn-secondary btn-sm" id="btnNewFolder">
                             📁 新建文件夹
                         </button>
@@ -363,10 +385,18 @@ class FileManagerPage extends Component {
     afterMount() {
         this.init();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
         // 重新设置拖拽属性
         this.container?.querySelectorAll('.fm-item, .fm-list-item').forEach(item => {
             item.setAttribute('draggable', 'true');

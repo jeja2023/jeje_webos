@@ -469,7 +469,6 @@ const AnalysisChartMixin = {
                 Toast.error('图表生成失败：配置无效或数据不足');
             }
         } catch (e) {
-            console.error(e);
             Toast.error(`生成出错: ${e.message}`);
         }
 
@@ -841,7 +840,7 @@ const AnalysisChartMixin = {
         if (this._chartEventsBound) return;
         this._chartEventsBound = true;
 
-        // 注意：不在初始化时加载图表库，因为容器可能还不存在
+        // 不在初始化时加载图表库，因为容器可能还不存在
         // 只有在打开 ChartHub 时才加载
 
         // 切换到图表库
@@ -1056,7 +1055,6 @@ const AnalysisChartMixin = {
                 }, true);
             }
         } catch (e) {
-            console.error(`渲染图表出错: ${e.message}`);
             chartInstance.setOption({
                 title: { text: '图表渲染出错', left: 'center', textStyle: { color: '#888' } }
             });

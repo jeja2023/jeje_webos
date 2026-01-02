@@ -42,28 +42,32 @@ class BlogService:
         return category
     
     async def update_category(self, category_id: int, data: CategoryUpdate) -> Optional[BlogCategory]:
-        """更新分类"""
-        category = await self.get_category(category_id)
-        if not category:
-            return None
-        
+        """更新分类（优化：使用直接更新，减少查询）"""
         update_data = data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(category, key, value)
+        if not update_data:
+            # 如果没有要更新的字段，直接返回
+            return await self.get_category(category_id)
         
+        # 使用直接更新
+        from sqlalchemy import update as sql_update
+        await self.db.execute(
+            sql_update(BlogCategory)
+            .where(BlogCategory.id == category_id)
+            .values(**update_data)
+        )
         await self.db.commit()
-        await self.db.refresh(category)
-        return category
+        
+        # 返回更新后的分类
+        return await self.get_category(category_id)
     
     async def delete_category(self, category_id: int) -> bool:
-        """删除分类"""
-        category = await self.get_category(category_id)
-        if not category:
-            return False
-        
-        await self.db.delete(category)
+        """删除分类（优化：直接删除，避免先查询）"""
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(BlogCategory).where(BlogCategory.id == category_id)
+        )
         await self.db.commit()
-        return True
+        return result.rowcount > 0
     
     # ============ 标签 ============
     
@@ -127,11 +131,14 @@ class BlogService:
             query = query.where(and_(*conditions))
             count_query = count_query.where(and_(*conditions))
         
-        # 标签筛选（子查询）
+        # 标签筛选（优化：使用 JOIN 代替子查询，性能更好）
         if tag_id:
-            tag_subquery = select(BlogPostTag.post_id).where(BlogPostTag.tag_id == tag_id)
-            query = query.where(BlogPost.id.in_(tag_subquery))
-            count_query = count_query.where(BlogPost.id.in_(tag_subquery))
+            query = query.join(BlogPostTag, BlogPost.id == BlogPostTag.post_id).where(
+                BlogPostTag.tag_id == tag_id
+            )
+            count_query = count_query.join(BlogPostTag, BlogPost.id == BlogPostTag.post_id).where(
+                BlogPostTag.tag_id == tag_id
+            )
         
         # 排序和分页
         query = query.order_by(BlogPost.is_top.desc(), BlogPost.created_at.desc())
@@ -174,11 +181,10 @@ class BlogService:
         await self.db.commit()
         await self.db.refresh(post)
         
-        # 关联标签
+        # 批量关联标签（优化：一次性添加所有标签关联）
         if tags:
-            for tag_id in tags:
-                post_tag = BlogPostTag(post_id=post.id, tag_id=tag_id)
-                self.db.add(post_tag)
+            post_tags = [BlogPostTag(post_id=post.id, tag_id=tag_id) for tag_id in tags]
+            self.db.add_all(post_tags)
             await self.db.commit()
         
         return post
@@ -192,45 +198,55 @@ class BlogService:
         tags = data.tags
         update_data = data.model_dump(exclude={"tags"}, exclude_unset=True)
         
-        # 更新发布时间
+        # 更新发布时间（需要知道当前状态）
         if data.status == "published" and post.status != "published":
             update_data["published_at"] = datetime.now(timezone.utc)
         
-        for key, value in update_data.items():
-            setattr(post, key, value)
+        # 如果有字段需要更新，使用直接更新
+        if update_data:
+            from sqlalchemy import update as sql_update
+            await self.db.execute(
+                sql_update(BlogPost)
+                .where(BlogPost.id == post_id)
+                .values(**update_data)
+            )
         
-        # 更新标签
+        # 批量更新标签（优化：先删除再批量添加）
         if tags is not None:
             await self.db.execute(
                 delete(BlogPostTag).where(BlogPostTag.post_id == post_id)
             )
-            for tag_id in tags:
-                post_tag = BlogPostTag(post_id=post.id, tag_id=tag_id)
-                self.db.add(post_tag)
+            if tags:  # 只有当标签列表不为空时才添加
+                post_tags = [BlogPostTag(post_id=post_id, tag_id=tag_id) for tag_id in tags]
+                self.db.add_all(post_tags)
         
         await self.db.commit()
-        await self.db.refresh(post)
-        return post
+        # 返回更新后的文章
+        return await self.get_post(post_id)
     
     async def delete_post(self, post_id: int) -> bool:
-        """删除文章"""
-        post = await self.get_post(post_id)
-        if not post:
-            return False
-        
+        """删除文章（优化：直接删除，避免先查询）"""
+        # 先删除标签关联
         await self.db.execute(
             delete(BlogPostTag).where(BlogPostTag.post_id == post_id)
         )
-        await self.db.delete(post)
+        # 再删除文章
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(BlogPost).where(BlogPost.id == post_id)
+        )
         await self.db.commit()
-        return True
+        return result.rowcount > 0
     
     async def increment_views(self, post_id: int):
-        """增加浏览量"""
-        post = await self.get_post(post_id)
-        if post:
-            post.views += 1
-            await self.db.commit()
+        """增加浏览量（优化：使用直接更新，避免先查询）"""
+        from sqlalchemy import update as sql_update
+        await self.db.execute(
+            sql_update(BlogPost)
+            .where(BlogPost.id == post_id)
+            .values(views=BlogPost.views + 1)
+        )
+        await self.db.commit()
     
     async def get_post_tags(self, post_id: int) -> List[BlogTag]:
         """获取文章标签"""

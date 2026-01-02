@@ -247,7 +247,7 @@ def delete_module_steps(module_id: str, confirm: bool = True, delete_db: bool = 
                         loop.run_until_complete(delete_db_tables(module_id))
             except Exception as e:
                 print(f"[错误] 数据库操作异常: {e}")
-            # 注意：不要关闭系统默认的 loop
+            # 不要关闭系统默认的 loop
     
     # 1. 删除后端模块目录
     print("\n[1/5] 删除后端模块目录...")

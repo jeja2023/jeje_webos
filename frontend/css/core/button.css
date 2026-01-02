@@ -105,15 +105,23 @@
 }
 
 /* 主题特定按钮增强 */
-:root.theme-dark .btn-secondary,
 :root.theme-neon .btn-secondary {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-:root.theme-dark .btn-secondary:hover,
 :root.theme-neon .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
+    border-color: var(--color-primary);
+}
+
+:root.theme-sunrise .btn-secondary {
+    background: rgba(214, 90, 49, 0.1);
+    border-color: rgba(214, 90, 49, 0.2);
+}
+
+:root.theme-sunrise .btn-secondary:hover {
+    background: rgba(214, 90, 49, 0.2);
     border-color: var(--color-primary);
 }
 

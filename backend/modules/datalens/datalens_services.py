@@ -27,6 +27,12 @@ from .datalens_schemas import (
     QueryType
 )
 from sqlalchemy.orm.attributes import flag_modified
+from .datalens_optimizations import (
+    ConnectionPoolManager, _file_cache, _query_cache,
+    validate_sql, sanitize_identifier, execute_with_timeout,
+    monitor_query_performance, QueryTimeoutError, QueryExecutionError,
+    DataSourceConnectionError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +49,7 @@ def _resolve_path(path: str) -> str:
     # 补全 storage 根目录
     return str(_get_storage().root_dir / path)
 
-# 文件数据源内存缓存 (文件名 -> (DataFrame, timestamp))
-_file_data_cache = {}
-_CACHE_TTL = 60  # 缓存 60 秒
+# 文件数据源内存缓存已迁移到 datalens_optimizations.py 中的 LRUFileCache
 
 
 def _build_db_url(source_type: str, conn_config: Dict[str, Any]) -> str:
@@ -63,21 +67,23 @@ def _build_db_url(source_type: str, conn_config: Dict[str, Any]) -> str:
 
 
 def _get_cached_df(file_path: str, source_type: str, file_config: Dict[str, Any]):
-    """获取缓存的 DataFrame，如果过期或不存在则重新加载"""
+    """获取缓存的 DataFrame，如果过期或不存在则重新加载（使用 LRU 缓存）"""
     
     # 解析路径
     abs_path = _resolve_path(file_path)
-
-    now = time.time()
     
-    # 检查缓存是否存在且有效
-    if abs_path in _file_data_cache:
-        df, timestamp = _file_data_cache[abs_path]
-        # 同时检查文件修改时间，如果文件变了也失效
-        mtime = os.path.getmtime(abs_path) if os.path.exists(abs_path) else 0
-        if now - timestamp < _CACHE_TTL and timestamp > mtime:
-            return df
-
+    # 检查缓存
+    cached_df = _file_cache.get(abs_path)
+    if cached_df is not None:
+        # 检查文件修改时间，如果文件变了也失效
+        if os.path.exists(abs_path):
+            mtime = os.path.getmtime(abs_path)
+            # 获取缓存时间戳
+            cache_time = _file_cache.get_timestamp(abs_path)
+            # 如果文件修改时间比缓存时间新，则重新加载
+            if mtime <= cache_time:
+                return cached_df
+    
     # 重新加载
     if source_type == DataSourceType.CSV:
         df = pd.read_csv(abs_path, encoding=file_config.get("encoding", "utf-8"))
@@ -86,8 +92,9 @@ def _get_cached_df(file_path: str, source_type: str, file_config: Dict[str, Any]
         df = pd.read_excel(abs_path, sheet_name=sheet_name)
         if isinstance(df, dict):
             df = list(df.values())[0]
-            
-    _file_data_cache[abs_path] = (df, now)
+    
+    # 存入缓存
+    _file_cache.put(abs_path, df)
     return df
 
 def _sanitize_dataframe(df):
@@ -102,7 +109,7 @@ def _sanitize_dataframe(df):
     if df.empty:
         return df
     
-    # 避免 SettingWithCopyWarning
+    # 复制数据框避免警告
     df = df.copy()
     
     # 首先处理所有数值列中的 NaN 和 Infinity
@@ -427,7 +434,11 @@ class DataSourceConnector:
             file_path = config.get("file_path", "")
             if not file_path:
                 return False, "请提供 SQLite 文件路径"
-            async with aiosqlite.connect(file_path) as db:
+            # 解析路径
+            abs_path = _resolve_path(file_path)
+            if not os.path.exists(abs_path):
+                return False, f"文件不存在: {abs_path}"
+            async with aiosqlite.connect(abs_path) as db:
                 await db.execute("SELECT 1")
             return True, "SQLite 连接成功"
         except ImportError:
@@ -477,12 +488,15 @@ class DataSourceConnector:
     async def _test_csv(config: Dict[str, Any]) -> Tuple[bool, str]:
         """测试 CSV 文件读取"""
         try:
+            file_path = config.get("file_path", "")
             if not file_path:
                 return False, "请提供 CSV 文件路径"
-            if not os.path.exists(file_path):
-                return False, f"文件不存在: {file_path}"
+            # 解析路径
+            abs_path = _resolve_path(file_path)
+            if not os.path.exists(abs_path):
+                return False, f"文件不存在: {abs_path}"
             # 尝试读取前几行
-            df = pd.read_csv(file_path, nrows=5, encoding=config.get("encoding", "utf-8"))
+            df = pd.read_csv(abs_path, nrows=5, encoding=config.get("encoding", "utf-8"))
             return True, f"CSV 文件读取成功，共 {len(df.columns)} 列"
         except Exception as e:
             return False, f"CSV 文件读取失败: {e}"
@@ -491,12 +505,15 @@ class DataSourceConnector:
     async def _test_excel(config: Dict[str, Any]) -> Tuple[bool, str]:
         """测试 Excel 文件读取"""
         try:
+            file_path = config.get("file_path", "")
             if not file_path:
                 return False, "请提供 Excel 文件路径"
-            if not os.path.exists(file_path):
-                return False, f"文件不存在: {file_path}"
+            # 解析路径
+            abs_path = _resolve_path(file_path)
+            if not os.path.exists(abs_path):
+                return False, f"文件不存在: {abs_path}"
             sheet_name = config.get("sheet_name") or 0  # 默认第一个工作表
-            df = pd.read_excel(file_path, sheet_name=sheet_name, nrows=5)
+            df = pd.read_excel(abs_path, sheet_name=sheet_name, nrows=5)
             # 如果返回字典（多工作表），取第一个
             if isinstance(df, dict):
                 df = list(df.values())[0]
@@ -570,13 +587,13 @@ class QueryExecutor:
                 if where:
                     base_sql += f" WHERE {where}"
 
-            # 使用 SQLAlchemy 执行并流式获取数据
+            # 使用 SQLAlchemy 执行并流式获取数据（使用连接池）
             try:
                 url = _build_db_url(source_type, conn_config)
             except ValueError:
                  raise ValueError(f"流式导出暂不支持该数据库类型: {source_type}")
 
-            engine = create_engine(url)
+            engine = ConnectionPoolManager.get_engine(source_type, conn_config, url)
             
             # 使用 pandas 的 chunksize 或 SQLAlchemy 的 execution_options
             with engine.connect() as conn:
@@ -590,7 +607,7 @@ class QueryExecutor:
                     for row in chunk.to_dict(orient="records"):
                         yield row
             
-            engine.dispose()
+            # 不再 dispose，使用连接池管理
 
         elif source_type in [DataSourceType.CSV, DataSourceType.EXCEL]:
             import pandas as pd
@@ -625,6 +642,7 @@ class QueryExecutor:
             raise ValueError(f"不支持导出数据源类型: {source_type}")
 
     @staticmethod
+    @monitor_query_performance
     async def execute(
         datasource: LensDataSource,
         query_type: str,
@@ -632,7 +650,7 @@ class QueryExecutor:
         request: ViewDataRequest
     ) -> ViewDataResponse:
         """
-        执行查询
+        执行查询（带缓存和性能监控）
         """
         source_type = datasource.type
 
@@ -652,22 +670,46 @@ class QueryExecutor:
         else:
             api_config = {}
 
-        # 根据数据源类型执行查询
+        # 检查查询缓存（仅对数据库查询启用缓存）
         if source_type in [DataSourceType.MYSQL, DataSourceType.POSTGRES, DataSourceType.SQLITE,
                            DataSourceType.SQLSERVER, DataSourceType.ORACLE]:
-            return await QueryExecutor._execute_sql_query(
-                source_type, conn_config, query_type, query_config, request
-            )
-        elif source_type in [DataSourceType.CSV, DataSourceType.EXCEL]:
-            return await QueryExecutor._execute_file_query(
-                source_type, file_config, query_config, request
-            )
-        elif source_type == DataSourceType.API:
-            return await QueryExecutor._execute_api_query(
-                api_config, query_config, request
-            )
-        else:
-            raise ValueError(f"不支持的数据源类型: {source_type}")
+            cached_result = _query_cache.get(datasource.id, query_type, query_config, request)
+            if cached_result is not None:
+                logger.debug(f"查询缓存命中: datasource_id={datasource.id}")
+                return cached_result
+
+        # 根据数据源类型执行查询
+        try:
+            if source_type in [DataSourceType.MYSQL, DataSourceType.POSTGRES, DataSourceType.SQLITE,
+                               DataSourceType.SQLSERVER, DataSourceType.ORACLE]:
+                result = await execute_with_timeout(
+                    QueryExecutor._execute_sql_query(
+                        source_type, conn_config, query_type, query_config, request
+                    ),
+                    timeout=30
+                )
+            elif source_type in [DataSourceType.CSV, DataSourceType.EXCEL]:
+                result = await QueryExecutor._execute_file_query(
+                    source_type, file_config, query_config, request
+                )
+            elif source_type == DataSourceType.API:
+                result = await QueryExecutor._execute_api_query(
+                    api_config, query_config, request
+                )
+            else:
+                raise ValueError(f"不支持的数据源类型: {source_type}")
+            
+            # 缓存结果（仅对数据库查询）
+            if source_type in [DataSourceType.MYSQL, DataSourceType.POSTGRES, DataSourceType.SQLITE,
+                               DataSourceType.SQLSERVER, DataSourceType.ORACLE]:
+                _query_cache.put(datasource.id, query_type, query_config, request, result)
+            
+            return result
+        except QueryTimeoutError:
+            raise
+        except Exception as e:
+            logger.error(f"查询执行失败: {e}", exc_info=True)
+            raise QueryExecutionError(f"查询执行失败: {str(e)}")
 
     @staticmethod
     async def _execute_sql_query(
@@ -681,12 +723,19 @@ class QueryExecutor:
         # 确定数据库类型
         db_type = "mysql" if source_type == DataSourceType.MYSQL else "postgres"
 
-        # 构建基础 SQL
+        # 构建基础 SQL（添加 SQL 安全验证）
         if query_type == QueryType.SQL:
             base_sql = query_config.get("sql", "SELECT 1")
+            # 验证 SQL 安全性
+            if not validate_sql(base_sql):
+                raise QueryExecutionError("SQL 语句包含危险操作，仅允许 SELECT 查询")
         else:
             # TABLE 模式，构建 SQL（支持多表关联）
             main_table = query_config.get("table", "")
+            # 验证表名安全性
+            if main_table:
+                main_table = sanitize_identifier(main_table)
+            
             # 处理列字段，支持带表名的列名，并自动处理重名冲突
             columns = query_config.get("columns", ["*"])
             col_list = []
@@ -749,10 +798,10 @@ class QueryExecutor:
 
         base_sql = wrapped_sql
 
-        # 根据数据源类型执行
+        # 根据数据源类型执行（使用连接池）
         if source_type == DataSourceType.MYSQL:
             url = _build_db_url(source_type, conn_config)
-            engine = create_engine(url)
+            engine = ConnectionPoolManager.get_engine(source_type, conn_config, url)
 
             # 搜索支持：如果是搜索模式，我们需要知道列名
             if request.search:
@@ -784,11 +833,11 @@ class QueryExecutor:
 
             # 获取数据
             df = pd.read_sql(text(paginated_sql), engine, params=params)
-            engine.dispose()
+            # 不再 dispose，使用连接池管理
 
         elif source_type == DataSourceType.POSTGRES:
             url = _build_db_url(source_type, conn_config)
-            engine = create_engine(url)
+            engine = ConnectionPoolManager.get_engine(source_type, conn_config, url)
 
             if request.search:
                 try:
@@ -816,7 +865,7 @@ class QueryExecutor:
                 total = result.scalar() or 0
 
             df = pd.read_sql(text(paginated_sql), engine, params=params)
-            engine.dispose()
+            # 不再 dispose，使用连接池管理
 
         elif source_type == DataSourceType.SQLITE:
             import sqlite3
@@ -1387,7 +1436,7 @@ class ViewService:
         await db.execute(delete(LensRecentView).where(LensRecentView.view_id == view_id))
         
         # 同步清理所有用户设置中的快捷方式
-        # 注意: 这种操作在大规模用户下可能性能较差，但在目前系统规模下是安全的
+        # 这种操作在大规模用户下可能性能较差，但在目前系统规模下是安全的
         from models import User
         result = await db.execute(select(User))
         users = result.scalars().all()

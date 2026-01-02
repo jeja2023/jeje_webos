@@ -208,7 +208,7 @@ class SmartReportService:
         
         # 处理图表占位符：将 chart:chartId 替换为实际的图表图片
         # 格式：![图表名称](chart:chartId)
-        # 注意：前端在发送 content_md 时已经将图表占位符替换为 base64 图片
+        # 前端在发送 content_md 时已经将图表占位符替换为 base64 图片
         # 这里保留此逻辑是为了处理可能遗留的占位符（向后兼容）
         if db:
             chart_placeholder_pattern = r'!\[([^\]]*)\]\(chart:(\d+)\)'
@@ -224,7 +224,6 @@ class SmartReportService:
                 for match in chart_matches:
                     chart_id = int(match.group(2))
                     chart_name = match.group(1) or '图表'
-                    logger.debug(f"发现图表占位符: {chart_name} (ID: {chart_id})")
         
         # 处理 base64 图片：将 data URI 转换为临时文件
         # 这样可以避免 WeasyPrint/xhtml2pdf 处理超长 base64 字符串时的问题
@@ -240,8 +239,8 @@ class SmartReportService:
                 if data_uri.startswith('data:image/'):
                     # 提取 MIME 类型和 base64 数据
                     header, encoded = data_uri.split(',', 1)
-                    mime_type = header.split(';')[0].split(':')[1]  # image/png
-                    ext = mime_type.split('/')[1]  # png
+                    mime_type = header.split(';')[0].split(':')[1]  # 提取 MIME 类型，如 image/png
+                    ext = mime_type.split('/')[1]  # 提取文件扩展名，如 png
                     
                     try:
                         # 解码 base64
@@ -267,12 +266,12 @@ class SmartReportService:
                 return match.group(0)
             
             # 替换所有 base64 图片
-            # 注意：需要匹配可能跨行的 base64 数据（使用 re.DOTALL）
+            # 匹配可能跨行的 base64 数据（使用 re.DOTALL）
             pattern = r'!\[([^\]]*)\]\((data:image/[^)]+)\)'
             original_md = md_content
             md_content = re.sub(pattern, replace_base64_image, md_content, flags=re.DOTALL)
             
-            # 调试：记录转换的图片数量
+            # 记录转换的图片数量
             import logging
             logger = logging.getLogger(__name__)
             base64_count = len(re.findall(pattern, original_md, flags=re.DOTALL))
@@ -340,7 +339,7 @@ class SmartReportService:
         .report-footer { margin-top: 50pt; text-align: right; font-size: 10pt; color: #7f8c8d; }
 """
         else:
-            # WeasyPrint 支持的高级 CSS（支持 @page、counter 等）
+            # WeasyPrint 支持的高级 CSS（支持 @page、counter 等高级特性）
             css_style = """
         @page {
             size: A4;
@@ -453,7 +452,7 @@ class SmartReportService:
         user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        生成报告
+        生成报告（带进度日志）
         
         Args:
             db: 数据库会话
@@ -464,6 +463,11 @@ class SmartReportService:
             content_md: 可选的处理后的 Markdown 内容（如果提供，则使用此内容而不是模板内容）
             user_id: 用户ID（用于文件目录隔离）
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"开始生成报告，报告ID: {report_id}, 用户ID: {user_id}")
+        
         report = await SmartReportService.get_report(db, report_id)
         if not report:
             raise Exception("报告模板不存在")
@@ -472,6 +476,8 @@ class SmartReportService:
         base_md = content_md if content_md else (report.content_md or "")
         if not base_md:
             raise Exception("报告模板内容为空")
+        
+        logger.info(f"报告内容长度: {len(base_md)} 字符")
             
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         file_base = f"report_{timestamp}_{uuid.uuid4().hex[:6]}"
@@ -492,9 +498,12 @@ class SmartReportService:
         archive_report_dir.mkdir(parents=True, exist_ok=True)
         
         # 1. 变量替换（如果内容中还有未替换的变量）
+        logger.info("步骤 1/4: 开始变量替换...")
         filled_md = SmartReportService._fill_variables(base_md, data_context)
+        logger.info("步骤 1/4: 变量替换完成")
         
         # 2. 生成 PDF (优先使用 WeasyPrint，失败时回退到 xhtml2pdf)
+        logger.info("步骤 2/4: 开始生成 PDF...")
         pdf_filename = f"{file_base}.pdf"
         # 存储相对路径：user_{id}/report_{id}/filename.pdf (相对于 modules/report/temp 或 archive)
         pdf_relative_path = f"user_{effective_user_id}/report_{report_id}/{pdf_filename}"
@@ -514,16 +523,8 @@ class SmartReportService:
             # 使用完整版 HTML（支持高级 CSS），并处理 base64 图片
             full_html = SmartReportService._md_to_html(filled_md, use_simple_css=False, temp_dir=images_temp_dir)
             
-            # 调试：保存 HTML 文件用于排查问题
-            html_debug_path = pdf_path.replace('.pdf', '_debug.html')
-            try:
-                with open(html_debug_path, 'w', encoding='utf-8') as f:
-                    f.write(full_html)
-                logger.debug(f"调试 HTML 已保存: {html_debug_path}")
-            except:
-                pass
             
-            # base_url 设置为图片临时目录，这样 WeasyPrint 可以找到转换后的图片文件
+            # base_url 设置为图片临时目录，使 WeasyPrint 可以找到转换后的图片文件
             HTML(string=full_html, base_url=images_temp_dir).write_pdf(pdf_path)
             
             # 验证 PDF 文件是否成功生成
@@ -541,9 +542,11 @@ class SmartReportService:
                     raise Exception(f"PDF 文件格式无效，文件头: {header[:8]}")
             
             logger.info(f"WeasyPrint 成功生成 PDF: {pdf_path}, 大小: {file_size} 字节")
+            pdf_elapsed = time.time() - pdf_start_time
+            logger.info(f"步骤 2/4: PDF 生成完成（WeasyPrint），耗时 {pdf_elapsed:.2f} 秒")
             pdf_success = True
         except ImportError:
-            # WeasyPrint 未安装或依赖缺失，尝试回退方案
+            # WeasyPrint 未安装或依赖缺失，尝试使用回退方案
             pass
         except Exception as e:
             # WeasyPrint 安装但运行失败（通常是 Windows 上的 GTK+ 依赖问题）
@@ -561,7 +564,7 @@ class SmartReportService:
                 simple_html = SmartReportService._md_to_html(filled_md, use_simple_css=True, temp_dir=images_temp_dir)
                 
                 # xhtml2pdf 的正确使用方式
-                # 注意：需要将 HTML 中的相对路径转换为绝对路径，以便 xhtml2pdf 能找到图片
+                # 将 HTML 中的相对路径转换为绝对路径，以便 xhtml2pdf 能找到图片
                 import re
                 def replace_img_path(match):
                     img_tag = match.group(0)
@@ -578,21 +581,14 @@ class SmartReportService:
                 # 替换所有 img 标签中的相对路径
                 simple_html = re.sub(r'<img[^>]+>', replace_img_path, simple_html)
                 
-                # 调试：保存 HTML 文件用于排查问题
+                # 保存 HTML 文件用于排查问题
                 import logging
                 logger = logging.getLogger(__name__)
-                html_debug_path = pdf_path.replace('.pdf', '_debug.html')
-                try:
-                    with open(html_debug_path, 'w', encoding='utf-8') as f:
-                        f.write(simple_html)
-                    logger.debug(f"调试 HTML 已保存: {html_debug_path}")
-                except:
-                    pass
                 
                 source_html = BytesIO(simple_html.encode('utf-8'))
                 result_file = open(pdf_path, "w+b")
                 
-                # pisa.CreatePDF 的第一个参数是源 HTML，第二个参数是目标文件
+                # pisa.CreatePDF 的第一个参数是源 HTML，第二个参数是目标文件对象
                 pisa_status = pisa.CreatePDF(source_html, result_file)
                 
                 result_file.close()
@@ -614,6 +610,8 @@ class SmartReportService:
                             raise Exception(f"PDF 文件格式无效，文件头: {header[:8]}")
                     
                     logger.info(f"xhtml2pdf 成功生成 PDF: {pdf_path}, 大小: {file_size} 字节")
+                    pdf_elapsed = time.time() - pdf_start_time
+                    logger.info(f"步骤 2/4: PDF 生成完成（xhtml2pdf），耗时 {pdf_elapsed:.2f} 秒")
                     pdf_success = True
                 else:
                     error_msg = f"xhtml2pdf 生成失败，错误代码: {pisa_status.err}"
@@ -630,12 +628,11 @@ class SmartReportService:
                 logger.error(f"PDF 生成失败 (WeasyPrint 和 xhtml2pdf 都失败): {e}")
         
         # 清理临时图片目录（生成成功后自动清理）
-        # 注意：如果生成失败，保留临时文件用于调试
+        # 如果生成失败，保留临时文件
         if pdf_success and os.path.exists(images_temp_dir):
             try:
                 import shutil
                 shutil.rmtree(images_temp_dir)
-                logger.debug(f"已清理临时图片目录: {images_temp_dir}")
             except Exception as e:
                 logger.warning(f"清理临时图片目录失败: {e}")
         
@@ -656,7 +653,8 @@ class SmartReportService:
             "is_archived": False  # 默认为临时目录
         }
         
-        # 4. 保存记录（含全文内容，以便知识库管理）
+        # 3. 保存记录（含全文内容，以便知识库管理）
+        logger.info("步骤 3/4: 处理记录保存...")
         if save_record and record_name:
             try:
                 # 复制文件到归档目录
@@ -684,6 +682,13 @@ class SmartReportService:
                 logger = logging.getLogger(__name__)
                 logger.warning(f"保存归档记录失败，仅保留临时文件: {e}")
                 # 即使归档失败，临时文件仍然可用于下载
+        else:
+            logger.info("步骤 3/4: 跳过记录保存（仅生成临时文件）")
+        
+        # 4. 完成
+        logger.info("步骤 4/4: 报告生成完成")
+        total_elapsed = time.time() - pdf_start_time
+        logger.info(f"报告生成总耗时: {total_elapsed:.2f} 秒")
         
         return result
 
@@ -723,7 +728,7 @@ class SmartReportService:
             if record.pdf_file_path:
                 # 记录可能属于任何用户，所以我们需要遍历检查（虽然通常就是 record 用户）
                 # 这里假设 record 所属模块为 report，通过数据库记录的路径定位
-                # 注意：record.pdf_file_path 现在只包含 report_{id}/xxx.pdf
+                # record.pdf_file_path 现在只包含 report_{id}/xxx.pdf
                 # 我们需要确定 user_id。如果记录中没有 user_id，则需要从报告模板或关联关系获取。
                 # 由于 record 目前没有直接的 user_id，我们通过报告模板来查找可能的用户目录
                 # 或者更简单：因为我们有 path 模式，可以在 temp 和 archive 目录下 glob
@@ -740,14 +745,11 @@ class SmartReportService:
                                     file_path.unlink()
                                     logger.info(f"已删除 PDF 文件: {file_path}")
                                     
-                                    # 同时删除相关的调试文件和图片目录
+                                    # 同时删除相关的文件和图片目录
                                     file_dir = file_path.parent
                                     file_base = file_path.name.replace('.pdf', '')
                                     
                                     # 删除 debug.html 文件
-                                    debug_file = file_dir / f"{file_base}_debug.html"
-                                    if debug_file.exists():
-                                        debug_file.unlink()
                                     
                                     # 删除 images 目录
                                     images_dir = file_dir / f"images_{file_base}"

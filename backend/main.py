@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 
-# 导入增强版静态文件服务
+# 导入静态文件服务
 from core.static_files import CachedStaticFiles, GzipMiddleware
 from core.config import get_settings
 from core.database import init_db, close_db
@@ -147,7 +147,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ 初始化角色失败: {e}")
     
-    # 8. 初始化任务调度器
+    # 8. 启动审计日志自动刷新任务
+    from core.audit_utils import AuditLogger
+    AuditLogger.start_auto_flush()
+    logger.info("✅ 审计日志批量写入已启用")
+    
+    # 9. 初始化任务调度器
     from core.scheduler import get_scheduler
     from utils.jwt_rotate import get_jwt_rotator
     
@@ -232,6 +237,11 @@ async def lifespan(app: FastAPI):
     # ==================== 关闭阶段 ====================
     logger.info("🛑 系统关闭中...")
     await scheduler.stop()
+    
+    # 停止审计日志自动刷新并写入剩余日志
+    from core.audit_utils import AuditLogger
+    await AuditLogger.stop_auto_flush()
+    
     await event_bus.publish(Event(name=Events.SYSTEM_SHUTDOWN, source="kernel"))
     await close_cache()
     await close_db()
@@ -283,7 +293,7 @@ if settings.rate_limit_enabled:
 from core.middleware import AuditMiddleware
 app.add_middleware(
     AuditMiddleware,
-    audit_all_methods=settings.audit_all_operations  # True = 记录所有操作（包括查看）
+    audit_all_methods=settings.audit_all_operations  # 记录所有操作（包括查看）
 )
 
 # 6. CSRF 防护中间件（可选，默认关闭）
@@ -326,7 +336,7 @@ _module_results = _module_loader.load_all()
 # ==================== 注册系统路由 ====================
 from routers import (
     auth, boot, user, system_settings, audit, roles,
-    storage, backup, monitor, message, websocket,
+    storage, backup, monitor, notification, websocket,
     import_export, announcement, market
 )
 
@@ -344,7 +354,7 @@ app.include_router(roles.router)
 app.include_router(storage.router)
 app.include_router(backup.router)
 app.include_router(monitor.router)
-app.include_router(message.router)
+app.include_router(notification.router)
 app.include_router(websocket.router)
 app.include_router(import_export.router)
 app.include_router(announcement.router)

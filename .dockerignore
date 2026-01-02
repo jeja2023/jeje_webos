@@ -1,25 +1,59 @@
-# Exclude version control settings
+# 版本控制
 .git
 .gitignore
+.dockerignore
 
-# Exclude environment files
-# Prevent .env from being copied to image and causing conflicts
+# 环境配置文件
+# 防止 .env 被复制到镜像中造成冲突
 .env
 .env.*
 !.env.example
 !env_docker
 !env_docker.example
 
-# Exclude dependencies and virtual environments
+# Python 依赖和虚拟环境
 venv/
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.toast
+.lucid
+.cache/
+.pytest_cache/
+.mypy_cache/
 
-# Exclude frontend dependencies and build artifacts
+# 前端依赖和构建产物
 frontend/node_modules/
 frontend/dist/
+frontend/.next/
+frontend/build/
 
-# Exclude logs and temp files
+# 日志和临时文件
 *.log
 tmp/
+temp/
+.temp/
+*.swp
+*.bak
+
+# IDE 特有的文件
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 操作系统特有的文件
+.DS_Store
+Thumbs.db
+
+# 数据和存储
+backend/storage/
+backend/data/
+*.db
+*.sqlite3

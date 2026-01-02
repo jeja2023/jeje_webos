@@ -89,10 +89,12 @@ class LoginPage extends Component {
                 // 等待一下确保 Store 已更新
                 await new Promise(resolve => setTimeout(resolve, 100));
 
-                const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
                 const currentUser = Store.get('user');
+                if (!currentUser) return;
 
-                if (localPinnedApps && currentUser) {
+                // 同步 dock_pinned_apps
+                const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                if (localPinnedApps) {
                     try {
                         const parsed = JSON.parse(localPinnedApps);
                         // 如果后端没有 dock_pinned_apps 但本地有，则同步
@@ -119,7 +121,19 @@ class LoginPage extends Component {
                         }
                     } catch (e) {
                         // 同步失败时静默处理
+                        console.warn('[Login] 同步 dock_pinned_apps 失败:', e);
                     }
+                }
+
+                // 确保 start_menu_shortcuts 从后端正确加载
+                // 如果后端有数据，使用后端数据；如果没有，保持空数组
+                if (!currentUser.settings?.start_menu_shortcuts || 
+                    !Array.isArray(currentUser.settings.start_menu_shortcuts)) {
+                    const newSettings = {
+                        ...(currentUser.settings || {}),
+                        start_menu_shortcuts: []
+                    };
+                    Store.set('user', { ...currentUser, settings: newSettings });
                 }
 
                 Toast.success('登录成功');
@@ -134,7 +148,7 @@ class LoginPage extends Component {
                     phone
                 });
 
-                // 显示后端返回的消息（包含审核提示）
+                // 显示后端返回的消息
                 Toast.success(res.message || '注册成功，请等待管理员审核');
                 this.setState({ mode: 'login', error: '' });
             }

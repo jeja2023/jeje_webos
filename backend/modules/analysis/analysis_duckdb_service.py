@@ -28,8 +28,6 @@ class DuckDBService:
         self.db_dir = storage.get_module_dir("analysis")
         self.db_path = os.path.join(self.db_dir, "analysis.db")
         
-        # 使用 DEBUG 级别避免在 Uvicorn reloader 中重复输出
-        logger.debug(f"DuckDB 存储初始化: {self.db_path}")
 
 
     def ensure_connection(self):
@@ -41,7 +39,7 @@ class DuckDBService:
             
             for attempt in range(max_retries):
                 try:
-                    # DuckDB 默认是线程安全的，但在 Windows 上由于文件锁定，不支持多进程同时读写
+                    # DuckDB 默认是线程安全的，但在 Windows 上由于文件锁定，不支持多进程同时读写同一文件
                     self._conn = duckdb.connect(self.db_path)
                     logger.info(f"DuckDB 数据库已连接: {self.db_path}")
                     break

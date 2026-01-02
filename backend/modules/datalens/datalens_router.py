@@ -29,6 +29,9 @@ from .datalens_services import (
     DataSourceService, CategoryService, ViewService,
     FavoriteService, RecentViewService, HubService, QueryExecutor
 )
+from .datalens_optimizations import (
+    QueryTimeoutError, QueryExecutionError, DataSourceConnectionError
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -39,13 +42,13 @@ router = APIRouter()
 @router.get("/hub")
 async def get_hub_overview(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     获取 Hub 首页概览
     包含视图统计、最近访问、收藏列表
     """
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     overview = await HubService.get_overview(db, user.user_id, is_admin)
     return success(data=overview, message="获取概览成功")
 
@@ -55,10 +58,10 @@ async def get_hub_overview(
 @router.get("/sources")
 async def get_datasource_list(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取数据源列表"""
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     sources = await DataSourceService.get_list(db, user.user_id, is_admin)
     return success(data=[
         {
@@ -81,7 +84,7 @@ async def get_datasource_list(
 async def get_datasource(
     source_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取数据源详情"""
     source = await DataSourceService.get_by_id(db, source_id)
@@ -89,7 +92,7 @@ async def get_datasource(
         raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该数据源")
 
@@ -114,7 +117,7 @@ async def get_datasource(
 async def create_datasource(
     data: DataSourceCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:source:manage"))
+    user: TokenData = Depends(require_permission("datalens.source.manage"))
 ):
     """创建数据源"""
     source = await DataSourceService.create(db, data, user.user_id)
@@ -127,7 +130,7 @@ async def update_datasource(
     source_id: int,
     data: DataSourceUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:source:manage"))
+    user: TokenData = Depends(require_permission("datalens.source.manage"))
 ):
     """更新数据源"""
     source = await DataSourceService.get_by_id(db, source_id)
@@ -135,7 +138,7 @@ async def update_datasource(
         raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权修改该数据源")
 
@@ -148,7 +151,7 @@ async def update_datasource(
 async def delete_datasource(
     source_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:source:manage"))
+    user: TokenData = Depends(require_permission("datalens.source.manage"))
 ):
     """删除数据源"""
     source = await DataSourceService.get_by_id(db, source_id)
@@ -156,7 +159,7 @@ async def delete_datasource(
         raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权删除该数据源")
 
@@ -168,7 +171,7 @@ async def delete_datasource(
 @router.post("/sources/test")
 async def test_datasource(
     data: DataSourceTestRequest,
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.source.manage"))
 ):
     """测试数据源连接"""
     # 根据类型选择配置
@@ -190,7 +193,7 @@ async def test_datasource(
 async def get_source_tables(
     source_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取数据源的表列表"""
     source = await DataSourceService.get_by_id(db, source_id)
@@ -198,7 +201,7 @@ async def get_source_tables(
         raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该数据源")
 
@@ -211,7 +214,7 @@ async def get_source_columns(
     source_id: int,
     table_name: str = Query(..., description="表名"),
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取数据源指定表的字段列表"""
     source = await DataSourceService.get_by_id(db, source_id)
@@ -219,7 +222,7 @@ async def get_source_columns(
         raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该数据源")
 
@@ -235,7 +238,7 @@ async def get_source_columns(
 @router.get("/categories")
 async def get_category_list(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:view"))
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取分类列表"""
     categories = await CategoryService.get_list(db)
@@ -246,7 +249,7 @@ async def get_category_list(
 async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:create"))
+    user: TokenData = Depends(require_permission("datalens.create"))
 ):
     """创建分类"""
     category = await CategoryService.create(db, data)
@@ -259,7 +262,7 @@ async def update_category(
     category_id: int,
     data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:update"))
+    user: TokenData = Depends(require_permission("datalens.update"))
 ):
     """更新分类"""
     category = await CategoryService.get_by_id(db, category_id)
@@ -275,7 +278,7 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:delete"))
+    user: TokenData = Depends(require_permission("datalens.delete"))
 ):
     """删除分类"""
     category = await CategoryService.get_by_id(db, category_id)
@@ -294,10 +297,10 @@ async def get_view_list(
     category_id: Optional[int] = Query(None, description="分类ID筛选"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:view"))
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取视图列表"""
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     views = await ViewService.get_list(db, user.user_id, is_admin, category_id, search)
     return success(data=views)
 
@@ -306,7 +309,7 @@ async def get_view_list(
 async def get_view(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取视图详情"""
     view = await ViewService.get_by_id(db, view_id)
@@ -314,7 +317,7 @@ async def get_view(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该视图")
 
@@ -348,7 +351,7 @@ async def get_view(
 async def create_view(
     data: ViewCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:create"))
+    user: TokenData = Depends(require_permission("datalens.create"))
 ):
     """创建视图"""
     view = await ViewService.create(db, data, user.user_id)
@@ -361,7 +364,7 @@ async def update_view(
     view_id: int,
     data: ViewUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:update"))
+    user: TokenData = Depends(require_permission("datalens.update"))
 ):
     """更新视图"""
     view = await ViewService.get_by_id(db, view_id)
@@ -369,7 +372,7 @@ async def update_view(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权修改该视图")
 
@@ -382,7 +385,7 @@ async def update_view(
 async def delete_view(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("datalens:delete"))
+    user: TokenData = Depends(require_permission("datalens.delete"))
 ):
     """删除视图"""
     view = await ViewService.get_by_id(db, view_id)
@@ -390,7 +393,7 @@ async def delete_view(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权删除该视图")
 
@@ -404,7 +407,7 @@ async def get_view_data(
     view_id: int,
     request: ViewDataRequest,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     获取视图数据
@@ -415,7 +418,7 @@ async def get_view_data(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该视图")
 
@@ -433,8 +436,17 @@ async def get_view_data(
         # 执行查询
         result = await ViewService.execute_query(db, view, request)
         return success(data=result.model_dump())
+    except QueryTimeoutError as e:
+        logger.error(f"查询超时: {e}")
+        return error(message=f"查询超时，请稍后重试或减少查询数据量")
+    except QueryExecutionError as e:
+        logger.error(f"查询执行失败: {e}")
+        return error(message=f"查询失败: {str(e)}")
+    except DataSourceConnectionError as e:
+        logger.error(f"数据源连接失败: {e}")
+        return error(message=f"数据源连接失败，请检查数据源配置")
     except Exception as e:
-        logger.error(f"查询视图数据失败: {e}")
+        logger.error(f"查询视图数据失败: {e}", exc_info=True)
         return error(message=f"查询失败: {str(e)}")
 
 
@@ -442,7 +454,7 @@ async def get_view_data(
 async def export_view_data(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     流式导出视图数据为 CSV
@@ -456,7 +468,7 @@ async def export_view_data(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该视图")
 
@@ -487,7 +499,7 @@ async def export_view_data(
 async def preview_view_data(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     预览视图数据
@@ -498,7 +510,7 @@ async def preview_view_data(
         raise HTTPException(status_code=404, detail="视图不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
         raise HTTPException(status_code=403, detail="无权访问该视图")
 
@@ -506,8 +518,17 @@ async def preview_view_data(
         request = ViewDataRequest(page=1, page_size=10)
         result = await ViewService.execute_query(db, view, request)
         return success(data=result.model_dump())
+    except QueryTimeoutError as e:
+        logger.error(f"预览查询超时: {e}")
+        return error(message=f"预览超时，请稍后重试")
+    except QueryExecutionError as e:
+        logger.error(f"预览查询执行失败: {e}")
+        return error(message=f"预览失败: {str(e)}")
+    except DataSourceConnectionError as e:
+        logger.error(f"数据源连接失败: {e}")
+        return error(message=f"数据源连接失败，请检查数据源配置")
     except Exception as e:
-        logger.error(f"预览视图数据失败: {e}")
+        logger.error(f"预览视图数据失败: {e}", exc_info=True)
         return error(message=f"预览失败: {str(e)}")
 
 
@@ -515,7 +536,7 @@ async def preview_view_data(
 async def execute_preview(
     data: PreviewRequest,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     执行预览查询（不保存）
@@ -529,7 +550,7 @@ async def execute_preview(
          raise HTTPException(status_code=404, detail="数据源不存在")
 
     # 权限检查
-    is_admin = user.role == "admin" or "datalens:admin" in user.permissions
+    is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     
     try:
         # 构造分页请求 (preview 只取前10条)
@@ -543,6 +564,15 @@ async def execute_preview(
         )
         logger.info(f"预览执行成功，返回 {len(result.data)} 条数据")
         return success(data=result.model_dump())
+    except QueryTimeoutError as e:
+        logger.error(f"预览查询超时: {e}")
+        return error(message=f"查询超时，请稍后重试或减少查询数据量")
+    except QueryExecutionError as e:
+        logger.error(f"预览查询执行失败: {e}")
+        return error(message=f"执行失败: {str(e)}")
+    except DataSourceConnectionError as e:
+        logger.error(f"数据源连接失败: {e}")
+        return error(message=f"数据源连接失败，请检查数据源配置")
     except Exception as e:
         logger.error(f"执行预览失败: {e}\n{traceback.format_exc()}")
         return error(message=f"执行失败: {str(e)}")
@@ -555,7 +585,7 @@ async def execute_preview(
 @router.get("/favorites")
 async def get_favorites(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取我的收藏列表"""
     favorites = await FavoriteService.get_list(db, user.user_id)
@@ -566,7 +596,7 @@ async def get_favorites(
 async def add_favorite(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """添加收藏"""
     # 检查视图是否存在
@@ -585,7 +615,7 @@ async def add_favorite(
 async def remove_favorite(
     view_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """取消收藏"""
     await FavoriteService.remove(db, user.user_id, view_id)
@@ -598,7 +628,7 @@ async def remove_favorite(
 async def get_recent_views(
     limit: int = Query(10, ge=1, le=50, description="返回数量"),
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """获取最近访问的视图"""
     recent = await RecentViewService.get_list(db, user.user_id, limit)
@@ -610,7 +640,7 @@ async def get_recent_views(
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    user: TokenData = Depends(require_permission("datalens:source:manage"))
+    user: TokenData = Depends(require_permission("datalens.source.manage"))
 ):
     """
     上传 CSV/Excel 文件
@@ -659,7 +689,7 @@ async def upload_file(
 async def get_lens_image(
     path: str = Query(..., description="图片文件路径或URL"),
     base_path: str = Query(None, description="可选：图片基础根目录（覆盖全局配置）"),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("datalens.view"))
 ):
     """
     图片代理接口

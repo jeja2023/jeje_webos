@@ -86,7 +86,7 @@ class VersionedAPIRouter(APIRouter):
             result = await original_endpoint(*args, **kwargs)
             
             # 添加版本响应头（如果有响应对象）
-            # 注意：这里简化处理，实际使用中间件更合适
+            # 这里简化处理，实际使用中间件更合适
             return result
         
         super().add_api_route(path, versioned_endpoint, **kwargs)

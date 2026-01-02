@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin, require_manager, decode_token
 from core.config import get_settings, reload_settings
-from core.loader import get_module_loader, CORE_MODULES, SYSTEM_MODULES
+from core.loader import get_module_loader, CORE_MODULES
 from core.rate_limit import get_rate_limiter
 from core.csrf import generate_csrf_token
 from core.changelog import get_changelog, get_latest_version, get_version_changes
@@ -553,10 +553,6 @@ async def delete_existing_module(
     """
     if module_id in ["system", "user", "auth", "boot"]:
         raise HTTPException(status_code=400, detail="核心模块不可删除")
-    
-    # 安全检查：系统模块不可删除
-    if module_id in SYSTEM_MODULES:
-        raise HTTPException(status_code=400, detail="系统应用不可删除（可以禁用但不能删除）")
     
     # 安全检查：已安装的模块不能删除（无论启用还是禁用）
     loader = get_module_loader()

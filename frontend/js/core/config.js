@@ -25,7 +25,7 @@ const Config = {
         pageSizes: [10, 20, 50, 100]
     },
 
-    // 调试模式（生产环境默认关闭，可通过 URL 参数 ?debug=1 临时开启）
+    // 调试模式，生产环境默认关闭，可通过 URL 参数 ?debug=1 临时开启
     debug: new URLSearchParams(window.location.search).get('debug') === '1',
 
     // 日志

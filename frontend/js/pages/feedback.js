@@ -138,7 +138,8 @@ class FeedbackListPage extends Component {
                         <h1 class="page-title">我的反馈</h1>
                         <p class="page-desc">共 ${total} 条反馈</p>
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('feedback', '反馈') : ''}
                         <button class="btn btn-primary" onclick="Router.push('/feedback/create')">➕ 提交反馈</button>
                         <button class="btn btn-ghost" onclick="Router.push('/feedback/list')">管理视图</button>
                     </div>
@@ -238,10 +239,18 @@ class FeedbackListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

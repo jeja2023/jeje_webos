@@ -13,7 +13,7 @@ from .role import (
 from .storage import FileInfo, FileUploadResponse, FileListResponse
 from .backup import BackupInfo, BackupCreate, BackupRestore, BackupListResponse
 from .monitor import SystemInfo, ProcessInfo, MetricInfo
-from .message import MessageInfo, MessageCreate, MessageUpdate, MessageListResponse
+from .notification import NotificationInfo, NotificationCreate, NotificationUpdate, NotificationListResponse
 from .announcement import AnnouncementInfo, AnnouncementCreate, AnnouncementUpdate, AnnouncementListItem
 from .response import ApiResponse, PageData, ApiPageResponse, success, error, paginate
 
@@ -36,7 +36,7 @@ __all__ = [
     # 系统监控
     "SystemInfo", "ProcessInfo", "MetricInfo",
     # 通知系统
-    "MessageInfo", "MessageCreate", "MessageUpdate", "MessageListResponse",
+    "NotificationInfo", "NotificationCreate", "NotificationUpdate", "NotificationListResponse",
     # 公告系统
     "AnnouncementInfo", "AnnouncementCreate", "AnnouncementUpdate", "AnnouncementListItem",
     # 响应

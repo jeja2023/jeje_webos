@@ -217,6 +217,11 @@ class DataLensPage extends Component {
     }
 
     bindEvents() {
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
+        
         // Hub 侧边栏分类点击
         this.delegate('click', '.lens-sidebar-item', (e, el) => {
             const category = el.dataset.category;
@@ -409,7 +414,8 @@ class DataLensPage extends Component {
                     <span class="lens-tab-icon">🏠</span>
                     <span class="lens-tab-name" style="font-weight: 600; font-size: 15px;">数据透镜</span>
                 </div>
-                <div class="lens-header-actions">
+                <div class="lens-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('datalens', '数据透镜') : ''}
                     ${this._hasPermission('datalens:create') ? `
                         <button class="lens-btn lens-btn-primary" id="lens-create-view" style="padding: 6px 16px; border-radius: 8px;">
                             <span>➕ 新建视图</span>

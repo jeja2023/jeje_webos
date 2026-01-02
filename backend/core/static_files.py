@@ -39,7 +39,7 @@ class CachedStaticFiles(StaticFiles):
         '.ico': 2592000,
         '.webp': 2592000,
         
-        # CSS/JS - 实时更新（开发环境）
+        # CSS/JS - 实时更新
         '.css': 0,
         '.js': 0,
         

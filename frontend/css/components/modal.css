@@ -84,8 +84,14 @@
 
 .modal-body {
     padding: var(--spacing-lg);
-    max-height: 60vh;
+    max-height: 70vh;
     overflow-y: auto;
+}
+
+/* 帮助内容不需要内部滚动条 */
+.modal-body .module-help-content {
+    overflow: visible;
+    max-height: none;
 }
 
 .modal-footer {

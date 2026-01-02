@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import get_current_user, TokenData
+from core.security import get_current_user, TokenData, require_permission
 from schemas import success, paginate
 
 from .notes_schemas import (
@@ -32,7 +32,7 @@ def get_service(db: AsyncSession, user: TokenData) -> NotesService:
 async def list_folders(
     parent_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取文件夹列表"""
     service = get_service(db, user)
@@ -43,7 +43,7 @@ async def list_folders(
 @router.get("/folders/tree")
 async def get_folder_tree(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取完整文件夹树"""
     service = get_service(db, user)
@@ -55,7 +55,7 @@ async def get_folder_tree(
 async def get_folder(
     folder_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取文件夹详情"""
     service = get_service(db, user)
@@ -69,7 +69,7 @@ async def get_folder(
 async def create_folder(
     data: FolderCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.create"))
 ):
     """创建文件夹"""
     service = get_service(db, user)
@@ -85,7 +85,7 @@ async def update_folder(
     folder_id: int,
     data: FolderUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """更新文件夹"""
     service = get_service(db, user)
@@ -102,7 +102,7 @@ async def update_folder(
 async def delete_folder(
     folder_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.delete"))
 ):
     """删除文件夹（级联删除）"""
     service = get_service(db, user)
@@ -122,7 +122,7 @@ async def list_notes(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取笔记列表"""
     service = get_service(db, user)
@@ -135,11 +135,11 @@ async def list_notes(
         size=size
     )
     
-    # 现在的 notes 对象已经包含了预加载的 tags
+    # notes 对象已包含预加载的 tags
     items = []
     for note in notes:
         note_dict = NoteListItem.model_validate(note).model_dump()
-        # 直接使用预加载的 tags 关系，无需 await service.get_note_tags
+        # 使用预加载的 tags 关系
         note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in note.tags]
         # 生成摘要
         note_dict["summary"] = note.content[:100] if note.content else ""
@@ -153,7 +153,7 @@ async def list_starred_notes(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取收藏的笔记"""
     service = get_service(db, user)
@@ -173,7 +173,7 @@ async def list_starred_notes(
 async def get_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取笔记详情"""
     service = get_service(db, user)
@@ -191,7 +191,7 @@ async def get_note(
 async def create_note(
     data: NoteCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.create"))
 ):
     """创建笔记"""
     service = get_service(db, user)
@@ -207,7 +207,7 @@ async def update_note(
     note_id: int,
     data: NoteUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """更新笔记"""
     service = get_service(db, user)
@@ -225,7 +225,7 @@ async def move_note(
     note_id: int,
     data: NoteMove,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """移动笔记到指定文件夹"""
     service = get_service(db, user)
@@ -242,7 +242,7 @@ async def move_note(
 async def toggle_star(
     note_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """切换收藏状态"""
     service = get_service(db, user)
@@ -259,7 +259,7 @@ async def toggle_star(
 async def toggle_pin(
     note_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """切换置顶状态"""
     service = get_service(db, user)
@@ -276,7 +276,7 @@ async def toggle_pin(
 async def delete_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.delete"))
 ):
     """删除笔记"""
     service = get_service(db, user)
@@ -290,7 +290,7 @@ async def delete_note(
 @router.get("/tags")
 async def list_tags(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取标签列表"""
     service = get_service(db, user)
@@ -302,7 +302,7 @@ async def list_tags(
 async def create_tag(
     data: TagCreate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.create"))
 ):
     """创建标签"""
     service = get_service(db, user)
@@ -315,7 +315,7 @@ async def update_tag(
     tag_id: int,
     data: TagUpdate,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.update"))
 ):
     """更新标签"""
     service = get_service(db, user)
@@ -329,7 +329,7 @@ async def update_tag(
 async def delete_tag(
     tag_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.delete"))
 ):
     """删除标签"""
     service = get_service(db, user)
@@ -343,7 +343,7 @@ async def delete_tag(
 @router.get("/stats")
 async def get_stats(
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("notes.read"))
 ):
     """获取笔记统计"""
     service = get_service(db, user)

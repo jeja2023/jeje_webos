@@ -59,7 +59,7 @@ const App = {
 
     async updateUnreadCount() {
         try {
-            const res = await MessageApi.unreadCount();
+            const res = await NotificationApi.unreadCount();
             const count = res.data?.count || res.count || 0;
             Store.set('unreadNotifications', count);
         } catch (e) {
@@ -111,7 +111,7 @@ const App = {
         };
 
         Router.notFound = (path) => {
-            // 404 使用弹窗提示，不打开窗口
+            // 404 使用弹窗，不打开窗口
             // 或者打开一个 404 窗口
             alert(`Page Not Found: ${path}`);
         };
@@ -194,7 +194,7 @@ const App = {
             '/users/list': { auth: true, handler: wrap(UserListPage, '用户管理') },
             '/users/pending': { auth: true, handler: wrap(PendingUsersPage, '待审核用户') },
 
-            '/message/list': { auth: true, handler: wrap(MessagesPage, '信息中心') },
+            '/notifications': { auth: true, handler: wrap(NotificationsPage, '通知中心') },
 
             '/system/settings': { auth: true, handler: wrap(SystemSettingsPage, '系统设置') },
             '/system/audit': { auth: true, handler: wrap(AuditLogsPage, '系统日志') },

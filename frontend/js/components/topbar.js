@@ -71,16 +71,16 @@ class TopBarComponent extends Component {
         const viewAllBtn = this.container?.querySelector('#viewAllBtn');
         if (!contentList) return;
 
-        // Show Loading
+        // 显示加载中
         contentList.innerHTML = '<div class="loading-spinner"></div>';
 
         try {
             let list = [];
             if (tab === 'message') {
                 // 只获取未读消息
-                const res = await MessageApi.list({ page: 1, size: 5, is_read: false });
+                const res = await NotificationApi.list({ page: 1, size: 5, is_read: false });
                 list = res.data.items || [];
-                if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/message/list');
+                if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/notifications');
             } else if (tab === 'announcement') {
                 const res = await AnnouncementApi.getPublished(5);
                 list = res.data || [];
@@ -186,6 +186,7 @@ class TopBarComponent extends Component {
                                 <div class="menu-user-role">${user.role === 'admin' ? '系统管理员' : '普通用户'}</div>
                             </div>
                             <div class="menu-item" onclick="Router.push('/profile')">👤 个人中心</div>
+                            <div class="menu-item" onclick="Router.push('/theme/editor')">🎨 系统主题</div>
                             <div class="menu-item" onclick="Router.push('/help')">❓ 帮助中心</div>
                             <div class="menu-divider"></div>
                             <div class="menu-item danger" id="btnLogout">🚪 退出登录</div>
@@ -209,7 +210,7 @@ class TopBarComponent extends Component {
             else if (item.type === 'info' && item.sender_id === item.user_id) { icon = '🔔'; }
 
             return `
-                <div class="msg-item ${item.is_read ? '' : 'unread'}" onclick="Router.push('/message/list')">
+                <div class="msg-item ${item.is_read ? '' : 'unread'}" onclick="Router.push('/notifications')">
                     <div class="msg-icon" style="${iconColor}">${icon}</div>
                     <div class="msg-body">
                         <div class="msg-title">${Utils.escapeHtml(item.title)}</div>
@@ -266,7 +267,7 @@ class TopBarComponent extends Component {
         this.unbindEvents();
 
         if (this.container) {
-            // Brand/Logo Click
+            // 品牌/Logo 点击
             const brandPill = this.container.querySelector('#brandPill');
             if (brandPill) {
                 brandPill.onclick = () => this.showAboutModal();
@@ -324,9 +325,9 @@ class TopBarComponent extends Component {
                             let list = [];
                             if (tabName === 'message') {
                                 // 只获取未读消息
-                                const res = await MessageApi.list({ page: 1, size: 5, is_read: false });
+                                const res = await NotificationApi.list({ page: 1, size: 5, is_read: false });
                                 list = res.data.items || [];
-                                if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/message/list');
+                                if (viewAllBtn) viewAllBtn.onclick = () => Router.push('/notifications');
                             } else if (tabName === 'announcement') {
                                 const res = await AnnouncementApi.getPublished(5);
                                 list = res.data || [];
@@ -357,13 +358,13 @@ class TopBarComponent extends Component {
                     };
                 });
 
-                // Initial View All Btn logic
+                // 初始化查看全部按钮逻辑
                 const viewBtn = messageDropdown.querySelector('#viewAllBtn');
                 if (viewBtn) {
                     viewBtn.onclick = () => {
                         const tab = this.state.msgActiveTab;
                         // ... logic
-                        if (tab === 'message') Router.push('/message/list');
+                        if (tab === 'message') Router.push('/notifications');
                         else if (tab === 'announcement') {
                             const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
                             if (isAdmin) Router.push('/announcement/list');
@@ -438,25 +439,25 @@ class TopBarComponent extends Component {
         const displayVersion = Store.get('version') || '';
         const browser = this.getBrowserInfo();
 
-        Modal.show({
+        const modalResult = Modal.show({
             title: '关于本机',
             width: '400px',
             content: `
-                <div style="text-align: center; padding: 20px 0;">
-                    <div style="font-size: 48px; margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
-                    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color:var(--color-text-primary);">${displayAppName}</h2>
-                    <p style="color: var(--color-text-secondary); margin: 5px 0 25px;">Version ${displayVersion}</p>
+                <div style="text-align: center; padding: 10px 0;">
+                    <div style="font-size: 40px; margin-bottom: 12px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
+                    <h2 style="margin: 0; font-size: 22px; font-weight: 600; color:var(--color-text-primary);">${displayAppName}</h2>
+                    <p style="color: var(--color-text-secondary); margin: 4px 0 16px; font-size: 14px;">Version ${displayVersion}</p>
                     
-                    <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 15px 20px; text-align: left; font-size: 13px; line-height: 2;">
-                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                    <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 12px 16px; text-align: left; font-size: 13px; line-height: 1.8;">
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 4px; margin-bottom: 4px;">
                             <span style="color: var(--color-text-secondary);">运行环境</span>
                             <span style="font-family: monospace;">FastAPI + Vanilla JS</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 4px; margin-bottom: 4px;">
                             <span style="color: var(--color-text-secondary);">浏览器</span>
                             <span>${browser}</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                        <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 4px; margin-bottom: 4px;">
                             <span style="color: var(--color-text-secondary);">分辨率</span>
                             <span>${window.screen.width} x ${window.screen.height}</span>
                         </div>
@@ -466,7 +467,7 @@ class TopBarComponent extends Component {
                         </div>
                     </div>
                     
-                    <p style="margin-top: 25px; font-size: 11px; color: var(--color-text-secondary); opacity: 0.7;">
+                    <p style="margin-top: 16px; font-size: 11px; color: var(--color-text-secondary); opacity: 0.7;">
                         Copyright © 2025 JeJe WebOS Team.<br>All rights reserved.
                     </p>
                 </div>
@@ -480,6 +481,15 @@ class TopBarComponent extends Component {
             `,
             footer: false
         });
+        
+        // 禁用"关于本机"对话框的滚动条
+        if (modalResult && modalResult.overlay) {
+            const modalBody = modalResult.overlay.querySelector('.modal-body');
+            if (modalBody) {
+                modalBody.style.maxHeight = 'none';
+                modalBody.style.overflowY = 'visible';
+            }
+        }
     }
 
     getBrowserInfo() {

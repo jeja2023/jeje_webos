@@ -130,12 +130,17 @@ class TransferPage extends Component {
         const { currentView, stats } = this.state;
         return `
             <div class="transfer-page">
-                <div class="transfer-header">
-                    <div class="header-title"><i class="fas fa-bolt"></i><span>快传</span></div>
-                    <div class="header-stats">
-                        <span><i class="fas fa-arrow-up"></i> 发送 ${stats.total_sent}</span>
-                        <span><i class="fas fa-arrow-down"></i> 接收 ${stats.total_received}</span>
-                        <span><i class="fas fa-check-circle"></i> ${stats.success_rate}%</span>
+                <div class="transfer-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="header-title"><i class="fas fa-bolt"></i><span>快传</span></div>
+                        <div class="header-stats">
+                            <span><i class="fas fa-arrow-up"></i> 发送 ${stats.total_sent}</span>
+                            <span><i class="fas fa-arrow-down"></i> 接收 ${stats.total_received}</span>
+                            <span><i class="fas fa-check-circle"></i> ${stats.success_rate}%</span>
+                        </div>
+                    </div>
+                    <div>
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('transfer', '快传') : ''}
                     </div>
                 </div>
                 <div class="transfer-tabs">
@@ -228,10 +233,18 @@ class TransferPage extends Component {
     afterMount() {
         this.init();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

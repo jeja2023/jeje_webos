@@ -150,7 +150,7 @@ async def list_my_posts(
     size: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(require_permission("blog.read"))
 ):
     """获取我的文章列表（管理员可查看所有文章）"""
     service = BlogService(db)
@@ -175,7 +175,8 @@ async def list_my_posts(
 @router.get("/posts/{post_id}")
 async def get_post(
     post_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("blog.read"))
 ):
     """获取文章详情"""
     service = BlogService(db)
@@ -199,7 +200,8 @@ async def get_post(
 @router.get("/posts/slug/{slug}")
 async def get_post_by_slug(
     slug: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("blog.read"))
 ):
     """通过slug获取文章"""
     service = BlogService(db)

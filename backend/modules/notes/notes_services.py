@@ -76,20 +76,30 @@ class NotesService:
             for row in count_result:
                 note_counts[row.folder_id] = row.count
         
-        # 构建树结构
+        # 构建树结构（优化：使用字典映射，O(n) 时间复杂度）
+        folder_map = {f.id: f for f in all_folders}
+        children_map = {}
+        
+        # 构建父子关系映射
+        for folder in all_folders:
+            parent_id = folder.parent_id
+            if parent_id not in children_map:
+                children_map[parent_id] = []
+            children_map[parent_id].append(folder)
+        
+        # 递归构建树节点
         def build_tree(parent_id: Optional[int]) -> List[FolderTree]:
             children = []
-            for folder in all_folders:
-                if folder.parent_id == parent_id:
-                    tree_node = FolderTree(
-                        id=folder.id,
-                        name=folder.name,
-                        parent_id=folder.parent_id,
-                        order=folder.order,
-                        children=build_tree(folder.id),
-                        note_count=note_counts.get(folder.id, 0)
-                    )
-                    children.append(tree_node)
+            for folder in children_map.get(parent_id, []):
+                tree_node = FolderTree(
+                    id=folder.id,
+                    name=folder.name,
+                    parent_id=folder.parent_id,
+                    order=folder.order,
+                    children=build_tree(folder.id),
+                    note_count=note_counts.get(folder.id, 0)
+                )
+                children.append(tree_node)
             return children
         
         return build_tree(None)
@@ -132,44 +142,108 @@ class NotesService:
                     raise ValueError("不能移动到子文件夹中")
         
         update_data = data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(folder, key, value)
+        if not update_data:
+            return folder
         
+        # 使用直接更新
+        from sqlalchemy import update as sql_update
+        await self.db.execute(
+            sql_update(NotesFolder)
+            .where(
+                and_(
+                    NotesFolder.id == folder_id,
+                    NotesFolder.user_id == self.user_id
+                )
+            )
+            .values(**update_data)
+        )
         await self.db.commit()
-        await self.db.refresh(folder)
-        return folder
+        
+        # 返回更新后的文件夹
+        return await self.get_folder(folder_id)
     
     async def _is_descendant(self, folder_id: int, ancestor_id: int) -> bool:
-        """检查folder_id是否是ancestor_id的后代"""
-        folder = await self.get_folder(folder_id)
-        while folder and folder.parent_id:
-            if folder.parent_id == ancestor_id:
+        """检查folder_id是否是ancestor_id的后代（优化：使用单次查询获取路径）"""
+        # 优化：一次性获取所有父级文件夹ID，避免多次查询
+        folder_ids = set()
+        current_id = folder_id
+        
+        while current_id:
+            result = await self.db.execute(
+                select(NotesFolder.parent_id).where(
+                    and_(
+                        NotesFolder.id == current_id,
+                        NotesFolder.user_id == self.user_id
+                    )
+                )
+            )
+            parent_id = result.scalar_one_or_none()
+            
+            if not parent_id:
+                break
+            
+            if parent_id == ancestor_id:
                 return True
-            folder = await self.get_folder(folder.parent_id)
+            
+            # 防止循环引用
+            if parent_id in folder_ids:
+                break
+            
+            folder_ids.add(parent_id)
+            current_id = parent_id
+        
         return False
     
     async def delete_folder(self, folder_id: int) -> bool:
-        """删除文件夹（级联删除子文件夹和笔记）"""
+        """删除文件夹（级联删除子文件夹和笔记）- 优化：批量删除"""
         folder = await self.get_folder(folder_id)
         if not folder:
             return False
         
-        # 删除文件夹内的笔记
+        # 获取所有子文件夹ID（递归获取所有后代ID）
+        async def get_all_descendant_ids(parent_id: int) -> List[int]:
+            """递归获取所有后代文件夹ID"""
+            all_ids = [parent_id]
+            current_level = [parent_id]
+            
+            while current_level:
+                result = await self.db.execute(
+                    select(NotesFolder.id).where(
+                        and_(
+                            NotesFolder.parent_id.in_(current_level),
+                            NotesFolder.user_id == self.user_id
+                        )
+                    )
+                )
+                next_level = [row[0] for row in result.all()]
+                all_ids.extend(next_level)
+                current_level = next_level
+            
+            return all_ids
+        
+        descendant_ids = await get_all_descendant_ids(folder_id)
+        
+        # 批量删除所有子文件夹内的笔记
         await self.db.execute(
             delete(NotesNote).where(
                 and_(
-                    NotesNote.folder_id == folder_id,
+                    NotesNote.folder_id.in_(descendant_ids),
                     NotesNote.user_id == self.user_id
                 )
             )
         )
         
-        # 递归删除子文件夹
-        children = await self.get_folders(folder_id)
-        for child in children:
-            await self.delete_folder(child.id)
+        # 批量删除所有子文件夹（按逆序删除，先删除子节点）
+        descendant_ids.reverse()
+        await self.db.execute(
+            delete(NotesFolder).where(
+                and_(
+                    NotesFolder.id.in_(descendant_ids),
+                    NotesFolder.user_id == self.user_id
+                )
+            )
+        )
         
-        await self.db.delete(folder)
         await self.db.commit()
         return True
     
@@ -205,11 +279,14 @@ class NotesService:
             query = query.where(keyword_filter)
             count_query = count_query.where(keyword_filter)
         
-        # 标签筛选
+        # 标签筛选（优化：使用 JOIN 代替子查询，性能更好）
         if tag_id:
-            tag_subquery = select(NotesNoteTag.note_id).where(NotesNoteTag.tag_id == tag_id)
-            query = query.where(NotesNote.id.in_(tag_subquery))
-            count_query = count_query.where(NotesNote.id.in_(tag_subquery))
+            query = query.join(NotesNoteTag, NotesNote.id == NotesNoteTag.note_id).where(
+                NotesNoteTag.tag_id == tag_id
+            )
+            count_query = count_query.join(NotesNoteTag, NotesNote.id == NotesNoteTag.note_id).where(
+                NotesNoteTag.tag_id == tag_id
+            )
         
         # 排序：置顶优先，然后按更新时间
         query = query.order_by(
@@ -257,15 +334,26 @@ class NotesService:
         await self.db.commit()
         await self.db.refresh(note)
         
-        # 关联标签
+        # 批量关联标签（优化：先验证所有标签，再批量添加）
         if tags:
-            for tag_id in tags:
-                # 验证标签归属
-                tag = await self.get_tag(tag_id)
-                if tag:
-                    note_tag = NotesNoteTag(note_id=note.id, tag_id=tag_id)
-                    self.db.add(note_tag)
-            await self.db.commit()
+            # 批量验证标签归属
+            valid_tag_ids = []
+            if tags:
+                tag_result = await self.db.execute(
+                    select(NotesTag.id).where(
+                        and_(
+                            NotesTag.id.in_(tags),
+                            NotesTag.user_id == self.user_id
+                        )
+                    )
+                )
+                valid_tag_ids = [row[0] for row in tag_result.all()]
+            
+            # 批量添加标签关联
+            if valid_tag_ids:
+                note_tags = [NotesNoteTag(note_id=note.id, tag_id=tag_id) for tag_id in valid_tag_ids]
+                self.db.add_all(note_tags)
+                await self.db.commit()
         
         return note
     
@@ -284,38 +372,64 @@ class NotesService:
         tags = data.tags
         update_data = data.model_dump(exclude={"tags"}, exclude_unset=True)
         
-        for key, value in update_data.items():
-            setattr(note, key, value)
+        # 如果有字段需要更新，使用直接更新
+        if update_data:
+            from sqlalchemy import update as sql_update
+            await self.db.execute(
+                sql_update(NotesNote)
+                .where(
+                    and_(
+                        NotesNote.id == note_id,
+                        NotesNote.user_id == self.user_id
+                    )
+                )
+                .values(**update_data)
+            )
         
-        # 更新标签
+        # 批量更新标签（优化：先验证再批量添加）
         if tags is not None:
             await self.db.execute(
                 delete(NotesNoteTag).where(NotesNoteTag.note_id == note_id)
             )
-            for tag_id in tags:
-                tag = await self.get_tag(tag_id)
-                if tag:
-                    note_tag = NotesNoteTag(note_id=note.id, tag_id=tag_id)
-                    self.db.add(note_tag)
+            if tags:  # 只有当标签列表不为空时才验证和添加
+                # 批量验证标签归属
+                tag_result = await self.db.execute(
+                    select(NotesTag.id).where(
+                        and_(
+                            NotesTag.id.in_(tags),
+                            NotesTag.user_id == self.user_id
+                        )
+                    )
+                )
+                valid_tag_ids = [row[0] for row in tag_result.all()]
+                
+                # 批量添加标签关联
+                if valid_tag_ids:
+                    note_tags = [NotesNoteTag(note_id=note_id, tag_id=tag_id) for tag_id in valid_tag_ids]
+                    self.db.add_all(note_tags)
         
         await self.db.commit()
-        await self.db.refresh(note)
-        return note
+        # 返回更新后的笔记
+        return await self.get_note(note_id)
     
     async def delete_note(self, note_id: int) -> bool:
-        """删除笔记"""
-        note = await self.get_note(note_id)
-        if not note:
-            return False
-        
-        # 删除标签关联
+        """删除笔记（优化：直接删除，避免先查询）"""
+        # 先删除标签关联
         await self.db.execute(
             delete(NotesNoteTag).where(NotesNoteTag.note_id == note_id)
         )
-        
-        await self.db.delete(note)
+        # 再删除笔记
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(NotesNote).where(
+                and_(
+                    NotesNote.id == note_id,
+                    NotesNote.user_id == self.user_id
+                )
+            )
+        )
         await self.db.commit()
-        return True
+        return result.rowcount > 0
     
     async def move_note(self, note_id: int, folder_id: Optional[int]) -> Optional[NotesNote]:
         """移动笔记到指定文件夹"""
@@ -391,19 +505,23 @@ class NotesService:
         return tag
     
     async def delete_tag(self, tag_id: int) -> bool:
-        """删除标签"""
-        tag = await self.get_tag(tag_id)
-        if not tag:
-            return False
-        
-        # 删除关联
+        """删除标签（优化：直接删除，避免先查询）"""
+        # 先删除关联
         await self.db.execute(
             delete(NotesNoteTag).where(NotesNoteTag.tag_id == tag_id)
         )
-        
-        await self.db.delete(tag)
+        # 再删除标签
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(NotesTag).where(
+                and_(
+                    NotesTag.id == tag_id,
+                    NotesTag.user_id == self.user_id
+                )
+            )
+        )
         await self.db.commit()
-        return True
+        return result.rowcount > 0
     
     # ============ 统计 ============
     

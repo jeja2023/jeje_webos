@@ -108,7 +108,7 @@
 }
 
 /* 浅色模式适配 */
-:root.theme-light #brandPill[data-tooltip]::after {
+:root.theme-sunrise #brandPill[data-tooltip]::after {
     background: rgba(255, 255, 255, 0.85);
     color: #333;
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -340,21 +340,21 @@
 }
 
 /* 浅色主题覆盖 */
-:root.theme-light .brand-title {
+:root.theme-sunrise .brand-title {
     color: rgba(0, 0, 0, 0.85);
     text-shadow: none;
 }
 
-:root.theme-light .topbar-text-btn {
+:root.theme-sunrise .topbar-text-btn {
     color: rgba(0, 0, 0, 0.8);
 }
 
-:root.theme-light .topbar-text-btn:hover {
+:root.theme-sunrise .topbar-text-btn:hover {
     background: rgba(0, 0, 0, 0.05);
     color: black;
 }
 
-:root.theme-light .status-pill {
+:root.theme-sunrise .status-pill {
     /* 深色玻璃/毛玻璃效果 */
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%);
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -365,40 +365,40 @@
         inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
-:root.theme-light .status-pill:hover {
+:root.theme-sunrise .status-pill:hover {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
     border-color: rgba(0, 0, 0, 0.15);
     transform: translateY(-2px) scale(1.02);
 }
 
-:root.theme-light .user-name-text {
+:root.theme-sunrise .user-name-text {
     color: rgba(0, 0, 0, 0.85);
 }
 
-:root.theme-light .user-menu-dropdown {
+:root.theme-sunrise .user-menu-dropdown {
     background: rgba(255, 255, 255, 0.85);
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
-:root.theme-light .menu-user-name {
+:root.theme-sunrise .menu-user-name {
     color: #111;
 }
 
-:root.theme-light .menu-user-role {
+:root.theme-sunrise .menu-user-role {
     color: rgba(0, 0, 0, 0.6);
 }
 
-:root.theme-light .menu-item {
+:root.theme-sunrise .menu-item {
     color: rgba(0, 0, 0, 0.8);
 }
 
-:root.theme-light .menu-item:hover {
+:root.theme-sunrise .menu-item:hover {
     background: rgba(0, 0, 0, 0.05);
     color: #000;
 }
 
-:root.theme-light .menu-divider {
+:root.theme-sunrise .menu-divider {
     background: rgba(0, 0, 0, 0.1);
 }
 

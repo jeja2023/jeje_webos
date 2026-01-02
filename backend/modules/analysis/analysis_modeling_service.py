@@ -113,6 +113,11 @@ class ModelingService:
             
             # 如果需要保存为新数据集
             if save_as:
+                # 检查结果行数，限制为 100 万行
+                max_rows = 1000000  # 100万行
+                if len(df) > max_rows:
+                    raise ValueError(f"查询结果过大（{len(df):,} 行），超过限制（{max_rows:,} 行）。请添加筛选条件或使用 LIMIT 子句限制结果数量。")
+                
                 table_name = f"user_sql_{save_as}_{int(pd.Timestamp.now().timestamp())}"
                 # 创建表并保存（使用原始 SQL，保存全量数据）
                 duckdb_instance.conn.execute(f"CREATE TABLE {table_name} AS {sql}")
@@ -139,7 +144,7 @@ class ModelingService:
             
             return result
         except Exception as e:
-            logger.error(f"SQL执行失败: {e}")
+            logger.error(f"SQL执行失败: {e}", exc_info=True)
             raise ValueError(f"SQL执行失败: {str(e)}")
 
     # --- 模型 CRUD ---

@@ -10,9 +10,11 @@
 
 import re
 import logging
+import asyncio
 from typing import Optional, Any, Dict
 from datetime import datetime, timezone
 from fastapi import Request
+from dataclasses import dataclass
 
 from core.database import async_session
 from models import SystemLog
@@ -177,7 +179,7 @@ class DataMasker:
             message
         )
         
-        # 脱敏 JWT Token（Bearer xxx...）
+        # 脱敏 JWT Token
         message = re.sub(
             r'Bearer\s+([A-Za-z0-9_-]+\.){2}[A-Za-z0-9_-]+',
             lambda m: f"Bearer {cls.mask_token(m.group().split(' ')[1])}",
@@ -241,8 +243,132 @@ class AuditAction:
     IMPORT = "import"
 
 
+@dataclass
+class AuditLogEntry:
+    """审计日志条目"""
+    module: str
+    action: str
+    message: str
+    user_id: Optional[int] = None
+    ip_address: Optional[str] = None
+    level: str = "INFO"
+    mask_sensitive: bool = True
+
+
 class AuditLogger:
-    """审计日志记录器"""
+    """审计日志记录器（支持批量写入）"""
+    
+    # 批量写入配置
+    _log_queue: list[AuditLogEntry] = []
+    _batch_size: int = 50
+    _flush_interval: float = 5.0  # 秒
+    _last_flush: float = 0.0
+    _lock: asyncio.Lock = None
+    _flush_task: Optional[asyncio.Task] = None
+    
+    @classmethod
+    def _get_lock(cls):
+        """获取锁（延迟初始化）"""
+        if cls._lock is None:
+            cls._lock = asyncio.Lock()
+        return cls._lock
+    
+    @classmethod
+    async def _flush_logs(cls):
+        """批量刷新日志到数据库"""
+        if not cls._log_queue:
+            return
+        
+        entries_to_flush = []
+        async with cls._get_lock():
+            if cls._log_queue:
+                entries_to_flush = cls._log_queue[:cls._batch_size]
+                cls._log_queue = cls._log_queue[cls._batch_size:]
+        
+        if not entries_to_flush:
+            return
+        
+        try:
+            async with async_session() as db:
+                log_entries = []
+                for entry in entries_to_flush:
+                    # 自动脱敏敏感信息
+                    message = entry.message
+                    if entry.mask_sensitive:
+                        message = data_masker.mask_message(message)
+                    
+                    log_entry = SystemLog(
+                        level=entry.level,
+                        module=entry.module,
+                        action=entry.action,
+                        message=message,
+                        user_id=entry.user_id,
+                        ip_address=entry.ip_address
+                    )
+                    log_entries.append(log_entry)
+                
+                db.add_all(log_entries)
+                await db.commit()
+                
+            logger.debug(f"批量写入 {len(entries_to_flush)} 条审计日志")
+        except Exception as e:
+            logger.error(f"批量写入审计日志失败: {e}")
+    
+    @classmethod
+    async def _auto_flush_loop(cls):
+        """自动刷新循环（后台任务）"""
+        while True:
+            try:
+                await asyncio.sleep(cls._flush_interval)
+                current_time = asyncio.get_event_loop().time()
+                
+                # 检查是否需要刷新
+                should_flush = False
+                async with cls._get_lock():
+                    if cls._log_queue:
+                        # 队列已满或超过刷新间隔
+                        if len(cls._log_queue) >= cls._batch_size:
+                            should_flush = True
+                        elif current_time - cls._last_flush >= cls._flush_interval:
+                            should_flush = True
+                
+                if should_flush:
+                    await cls._flush_logs()
+                    async with cls._get_lock():
+                        cls._last_flush = current_time
+            except asyncio.CancelledError:
+                # 任务被取消，执行最后一次刷新
+                await cls._flush_logs()
+                break
+            except Exception as e:
+                logger.error(f"自动刷新循环错误: {e}")
+                await asyncio.sleep(1)
+    
+    @classmethod
+    def start_auto_flush(cls):
+        """启动自动刷新任务"""
+        if cls._flush_task is None or cls._flush_task.done():
+            try:
+                loop = asyncio.get_event_loop()
+                cls._flush_task = loop.create_task(cls._auto_flush_loop())
+                logger.debug("审计日志自动刷新任务已启动")
+            except RuntimeError:
+                # 如果没有运行中的事件循环，跳过
+                pass
+    
+    @classmethod
+    async def stop_auto_flush(cls):
+        """停止自动刷新任务并刷新剩余日志"""
+        if cls._flush_task and not cls._flush_task.done():
+            cls._flush_task.cancel()
+            try:
+                await cls._flush_task
+            except asyncio.CancelledError:
+                pass
+        
+        # 刷新剩余日志
+        await cls._flush_logs()
+        logger.debug("审计日志自动刷新任务已停止")
     
     @staticmethod
     def get_client_ip(request: Request) -> str:
@@ -258,18 +384,20 @@ class AuditLogger:
         
         return request.client.host if request.client else "unknown"
     
-    @staticmethod
+    @classmethod
     async def log(
+        cls,
         module: str,
         action: str,
         message: str,
         user_id: Optional[int] = None,
         ip_address: Optional[str] = None,
         level: str = "INFO",
-        mask_sensitive: bool = True
+        mask_sensitive: bool = True,
+        immediate: bool = False
     ):
         """
-        记录审计日志
+        记录审计日志（支持批量写入）
         
         Args:
             module: 模块名称（如 auth, user, blog）
@@ -279,49 +407,74 @@ class AuditLogger:
             ip_address: 客户端 IP
             level: 日志级别（INFO, WARNING, ERROR）
             mask_sensitive: 是否自动脱敏敏感信息
+            immediate: 是否立即写入（跳过批量队列）
         """
-        try:
-            # 自动脱敏敏感信息
-            if mask_sensitive:
-                message = data_masker.mask_message(message)
-            
-            async with async_session() as db:
-                log_entry = SystemLog(
-                    level=level,
-                    module=module,
-                    action=action,
-                    message=message,
-                    user_id=user_id,
-                    ip_address=ip_address
-                )
-                db.add(log_entry)
-                await db.commit()
-                
-            logger.debug(f"[审计] {module}.{action}: {message}")
-        except Exception as e:
-            logger.error(f"记录审计日志失败: {e}")
-    
-    @staticmethod
-    async def log_request(
-        request: Request,
-        module: str,
-        action: str,
-        message: str,
-        user_id: Optional[int] = None,
-        level: str = "INFO"
-    ):
-        """
-        从请求对象记录审计日志
-        自动提取 IP 地址
-        """
-        ip_address = AuditLogger.get_client_ip(request)
-        await AuditLogger.log(
+        entry = AuditLogEntry(
             module=module,
             action=action,
             message=message,
             user_id=user_id,
             ip_address=ip_address,
-            level=level
+            level=level,
+            mask_sensitive=mask_sensitive
+        )
+        
+        if immediate:
+            # 立即写入（用于关键操作）
+            try:
+                async with async_session() as db:
+                    log_message = entry.message
+                    if entry.mask_sensitive:
+                        log_message = data_masker.mask_message(log_message)
+                    
+                    log_entry = SystemLog(
+                        level=entry.level,
+                        module=entry.module,
+                        action=entry.action,
+                        message=log_message,
+                        user_id=entry.user_id,
+                        ip_address=entry.ip_address
+                    )
+                    db.add(log_entry)
+                    await db.commit()
+                    
+                logger.debug(f"[审计] {module}.{action}: {message}")
+            except Exception as e:
+                logger.error(f"立即写入审计日志失败: {e}")
+        else:
+            # 加入批量队列
+            async with cls._get_lock():
+                cls._log_queue.append(entry)
+                
+                # 如果队列已满，立即刷新
+                if len(cls._log_queue) >= cls._batch_size:
+                    asyncio.create_task(cls._flush_logs())
+                    cls._last_flush = asyncio.get_event_loop().time()
+    
+    @classmethod
+    async def log_request(
+        cls,
+        request: Request,
+        module: str,
+        action: str,
+        message: str,
+        user_id: Optional[int] = None,
+        level: str = "INFO",
+        immediate: bool = False
+    ):
+        """
+        从请求对象记录审计日志
+        自动提取 IP 地址
+        """
+        ip_address = cls.get_client_ip(request)
+        await cls.log(
+            module=module,
+            action=action,
+            message=message,
+            user_id=user_id,
+            ip_address=ip_address,
+            level=level,
+            immediate=immediate
         )
 
 
@@ -336,7 +489,8 @@ async def log_audit(
     message: str,
     user_id: Optional[int] = None,
     ip_address: Optional[str] = None,
-    level: str = "INFO"
+    level: str = "INFO",
+    immediate: bool = False
 ):
     """记录审计日志的便捷函数"""
     await AuditLogger.log(
@@ -345,7 +499,8 @@ async def log_audit(
         message=message,
         user_id=user_id,
         ip_address=ip_address,
-        level=level
+        level=level,
+        immediate=immediate
     )
 
 

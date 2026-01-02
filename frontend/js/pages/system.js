@@ -32,7 +32,8 @@ class SystemSettingsPage extends Component {
                         <h1 class="page-title">系统设置</h1>
                         <p class="page-desc">安全策略、系统默认配置（仅管理员可修改）</p>
                     </div>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('system', '系统设置') : ''}
                         <a href="#/system/audit" class="btn btn-secondary">📜 系统日志</a>
                         <a href="#/system/monitor" class="btn btn-secondary">📈 系统监控</a>
                         <a href="#/system/backup" class="btn btn-secondary">💾 数据备份</a>
@@ -43,17 +44,10 @@ class SystemSettingsPage extends Component {
                         <div class="form-group">
                             <label class="form-label">系统默认主题</label>
                             <select name="theme_mode" class="form-input form-select">
-                                <option value="auto" ${data.theme_mode === 'auto' ? 'selected' : ''}>跟随系统</option>
-                                <option value="light" ${data.theme_mode === 'light' ? 'selected' : ''}>浅色</option>
-                                <option value="dark" ${data.theme_mode === 'dark' ? 'selected' : ''}>深色</option>
                                 <option value="sunrise" ${data.theme_mode === 'sunrise' ? 'selected' : ''}>日出印象</option>
                                 <option value="neon" ${data.theme_mode === 'neon' ? 'selected' : ''}>星夜霓虹</option>
-                                <option value="summer" ${data.theme_mode === 'summer' ? 'selected' : ''}>仲夏之夜</option>
-                                <option value="winter" ${data.theme_mode === 'winter' ? 'selected' : ''}>冬日暖阳</option>
-                                <option value="spring" ${data.theme_mode === 'spring' ? 'selected' : ''}>春意盎然</option>
-                                <option value="autumn" ${data.theme_mode === 'autumn' ? 'selected' : ''}>秋日私语</option>
                             </select>
-                            <small class="form-hint">新用户或未设置个人偏好的用户将使用此主题。用户可通过「主题」自定义个人主题。</small>
+                            <small class="form-hint">新用户或未设置个人偏好的用户将使用此主题。用户可通过「主题」页面选择个人主题。</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">密码最小长度</label>
@@ -110,10 +104,17 @@ class SystemSettingsPage extends Component {
     afterMount() {
         this.loadData();
         this.bindGlobalEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
-        // 不需要重新绑定
+        // 绑定帮助按钮事件（页面更新后重新绑定）
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindGlobalEvents() {
@@ -168,7 +169,6 @@ class SystemSettingsPage extends Component {
             rate_limit_block_duration: parseInt(form.querySelector('[name="rate_limit_block_duration"]')?.value) || 30
         };
 
-        console.log('保存系统设置:', payload);
 
         this.setState({ saving: true });
         try {

@@ -1,0 +1,263 @@
+/**
+ * 模块帮助工具样式
+ * 统一管理所有模块帮助相关的样式
+ */
+
+/* ==================== 帮助按钮样式 ==================== */
+.btn-help {
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    outline: none;
+}
+
+.btn-help:hover {
+    background: var(--color-bg-hover, rgba(0, 102, 255, 0.1));
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-help:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.btn-help:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.btn-help i {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* 按钮禁用状态 */
+.btn-help:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ==================== 帮助内容样式 ==================== */
+.module-help-content {
+    line-height: 1.8;
+    color: var(--color-text-primary);
+    padding: 10px 0;
+}
+
+/* 标题样式 */
+.module-help-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.4;
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 12px;
+}
+
+.module-help-content h4 {
+    margin-top: 28px;
+    margin-bottom: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.module-help-content h4:first-of-type {
+    margin-top: 0;
+}
+
+/* 段落样式 */
+.module-help-content p {
+    margin-bottom: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+}
+
+.module-help-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* 列表样式 */
+.module-help-content ul,
+.module-help-content ol {
+    margin-bottom: 18px;
+    margin-top: 8px;
+    padding-left: 28px;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+}
+
+.module-help-content ul {
+    list-style-type: disc;
+}
+
+.module-help-content ol {
+    list-style-type: decimal;
+}
+
+.module-help-content li {
+    margin-bottom: 10px;
+    line-height: 1.8;
+}
+
+.module-help-content li:last-child {
+    margin-bottom: 0;
+}
+
+/* 嵌套列表 */
+.module-help-content ul ul,
+.module-help-content ol ol,
+.module-help-content ul ol,
+.module-help-content ol ul {
+    margin-top: 6px;
+    margin-bottom: 6px;
+    padding-left: 24px;
+}
+
+/* 强调文本 */
+.module-help-content strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+/* 代码样式 */
+.module-help-content code {
+    background: var(--color-bg-secondary);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    color: var(--color-primary);
+    border: 1px solid var(--color-border);
+}
+
+/* 代码块（如果有） */
+.module-help-content pre {
+    background: var(--color-bg-secondary);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+    border: 1px solid var(--color-border);
+}
+
+.module-help-content pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* 分隔线 */
+.module-help-content hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 24px 0;
+}
+
+/* 引用块（如果有） */
+.module-help-content blockquote {
+    border-left: 4px solid var(--color-primary);
+    padding-left: 16px;
+    margin: 16px 0;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+/* 表格样式（如果有） */
+.module-help-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.module-help-content table th,
+.module-help-content table td {
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    text-align: left;
+}
+
+.module-help-content table th {
+    background: var(--color-bg-secondary);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.module-help-content table td {
+    color: var(--color-text-secondary);
+}
+
+/* 链接样式（如果有） */
+.module-help-content a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.module-help-content a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .btn-help {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    
+    .module-help-content {
+        padding: 8px 0;
+    }
+    
+    .module-help-content h3 {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
+    
+    .module-help-content h4 {
+        font-size: 15px;
+        margin-top: 24px;
+        margin-bottom: 12px;
+    }
+    
+    .module-help-content ul,
+    .module-help-content ol {
+        padding-left: 24px;
+    }
+}
+
+/* 主题适配 */
+.theme-sunrise .btn-help:hover {
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.theme-neon .btn-help:hover {
+    background: rgba(138, 43, 226, 0.15);
+}
+

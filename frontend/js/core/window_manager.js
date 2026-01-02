@@ -43,7 +43,7 @@ const WindowManager = {
         // 挂载组件
         const contentEl = winEl.querySelector('.window-body');
         // 如果 props 是数组则展开，否则传给构造函数
-        // 注意：App.js 传递的是 `(this.content, ...args)`
+        // App.js 传递的是 `(this.content, ...args)`
         // 我们需要传递 `(contentEl, ...props)`
         const componentInstance = new ComponentClass(contentEl, ...props);
         if (typeof componentInstance.mount === 'function') {
@@ -145,7 +145,7 @@ const WindowManager = {
                 };
                 const currentUrl = currentFn();
 
-                // 简单比对（注意 query 顺序可能影响，但暂忽略）
+                // 简单比对（query 顺序可能影响，但暂忽略）
                 if (currentUrl !== targetUrl && decodeURIComponent(currentUrl) !== decodeURIComponent(targetUrl)) {
                     Router.replace(targetUrl);
                 }

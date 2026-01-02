@@ -31,15 +31,10 @@ settings = get_settings()
 
 CORE_MODULES = [
     "system", "user", "auth", "boot", "roles",
-    "audit", "backup", "monitor", "notification", 
+    "audit", "backup", "monitor", "notification", "announcement",
     "storage", "websocket", "import_export"
 ]
 
-# 系统应用：可以禁用，但不能删除（作为框架默认功能）
-SYSTEM_MODULES = [
-    "announcement",  # 公告系统
-    "feedback"       # 反馈系统
-]
 
 # 确保backend目录在sys.path中，以便模块可以导入core等包
 _backend_path = str(Path(__file__).parent.parent.absolute())

@@ -59,88 +59,81 @@ const DataLensHubMixin = {
         }
     },
 
-    _toggleStartMenuShortcut(view, isSaved) {
+    /**
+     * 切换开始菜单快捷方式
+     * 使用通用的 ShortcutManager 管理器
+     */
+    async _toggleStartMenuShortcut(view, isSaved) {
         try {
-            const user = Store.get('user');
-            if (!user) {
-                Toast.error('请先登录');
-                return;
-            }
-
-            // 从用户设置中获取现有的快捷方式 (稳定性保证)
-            let shortcuts = user.settings?.start_menu_shortcuts || [];
-            if (!Array.isArray(shortcuts)) shortcuts = [];
-
-            if (isSaved) {
-                // 移除
-                shortcuts = shortcuts.filter(s =>
-                    !(s.type === 'datalens' && s.view_id === view.id)
-                );
-                Toast.success('已从开始菜单移除');
-            } else {
-                // 添加
-                const newShortcut = {
-                    id: `datalens_view_${view.id}`,
-                    name: view.name,
-                    icon: view.icon || '📊',
-                    path: `/lens/view/${view.id}`,
-                    type: 'datalens',
-                    view_id: view.id
-                };
-                // 冗余检查
-                if (!shortcuts.some(s => s.type === 'datalens' && s.view_id === view.id)) {
-                    shortcuts.push(newShortcut);
+            // 使用通用的快捷方式管理器
+            if (window.ShortcutManager) {
+                if (isSaved) {
+                    await ShortcutManager.unpinShortcut('datalens', view.id);
+                } else {
+                    await ShortcutManager.pinShortcut({
+                        type: 'datalens',
+                        identifier: view.id,
+                        name: view.name,
+                        icon: view.icon || '📊',
+                        path: `/lens/view/${view.id}`,
+                        metadata: { view_id: view.id }
+                    });
                 }
-                Toast.success('已固定到开始菜单');
-            }
 
-            // 更新本地 Store (触发 UI 刷新)
-            const newSettings = {
-                ...(user.settings || {}),
-                start_menu_shortcuts: shortcuts
-            };
-            const updatedUser = { ...user, settings: newSettings };
-            Store.set('user', updatedUser);
-
-            // 清理 localStorage 中的冗余 DataLens 数据 (现在由后端 UserSettings 统一管理)
-            const STORAGE_KEY = 'jeje_pinned_apps';
-            let localPinned = [];
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    localPinned = JSON.parse(saved);
-                    if (Array.isArray(localPinned)) {
-                        localPinned = localPinned.filter(app =>
-                            !(typeof app === 'object' && app.type === 'datalens' && app.view_id === view.id)
-                        );
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(localPinned));
+                // 更新本地视图列表状态
+                const { views } = this.state;
+                const updatedViews = views.map(v => {
+                    if (v.id === view.id) {
+                        return { ...v, _pinned_updated: Date.now() };
                     }
-                }
-            } catch (e) { }
-
-            // 同步到后端
-            if (window.UserApi) {
-                UserApi.updateProfile({ settings: newSettings }).catch(err => {
-                    console.error('[DataLens] 同步快捷方式到后端失败:', err);
+                    return v;
                 });
-            }
-
-            // 触发 storage 事件以便开始菜单等系统组件同步 (兼容性支持)
-            window.dispatchEvent(new StorageEvent('storage', {
-                key: STORAGE_KEY,
-                newValue: JSON.stringify(localPinned)
-            }));
-
-            // 更新本地视图列表状态
-            const { views } = this.state;
-            const updatedViews = views.map(v => {
-                if (v.id === view.id) {
-                    return { ...v, _pinned_updated: Date.now() };
+                this.setState({ views: updatedViews });
+            } else {
+                // 降级处理：如果 ShortcutManager 未加载，使用原有逻辑
+                console.warn('[DataLens] ShortcutManager 未加载，使用降级逻辑');
+                const user = Store.get('user');
+                if (!user) {
+                    Toast.error('请先登录');
+                    return;
                 }
-                return v;
-            });
-            this.setState({ views: updatedViews });
 
+                let shortcuts = user.settings?.start_menu_shortcuts || [];
+                if (!Array.isArray(shortcuts)) shortcuts = [];
+
+                if (isSaved) {
+                    shortcuts = shortcuts.filter(s =>
+                        !(s.type === 'datalens' && s.view_id === view.id)
+                    );
+                    Toast.success('已从开始菜单移除');
+                } else {
+                    const newShortcut = {
+                        id: `datalens_view_${view.id}`,
+                        name: view.name,
+                        icon: view.icon || '📊',
+                        path: `/lens/view/${view.id}`,
+                        type: 'datalens',
+                        view_id: view.id
+                    };
+                    if (!shortcuts.some(s => s.type === 'datalens' && s.view_id === view.id)) {
+                        shortcuts.push(newShortcut);
+                    }
+                    Toast.success('已固定到开始菜单');
+                }
+
+                const newSettings = {
+                    ...(user.settings || {}),
+                    start_menu_shortcuts: shortcuts
+                };
+                const updatedUser = { ...user, settings: newSettings };
+                Store.set('user', updatedUser);
+
+                if (window.UserApi) {
+                    UserApi.updateProfile({ settings: newSettings }).catch(err => {
+                        console.error('[DataLens] 同步快捷方式到后端失败:', err);
+                    });
+                }
+            }
         } catch (e) {
             console.error('[DataLens] 固定快捷方式失败:', e);
             Toast.error('操作失败: ' + (e.message || '未知错误'));
@@ -240,21 +233,16 @@ const DataLensHubMixin = {
             `;
         }
 
-        // 获取用户已固定的快捷方式（优先从后端同步的设置中获取）
-        const user = Store.get('user');
-        const pinnedShortcuts = user?.settings?.start_menu_shortcuts || [];
-
-        // 同时也兼容一下本地缓存（用于即时状态展示）
-        let localPinned = [];
-        try {
-            const saved = localStorage.getItem('jeje_pinned_apps');
-            localPinned = saved ? JSON.parse(saved) : [];
-        } catch (e) { }
-
-        // 检查视图是否在开始菜单中 (包含后端同步的与本地暂存的)
+        // 检查视图是否在开始菜单中
+        // 使用通用的 ShortcutManager（如果可用），否则使用降级逻辑
         const isPinned = (viewId) => {
-            return pinnedShortcuts.some(s => s.type === 'datalens' && s.view_id === viewId) ||
-                localPinned.some(app => typeof app === 'object' && app.type === 'datalens' && app.view_id === viewId);
+            if (window.ShortcutManager) {
+                return ShortcutManager.isPinned('datalens', viewId);
+            }
+            // 降级处理
+            const user = Store.get('user');
+            const pinnedShortcuts = user?.settings?.start_menu_shortcuts || [];
+            return pinnedShortcuts.some(s => s.type === 'datalens' && s.view_id === viewId);
         };
 
         return views.map(view => {

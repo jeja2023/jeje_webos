@@ -1,6 +1,6 @@
 /**
  * 系统通知服务 (SystemNotification)
- * 用于发送系统级通知，支持 Toast 提示和消息中心持久化
+ * 用于发送通知，支持 Toast 提示和通知中心持久化
  */
 const SystemNotification = {
     /**
@@ -11,7 +11,7 @@ const SystemNotification = {
      * @param {string} url 跳转链接 (可选)
      */
     async push(title, content = '', type = 'info', url = null) {
-        // 1. 显示即时 Toast 提示
+        // 显示即时 Toast 消息
         // 映射 type 到 Toast 支持的方法
         const toastType = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
 
@@ -25,7 +25,7 @@ const SystemNotification = {
             if (!user) return; // 未登录不保存
 
             // 发送给当前用户自己
-            await MessageApi.create({
+            await NotificationApi.create({
                 user_id: user.id,
                 title: title,
                 content: content,
@@ -47,7 +47,7 @@ const SystemNotification = {
      */
     async refreshUnreadCount() {
         try {
-            const res = await MessageApi.unreadCount();
+            const res = await NotificationApi.unreadCount();
             const count = res.data?.count || res.count || 0;
             Store.set('unreadMessages', count);
         } catch (e) {

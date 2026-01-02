@@ -24,7 +24,7 @@ def clean_for_json(records: List[Dict]) -> List[Dict]:
                 else:
                     clean_row[key] = value
             elif isinstance(value, pd.Timestamp):
-                # pandas Timestamp 转换为友好的字符串格式
+                # 将 pandas Timestamp 转换为友好的字符串格式
                 clean_row[key] = value.strftime('%Y-%m-%d %H:%M:%S')
             elif isinstance(value, datetime):
                 clean_row[key] = value.strftime('%Y-%m-%d %H:%M:%S')
@@ -58,6 +58,10 @@ class CompareService:
         """
         比对两个数据集
         返回：相同数据、仅源数据集、仅目标数据集、差异数据（基于 join_keys）
+        
+        性能优化：
+        - 对于大数据集（>10万行），使用采样比对以提高速度
+        - 限制返回结果数量，避免内存溢出
         """
         source = await CompareService.get_dataset_metadata(db, source_id)
         target = await CompareService.get_dataset_metadata(db, target_id)
@@ -78,22 +82,51 @@ class CompareService:
 
         join_on = " AND ".join([f"s.{k} = t.{k}" for k in join_keys])
         
+        # 性能优化：对于大数据集，使用采样
+        # 如果两个数据集都很大，使用采样比对以提高速度
+        use_sampling = False
+        sample_size = 50000  # 采样大小
+        if (source.row_count and source.row_count > 100000) or (target.row_count and target.row_count > 100000):
+            use_sampling = True
+            logger.info(f"数据集较大，使用采样比对（采样大小: {sample_size}）")
+        
         # 1. 仅源数据集（Source Only）
-        sql_source_only_base = f"""
-            FROM {t1} s 
-            LEFT JOIN {t2} t ON {join_on}
-            WHERE {" AND ".join([f"t.{k} IS NULL" for k in join_keys])}
-        """
+        if use_sampling:
+            # 使用采样表进行比对
+            sample_t1 = f"{t1}_sample"
+            sample_t2 = f"{t2}_sample"
+            duckdb_instance.query(f"CREATE TEMP TABLE {sample_t1} AS SELECT * FROM {t1} USING SAMPLE {sample_size}")
+            duckdb_instance.query(f"CREATE TEMP TABLE {sample_t2} AS SELECT * FROM {t2} USING SAMPLE {sample_size}")
+            sql_source_only_base = f"""
+                FROM {sample_t1} s 
+                LEFT JOIN {sample_t2} t ON {join_on}
+                WHERE {" AND ".join([f"t.{k} IS NULL" for k in join_keys])}
+            """
+        else:
+            sql_source_only_base = f"""
+                FROM {t1} s 
+                LEFT JOIN {t2} t ON {join_on}
+                WHERE {" AND ".join([f"t.{k} IS NULL" for k in join_keys])}
+            """
+        
         source_only_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_source_only_base}").iloc[0]['cnt'])
         source_only_df = duckdb_instance.fetch_df(f"SELECT s.* {sql_source_only_base} LIMIT 1000")
         source_only_data = clean_for_json(source_only_df.to_dict(orient='records'))
 
         # 2. 仅目标数据集（Target Only）
-        sql_target_only_base = f"""
-            FROM {t2} t 
-            LEFT JOIN {t1} s ON {join_on}
-            WHERE {" AND ".join([f"s.{k} IS NULL" for k in join_keys])}
-        """
+        if use_sampling:
+            sql_target_only_base = f"""
+                FROM {sample_t2} t 
+                LEFT JOIN {sample_t1} s ON {join_on}
+                WHERE {" AND ".join([f"s.{k} IS NULL" for k in join_keys])}
+            """
+        else:
+            sql_target_only_base = f"""
+                FROM {t2} t 
+                LEFT JOIN {t1} s ON {join_on}
+                WHERE {" AND ".join([f"s.{k} IS NULL" for k in join_keys])}
+            """
+        
         target_only_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_target_only_base}").iloc[0]['cnt'])
         target_only_df = duckdb_instance.fetch_df(f"SELECT t.* {sql_target_only_base} LIMIT 1000")
         target_only_data = clean_for_json(target_only_df.to_dict(orient='records'))
@@ -101,16 +134,29 @@ class CompareService:
         # 3. 相同数据（Same）
         if compare_columns:
             same_conditions = [f"(s.{c} = t.{c} OR (s.{c} IS NULL AND t.{c} IS NULL))" for c in compare_columns]
-            sql_same_base = f"""
-                FROM {t1} s 
-                INNER JOIN {t2} t ON {join_on}
-                WHERE {" AND ".join(same_conditions)}
-            """
+            if use_sampling:
+                sql_same_base = f"""
+                    FROM {sample_t1} s 
+                    INNER JOIN {sample_t2} t ON {join_on}
+                    WHERE {" AND ".join(same_conditions)}
+                """
+            else:
+                sql_same_base = f"""
+                    FROM {t1} s 
+                    INNER JOIN {t2} t ON {join_on}
+                    WHERE {" AND ".join(same_conditions)}
+                """
         else:
-            sql_same_base = f"""
-                FROM {t1} s 
-                INNER JOIN {t2} t ON {join_on}
-            """
+            if use_sampling:
+                sql_same_base = f"""
+                    FROM {sample_t1} s 
+                    INNER JOIN {sample_t2} t ON {join_on}
+                """
+            else:
+                sql_same_base = f"""
+                    FROM {t1} s 
+                    INNER JOIN {t2} t ON {join_on}
+                """
         
         same_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_same_base}").iloc[0]['cnt'])
         same_df = duckdb_instance.fetch_df(f"SELECT s.* {sql_same_base} LIMIT 1000")
@@ -121,11 +167,18 @@ class CompareService:
         different_count = 0
         if compare_columns:
             diff_conditions = [f"(s.{c} != t.{c} OR (s.{c} IS NULL AND t.{c} IS NOT NULL) OR (s.{c} IS NOT NULL AND t.{c} IS NULL))" for c in compare_columns]
-            sql_diff_base = f"""
-                FROM {t1} s 
-                INNER JOIN {t2} t ON {join_on}
-                WHERE {" OR ".join(diff_conditions)}
-            """
+            if use_sampling:
+                sql_diff_base = f"""
+                    FROM {sample_t1} s 
+                    INNER JOIN {sample_t2} t ON {join_on}
+                    WHERE {" OR ".join(diff_conditions)}
+                """
+            else:
+                sql_diff_base = f"""
+                    FROM {t1} s 
+                    INNER JOIN {t2} t ON {join_on}
+                    WHERE {" OR ".join(diff_conditions)}
+                """
             different_count = int(duckdb_instance.fetch_df(f"SELECT COUNT(*) as cnt {sql_diff_base}").iloc[0]['cnt'])
             sql_different = f"""
                 SELECT s.*, 
@@ -135,6 +188,14 @@ class CompareService:
             """
             different_df = duckdb_instance.fetch_df(sql_different)
             different_data = clean_for_json(different_df.to_dict(orient='records'))
+        
+        # 清理临时采样表
+        if use_sampling:
+            try:
+                duckdb_instance.query(f"DROP TABLE IF EXISTS {sample_t1}")
+                duckdb_instance.query(f"DROP TABLE IF EXISTS {sample_t2}")
+            except:
+                pass
 
         return {
             "same": same_data,

@@ -262,7 +262,7 @@ class AppCenterMarketPage extends Component {
             'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
             'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
             'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
-            'announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' },
             'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
             'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
             'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
@@ -290,16 +290,16 @@ class AppCenterMarketPage extends Component {
         const { modules } = this.state;
         const enabledModules = modules.filter(m => m.enabled);
 
-        // 系统工具应用
-        const systemApps = [];
+        // 内置管理界面
+        const builtinApps = [];
 
         if (this.isAdmin) {
-            systemApps.push({ id: 'sys_manage', name: '应用管理', icon: '⚙️', isSystem: true, viewTarget: 'manage' });
+            builtinApps.push({ id: 'sys_manage', name: '应用管理', icon: '⚙️', viewTarget: 'manage' });
         }
-        systemApps.push({ id: 'sys_market', name: '应用市场', icon: '🏪', isSystem: true, viewTarget: 'market' });
-        systemApps.push({ id: 'sys_dev', name: '开发套件', icon: '🛠️', isSystem: true, viewTarget: 'dev' });
+        builtinApps.push({ id: 'sys_market', name: '应用市场', icon: '🏪', viewTarget: 'market' });
+        builtinApps.push({ id: 'sys_dev', name: '开发套件', icon: '🛠️', viewTarget: 'dev' });
 
-        const allItems = [...enabledModules, ...systemApps];
+        const allItems = [...enabledModules, ...builtinApps];
 
         // 获取已固定的应用列表
         const pinnedApps = this.getPinnedApps();
@@ -308,35 +308,30 @@ class AppCenterMarketPage extends Component {
             <div class="apps-dashboard fade-in">
                 <div class="apps-grid">
                     ${allItems.map(item => {
-            const isSystem = item.isSystem;
-            const isSystemApp = ['announcement'].includes(item.id);
-            const children = !isSystem ? this.getChildLinks(item) : null;
+            const isBuiltinApp = item.viewTarget; // 内置管理界面有 viewTarget 属性
+            const children = !isBuiltinApp ? this.getChildLinks(item) : null;
             const hasChildren = children && children.length > 0;
-            const entryPath = !isSystem && !hasChildren ? this.getAppEntryPath(item) : null;
-            const isPinned = !isSystem && (isSystemApp || pinnedApps.includes(item.id));
+            const entryPath = !isBuiltinApp && !hasChildren ? this.getAppEntryPath(item) : null;
+            const isPinned = !isBuiltinApp && pinnedApps.includes(item.id);
             const iconSpec = this._getIconSpec(item);
 
             return `
                             <div class="app-card-wrapper" data-id="${item.id}" ${hasChildren ? 'data-has-popup="true"' : ''}>
                                 <div class="app-card clickable"
-                                     ${isSystem ? `data-view-target="${item.viewTarget}"` : ''}
+                                     ${isBuiltinApp ? `data-view-target="${item.viewTarget}"` : ''}
                                      ${entryPath ? `data-app-path="${entryPath}"` : ''}
                                      ${hasChildren ? `data-toggle-popup="${item.id}"` : ''}>
                                     <div class="app-icon-box ${iconSpec.gradient}">
                                         ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
                                     </div>
                                     <div class="app-name">${Utils.escapeHtml(item.name)}</div>
-                                    ${!isSystem ? (isSystemApp ? `
-                                        <div class="pin-status system-pinned" title="系统应用，始终固定">
-                                            <i class="ri-lock-line"></i>
-                                        </div>
-                                    ` : `
+                                    ${!isBuiltinApp ? `
                                         <button class="pin-status ${isPinned ? 'pinned' : ''}" 
                                                 data-pin-app="${item.id}" 
                                                 title="${isPinned ? '从 Dock 取消固定' : '固定到 Dock'}">
                                             <i class="${isPinned ? 'ri-pushpin-2-fill' : 'ri-pushpin-2-line'}"></i>
                                         </button>
-                                    `) : ''}
+                                    ` : ''}
                                 </div>
 
                                 ${hasChildren ? `
@@ -362,11 +357,16 @@ class AppCenterMarketPage extends Component {
 
     renderHeader(title, backView = 'home') {
         return `
-            <div class="sub-page-header">
-                <button class="btn btn-ghost btn-icon" data-view-target="${backView}">
-                    ⬅️ 返回
-                </button>
-                <div class="sub-page-title">${title}</div>
+            <div class="sub-page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn btn-ghost btn-icon" data-view-target="${backView}">
+                        ⬅️ 返回
+                    </button>
+                    <div class="sub-page-title">${title}</div>
+                </div>
+                <div>
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('market', '应用市场') : ''}
+                </div>
             </div>
         `;
     }
@@ -668,19 +668,14 @@ class AppCenterMarketPage extends Component {
         const deletableModules = allModules.filter(m => {
             // 排除核心模块
             if (['system', 'user', 'auth', 'boot'].includes(m.id)) return false;
-            // 排除系统应用
-            if (m.isSystem) return false;
             // 只有未安装的模块才能删除
             return !m.installed;
         });
 
-        // 已安装的模块（提示用户先卸载）
+        // 已安装的模块
         const installedModules = allModules.filter(m =>
-            m.installed && !m.isSystem && !['system', 'user', 'auth', 'boot'].includes(m.id)
+            m.installed && !['system', 'user', 'auth', 'boot'].includes(m.id)
         );
-
-        // 系统应用（提示不可删除）
-        const systemModules = allModules.filter(m => m.isSystem);
 
         if (deletableModules.length === 0 && installedModules.length === 0) {
             Toast.info('当前没有可删除的应用');
@@ -688,14 +683,6 @@ class AppCenterMarketPage extends Component {
         }
 
         let warningHtml = '';
-        if (systemModules.length > 0) {
-            warningHtml += `
-                <div class="info-box" style="background: rgba(100, 100, 255, 0.1); color: #6666ff; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
-                    🔒 以下是系统应用，不可删除：<br>
-                    <strong>${systemModules.map(m => m.name).join('、')}</strong>
-                </div>
-            `;
-        }
         if (installedModules.length > 0) {
             warningHtml += `
                 <div class="info-box" style="background: rgba(255, 204, 0, 0.1); color: #cc9900; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
@@ -807,7 +794,7 @@ class AppCenterMarketPage extends Component {
             const moduleName = res.data?.module_name || res.data?.module_id || '未知';
             const isOverwrite = res.data?.is_overwrite;
 
-            // 显示成功提示
+            // 显示成功信息
             Toast.success(isOverwrite ? `模块 "${moduleName}" 已覆盖更新！` : `模块 "${moduleName}" 上传成功！`);
 
             await Modal.alert('上传成功', `
@@ -1070,10 +1057,18 @@ class AppCenterMarketPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
         // 恢复弹出层状态
         if (this.activePopup) {
             this.updatePopupState();
@@ -1098,7 +1093,7 @@ class AppCenterMarketPage extends Component {
                 return false;
             });
 
-            // View Switching
+            // 视图切换
             this.delegate('click', '[data-view-target]', (e, t) => {
                 const target = t.dataset.viewTarget;
                 this.setState({ view: target });
@@ -1108,7 +1103,7 @@ class AppCenterMarketPage extends Component {
                 }
             });
 
-            // Install Module
+            // 安装模块
             this.delegate('click', '[data-install]', async (e, t) => {
                 const moduleId = t.dataset.install;
                 if (moduleId) {
@@ -1118,7 +1113,7 @@ class AppCenterMarketPage extends Component {
                 }
             });
 
-            // Uninstall Module
+            // 卸载模块
             this.delegate('click', '[data-uninstall]', async (e, t) => {
                 const moduleId = t.dataset.uninstall;
                 if (moduleId) {
@@ -1126,7 +1121,7 @@ class AppCenterMarketPage extends Component {
                 }
             });
 
-            // Developer Actions
+            // 开发者操作
             this.delegate('click', '[data-action="create-app"]', (e) => {
                 this.handleCreateApp();
             });
@@ -1137,7 +1132,7 @@ class AppCenterMarketPage extends Component {
                 this.handleUploadPackage();
             });
 
-            // Toggle Module
+            // 切换模块
             this.delegate('change', '[data-toggle]', (e, t) => {
                 const moduleId = t.dataset.toggle;
                 const module = this.state.modules.find(m => m.id === moduleId);
@@ -1147,7 +1142,7 @@ class AppCenterMarketPage extends Component {
                 }
             });
 
-            // Open App (Direct) - 排除固定按钮
+            // 打开应用（直接）- 排除固定按钮
             this.delegate('click', '[data-app-path]', (e, t) => {
                 // 如果点击的是固定按钮或其子元素，不处理
                 if (e.target.closest('[data-pin-app]') || e.target.closest('.pin-btn')) {
@@ -1166,7 +1161,7 @@ class AppCenterMarketPage extends Component {
                 }
             });
 
-            // Toggle Popup - 排除固定按钮
+            // 切换弹窗 - 排除固定按钮
             this.delegate('click', '[data-toggle-popup]', (e, t) => {
                 // 如果点击的是固定按钮或其子元素，不处理
                 if (e.target.closest('[data-pin-app]') || e.target.closest('.pin-btn')) {

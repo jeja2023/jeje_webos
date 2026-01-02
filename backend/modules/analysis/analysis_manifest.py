@@ -62,11 +62,11 @@ manifest = ModuleManifest(
 
     # 权限声明
     permissions=[
-        "analysis:view",     # 查看数据集
-        "analysis:import",   # 导入数据
-        "analysis:clean",    # 数据清洗
-        "analysis:compare",  # 数据比对
-        "analysis:model"     # 数据建模
+        "analysis.view",     # 查看数据集
+        "analysis.import",   # 导入数据
+        "analysis.clean",    # 数据清洗
+        "analysis.compare",  # 数据比对
+        "analysis.model"     # 数据建模
     ],
 
     # 模块依赖

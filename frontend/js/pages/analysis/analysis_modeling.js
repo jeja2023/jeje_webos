@@ -286,7 +286,6 @@ const AnalysisModelingMixin = {
 
             const ds = datasets.find(d => d.name === datasetName || d.table_name === datasetName);
             if (!ds) {
-                console.warn(`未找到名为 ${datasetName} 的数据集`);
                 return [];
             }
 
@@ -296,7 +295,6 @@ const AnalysisModelingMixin = {
             this._datasetColsCache[datasetName] = cols;
             return cols;
         } catch (e) {
-            console.error('获取字段失败:', e);
             return [];
         }
     },
@@ -459,7 +457,7 @@ const AnalysisModelingMixin = {
             if (!currentModel) return;
 
             let newStatus = null;
-            // 如果当前是已发布状态，保存时提示并转回草稿
+            // 如果当前是已发布状态，保存时转回草稿
             if (currentModel.status === 'published') {
                 if (!confirm('该模型已发布。保存修改将使模型状态变更为“设计中”，是否继续？')) {
                     return;
@@ -540,7 +538,6 @@ const AnalysisModelingMixin = {
                     Toast.error(res.message || '执行失败');
                 }
             } catch (err) {
-                console.error(err);
                 Toast.error('请求失败: ' + err.message);
             } finally {
                 el.disabled = false;
@@ -899,7 +896,8 @@ const AnalysisModelingMixin = {
         // ----------------------------------------------------
         if (!this._keyboardEventsBound) {
             this._keyboardEventsBound = true;
-            document.addEventListener('keydown', (e) => {
+            // 保存事件处理器引用以便后续清理
+            this._keyboardEventHandler = (e) => {
                 // 仅在 Modeling Tab 且焦点不在输入框时生效
                 if (this.state.activeTab !== 'modeling' || !this.state.currentModel) return;
 
@@ -928,7 +926,8 @@ const AnalysisModelingMixin = {
                         }
                     }
                 }
-            });
+            };
+            document.addEventListener('keydown', this._keyboardEventHandler);
         }
     },
 
@@ -1373,7 +1372,7 @@ const AnalysisModelingMixin = {
         // 检查上游连接状态
         const hasUpstreamConnection = (this.state.modelConnections || []).some(c => c.targetId === node.id);
 
-        // 渲染无可用字段时的提示
+        // 渲染无可用字段时的信息
         const renderNoFieldsHint = (nodeTypeName = '此节点') => renderGroup(`${nodeTypeName}配置`, `
             <div class="text-secondary text-xs p-15 bg-hover border-radius-5 text-center">
                 <div class="text-2xl mb-10">⚠️</div>
@@ -1423,7 +1422,7 @@ const AnalysisModelingMixin = {
 
             /* ========== 数据筛选与过滤 ========== */
             case 'filter':
-                // 检查是否有可用字段，如果没有则显示提示
+                // 检查是否有可用字段，如果没有则显示信息
                 if (availableFields.length === 0) {
                     fields = renderNoFieldsHint('过滤条件');
                     break;
@@ -1699,7 +1698,7 @@ const AnalysisModelingMixin = {
                         leftFields = normalizeFields(rawLeftFields);
                         rightFields = normalizeFields(rawRightFields);
                     } catch (e) {
-                        console.error('获取 JOIN 字段失败:', e);
+                        // 获取 JOIN 字段失败，静默处理
                     }
                 }
 
@@ -2113,7 +2112,6 @@ const AnalysisModelingMixin = {
                 throw new Error(res.message || res.data?.error || '执行失败');
             }
         } catch (e) {
-            console.error('节点执行失败:', e);
             this._updateNodeStatus(nodeId, 'error');
             this._addLog('error', `节点执行失败: ${e.message}`);
             Toast.error(`执行失败: ${e.message}`);
@@ -2150,7 +2148,6 @@ const AnalysisModelingMixin = {
                 throw new Error(res.message || '获取预览失败');
             }
         } catch (e) {
-            console.error('预览失败:', e);
             this.setState({
                 previewData: null,
                 previewLoading: false,
@@ -2362,7 +2359,7 @@ const AnalysisModelingMixin = {
             await AnalysisApi.clearETLCache(currentModel.id);
             this.addETLLog('info', '已清理执行缓存，准备开始新一轮计算');
         } catch (e) {
-            console.warn('清理缓存失败:', e);
+            // 清理缓存失败，静默处理
         }
 
         // 简单拓扑排序：找到所有 source 节点 -> 运行 -> 它们的下游 -> 运行
@@ -2412,7 +2409,7 @@ const AnalysisModelingMixin = {
                     this.setState({ datasets: res.data });
                 }
             } catch (e) {
-                console.warn('刷新数据集列表失败:', e);
+                // 刷新数据集列表失败，静默处理
             }
             return;
         }

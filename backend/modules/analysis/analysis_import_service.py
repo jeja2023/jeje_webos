@@ -1,6 +1,7 @@
 import os
 import uuid
 import pandas as pd
+from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from modules.analysis.analysis_duckdb_service import duckdb_instance
@@ -13,8 +14,18 @@ logger = logging.getLogger(__name__)
 
 class ImportService:
     @staticmethod
-    async def preview_file(db: AsyncSession, file_id: int, source: str = "upload"):
-        """预览文件内容（返回前10行数据）"""
+    async def preview_file(db: AsyncSession, file_id: int, source: str = "upload") -> Dict[str, Any]:
+        """
+        预览文件内容（返回前10行数据）
+        
+        Args:
+            db: 数据库会话
+            file_id: 文件ID
+            source: 文件来源（"upload" 或 "filemanager"）
+        
+        Returns:
+            包含列名、预览数据和文件名的字典
+        """
         storage_path = None
         original_filename = None
         
@@ -34,9 +45,6 @@ class ImportService:
             storage_path = file_record.storage_path
             original_filename = file_record.filename
         else:
-             # Fallback: check both or raise error?
-             # Let's try to be smart: if not found in upload, look in filemanager?
-             # For now, strict mode is better.
              raise ValueError(f"未知的来源类型: {source}")
 
         storage = get_storage_manager()
@@ -67,11 +75,25 @@ class ImportService:
             raise ValueError(f"预览失败: {str(e)}")
 
     @staticmethod
-    async def import_from_file(db: AsyncSession, name: str, file_id: int, options: dict = None, source: str = "upload"):
-        """从上传的文件导入数据到 DuckDB
+    async def import_from_file(
+        db: AsyncSession, 
+        name: str, 
+        file_id: int, 
+        options: Optional[Dict[str, Any]] = None, 
+        source: str = "upload"
+    ) -> AnalysisDataset:
+        """
+        从上传的文件导入数据到 DuckDB
         
         Args:
+            db: 数据库会话
+            name: 数据集名称
+            file_id: 文件ID
+            options: 导入选项
             source: 文件来源，'upload'=新上传(sys_files)，'filemanager'=文件管理(fm_files)
+        
+        Returns:
+            创建的数据集对象
         """
         storage_path = None
         original_filename = None
@@ -102,6 +124,13 @@ class ImportService:
         file_path = storage.get_file_path(storage_path)
         if not file_path or not os.path.exists(file_path):
             raise ValueError("物理文件不存在")
+        
+        # 2.5. 检查文件大小（限制为 500MB）
+        file_size = os.path.getsize(file_path)
+        max_file_size = 500 * 1024 * 1024  # 500MB
+        if file_size > max_file_size:
+            file_size_mb = file_size / (1024 * 1024)
+            raise ValueError(f"文件过大（{file_size_mb:.2f}MB），超过限制（500MB）。请使用较小的文件或分批导入。")
             
         # 3. 生成表名 (DuckDB 内部表名)
         table_name = f"dataset_{uuid.uuid4().hex[:8]}"
@@ -142,16 +171,35 @@ class ImportService:
             await db.refresh(dataset)
             return dataset
         except Exception as e:
-            logger.error(f"导入失败: {e}")
+            logger.error(f"文件导入失败: {e}", exc_info=True)
             raise ValueError(f"数据导入失败: {str(e)}")
 
     @staticmethod
-    async def import_from_database(db: AsyncSession, name: str, connection_url: str, query: str, options: dict = None):
-        """从外部数据库导入数据到 DuckDB"""
+    async def import_from_database(
+        db: AsyncSession, 
+        name: str, 
+        connection_url: str, 
+        query: str, 
+        options: Optional[Dict[str, Any]] = None
+    ) -> AnalysisDataset:
+        """
+        从外部数据库导入数据到 DuckDB
+        
+        Args:
+            db: 数据库会话
+            name: 数据集名称
+            connection_url: 数据库连接URL
+            query: SQL查询语句
+            options: 导入选项
+        
+        Returns:
+            创建的数据集对象
+        """
         # 使用 SQLAlchemy + Pandas 进行中转（通用性强）
         from sqlalchemy import create_engine
+        engine = None
         try:
-            engine = create_engine(connection_url)
+            engine = create_engine(connection_url, pool_pre_ping=True)
             # 这里的 query 可以是 SQL 语句同步获取数据
             df = pd.read_sql(query, engine)
             
@@ -178,18 +226,42 @@ class ImportService:
             await db.refresh(dataset)
             return dataset
         except Exception as e:
-            logger.error(f"数据库读取失败: {e}")
+            logger.error(f"数据库读取失败: {e}", exc_info=True)
             raise ValueError(f"外部数据库读取失败: {str(e)}")
+        finally:
+            # 确保连接正确关闭
+            if engine:
+                try:
+                    engine.dispose()
+                except Exception as e:
+                    logger.warning(f"关闭数据库连接失败: {e}")
 
     @staticmethod
-    async def list_datasets(db: AsyncSession):
-        """列出所有数据集"""
+    async def list_datasets(db: AsyncSession) -> List[AnalysisDataset]:
+        """
+        列出所有数据集
+        
+        Args:
+            db: 数据库会话
+        
+        Returns:
+            数据集列表
+        """
         result = await db.execute(select(AnalysisDataset).order_by(AnalysisDataset.created_at.desc()))
         return result.scalars().all()
 
     @staticmethod
-    async def delete_dataset(db: AsyncSession, dataset_id: int):
-        """删除数据集（同时从 DuckDB 中删除物理表）"""
+    async def delete_dataset(db: AsyncSession, dataset_id: int) -> bool:
+        """
+        删除数据集（同时从 DuckDB 中删除物理表）
+        
+        Args:
+            db: 数据库会话
+            dataset_id: 数据集ID
+        
+        Returns:
+            是否删除成功
+        """
         result = await db.execute(select(AnalysisDataset).where(AnalysisDataset.id == dataset_id))
         dataset = result.scalar_one_or_none()
         if not dataset:
@@ -205,8 +277,22 @@ class ImportService:
         return True
 
     @staticmethod
-    async def update_dataset(db: AsyncSession, dataset_id: int, updates: dict):
-        """更新数据集信息"""
+    async def update_dataset(
+        db: AsyncSession, 
+        dataset_id: int, 
+        updates: Dict[str, Any]
+    ) -> AnalysisDataset:
+        """
+        更新数据集信息
+        
+        Args:
+            db: 数据库会话
+            dataset_id: 数据集ID
+            updates: 更新字段字典
+        
+        Returns:
+            更新后的数据集对象
+        """
         result = await db.execute(select(AnalysisDataset).where(AnalysisDataset.id == dataset_id))
         dataset = result.scalar_one_or_none()
         if not dataset:

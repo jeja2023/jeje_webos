@@ -137,10 +137,26 @@ const WebSocketClient = {
     /**
      * 处理通知消息
      */
-    handleNotification(data) {
-        // 更新未读数
-        const currentCount = Store.get('unreadNotifications') || 0;
-        Store.set('unreadNotifications', currentCount + 1);
+    async handleNotification(data) {
+        // 更新未读数（从服务器获取最新计数）
+        try {
+            if (window.NotificationApi) {
+                const res = await NotificationApi.unreadCount();
+                const count = res.data?.count || res.count || 0;
+                Store.set('unreadMessages', count);
+                Store.set('unreadNotifications', count);
+            } else {
+                // 如果没有API，则乐观更新
+                const currentCount = Store.get('unreadMessages') || 0;
+                Store.set('unreadMessages', currentCount + 1);
+                Store.set('unreadNotifications', currentCount + 1);
+            }
+        } catch (e) {
+            // 如果获取失败，使用乐观更新
+            const currentCount = Store.get('unreadMessages') || 0;
+            Store.set('unreadMessages', currentCount + 1);
+            Store.set('unreadNotifications', currentCount + 1);
+        }
 
         // 显示 Toast
         const typeMap = {
@@ -152,8 +168,16 @@ const WebSocketClient = {
         
         (typeMap[data.type] || typeMap.info)();
 
-        // 触发通知事件
+        // 触发通知事件（其他组件可以监听此事件）
         this.emit('notification', data);
+        
+        // 如果当前在通知页面，刷新通知列表
+        if (window.currentPage && window.currentPage.constructor && 
+            (window.currentPage.constructor.name === 'NotificationsPage' || 
+             window.currentPage.constructor.name === 'MessagesPage') && 
+            typeof window.currentPage.loadData === 'function') {
+            window.currentPage.loadData();
+        }
     },
 
     /**

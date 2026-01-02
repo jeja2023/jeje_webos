@@ -112,6 +112,7 @@ class NotesListPage extends Component {
                         </div>
                         
                         <div class="notes-actions" style="display: flex; gap: 8px; align-items: center;">
+                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('notes', '笔记') : ''}
                             <div class="notes-search" style="margin-right: 8px;">
                                 <input type="text" class="form-input" 
                                        style="width: 200px;"
@@ -177,10 +178,18 @@ class NotesListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

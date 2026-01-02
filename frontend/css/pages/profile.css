@@ -2,79 +2,390 @@
  * 用户个人中心样式
  */
 
-.profile-container {
-    max-width: 800px;
+/* ========== 布局 ========== */
+.profile-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 24px;
 }
 
-.profile-header {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-    margin-bottom: 40px;
-    padding: 30px;
-    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
+@media (max-width: 768px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+    }
+}
+
+/* ========== 左侧信息卡片 ========== */
+.profile-left {
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+}
+
+.profile-card-compact {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+
+.profile-card-compact:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-light);
+}
+
+.profile-header-compact {
+    padding: 24px;
+    text-align: center;
+    background: linear-gradient(135deg, 
+        rgba(var(--color-primary-rgb), 0.1), 
+        rgba(var(--color-primary-rgb), 0.05));
+    border-bottom: 1px solid var(--color-border);
 }
 
 .profile-avatar-large {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
-    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-info));
     color: #fff;
-    font-size: 40px;
+    font-size: 48px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 16px rgba(var(--color-primary-rgb), 0.3);
+    margin: 0 auto 16px;
+    box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.3);
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
 }
 
-.profile-info-brief h2 {
-    margin: 0 0 8px 0;
-    font-size: 24px;
+.profile-avatar-large:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.4);
 }
 
-.profile-section {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 24px;
+.profile-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
-.profile-section-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 20px;
+.avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    color: white;
+    font-size: 32px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    border-radius: 50%;
+}
+
+.profile-avatar-large:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.profile-basic {
+    margin-top: 16px;
+}
+
+.profile-basic h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.profile-username {
+    display: block;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-bottom: 12px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(var(--color-primary-rgb), 0.15);
     color: var(--color-primary);
+    border: 1px solid rgba(var(--color-primary-rgb), 0.3);
 }
 
-.profile-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+.role-badge.role-admin,
+.role-badge.role-manager {
+    background: rgba(var(--color-primary-rgb), 0.15);
+    color: var(--color-primary);
+    border-color: rgba(var(--color-primary-rgb), 0.3);
 }
 
-.profile-field {
+.role-badge.role-user {
+    background: rgba(var(--color-info-rgb), 0.15);
+    color: var(--color-info);
+    border-color: rgba(var(--color-info-rgb), 0.3);
+}
+
+.role-badge.role-guest {
+    background: rgba(var(--color-text-secondary-rgb), 0.15);
+    color: var(--color-text-secondary);
+    border-color: rgba(var(--color-text-secondary-rgb), 0.3);
+}
+
+/* ========== 统计信息 ========== */
+.profile-stats-inline {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    padding: 20px 24px;
+    background: var(--color-bg-secondary);
 }
 
-.profile-label {
+.stat-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.stat-inline:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
     font-weight: 500;
 }
 
-.profile-value {
-    font-size: 15px;
-    color: var(--text-primary);
+.stat-value {
+    font-size: 14px;
+    color: var(--color-primary);
     font-weight: 600;
+}
+
+.status-horizontal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.active {
+    background: var(--color-success);
+    box-shadow: 0 0 8px rgba(var(--color-success-rgb), 0.5);
+}
+
+.status-dot.inactive {
+    background: var(--color-text-tertiary);
+}
+
+/* ========== 右侧内容 ========== */
+.profile-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ========== 信息列表 ========== */
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+    transition: all var(--transition-fast);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item:hover {
+    padding-left: 8px;
+    padding-right: 8px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    margin: 0 -8px;
+}
+
+.info-label {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.info-value {
+    font-size: 15px;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    text-align: right;
+    flex: 1;
+}
+
+/* ========== 安全设置 ========== */
+.security-item-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    transition: all var(--transition-fast);
+}
+
+.security-item-compact:hover {
+    border-color: var(--color-border-light);
+    background: var(--color-bg-primary);
+}
+
+.security-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.security-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.security-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+/* ========== 编辑表单样式 ========== */
+.profile-right .form-group {
+    margin-bottom: 20px;
+}
+
+.profile-right .form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+}
+
+.profile-right .form-label .required {
+    color: var(--color-error);
+    margin-left: 4px;
+}
+
+.profile-right .form-input {
+    padding: 10px 14px;
+    font-size: 15px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.profile-right .form-input:focus {
+    background: var(--color-bg-primary);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.profile-right .form-input:disabled {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.profile-right .form-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin-top: 6px;
+}
+
+.profile-right .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+}
+
+.profile-right .form-actions .btn {
+    min-width: 100px;
+}
+
+/* ========== 响应式优化 ========== */
+@media (max-width: 768px) {
+    .profile-left {
+        position: static;
+    }
+    
+    .profile-avatar-large {
+        width: 100px;
+        height: 100px;
+        font-size: 40px;
+    }
+    
+    .profile-header-compact {
+        padding: 20px;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .info-value {
+        text-align: left;
+    }
+    
+    .security-item-compact {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .security-item-compact .btn {
+        width: 100%;
+    }
+    
+    .profile-right .form-actions {
+        flex-direction: column;
+    }
+    
+    .profile-right .form-actions .btn {
+        width: 100%;
+    }
 }

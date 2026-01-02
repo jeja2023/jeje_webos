@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
-class MessageInfo(BaseModel):
-    """信息"""
+class NotificationInfo(BaseModel):
+    """通知"""
     id: int
     user_id: int
     sender_id: Optional[int] = None
@@ -24,8 +24,8 @@ class MessageInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MessageCreate(BaseModel):
-    """创建信息请求"""
+class NotificationCreate(BaseModel):
+    """创建通知请求"""
     user_id: Optional[int] = Field(None, description="接收用户ID，0表示所有用户")
     receiver_username: Optional[str] = Field(None, description="接收用户名")
     title: str = Field(..., min_length=1, max_length=200)
@@ -34,18 +34,19 @@ class MessageCreate(BaseModel):
     action_url: Optional[str] = None
 
 
-class MessageUpdate(BaseModel):
-    """更新信息请求"""
+class NotificationUpdate(BaseModel):
+    """更新通知请求"""
     is_read: Optional[bool] = None
 
 
-class MessageListResponse(BaseModel):
-    """信息列表响应"""
-    items: list[MessageInfo]
+class NotificationListResponse(BaseModel):
+    """通知列表响应"""
+    items: list[NotificationInfo]
     total: int
     unread_count: int
     page: int
     size: int
+
 
 
 

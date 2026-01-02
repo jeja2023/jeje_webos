@@ -55,13 +55,13 @@ manifest = ModuleManifest(
 
     # 权限声明
     permissions=[
-        "datalens:view",             # 查看视图（基础权限）
-        "datalens:create",           # 创建视图
-        "datalens:update",           # 修改视图
-        "datalens:delete",           # 删除视图
-        "datalens:source:manage",    # 管理数据源
-        "datalens:category:manage",  # 管理分类
-        "datalens:admin",            # 管理所有用户的视图
+        "datalens.view",             # 查看视图（基础权限）
+        "datalens.create",           # 创建视图
+        "datalens.update",           # 修改视图
+        "datalens.delete",           # 删除视图
+        "datalens.source.manage",    # 管理数据源
+        "datalens.category.manage",  # 管理分类
+        "datalens.admin",            # 管理所有用户的视图
     ],
 
     # 模块依赖

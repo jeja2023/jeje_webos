@@ -144,7 +144,7 @@ async def upload_file(
         
         if user and user.storage_quota is not None:
             # 计算当前已使用空间（包括 storage 和 filemanager 的文件）
-            # 注意：这里只统计 storage 模块的文件，filemanager 的文件单独统计
+            # 这里只统计 storage 模块的文件，filemanager 的文件单独统计
             size_result = await db.execute(
                 select(func.coalesce(func.sum(StorageFileRecord.file_size), 0))
                 .select_from(StorageFileRecord)

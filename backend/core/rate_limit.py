@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RateLimitConfig:
     """速率限制配置"""
-    requests: int = 200      # 允许的请求数（默认200/分钟，开发环境更宽松）
+    requests: int = 200      # 允许的请求数（默认200/分钟）
     window: int = 60         # 时间窗口（秒）
     block_duration: int = 30  # 超限后封禁时间（秒，默认30秒，生产环境可设置为60-300秒）
 
@@ -372,7 +372,7 @@ def init_rate_limiter():
             block_duration=block_duration
         )
         
-        # 如果启用，将本地IP加入白名单（开发环境推荐）
+        # 如果启用，将本地IP加入白名单
         if enable_whitelist_localhost:
             rate_limiter.add_whitelist("127.0.0.1")
             rate_limiter.add_whitelist("localhost")

@@ -133,106 +133,30 @@
 
 /* ==================== 手动主题选择（优先级最高） ==================== */
 
-/* 显式浅色主题类 */
-:root.theme-light {
-    --color-bg-deep: #f3f4f6;
-    --color-bg-primary: #ffffff;
-    --color-bg-secondary: #ffffff;
-    --color-bg-tertiary: #f9fafb;
-    --color-bg-hover: #f3f4f6;
+/* 注意：已移除light和dark主题，只保留sunrise和neon两个主题 */
 
-    --color-primary: #2563eb;
-    --color-primary-rgb: 37, 99, 235;
-    --color-primary-hover: #60a5fa;
-    --color-primary-dark: #1d4ed8;
-    --color-primary-glow: rgba(37, 99, 235, 0.25);
-
-    --color-text-primary: #000000;
-    --color-text-secondary: #4b5563;
-    --color-text-tertiary: #6b7280;
-    --color-text-muted: #9ca3af;
-    --color-text-inverse: #ffffff;
-    --color-btn-text: #ffffff;
-    /* 按钮文字 */
-
-    --color-border: #e5e7eb;
-    --color-border-light: #f3f4f6;
-
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.3);
-}
-
-/* 显式深色主题类 */
-:root.theme-dark {
-    /* 背景色 - 加深层次感 */
-    --color-bg-deep: #121214;
-    --color-bg-primary: #1e1e20;
-    --color-bg-secondary: #27272a;
-    --color-bg-tertiary: #323236;
-    --color-bg-hover: #3f3f46;
-
-    /* 文字色 - 纯白与高亮灰 */
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #e4e4e7;
-    --color-text-tertiary: #a1a1aa;
-    --color-text-muted: #71717a;
-    --color-text-inverse: #000000;
-    --color-btn-text: #ffffff;
-    /* 深色模式按钮仍用白字，因为主题色是深蓝 */
-
-    /* 边框 - 提高可见度 */
-    --color-border: #3f3f46;
-    --color-border-light: #52525b;
-
-    /* 阴影 - 更深邃 */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
-
-    /* 主题色 - 提亮以增强按钮对比度 */
-    --color-primary: #3b82f6;
-    --color-primary-rgb: 59, 130, 246;
-    --color-primary-hover: #60a5fa;
-    --color-primary-dark: #2563eb;
-    --color-primary-glow: rgba(59, 130, 246, 0.5);
-
-    /* 状态色 - 调整亮度 */
-    --color-warning: #fbbf24;
-    --color-warning-rgb: 251, 191, 36;
-    --color-error: #f87171;
-    --color-error-rgb: 248, 113, 113;
-    --color-success: #34d399;
-    --color-success-rgb: 52, 211, 153;
-    --color-info: #38bdf8;
-    --color-info-rgb: 56, 189, 248;
-
-    /* 兼容性补充 */
-    --color-card: var(--color-bg-secondary);
-    --color-secondary: #818cf8;
-    --color-border-hover: var(--color-primary-hover);
-}
-
-/* 日出印象主题（温暖晨曦风格） */
+/* 日出印象主题（温暖晨曦风格）- 全面优化 */
 :root.theme-sunrise {
+    /* 背景渐变 - 温暖的日出色调 */
     --color-bg-deep:
         radial-gradient(ellipse at 50% 100%, rgba(255, 154, 86, 0.6) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(255, 107, 107, 0.4) 0%, transparent 40%),
         linear-gradient(to top, #FF9A56 0%, #FFCDA8 30%, #A8DADC 70%, #457B9D 100%);
 
-    --color-bg-primary: rgba(255, 255, 255, 0.94);
-    --color-bg-secondary: rgba(255, 250, 245, 0.88);
+    /* 容器背景 - 半透明白色，保持温暖感 */
+    --color-bg-primary: rgba(255, 255, 255, 0.95);
+    --color-bg-secondary: rgba(255, 250, 245, 0.92);
     --color-bg-tertiary: rgba(255, 248, 240, 0.98);
-    --color-bg-hover: rgba(255, 220, 200, 0.7);
+    --color-bg-hover: rgba(255, 220, 200, 0.75);
 
+    /* 主色调 - 珊瑚橙，提高对比度 */
     --color-primary: #d65a31;
-    /* 稍深一点的珊瑚色以提高对比度 */
     --color-primary-rgb: 214, 90, 49;
     --color-primary-hover: #E76F51;
     --color-primary-dark: #A44A3F;
     --color-primary-glow: rgba(214, 90, 49, 0.35);
 
+    /* 状态色 - 与主题协调 */
     --color-warning: #F4A261;
     --color-warning-rgb: 244, 162, 97;
     --color-error: #E63946;
@@ -242,42 +166,56 @@
     --color-info: #457B9D;
     --color-info-rgb: 69, 123, 157;
 
+    /* 文字色 - 深色确保可读性 */
     --color-text-primary: #1D3540;
     --color-text-secondary: #3d4f58;
     --color-text-tertiary: #526066;
     --color-text-muted: #6b777d;
     --color-text-inverse: #ffffff;
     --color-btn-text: #1D3540;
-    /* 按钮文字：珊瑚橙背景用深色字，与菜单栏保持一致 */
 
-    --color-border: rgba(38, 70, 83, 0.25);
-    /* 提高边框可见度 */
-    --color-border-light: rgba(38, 70, 83, 0.15);
+    /* 边框 - 提高可见度 */
+    --color-border: rgba(38, 70, 83, 0.3);
+    --color-border-light: rgba(38, 70, 83, 0.18);
 
-    --shadow-sm: 0 2px 4px rgba(214, 90, 49, 0.12);
-    --shadow-md: 0 4px 12px rgba(214, 90, 49, 0.18);
-    --shadow-lg: 0 8px 24px rgba(214, 90, 49, 0.25);
+    /* 阴影 - 温暖的橙色调 */
+    --shadow-sm: 0 2px 4px rgba(214, 90, 49, 0.15);
+    --shadow-md: 0 4px 12px rgba(214, 90, 49, 0.2);
+    --shadow-lg: 0 8px 24px rgba(214, 90, 49, 0.3);
     --shadow-glow: 0 0 20px rgba(214, 90, 49, 0.4);
+
+    /* 兼容性补充 */
+    --color-card: var(--color-bg-primary);
+    --color-secondary: #E76F51;
+    --color-secondary-rgb: 231, 111, 81;
+    --color-secondary-hover: #FF8C69;
+    --color-secondary-dark: #A44A3F;
+    --color-secondary-glow: rgba(231, 111, 81, 0.3);
+    --color-border-hover: var(--color-primary-hover);
 }
 
-/* 星夜霓虹主题（赛博朋克风格） */
+/* 星夜霓虹主题（赛博朋克风格）- 全面优化 */
 :root.theme-neon {
+    /* 背景渐变 - 霓虹色彩 */
     --color-bg-deep:
         radial-gradient(circle at 80% 20%, rgba(255, 46, 99, 0.4) 0%, transparent 40%),
         radial-gradient(circle at 20% 80%, rgba(8, 217, 214, 0.4) 0%, transparent 40%),
         linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
 
-    --color-bg-primary: rgba(30, 30, 50, 0.9);
-    --color-bg-secondary: rgba(40, 40, 60, 0.85);
-    --color-bg-tertiary: rgba(50, 50, 70, 0.8);
-    --color-bg-hover: rgba(60, 60, 80, 0.9);
+    /* 容器背景 - 深色半透明，保持霓虹感 */
+    --color-bg-primary: rgba(30, 30, 50, 0.92);
+    --color-bg-secondary: rgba(40, 40, 60, 0.88);
+    --color-bg-tertiary: rgba(50, 50, 70, 0.85);
+    --color-bg-hover: rgba(60, 60, 80, 0.95);
 
+    /* 主色调 - 霓虹蓝 */
     --color-primary: #0A84FF;
     --color-primary-rgb: 10, 132, 255;
     --color-primary-hover: #5E5CE6;
     --color-primary-dark: #32D74B;
-    --color-primary-glow: rgba(10, 132, 255, 0.4);
+    --color-primary-glow: rgba(10, 132, 255, 0.5);
 
+    /* 状态色 - 高饱和霓虹色 */
     --color-warning: #FFD60A;
     --color-warning-rgb: 255, 214, 10;
     --color-error: #FF453A;
@@ -287,24 +225,37 @@
     --color-info: #64D2FF;
     --color-info-rgb: 100, 210, 255;
 
+    /* 文字色 - 白色确保对比度 */
     --color-text-primary: #ffffff;
-    --color-text-secondary: rgba(255, 255, 255, 0.9);
-    --color-text-tertiary: rgba(255, 255, 255, 0.7);
+    --color-text-secondary: rgba(255, 255, 255, 0.92);
+    --color-text-tertiary: rgba(255, 255, 255, 0.75);
+    --color-text-muted: rgba(255, 255, 255, 0.5);
     --color-text-inverse: #000000;
     --color-btn-text: #ffffff;
-    /* 霓虹主题按钮用白字 */
 
-    --color-border: rgba(255, 255, 255, 0.15);
-    --color-border-light: rgba(255, 255, 255, 0.1);
+    /* 边框 - 霓虹光效 */
+    --color-border: rgba(10, 132, 255, 0.3);
+    --color-border-light: rgba(10, 132, 255, 0.15);
 
-    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
-    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.4);
+    /* 阴影 - 增强霓虹光效 */
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 25px rgba(10, 132, 255, 0.5);
+
+    /* 兼容性补充 */
+    --color-card: var(--color-bg-secondary);
+    --color-secondary: #5E5CE6;
+    --color-secondary-rgb: 94, 92, 230;
+    --color-secondary-hover: #7B7AFF;
+    --color-secondary-dark: #4A48D4;
+    --color-secondary-glow: rgba(94, 92, 230, 0.4);
+    --color-border-hover: var(--color-primary-hover);
 }
 
-/* 仲夏之夜主题（夏夜星空 + 萤火虫） */
-:root.theme-summer {
+/* 以下主题已移除：summer, winter, spring, autumn */
+/* 只保留 sunrise 和 neon 两个主题 */
+/*
     --color-bg-deep:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3C!-- 星星 --%3E%3Cpath d='M100 10 L102 14 L106 14 L103 17 L104 21 L100 18 L96 21 L97 17 L94 14 L98 14 Z' fill='%23fff' opacity='0.7'/%3E%3Cpath d='M40 40 L41 42 L43 42 L41.5 43.5 L42 45.5 L40 44 L38 45.5 L38.5 43.5 L37 42 L39 42 Z' fill='%23fff' opacity='0.5'/%3E%3Cpath d='M160 30 L161 32 L163 32 L161.5 33.5 L162 35.5 L160 34 L158 35.5 L158.5 33.5 L157 32 L159 32 Z' fill='%23fff' opacity='0.6'/%3E%3Ccircle cx='20' cy='15' r='1' fill='%23fff' opacity='0.8'/%3E%3Ccircle cx='180' cy='80' r='1' fill='%23fff' opacity='0.6'/%3E%3C!-- 萤火虫 (带辉光) --%3E%3Ccircle cx='50' cy='150' r='1.5' fill='%2376ff03' opacity='0.6'%3E%3Canimate attributeName='opacity' values='0.3;0.8;0.3' dur='3s' repeatCount='indefinite'/%3E%3C/circle%3E%3Ccircle cx='130' cy='120' r='2' fill='%2376ff03' opacity='0.7'%3E%3Canimate attributeName='opacity' values='0.4;0.9;0.4' dur='4s' repeatCount='indefinite'/%3E%3C/circle%3E%3Ccircle cx='80' cy='180' r='3' fill='%23ccff90' opacity='0.4' filter='url(%23glow)'/%3E%3Cdefs%3E%3Cfilter id='glow'%3E%3CfeGaussianBlur stdDeviation='2' result='coloredBlur'/%3E%3CfeMerge%3E%3CfeMergeNode in='coloredBlur'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E"),
         radial-gradient(ellipse at 70% 10%, rgba(138, 43, 226, 0.4) 0%, transparent 40%),
@@ -347,137 +298,6 @@
     --shadow-glow: 0 0 30px rgba(124, 77, 255, 0.4);
 }
 
-/* 冬日暖阳主题（雪人 + 飘雪） */
-:root.theme-winter {
-    --color-bg-deep:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3C!-- 雪花 --%3E%3Cpath d='M40 10 L40 20 M40 5 L40 10 M35 12.5 L40 10 L45 12.5 M32 17 L40 13 L48 17' stroke='%23b3e5fc' stroke-width='1.5' fill='none' opacity='0.4' transform='rotate(15 40 15)'/%3E%3Ccircle cx='100' cy='40' r='2' fill='%23e1f5fe' opacity='0.6'/%3E%3Ccircle cx='150' cy='20' r='1.5' fill='%23e1f5fe' opacity='0.5'/%3E%3C!-- 雪人 --%3E%3Cg transform='translate(140, 120) scale(0.8)' opacity='0.25'%3E%3Ccircle cx='40' cy='65' r='25' fill='%23fff'/%3E%3Ccircle cx='40' cy='30' r='18' fill='%23fff'/%3E%3Ccircle cx='35' cy='25' r='2' fill='%2337474f'/%3E%3Ccircle cx='45' cy='25' r='2' fill='%2337474f'/%3E%3Cpath d='M40 32 L40 38 L30 35' stroke='%23ff7043' stroke-width='2' fill='none'/%3E%3Crect x='25' y='10' width='30' height='4' fill='%23546e7a'/%3E%3Crect x='30' y='-5' width='20' height='15' fill='%23546e7a'/%3E%3Cline x1='15' y1='65' x2='-5' y2='55' stroke='%23795548' stroke-width='2'/%3E%3Cline x1='65' y1='65' x2='85' y2='55' stroke='%23795548' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E"),
-        radial-gradient(ellipse at 75% 15%, rgba(255, 193, 7, 0.35) 0%, transparent 40%),
-        radial-gradient(ellipse at 25% 85%, rgba(144, 202, 249, 0.3) 0%, transparent 45%),
-        linear-gradient(135deg, #e3f2fd 0%, #bbdefb 35%, #90caf9 65%, #e1f5fe 100%);
-
-    --color-bg-primary: rgba(255, 255, 255, 0.95);
-    --color-bg-secondary: rgba(227, 242, 253, 0.92);
-    --color-bg-tertiary: rgba(187, 222, 251, 0.88);
-    --color-bg-hover: rgba(255, 236, 179, 0.7);
-
-    --color-primary: #ff6f00;
-    --color-primary-rgb: 255, 111, 0;
-    --color-primary-hover: #ffa726;
-    --color-primary-dark: #e65100;
-    --color-primary-glow: rgba(255, 111, 0, 0.28);
-
-    --color-warning: #ffb300;
-    --color-warning-rgb: 255, 179, 0;
-    --color-error: #f44336;
-    --color-error-rgb: 244, 67, 54;
-    --color-success: #4caf50;
-    --color-success-rgb: 76, 175, 80;
-    --color-info: #2196f3;
-    --color-info-rgb: 33, 150, 243;
-
-    --color-text-primary: #263238;
-    --color-text-secondary: #37474f;
-    --color-text-tertiary: #546e7a;
-    --color-text-inverse: #ffffff;
-    --color-btn-text: #ffffff;
-    /* 冬日主题按钮用白字 */
-
-    --color-border: rgba(144, 202, 249, 0.5);
-    --color-border-light: rgba(144, 202, 249, 0.3);
-
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 6px 20px rgba(255, 111, 0, 0.15);
-    --shadow-lg: 0 12px 36px rgba(255, 111, 0, 0.2);
-    --shadow-glow: 0 0 25px rgba(255, 167, 38, 0.35);
-}
-
-/* 春意盎然主题（柳树 + 迎春花） */
-:root.theme-spring {
-    --color-bg-deep:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3C!-- 柳条 --%3E%3Cpath d='M20 0 Q25 50 15 100 Q20 150 10 200' stroke='%2381c784' stroke-width='1.5' fill='none' opacity='0.4'/%3E%3Cpath d='M60 0 Q55 40 65 90 Q55 140 70 190' stroke='%2381c784' stroke-width='1.5' fill='none' opacity='0.3'/%3E%3Cpath d='M100 0 Q110 60 95 120' stroke='%2381c784' stroke-width='1.5' fill='none' opacity='0.35'/%3E%3C!-- 迎春花 --%3E%3Ccircle cx='18' cy='30' r='2.5' fill='%23fff176' opacity='0.8'/%3E%3Ccircle cx='13' cy='80' r='2' fill='%23fff176' opacity='0.8'/%3E%3Ccircle cx='17' cy='140' r='2.5' fill='%23fff176' opacity='0.8'/%3E%3Ccircle cx='62' cy='50' r='2' fill='%23fff176' opacity='0.7'/%3E%3Ccircle cx='68' cy='110' r='2.5' fill='%23fff176' opacity='0.7'/%3E%3Ccircle cx='98' cy='40' r='2' fill='%23fff176' opacity='0.75'/%3E%3C/svg%3E"),
-        radial-gradient(ellipse at 25% 25%, rgba(129, 199, 132, 0.35) 0%, transparent 45%),
-        radial-gradient(ellipse at 75% 75%, rgba(248, 187, 217, 0.3) 0%, transparent 40%),
-        linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 25%, #a5d6a7 50%, #dcedc8 75%, #f1f8e9 100%);
-
-    --color-bg-primary: rgba(255, 255, 255, 0.94);
-    --color-bg-secondary: rgba(232, 245, 233, 0.92);
-    --color-bg-tertiary: rgba(200, 230, 201, 0.88);
-    --color-bg-hover: rgba(255, 238, 88, 0.3);
-
-    --color-primary: #e91e63;
-    --color-primary-rgb: 233, 30, 99;
-    --color-primary-hover: #f48fb1;
-    --color-primary-dark: #c2185b;
-    --color-primary-glow: rgba(233, 30, 99, 0.25);
-
-    --color-warning: #ffb300;
-    --color-warning-rgb: 255, 179, 0;
-    --color-error: #f44336;
-    --color-error-rgb: 244, 67, 54;
-    --color-success: #4caf50;
-    --color-success-rgb: 76, 175, 80;
-    --color-info: #03a9f4;
-    --color-info-rgb: 3, 169, 244;
-
-    --color-text-primary: #1b5e20;
-    --color-text-secondary: #2e7d32;
-    --color-text-tertiary: #33691e;
-    --color-text-inverse: #ffffff;
-    --color-btn-text: #1b5e20;
-    /* 春日主题按钮用深绿色字 */
-
-    --color-border: rgba(129, 199, 132, 0.35);
-    --color-border-light: rgba(129, 199, 132, 0.2);
-
-    --shadow-sm: 0 2px 8px rgba(76, 175, 80, 0.12);
-    --shadow-md: 0 6px 20px rgba(233, 30, 99, 0.15);
-    --shadow-lg: 0 12px 36px rgba(233, 30, 99, 0.2);
-    --shadow-glow: 0 0 25px rgba(248, 187, 217, 0.4);
-}
-
-/* 秋日私语主题（枫叶） */
-:root.theme-autumn {
-    --color-bg-deep:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3C!-- 枫叶1 --%3E%3Cg transform='translate(30,30) rotate(15) scale(0.6)' opacity='0.3'%3E%3Cpath d='M25,50 C10,40 5,20 25,25 C20,5 40,0 50,20 C60,0 80,5 75,25 C95,20 90,40 75,50 C80,70 60,75 50,60 C40,75 20,70 25,50 Z' fill='%23d84315'/%3E%3Cpath d='M50,60 L50,80' stroke='%23d84315' stroke-width='2'/%3E%3C/g%3E%3C!-- 枫叶2 --%3E%3Cg transform='translate(100,80) rotate(-20) scale(0.5)' opacity='0.25'%3E%3Cpath d='M25,50 C10,40 5,20 25,25 C20,5 40,0 50,20 C60,0 80,5 75,25 C95,20 90,40 75,50 C80,70 60,75 50,60 C40,75 20,70 25,50 Z' fill='%23bf360c'/%3E%3Cpath d='M50,60 L50,80' stroke='%23bf360c' stroke-width='2'/%3E%3C/g%3E%3C!-- 一些点缀 --%3E%3Ccircle cx='80' cy='20' r='2' fill='%23ffcc80' opacity='0.5'/%3E%3Ccircle cx='20' cy='100' r='3' fill='%23ffcc80' opacity='0.4'/%3E%3C/svg%3E"),
-        radial-gradient(ellipse at 20% 35%, rgba(255, 138, 101, 0.4) 0%, transparent 45%),
-        radial-gradient(ellipse at 80% 65%, rgba(255, 183, 77, 0.35) 0%, transparent 50%),
-        linear-gradient(to bottom, #fff3e0 0%, #ffe0b2 25%, #ffcc80 50%, #d7ccc8 80%, #bcaaa4 100%);
-
-    --color-bg-primary: rgba(255, 253, 245, 0.95);
-    --color-bg-secondary: rgba(255, 243, 224, 0.92);
-    --color-bg-tertiary: rgba(255, 224, 178, 0.88);
-    --color-bg-hover: rgba(255, 183, 77, 0.5);
-
-    --color-primary: #d84315;
-    --color-primary-rgb: 216, 67, 21;
-    --color-primary-hover: #ff8a65;
-    --color-primary-dark: #bf360c;
-    --color-primary-glow: rgba(216, 67, 21, 0.28);
-
-    --color-warning: #ff9800;
-    --color-warning-rgb: 255, 152, 0;
-    --color-error: #e53935;
-    --color-error-rgb: 229, 57, 53;
-    --color-success: #689f38;
-    --color-success-rgb: 104, 159, 56;
-    --color-info: #0097a7;
-    --color-info-rgb: 0, 151, 167;
-
-    --color-text-primary: #3e2723;
-    --color-text-secondary: #4e342e;
-    --color-text-tertiary: #6d4c41;
-    --color-text-inverse: #ffffff;
-    --color-btn-text: #ffffff;
-    /* 秋日主题按钮用白字 */
-
-    --color-border: rgba(188, 143, 87, 0.4);
-    --color-border-light: rgba(188, 143, 87, 0.22);
-
-    --shadow-sm: 0 2px 8px rgba(121, 85, 72, 0.12);
-    --shadow-md: 0 6px 20px rgba(216, 67, 21, 0.18);
-    --shadow-lg: 0 12px 36px rgba(216, 67, 21, 0.25);
-    --shadow-glow: 0 0 25px rgba(255, 138, 101, 0.38);
-}
 
 /* ==================== 全局应用图标渐变色库 ==================== */
 .gradient-blue {

@@ -290,8 +290,17 @@ async def update_role(
 ):
     """
     仅系统管理员可修改用户的基础角色字段。
+    
+    角色和权限的关系：
+    - admin: 系统管理员，自动拥有 ["*"] 权限，权限不可被收紧
+    - manager: 业务管理员，默认拥有 ["*"] 权限，但权限可以被收紧
+    - user: 普通用户，权限由 permissions 字段决定
+    - guest: 访客，默认无权限，权限由 permissions 字段决定
+    
+    注意：
     - 设置为 admin/manager 会同时赋予权限 ["*"]
     - 降级时保留已有权限（可再通过权限接口收紧）
+    - 如果从 admin/manager 降级，建议通过权限接口重新分配权限
     """
     if role not in ("admin", "manager", "user", "guest"):
         raise HTTPException(status_code=400, detail="角色无效")
@@ -306,10 +315,18 @@ async def update_role(
         raise HTTPException(status_code=400, detail="不能将自身降级为访客")
 
     user.role = role
+    # 设置 admin/manager 时，赋予所有权限
+    # manager 的权限可以被收紧，但 admin 的权限在权限检查时始终通过
     if role in ("admin", "manager"):
         user.permissions = ["*"]
+    # 降级为 user/guest 时，保留当前权限（可通过权限接口收紧）
+    
     await db.commit()
-    return success({"id": user.id, "role": user.role, "permissions": user.permissions or []}, "角色已更新")
+    return success({
+        "id": user.id, 
+        "role": user.role, 
+        "permissions": user.permissions or []
+    }, "角色已更新")
 
 
 @router.delete("/{user_id}")
@@ -353,11 +370,22 @@ async def update_permissions(
 ):
     """
     更新用户权限（管理员）
-    系统管理员可操作所有用户，业务管理员只能操作普通用户
+    
+    权限设计说明：
+    - role 字段：快速标识用户类型（admin/manager/user/guest），用于权限检查的快速判断
+    - permissions 字段：实际权限列表，支持通配符（*、module.*）和细粒度权限
+    - role_ids 字段：关联的用户组ID，用于权限模板和权限上限
+    
+    权限分配规则：
+    1. 选择用户组时：用户组提供权限上限，可以在此范围内收紧权限
+    2. 不选择用户组时：可以直接设置权限（用于权限收紧），但必须基于用户当前权限或用户组权限
+    3. admin/manager 角色：自动拥有 ["*"] 权限，但可以通过权限收紧限制
+    
     payload: {
-        "module_access": ["blog","notes"],   # 勾选的模块可用范围（只能在用户组权限内收紧）
-        "role_ids": [1,2],                   # 选择的用户组（权限模板）
-        "specific_perms": ["notes.edit"]     # 细粒度权限（必须在用户组允许范围内，可用于收紧）
+        "module_access": ["blog","notes"],   # 勾选的模块可用范围（在用户组权限内收紧）
+        "role_ids": [1],                      # 选择的用户组（权限模板，只能选一个）
+        "specific_perms": ["notes.update"]   # 细粒度权限（在用户组允许范围内收紧）
+        "direct_permissions": ["blog.*"]     # 直接设置权限（用于权限收紧，可选）
     }
     """
     # 检查是否为管理员
@@ -376,6 +404,7 @@ async def update_permissions(
     module_access = payload.get("module_access") or []
     role_ids = payload.get("role_ids") or []
     specific_perms = payload.get("specific_perms")
+    direct_permissions = payload.get("direct_permissions")  # 直接设置权限（用于权限收紧）
 
     # 仅允许选择一个用户组（或不选）
     if len(role_ids) > 1:
@@ -386,96 +415,165 @@ async def update_permissions(
     if role_ids:
         res = await db.execute(select(Role).where(Role.id.in_(role_ids)))
         groups = res.scalars().all()
+        if not groups:
+            raise HTTPException(status_code=404, detail="用户组不存在")
 
-    # 汇总用户组的权限上限
-    allowed_perms = set()
     group = groups[0] if groups else None
-    if group and group.permissions:
-        allowed_perms.update(group.permissions)
     group_name = group.name.lower() if group else None
     is_admin_group = group_name == "admin"
     is_manager_group = group_name == "manager"
 
-    wildcard = "*" in allowed_perms
-    allowed_modules = set()
-    allowed_specific = set()
-    if wildcard:
-        allowed_modules = set(m.module_id for m in (await db.execute(select(ModuleConfig))).scalars().all())
+    # 如果直接设置权限，优先使用直接权限（用于权限收紧）
+    if direct_permissions is not None:
+        # 验证直接权限是否合理
+        direct_perms = set(direct_permissions)
+        
+        # 如果用户当前有用户组，验证直接权限是否在用户组权限范围内
+        if group:
+            allowed_perms = set(group.permissions)
+            wildcard = "*" in allowed_perms
+            
+            if wildcard:
+                # 用户组有通配符，允许任何权限收紧
+                pass
+            else:
+                # 验证直接权限是否在用户组权限范围内
+                allowed_modules = set()
+                allowed_specific = set()
+                for p in allowed_perms:
+                    if p.endswith(".*"):
+                        allowed_modules.add(p.split(".")[0])
+                    elif "." in p:
+                        allowed_modules.add(p.split(".")[0])
+                        allowed_specific.add(p)
+                
+                # 检查直接权限是否超出用户组范围
+                invalid_perms = []
+                for perm in direct_perms:
+                    if perm == "*":
+                        # 通配符权限需要用户组也有通配符
+                        if not wildcard:
+                            invalid_perms.append(perm)
+                    elif perm.endswith(".*"):
+                        module = perm.split(".")[0]
+                        if module not in allowed_modules and not wildcard:
+                            invalid_perms.append(perm)
+                    elif "." in perm:
+                        if perm not in allowed_specific and not wildcard:
+                            module = perm.split(".")[0]
+                            if module not in allowed_modules:
+                                invalid_perms.append(perm)
+                
+                if invalid_perms:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"直接权限超出用户组权限范围: {', '.join(invalid_perms)}"
+                    )
+        
+        # 使用直接权限
+        perms = list(direct_perms)
     else:
-        for p in allowed_perms:
-            if p.endswith(".*"):
-                allowed_modules.add(p.split(".")[0])
-            elif "." in p:
-                # 细粒度权限也开放对应模块
-                allowed_modules.add(p.split(".")[0])
-                allowed_specific.add(p)
+        # 使用用户组权限模板
+        if not group:
+            raise HTTPException(status_code=400, detail="请选择用户组或提供直接权限")
 
-    # 未选用户组时不允许直接赋予模块权限
-    if not groups and module_access:
-        raise HTTPException(status_code=400, detail="请先为用户选择用户组，再分配模块权限")
+        # 汇总用户组的权限上限
+        allowed_perms = set(group.permissions)
+        wildcard = "*" in allowed_perms
+        
+        allowed_modules = set()
+        allowed_specific = set()
+        if wildcard:
+            # 通配符权限，获取所有已安装的模块
+            allowed_modules = set(m.module_id for m in (await db.execute(select(ModuleConfig))).scalars().all())
+        else:
+            for p in allowed_perms:
+                if p.endswith(".*"):
+                    allowed_modules.add(p.split(".")[0])
+                elif "." in p:
+                    # 细粒度权限也开放对应模块
+                    allowed_modules.add(p.split(".")[0])
+                    allowed_specific.add(p)
 
-    # 校验用户勾选的模块是否在用户组允许范围内
-    if module_access and not wildcard:
-        invalid = [m for m in module_access if m not in allowed_modules]
-        if invalid:
-            raise HTTPException(status_code=400, detail=f"超出用户组权限的模块: {', '.join(invalid)}")
+        # 校验用户勾选的模块是否在用户组允许范围内
+        if module_access and not wildcard:
+            invalid = [m for m in module_access if m not in allowed_modules]
+            if invalid:
+                raise HTTPException(status_code=400, detail=f"超出用户组权限的模块: {', '.join(invalid)}")
 
-    # 校验细粒度权限（如 notes.edit），仅允许用户组选定范围
-    selected_specific = allowed_specific.copy()
-    if specific_perms is not None:
-        specific_perms = set(specific_perms)
-        # 对于 wildcard，可以允许在已声明的 specific 范围内收紧
-        invalid_specific = specific_perms - (allowed_specific if allowed_specific else specific_perms if wildcard else set())
-        if not wildcard and invalid_specific:
-            raise HTTPException(status_code=400, detail=f"超出用户组权限的功能点: {', '.join(invalid_specific)}")
-        # 如果是 wildcard 但未声明 specific，则允许选择空/任意（视为收紧到给定 specific）
-        selected_specific = specific_perms
+        # 校验细粒度权限（如 notes.update），仅允许用户组选定范围
+        selected_specific = allowed_specific.copy()
+        if specific_perms is not None:
+            specific_perms = set(specific_perms)
+            # 对于 wildcard，可以允许在已声明的 specific 范围内收紧
+            invalid_specific = specific_perms - (allowed_specific if allowed_specific else specific_perms if wildcard else set())
+            if not wildcard and invalid_specific:
+                raise HTTPException(status_code=400, detail=f"超出用户组权限的功能点: {', '.join(invalid_specific)}")
+            selected_specific = specific_perms
 
-    # 选中的模块（默认勾选全部允许的模块，便于快速分配）
-    selected_modules = module_access or (list(allowed_modules) if not wildcard else [])
+        # 选中的模块（默认勾选全部允许的模块，便于快速分配）
+        selected_modules = module_access or (list(allowed_modules) if not wildcard else [])
 
-    # 构建最终权限：模块权限（收紧后）+ 细粒度权限（可收紧）
-    perms = []
-    if wildcard and not selected_modules:
-        perms.append("*")
-    else:
-        perms.extend([f"{m}.*" for m in selected_modules])
+        # 构建最终权限：模块权限（收紧后）+ 细粒度权限（可收紧）
+        perms = []
+        if wildcard and not selected_modules:
+            perms.append("*")
+        else:
+            perms.extend([f"{m}.*" for m in selected_modules])
 
-    if wildcard:
-        # wildcard 时，如果未提供 specific_perms，则保留 allowed_specific；若提供，则按用户选择（收紧）
-        if selected_specific:
+        if wildcard:
+            # wildcard 时，如果未提供 specific_perms，则保留 allowed_specific；若提供，则按用户选择（收紧）
+            if selected_specific:
+                perms.extend(selected_specific)
+        else:
             perms.extend(selected_specific)
-    else:
-        perms.extend(selected_specific)
 
     # 去重
     perms = list(dict.fromkeys(perms))
 
-    user.permissions = perms
-    user.role_ids = role_ids
-
-    # 根据所选用户组同步基础角色：
-    # admin 组 -> 系统管理员 (admin)
-    # manager 组 -> 业务管理员 (manager)
-    # user 组 -> 普通用户 (user)
-    # guest 组 -> 访客 (guest)
-    # 其他未知组 -> 保持原角色或降为 user
+    # 根据用户组和权限同步 role 字段，确保一致性
+    # 规则：
+    # 1. admin 组 -> role="admin", permissions=["*"]（不可收紧）
+    # 2. manager 组 -> role="manager", permissions 可收紧
+    # 3. 如果权限是 ["*"]，且 role 不是 admin，则保持当前 role（可能是 manager）
+    # 4. 其他情况根据用户组设置 role
     if is_admin_group:
+        # admin 组强制拥有所有权限
         user.role = "admin"
         user.permissions = ["*"]
     elif is_manager_group:
+        # manager 组可以收紧权限
         user.role = "manager"
-    elif group_name == "user":
-        user.role = "user"
-    elif group_name == "guest":
-        user.role = "guest"
-    else:
-        # 未知用户组或未选择用户组，且原角色为管理级，则降为 user
-        if user.role in ("manager", "admin"):
+        user.permissions = perms
+    elif group:
+        # 其他用户组
+        if group_name == "user":
             user.role = "user"
+        elif group_name == "guest":
+            user.role = "guest"
+        else:
+            # 自定义用户组，保持原角色或降为 user
+            if user.role in ("manager", "admin"):
+                user.role = "user"
+        user.permissions = perms
+    else:
+        # 未选择用户组，直接设置权限（权限收紧）
+        # 保持当前 role，只更新 permissions
+        user.permissions = perms
+        # 如果权限被收紧为空或非通配符，且当前是管理角色，需要降级
+        if user.role in ("admin", "manager") and "*" not in perms:
+            # 权限被收紧，但保持 role（允许 manager 被收紧权限）
+            pass
+
+    user.role_ids = role_ids
 
     await db.commit()
-    return success({"id": user.id, "permissions": perms}, "权限已更新")
+    return success({
+        "id": user.id, 
+        "role": user.role,
+        "permissions": user.permissions,
+        "role_ids": user.role_ids
+    }, "权限已更新")
 
 
 @router.put("/{user_id}")

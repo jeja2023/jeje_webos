@@ -1,8 +1,8 @@
 /**
- * 信息系统页面
+ * 通知系统页面
  */
 
-class MessagesPage extends Component {
+class NotificationsPage extends Component {
     constructor(container) {
         super(container);
         const user = Store.get('user');
@@ -14,7 +14,7 @@ class MessagesPage extends Component {
             size: 20,
             loading: true,
             filter: 'all', // all, unread
-            users: [], // 用于发送信息时选择用户
+            users: [], // 用于发送通知时选择用户
             showSendModal: false
         };
     }
@@ -25,21 +25,21 @@ class MessagesPage extends Component {
         try {
             const params = { page, size };
             if (filter === 'unread') params.is_read = false;
-            const res = await MessageApi.list(params);
+            const res = await NotificationApi.list(params);
             this.setState({
                 messages: res.data?.items || res.items || [],
                 total: res.data?.total || res.total || 0,
                 loading: false
             });
         } catch (e) {
-            Toast.error('加载信息失败');
+            Toast.error('加载通知失败');
             this.setState({ loading: false });
         }
     }
 
     async handleMarkRead(id) {
         try {
-            await MessageApi.markRead(id);
+            await NotificationApi.markRead(id);
             this.loadData();
             // 更新全局未读数
             this.updateUnreadCount();
@@ -50,7 +50,7 @@ class MessagesPage extends Component {
 
     async handleMarkAllRead() {
         try {
-            await MessageApi.markAllRead();
+            await NotificationApi.markAllRead();
             Toast.success('已全部标记为已读');
             this.loadData();
             this.updateUnreadCount();
@@ -60,10 +60,10 @@ class MessagesPage extends Component {
     }
 
     async handleDelete(id) {
-        Modal.confirm('确认删除', '确定要删除这条信息吗？', async () => {
+        Modal.confirm('确认删除', '确定要删除这条通知吗？', async () => {
             try {
-                await MessageApi.delete(id);
-                Toast.success('信息已删除');
+                await NotificationApi.delete(id);
+                Toast.success('通知已删除');
                 this.loadData();
             } catch (e) {
                 Toast.error('删除失败');
@@ -72,10 +72,10 @@ class MessagesPage extends Component {
     }
 
     async handleDeleteAll() {
-        Modal.confirm('确认删除', '确定要删除所有信息吗？', async () => {
+        Modal.confirm('确认删除', '确定要删除所有通知吗？', async () => {
             try {
-                await MessageApi.deleteAll();
-                Toast.success('所有信息已删除');
+                await NotificationApi.deleteAll();
+                Toast.success('所有通知已删除');
                 this.loadData();
             } catch (e) {
                 Toast.error('删除失败');
@@ -85,7 +85,7 @@ class MessagesPage extends Component {
 
     async updateUnreadCount() {
         try {
-            const res = await MessageApi.unreadCount();
+            const res = await NotificationApi.unreadCount();
             const count = res.data?.count || res.count || 0;
             Store.set('unreadMessages', count);
         } catch (e) { }
@@ -101,10 +101,10 @@ class MessagesPage extends Component {
         }
     }
 
-    async handleSendMessage(data) {
+    async handleSendNotification(data) {
         try {
-            await MessageApi.create(data);
-            Toast.success('信息发送成功');
+            await NotificationApi.create(data);
+            Toast.success('通知发送成功');
             this.setState({ showSendModal: false });
             this.loadData();
             // 立即刷新未读数（即时反馈给自己）
@@ -116,10 +116,10 @@ class MessagesPage extends Component {
 
     handleExport() {
         const token = Store.get('token');
-        window.open(`/api/v1/export/message?token=${token}&format=xlsx`, '_blank');
+        window.open(`/api/v1/export/notification?token=${token}&format=xlsx`, '_blank');
     }
 
-    async showSendMessageModal() {
+    async showSendNotificationModal() {
         const user = Store.get('user');
         const isAdmin = user?.role === 'admin';
 
@@ -155,9 +155,9 @@ class MessagesPage extends Component {
             <div class="form-container">
                 ${userSelectHtml}
                 <div class="form-group">
-                    <label class="form-label">信息类型</label>
+                    <label class="form-label">通知类型</label>
                     <select class="form-input form-select" id="msgType">
-                        <option value="info">信息</option>
+                        <option value="info">通知</option>
                         <option value="success">成功</option>
                         <option value="warning">警告</option>
                         <option value="error">错误</option>
@@ -165,11 +165,11 @@ class MessagesPage extends Component {
                 </div>
                 <div class="form-group">
                     <label class="form-label">标题 <span class="required">*</span></label>
-                    <input type="text" class="form-input" id="msgTitle" placeholder="请输入信息标题" required maxlength="200">
+                    <input type="text" class="form-input" id="msgTitle" placeholder="请输入通知标题" required maxlength="200">
                 </div>
                 <div class="form-group">
                     <label class="form-label">内容</label>
-                    <textarea class="form-input" id="msgContent" rows="4" placeholder="请输入信息内容（可选）"></textarea>
+                    <textarea class="form-input" id="msgContent" rows="4" placeholder="请输入通知内容（可选）"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">操作链接（可选）</label>
@@ -179,7 +179,7 @@ class MessagesPage extends Component {
         `;
 
         const { overlay, close } = Modal.show({
-            title: '📤 发送信息',
+            title: '📤 发送通知',
             content,
             footer: `
                 <button class="btn btn-secondary" data-close>取消</button>
@@ -226,11 +226,11 @@ class MessagesPage extends Component {
             const actionUrl = overlay.querySelector('#msgActionUrl').value.trim();
 
             if (!title) {
-                Toast.error('请输入信息标题');
+                Toast.error('请输入通知标题');
                 return;
             }
 
-            this.handleSendMessage({
+            this.handleSendNotification({
                 user_id: userId,
                 receiver_username: receiverUsername,
                 title: title,
@@ -275,13 +275,13 @@ class MessagesPage extends Component {
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
                     <div>
-                        <h1 class="page-title">信息中心</h1>
-                        <p class="page-desc">查看和管理系统信息</p>
+                        <h1 class="page-title">通知中心</h1>
+                        <p class="page-desc">查看和管理系统通知</p>
                     </div>
                     ${this.isAdmin ? `
                         <div style="display:flex;gap:8px;">
                             <button class="btn btn-primary" id="openSendMsgModal">
-                                📤 发送信息
+                                📤 发送通知
                             </button>
                             <button class="btn btn-secondary" id="exportMsgBtn">
                                 📤 导出列表
@@ -313,7 +313,7 @@ class MessagesPage extends Component {
                     ${loading ? '<div class="loading"></div>' : messages.length === 0 ? `
                         <div class="empty-state" style="padding: 60px 0;">
                             <div class="empty-icon">✉️</div>
-                            <p class="empty-text">暂无信息</p>
+                            <p class="empty-text">暂无通知</p>
                         </div>
                     ` : `
                         <div class="notification-list">
@@ -325,7 +325,7 @@ class MessagesPage extends Component {
                                             <span class="notification-title">${Utils.escapeHtml(n.title)}</span>
                                             <span class="tag ${this.getTypeTag(n.type)}">${n.type}</span>
                                         </div>
-                                        <p class="notification-message">${Utils.escapeHtml(n.content || n.message || '')}</p>
+                                        <p class="notification-message">${Utils.escapeHtml(n.content || '')}</p>
                                         <div class="notification-meta">
                                             <span>${Utils.formatDate(n.created_at)}</span>
                                         </div>
@@ -397,10 +397,10 @@ class MessagesPage extends Component {
                 if (p > 0) this.changePage(p);
             });
 
-            // 发送信息（管理员）
+            // 发送通知（管理员）
             if (this.isAdmin) {
                 this.delegate('click', '#openSendMsgModal', () => {
-                    this.showSendMessageModal();
+                    this.showSendNotificationModal();
                 });
                 this.delegate('click', '#exportMsgBtn', () => {
                     this.handleExport();

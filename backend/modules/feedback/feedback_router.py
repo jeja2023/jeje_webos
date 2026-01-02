@@ -33,7 +33,7 @@ async def list_feedbacks(
     priority: Optional[FeedbackPriority] = None,
     keyword: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.read"))
 ):
     """
     获取反馈列表
@@ -75,7 +75,7 @@ async def list_my_feedbacks(
     size: int = Query(10, ge=1, le=100),
     status: Optional[FeedbackStatus] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.read"))
 ):
     """获取我的反馈列表"""
     service = FeedbackService(db)
@@ -94,7 +94,7 @@ async def list_my_feedbacks(
 async def get_feedback(
     feedback_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.read"))
 ):
     """获取反馈详情"""
     service = FeedbackService(db)
@@ -115,7 +115,7 @@ async def get_feedback(
 async def create_feedback(
     data: FeedbackCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.create"))
 ):
     """提交反馈"""
     service = FeedbackService(db)
@@ -136,7 +136,7 @@ async def update_feedback(
     feedback_id: int,
     data: FeedbackUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.update"))
 ):
     """更新反馈（只能更新自己的待处理反馈）"""
     service = FeedbackService(db)
@@ -152,7 +152,7 @@ async def update_feedback(
 async def delete_feedback(
     feedback_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("feedback.delete"))
 ):
     """删除反馈（只能删除自己的）"""
     service = FeedbackService(db)

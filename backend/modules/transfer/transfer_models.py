@@ -71,7 +71,7 @@ class TransferSession(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
     expires_at = Column(DateTime(timezone=True), nullable=False, comment="过期时间")
     
-    # 注意：不定义与 User 模型的 relationship，避免跨模块导入问题
+    # 不定义与 User 模型的 relationship，避免跨模块导入问题
     # 如需获取发送方/接收方用户信息，应在业务层通过 sender_id/receiver_id 单独查询
 
 
@@ -113,7 +113,7 @@ class TransferHistory(Base):
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="完成时间")
     
-    # 注意：不定义与 User 模型的 relationship，避免跨模块导入问题
+    # 不定义与 User 模型的 relationship，避免跨模块导入问题
     # 如需获取用户/对方信息，应在业务层通过 user_id/peer_id 单独查询
 
 

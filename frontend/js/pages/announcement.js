@@ -99,9 +99,12 @@ class AnnouncementListPage extends Component {
                         <h1 class="page-title">公告管理</h1>
                         <p class="page-desc">共 ${total} 条公告</p>
                     </div>
-                    <button class="btn btn-primary" onclick="Router.push('/announcement/edit')">
-                        ➕ 发布公告
-                    </button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('announcement', '公告') : ''}
+                        <button class="btn btn-primary" onclick="Router.push('/announcement/edit')">
+                            ➕ 发布公告
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- 筛选器 -->
@@ -200,10 +203,18 @@ class AnnouncementListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

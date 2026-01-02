@@ -341,7 +341,7 @@ const DataLensEditorMixin = {
         } catch (e) {
             let errorMsg = `JSON 格式错误`;
             if (e.message) {
-                // 处理常见的语法错误提示，使其更易读
+                // 处理常见的语法错误，使其更易读
                 const posMatch = e.message.match(/at position (\d+)/);
                 if (posMatch) {
                     errorMsg += ` (位置 ${posMatch[1]})`;
@@ -434,7 +434,7 @@ const DataLensEditorMixin = {
                                  </select>
                              </div>
                              
-                             <!-- 新增：表关联配置区 -->
+                             <!-- 表关联配置区 -->
                              <div class="form-group" id="lens-joins-section" style="display:none">
                                  <div class="flex-between align-center">
                                      <label class="m-0">关联其他表（可选）</label>
@@ -834,7 +834,7 @@ const DataLensEditorMixin = {
                     updateSelect(sortSelect, allFields);
                     filterSelects.forEach(s => updateSelect(s, allFields));
 
-                    // 同步到类成员以供筛选条件新增时使用
+                    // 同步到类成员以供筛选条件添加时使用
                     currentColumns = allFields.map(f => ({ name: f.fullName, type: f.type }));
 
                     overlay.querySelector('#lens-columns-section').style.display = 'block';
@@ -939,7 +939,7 @@ const DataLensEditorMixin = {
                         });
 
                         // 等待主表字段加载后，勾选中的字段（这部分原本就有逻辑，或者在 tableSelectEl change 中处理）
-                        // 注意：如果字段是带表名的，这里可能需要特殊处理
+                        // 如果字段是带表名的，这里可能需要特殊处理
                     }, 500);
                 }, 100);
             }
@@ -957,7 +957,7 @@ const DataLensEditorMixin = {
         const errorContainer = document.getElementById('lens-preview-error');
         const tableEl = document.getElementById('lens-preview-table');
 
-        // Reset UI
+        // 重置 UI
         resultContainer.style.display = 'none';
         errorContainer.style.display = 'none';
 
@@ -1072,13 +1072,13 @@ const DataLensEditorMixin = {
             if (res.code === 200 && res.data) {
                 const { columns, data } = res.data;
 
-                // Render Header
+                // 渲染头部
                 const thead = tableEl.querySelector('thead');
                 thead.innerHTML = '<tr>' +
                     columns.map(col => '<th>' + (col.title || '') + '</th>').join('') +
                     '</tr>';
 
-                // Render Body
+                // 渲染主体
                 const tbody = tableEl.querySelector('tbody');
                 tbody.innerHTML = data.map(row =>
                     '<tr>' +
@@ -1756,7 +1756,7 @@ const DataLensEditorMixin = {
                     headers = this._safeJsonParse(headersStr, 'Headers 配置');
                 } catch (e) {
                     // 如果解析失败，_safeJsonParse 会报错，这里可以选择是否中断
-                    // 考虑到 Headers 可能很重要，一般建议中断或给提示
+                    // 考虑到 Headers 可能很重要，一般建议中断或给出信息
                     return null;
                 }
             }

@@ -82,7 +82,8 @@ class FileManagerService:
         return folder
     
     async def update_folder(self, folder_id: int, data: FolderUpdate) -> Optional[VirtualFolder]:
-        """更新文件夹（重命名）"""
+        """更新文件夹（重命名）- 优化：减少不必要的查询"""
+        # 先检查文件夹是否存在
         folder = await self.get_folder(folder_id)
         if not folder:
             return None
@@ -98,17 +99,39 @@ class FileManagerService:
             if existing and existing.id != folder_id:
                 raise ValueError("同名文件夹已存在")
             
-            folder.name = data.name
-            folder.path = new_path
+            # 使用直接更新
+            from sqlalchemy import update as sql_update
+            await self.db.execute(
+                sql_update(VirtualFolder)
+                .where(
+                    and_(
+                        VirtualFolder.id == folder_id,
+                        VirtualFolder.user_id == self.user_id
+                    )
+                )
+                .values(name=data.name, path=new_path, updated_at=datetime.now())
+            )
             
             # 更新所有子文件夹的路径
             await self._update_children_paths(folder_id, old_path, new_path)
+            await self.db.commit()
+        else:
+            # 如果没有重命名，只更新 updated_at
+            from sqlalchemy import update as sql_update
+            await self.db.execute(
+                sql_update(VirtualFolder)
+                .where(
+                    and_(
+                        VirtualFolder.id == folder_id,
+                        VirtualFolder.user_id == self.user_id
+                    )
+                )
+                .values(updated_at=datetime.now())
+            )
+            await self.db.commit()
         
-        folder.updated_at = datetime.now()
-        await self.db.commit()
-        await self.db.refresh(folder)
-        
-        return folder
+        # 返回更新后的文件夹
+        return await self.get_folder(folder_id)
     
     async def _update_children_paths(self, parent_id: int, old_prefix: str, new_prefix: str):
         """递归更新子文件夹路径"""
@@ -193,20 +216,22 @@ class FileManagerService:
         return True
     
     async def _delete_folder_files(self, folder_id: int):
-        """删除文件夹下的所有物理文件"""
+        """删除文件夹下的所有物理文件（优化：批量删除）"""
         result = await self.db.execute(
             select(VirtualFile)
             .where(VirtualFile.folder_id == folder_id, VirtualFile.user_id == self.user_id)
         )
         files = result.scalars().all()
         
+        # 批量删除物理文件（优化：减少IO操作）
         for file in files:
-            # 检查物理文件是否存在
-            file_path = self.storage.get_file_path(file.storage_path)
-            if file_path and file_path.exists():
-                self.storage.delete_file(file.storage_path)
-            else:
-                logger.warning(f"文件夹 {folder_id} 下的文件物理文件不存在: {file.storage_path}")
+            try:
+                # 检查物理文件是否存在
+                file_path = self.storage.get_file_path(file.storage_path)
+                if file_path and file_path.exists():
+                    self.storage.delete_file(file.storage_path)
+            except Exception as e:
+                logger.warning(f"删除文件失败: {file.storage_path}, 错误: {e}")
     
     async def get_folder_tree(self) -> List[FolderTreeNode]:
         """获取完整文件夹树"""
@@ -241,32 +266,34 @@ class FileManagerService:
         return result.scalar_one_or_none()
     
     async def _check_storage_quota(self, additional_size: int) -> None:
-        """检查存储配额"""
-        # 获取用户信息
+        """检查存储配额（优化：使用单次查询获取用户信息和已使用空间）"""
+        # 使用 JOIN 一次性获取用户信息和已使用空间
+        from sqlalchemy import func as sql_func
         result = await self.db.execute(
-            select(User).where(User.id == self.user_id)
+            select(
+                User.storage_quota,
+                sql_func.coalesce(sql_func.sum(VirtualFile.file_size), 0).label('used_size')
+            )
+            .outerjoin(VirtualFile, User.id == VirtualFile.user_id)
+            .where(User.id == self.user_id)
+            .group_by(User.id, User.storage_quota)
         )
-        user = result.scalar_one_or_none()
+        row = result.first()
         
-        if not user:
+        if not row:
             raise ValueError("用户不存在")
         
+        storage_quota = row.storage_quota
+        current_size = row.used_size or 0
+        
         # 如果没有配额限制，直接通过
-        if user.storage_quota is None:
+        if storage_quota is None:
             return
         
-        # 计算当前已使用空间
-        size_result = await self.db.execute(
-            select(func.coalesce(func.sum(VirtualFile.file_size), 0))
-            .select_from(VirtualFile)
-            .where(VirtualFile.user_id == self.user_id)
-        )
-        current_size = size_result.scalar_one()
-        
         # 检查是否超过配额
-        if current_size + additional_size > user.storage_quota:
+        if current_size + additional_size > storage_quota:
             used_mb = current_size / 1024 / 1024
-            quota_mb = user.storage_quota / 1024 / 1024
+            quota_mb = storage_quota / 1024 / 1024
             additional_mb = additional_size / 1024 / 1024
             raise ValueError(
                 f"存储空间不足：当前已使用 {used_mb:.2f}MB / {quota_mb:.2f}MB，"
@@ -328,23 +355,34 @@ class FileManagerService:
         return file
     
     async def update_file(self, file_id: int, data: FileUpdate) -> Optional[VirtualFile]:
-        """更新文件信息"""
+        """更新文件信息（优化：直接更新，减少查询）"""
+        # 先检查文件是否存在
         file = await self.get_file(file_id)
         if not file:
             return None
         
-        if data.name is not None:
-            file.name = data.name
-        if data.description is not None:
-            file.description = data.description
-        if data.is_starred is not None:
-            file.is_starred = data.is_starred
+        update_data = data.model_dump(exclude_unset=True)
+        if not update_data:
+            return file
         
-        file.updated_at = datetime.now()
+        update_data["updated_at"] = datetime.now()
+        
+        # 使用直接更新
+        from sqlalchemy import update as sql_update
+        await self.db.execute(
+            sql_update(VirtualFile)
+            .where(
+                and_(
+                    VirtualFile.id == file_id,
+                    VirtualFile.user_id == self.user_id
+                )
+            )
+            .values(**update_data)
+        )
         await self.db.commit()
-        await self.db.refresh(file)
         
-        return file
+        # 返回更新后的文件
+        return await self.get_file(file_id)
     
     async def move_file(self, file_id: int, target_folder_id: Optional[int]) -> Optional[VirtualFile]:
         """移动文件"""

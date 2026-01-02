@@ -30,7 +30,7 @@ class AnalysisModel(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     graph_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 保存 nodes 和 connections
-    status: Mapped[str] = mapped_column(String(50), default='draft') # draft, published
+    status: Mapped[str] = mapped_column(String(50), default='draft')  # 状态：draft=草稿, published=已发布
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     
@@ -90,9 +90,9 @@ class AnalysisSmartReport(Base):
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255))
-    template_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True) # Word 模板文件路径
+    template_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # Word 模板文件路径
     content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # 解析后的 HTML 内容
-    content_md: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Markdown 内容
+    content_md: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Markdown 内容
     template_vars: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # 模板变量列表
     dataset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True) # 默认关联的数据集ID
     data_row: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # 默认使用的数据行模式 (first, last, sum, avg)
@@ -111,7 +111,7 @@ class AnalysisSmartReportRecord(Base):
     report_id: Mapped[int] = mapped_column(Integer) # 关联的模版ID
     name: Mapped[str] = mapped_column(String(255)) # 记录名称(例如：2025-12-27日报)
     docx_file_path: Mapped[str] = mapped_column(String(500)) # 生成的Word文件路径 (归档)
-    pdf_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True) # PDF文件存储路径 (可选)
+    pdf_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # PDF 文件存储路径（可选）
     full_content: Mapped[Optional[str]] = mapped_column(Text(length=16777215), nullable=True) # 生成的报告全文内容(Markdown)，用于知识库 (MEDIUMTEXT)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     
@@ -126,8 +126,8 @@ class AnalysisChart(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255))
     dataset_id: Mapped[int] = mapped_column(Integer) # 关联数据集
-    chart_type: Mapped[str] = mapped_column(String(50)) # bar, line, pie, etc.
-    config: Mapped[dict] = mapped_column(JSON) # xField, yField, etc.
+    chart_type: Mapped[str] = mapped_column(String(50))  # 图表类型：bar, line, pie 等
+    config: Mapped[dict] = mapped_column(JSON)  # 图表配置：xField, yField 等
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)

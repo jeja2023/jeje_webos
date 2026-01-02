@@ -124,7 +124,7 @@ async def ensure_database_exists():
                     await conn.commit()
                     logger.info(f"数据库 '{settings.db_name}' 创建成功")
                 except Exception as create_error:
-                    # 如果创建失败（权限不足），给出提示
+                    # 如果创建失败（权限不足），记录错误
                     error_msg = str(create_error)
                     if "Access denied" in error_msg or "1044" in error_msg:
                         logger.error(f"用户 '{settings.db_user}' 没有创建数据库的权限")
@@ -136,7 +136,7 @@ async def ensure_database_exists():
             else:
                 logger.debug(f"数据库 '{settings.db_name}' 已存在")
     except Exception as e:
-        # 检查是否是权限问题，给出更友好的提示
+        # 检查是否是权限问题，记录错误信息
         error_msg = str(e)
         if "Access denied" in error_msg or "1045" in error_msg:
             logger.error("=" * 60)

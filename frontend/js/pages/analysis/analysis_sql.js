@@ -302,7 +302,7 @@ const AnalysisSqlMixin = {
             const res = await AnalysisApi.getTables();
             this.setState({ sqlTables: res.data || [] });
         } catch (err) {
-            console.error('获取表名失败:', err);
+            // 获取表名失败，静默处理
         }
     },
 
@@ -660,7 +660,7 @@ const AnalysisSqlMixin = {
                 else {
                     let sqlVal = val;
                     if (op === 'IN') {
-                        // Handle IN list
+                        // 处理 IN 列表
                         const vals = val.split(/[,，]/).map(v => isNaN(v.trim()) ? `'${v.trim()}'` : v.trim()); // Support both en and cn comma
                         sqlVal = `(${vals.join(', ')})`;
                         sql += `${field} IN ${sqlVal}`;

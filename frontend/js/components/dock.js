@@ -142,18 +142,13 @@ class DockComponent extends Component {
         const modules = Store.get('modules') || [];
         const pinnedAppIds = this.getPinnedApps();
 
-        // 系统应用ID（用于过滤固定应用，避免重复）
-        // feedback 已移除，现在由用户自由选择是否固定
-        const SYSTEM_APP_IDS = ['announcement', 'notification'];
-
         // 初始化分类（仪表盘已移除，登录后直接显示桌面）
         const categories = [];
 
 
 
-        // 添加用户固定的应用（排除系统应用，避免重复）
+        // 添加用户固定的应用
         for (const moduleId of pinnedAppIds) {
-            if (SYSTEM_APP_IDS.includes(moduleId)) continue;  // 跳过系统应用
             const module = modules.find(m => m.id === moduleId && m.enabled);
             if (module) {
                 const dockItem = this.buildDockItem(module, isAdmin, user);
@@ -167,13 +162,11 @@ class DockComponent extends Component {
 
 
 
-        // 2. 信息（所有用户可见，直接进入通知列表）
+        // 2. 通知（所有用户可见，直接进入通知列表）
         categories.push({
-            id: 'message',
-            title: '信息',
-            icon: '✉️',
-            isSystem: true,
-            path: '/message/list',
+            id: 'notification',
+            title: '通知',
+            path: '/notifications',
             children: null
         });
 
@@ -182,8 +175,6 @@ class DockComponent extends Component {
             categories.push({
                 id: 'sys_announcement',
                 title: '公告管理',
-                icon: '📢',
-                isSystem: true,
                 path: '/announcement/list',
                 children: null
             });
@@ -198,7 +189,6 @@ class DockComponent extends Component {
                 id: 'sys_users',
                 title: '用户管理',
                 icon: '👥',
-                isSystem: true,
                 path: '/users/list',
                 children: null
             });
@@ -209,7 +199,6 @@ class DockComponent extends Component {
                     id: 'sys_ops',
                     title: '系统管理',
                     icon: '🖥️',
-                    isSystem: true,
                     path: '/system/settings',
                     children: null
                 });
@@ -222,10 +211,12 @@ class DockComponent extends Component {
     // 获取应用对应的图标配置（同步设计规约）
     _getIconSpec(id, defaultIcon = '📦') {
         const iconMap = {
+            'launcher': { ri: 'ri-menu-line', gradient: 'gradient-blue' }, // 开始按钮（菜单图标）
+            'notification': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' }, // 通知
             'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
             'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
             'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
-            'announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' }, // 公告模块
             'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
             'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
             'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
@@ -241,7 +232,7 @@ class DockComponent extends Component {
             'transfer': { ri: 'ri-share-forward-line', gradient: 'gradient-cyan' },
             'message': { ri: 'ri-message-3-line', gradient: 'gradient-indigo' },
             'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
-            'sys_announcement': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+            'sys_announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' }, // 公告管理
             'sys_users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
             'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
         };

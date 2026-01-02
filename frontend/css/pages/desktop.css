@@ -363,14 +363,9 @@ body {
 }
 
 /* 下拉菜单选项主题修复 */
-:root.theme-dark option,
+:root.theme-neon option,
 :root.theme-sunrise option {
     background-color: var(--color-bg-secondary);
-    color: var(--color-text-primary);
-}
-
-:root.theme-light option {
-    background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
 }
 
@@ -423,7 +418,7 @@ body {
 }
 
 /* 浅色模式文字 */
-:root.theme-light .widget-clock-time {
+:root.theme-sunrise .widget-clock-time {
     background: linear-gradient(180deg, #111827 0%, #4B5563 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -443,7 +438,7 @@ body {
     text-transform: uppercase;
 }
 
-:root.theme-light .widget-clock-date {
+:root.theme-sunrise .widget-clock-date {
     color: rgba(0, 0, 0, 0.6);
     text-shadow: none;
 }
@@ -458,7 +453,7 @@ body {
     animation: fadeIn 1s 0.5s forwards ease-out;
 }
 
-:root.theme-light .widget-greeting {
+:root.theme-sunrise .widget-greeting {
     color: rgba(0, 0, 0, 0.8);
     text-shadow: none;
 }

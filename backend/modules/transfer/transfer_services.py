@@ -5,7 +5,6 @@
 
 import os
 import random
-import string
 import hashlib
 import aiofiles
 import logging
@@ -51,8 +50,9 @@ class TransferService:
     
     @staticmethod
     def generate_session_code() -> str:
-        """生成6位数字传输码"""
-        return ''.join(random.choices(string.digits, k=6))
+        """生成6位数字传输码（优化：使用更高效的方法）"""
+        # 使用 random.randint 比 random.choices 更高效
+        return f"{random.randint(100000, 999999)}"
     
     @staticmethod
     async def create_session(
@@ -71,24 +71,26 @@ class TransferService:
         Returns:
             TransferSession: 创建的会话对象
         """
-        # 生成唯一的传输码
+        # 生成唯一的传输码（优化：减少查询次数）
         max_attempts = 10
         session_code = None
         
+        # 预先查询所有活跃的会话码，避免重复查询
+        active_codes_result = await db.execute(
+            select(TransferSession.session_code).where(
+                TransferSession.status.in_([
+                    TransferStatus.PENDING,
+                    TransferStatus.CONNECTED,
+                    TransferStatus.TRANSFERRING
+                ])
+            )
+        )
+        active_codes = {row[0] for row in active_codes_result.all()}
+        
+        # 生成唯一的传输码
         for _ in range(max_attempts):
             code = TransferService.generate_session_code()
-            # 检查是否已存在
-            existing = await db.execute(
-                select(TransferSession).where(
-                    TransferSession.session_code == code,
-                    TransferSession.status.in_([
-                        TransferStatus.PENDING,
-                        TransferStatus.CONNECTED,
-                        TransferStatus.TRANSFERRING
-                    ])
-                )
-            )
-            if not existing.scalar_one_or_none():
+            if code not in active_codes:
                 session_code = code
                 break
         
@@ -247,20 +249,25 @@ class TransferService:
         status: TransferStatus,
         error_message: Optional[str] = None
     ) -> Optional[TransferSession]:
-        """更新会话状态"""
-        session = await TransferService.get_session(db, session_code)
-        if not session:
-            return None
+        """更新会话状态（优化：直接更新，避免先查询）"""
+        from sqlalchemy import update as sql_update
         
-        session.status = status
+        status_value = status.value if isinstance(status, TransferStatus) else status
+        update_values = {"status": status_value}
         
-        if status == TransferStatus.COMPLETED:
-            session.completed_at = datetime.now()
+        if status_value == TransferStatus.COMPLETED.value:
+            update_values["completed_at"] = datetime.now()
         
+        result = await db.execute(
+            sql_update(TransferSession)
+            .where(TransferSession.session_code == session_code)
+            .values(**update_values)
+        )
         await db.commit()
-        await db.refresh(session)
         
-        return session
+        if result.rowcount > 0:
+            return await TransferService.get_session(db, session_code)
+        return None
     
     @staticmethod
     async def update_transfer_progress(
@@ -269,21 +276,33 @@ class TransferService:
         transferred_bytes: int,
         completed_chunks: int
     ) -> Optional[TransferSession]:
-        """更新传输进度"""
-        session = await TransferService.get_session(db, session_code)
-        if not session:
-            return None
+        """更新传输进度（优化：直接更新，避免先查询）"""
+        from sqlalchemy import update as sql_update, case, text
         
-        session.transferred_bytes = transferred_bytes
-        session.completed_chunks = completed_chunks
+        # 如果状态是 CONNECTED，自动更新为 TRANSFERRING
+        # 使用 CASE WHEN 在 SQL 层面处理状态更新
+        update_values = {
+            "transferred_bytes": transferred_bytes,
+            "completed_chunks": completed_chunks
+        }
         
-        if session.status == TransferStatus.CONNECTED:
-            session.status = TransferStatus.TRANSFERRING
+        # 构建状态更新表达式
+        status_update = case(
+            (TransferSession.status == TransferStatus.CONNECTED.value, TransferStatus.TRANSFERRING.value),
+            else_=TransferSession.status
+        )
+        update_values["status"] = status_update
         
+        result = await db.execute(
+            sql_update(TransferSession)
+            .where(TransferSession.session_code == session_code)
+            .values(**update_values)
+        )
         await db.commit()
-        await db.refresh(session)
         
-        return session
+        if result.rowcount > 0:
+            return await TransferService.get_session(db, session_code)
+        return None
     
     @staticmethod
     async def cancel_session(
@@ -291,18 +310,26 @@ class TransferService:
         session_code: str,
         user_id: int
     ) -> bool:
-        """取消传输会话"""
+        """取消传输会话（优化：保留清理逻辑，但优化状态检查）"""
+        # 先获取会话（需要用于清理临时文件）
         session = await TransferService.get_session(db, session_code, user_id)
         if not session:
             return False
         
-        if session.status == TransferStatus.CANCELLED:
+        # 如果已经取消或已完成，直接返回
+        if session.status == TransferStatus.CANCELLED.value:
             return True
             
-        if session.status == TransferStatus.COMPLETED:
+        if session.status == TransferStatus.COMPLETED.value:
             return False
         
-        session.status = TransferStatus.CANCELLED
+        # 使用直接更新（优化：减少一次 refresh）
+        from sqlalchemy import update as sql_update
+        await db.execute(
+            sql_update(TransferSession)
+            .where(TransferSession.id == session.id)
+            .values(status=TransferStatus.CANCELLED.value)
+        )
         await db.commit()
         
         # 清理临时文件

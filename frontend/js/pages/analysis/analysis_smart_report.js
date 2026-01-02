@@ -7,7 +7,7 @@
 
 const AnalysisSmartReportMixin = {
 
-    // Toast UI Editor 实例
+    // Toast UI 编辑器实例
     _tuiEditor: null,
 
     // ==================== 视图路由 ====================
@@ -431,9 +431,7 @@ const AnalysisSmartReportMixin = {
         });
 
         // 先加载图表数据和数据集
-        this.fetchAnalysisCharts().then(() => {
-            console.log('[智能报告] 图表数据加载完成');
-        });
+        this.fetchAnalysisCharts();
 
         // 确保数据集已加载（用于下拉框）
         if (this.state.datasets.length === 0 && this.fetchDatasets) {
@@ -453,7 +451,6 @@ const AnalysisSmartReportMixin = {
             // 等待图表数据加载完成后再更新预览
             // 使用较长延迟确保所有数据就绪
             setTimeout(() => {
-                console.log('[智能报告] 触发初始预览');
                 this._updatePreview();
             }, 800);
         }, 100);
@@ -503,7 +500,7 @@ const AnalysisSmartReportMixin = {
                 // 插入字体样式标签
                 this._tuiEditor.insertText(`<span style="font-family: ${selectedFont}"></span>`);
             } catch (error) {
-                console.warn('应用字体样式失败:', error);
+                // 字体样式应用失败，静默处理
             }
         });
 
@@ -557,7 +554,7 @@ const AnalysisSmartReportMixin = {
                 // 插入字号样式标签
                 this._tuiEditor.insertText(`<span style="font-size: ${selectedSize}"></span>`);
             } catch (error) {
-                console.warn('应用字号样式失败:', error);
+                // 字号样式应用失败，静默处理
             }
         });
 
@@ -577,7 +574,6 @@ const AnalysisSmartReportMixin = {
 
         // 检查容器是否为空（说明需要重新初始化）
         if (container.innerHTML.trim() === '') {
-            console.log('[智能报告] 检测到编辑器 DOM 丢失，正在恢复...');
             this._initTuiEditor(this.state.editingReportId);
         }
     },
@@ -616,7 +612,7 @@ const AnalysisSmartReportMixin = {
                 if (matchedChart) {
                     return `![${chartName}](chart:${matchedChart.id})`;
                 }
-                // 如果找不到对应图表，显示提示文本
+                // 如果找不到对应图表，显示文本
                 return `\n**[图表: ${chartName}]** _(请重新插入)_\n`;
             });
 
@@ -716,7 +712,7 @@ const AnalysisSmartReportMixin = {
                 const currentVars = report.template_vars || [];
                 const currentVarNames = currentVars.map(v => typeof v === 'string' ? v : v.name || v);
 
-                // 如果检测到的变量与当前不同，更新UI提示
+                // 如果检测到的变量与当前不同，更新UI
                 if (detectedVars.length !== currentVarNames.length ||
                     !detectedVars.every(v => currentVarNames.includes(v))) {
                     // 更新变量数量显示
@@ -725,7 +721,7 @@ const AnalysisSmartReportMixin = {
                         varsBadge.textContent = `${detectedVars.length} 个变量`;
                     }
 
-                    // 在编辑器顶部显示提示（如果变量未在数据源中）
+                    // 在编辑器顶部显示信息（如果变量未在数据源中）
                     this._showVariableHint(detectedVars);
                 }
             }
@@ -733,10 +729,10 @@ const AnalysisSmartReportMixin = {
     },
 
     /**
-     * 显示变量提示
+     * 显示变量信息
      */
     _showVariableHint(detectedVars) {
-        // 移除旧的提示
+        // 移除旧的信息
         const oldHint = document.getElementById('variable-hint-panel');
         if (oldHint) oldHint.remove();
 
@@ -748,7 +744,7 @@ const AnalysisSmartReportMixin = {
 
         if (missingVars.length === 0) return; // 所有变量都在数据源中
 
-        // 创建提示面板
+        // 创建信息面板
         const hintPanel = document.createElement('div');
         hintPanel.id = 'variable-hint-panel';
         hintPanel.className = 'variable-hint-panel';
@@ -866,7 +862,6 @@ const AnalysisSmartReportMixin = {
         // 获取独立预览区域
         const previewEl = document.getElementById('report-preview-content');
         if (!previewEl) {
-            console.warn('未找到预览区域');
             return;
         }
 
@@ -891,18 +886,13 @@ const AnalysisSmartReportMixin = {
             const datasetId = document.getElementById('report-dataset-select')?.value;
             const dataRowMode = document.getElementById('report-dataset-row')?.value || 'first';
 
-            console.log('[预览调试] 数据集ID:', datasetId, '取值模式:', dataRowMode);
-
             if (datasetId) {
                 try {
                     const res = await AnalysisApi.getDatasetData(parseInt(datasetId), { page: 1, size: 1000 });
-                    console.log('[预览调试] API 返回数据:', res);
 
                     // API 返回格式: { data: { items: [...], columns: [...], total: ... } }
                     const data = res.data?.items || res.data?.data || [];
                     const columns = res.data?.columns || (data.length > 0 ? Object.keys(data[0]) : []);
-
-                    console.log('[预览调试] 数据行数:', data.length, '列名:', columns);
 
                     if (data.length > 0) {
                         if (dataRowMode === 'first') {
@@ -926,10 +916,9 @@ const AnalysisSmartReportMixin = {
                                 dataContext[col] = (sum / data.length).toFixed(2);
                             });
                         }
-                        console.log('[预览调试] 数据上下文:', dataContext);
                     }
                 } catch (e) {
-                    console.warn('获取数据集数据失败:', e);
+                    // 获取数据集数据失败，静默处理
                 }
             }
 
@@ -942,7 +931,6 @@ const AnalysisSmartReportMixin = {
                     : '';
                 // 使用 split + join 方法替换，避免正则表达式的问题
                 previewContent = previewContent.split(placeholder).join(value);
-                console.log('[预览调试] 替换变量:', placeholder, '->', value);
             });
 
             // 处理图表占位符：在预览中渲染实际的 ECharts 图表
@@ -1024,39 +1012,31 @@ const AnalysisSmartReportMixin = {
 
             // 检查是否有新的预览请求（版本号变化则跳过）
             if (this._previewVersion !== currentVersion) {
-                console.log('[图表预览] 跳过旧版本渲染');
                 return;
             }
 
             // 渲染图表（使用保存的容器 ID）
-            console.log('[图表预览] 准备渲染图表，数量:', chartPlaceholders.length, '版本:', currentVersion);
-            console.log('[图表预览] echarts 可用:', !!window.echarts);
 
             for (const placeholder of chartPlaceholders) {
                 if (!placeholder.containerId) continue;
 
                 // 再次检查版本
                 if (this._previewVersion !== currentVersion) {
-                    console.log('[图表预览] 渲染被新版本中断');
                     return;
                 }
 
                 const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(placeholder.chartId));
-                console.log(`[图表预览] 查找图表 ID=${placeholder.chartId}:`, chart);
 
                 if (!chart) {
-                    console.warn(`[图表预览] 图表 ${placeholder.chartId} 不存在`);
                     continue;
                 }
 
                 if (!window.echarts) {
-                    console.warn('[图表预览] ECharts 库未加载');
                     continue;
                 }
 
                 const container = document.getElementById(placeholder.containerId);
                 if (!container) {
-                    console.warn(`[图表预览] 未找到容器: ${placeholder.containerId}`);
                     continue;
                 }
 
@@ -1075,8 +1055,6 @@ const AnalysisSmartReportMixin = {
                     const config = chart.config || {};
                     const chartType = chart.chart_type || 'bar';
 
-                    console.log(`[图表预览] 渲染图表 "${chart.name}" 类型=${chartType}:`, config);
-
                     // 获取图表数据
                     let chartData = [];
                     if (chart.dataset_id) {
@@ -1084,7 +1062,7 @@ const AnalysisSmartReportMixin = {
                             const res = await AnalysisApi.getDatasetData(chart.dataset_id, { page: 1, size: 500 });
                             chartData = res.data?.items || res.data?.data || [];
                         } catch (e) {
-                            console.warn('[图表预览] 获取图表数据失败:', e);
+                            // 获取图表数据失败，静默处理
                         }
                     }
 
@@ -1102,10 +1080,7 @@ const AnalysisSmartReportMixin = {
                     setTimeout(() => {
                         try { myChart.resize(); } catch (e) { }
                     }, 100);
-
-                    console.log(`[图表预览] 图表 "${chart.name}" 渲染成功`);
                 } catch (e) {
-                    console.error(`[图表预览] 渲染图表 ${placeholder.chartId} 失败:`, e);
                     container.innerHTML = `<div class="chart-placeholder"><div class="icon">⚠️</div><p>渲染失败: ${e.message}</p></div>`;
                 }
             }
@@ -1122,7 +1097,6 @@ const AnalysisSmartReportMixin = {
                 window.addEventListener('resize', this._previewResizeHandler);
             }
         } catch (e) {
-            console.error('更新预览失败:', e);
             previewEl.innerHTML = `<div style="padding:20px;color:#f56565;">预览加载失败: ${e.message}</div>`;
         }
     },
@@ -1165,7 +1139,6 @@ const AnalysisSmartReportMixin = {
                 option = ChartFactory.generateOption(chartType, filteredData, config);
             }
         } catch (e) {
-            console.error('Chart generation failed:', e);
             return getEmptyOption('生成出错: ' + e.message);
         }
 
@@ -1325,7 +1298,7 @@ const AnalysisSmartReportMixin = {
                 const res = await Api.get('/analysis/smart-reports');
                 this.state.smartReports = res.data || [];
             } catch (e) {
-                // 静默处理，不影响保存成功的提示
+                // 静默处理，不影响保存成功的消息
             }
 
             return true;
@@ -1398,7 +1371,6 @@ const AnalysisSmartReportMixin = {
             // 立即更新预览以显示图表
             setTimeout(() => this._updatePreview(), 300);
         } catch (e) {
-            console.error(e);
             Toast.error('插入图表失败: ' + e.message);
         }
     },
@@ -1439,7 +1411,6 @@ const AnalysisSmartReportMixin = {
                         try {
                             const chart = (this.state.analysisCharts || []).find(c => String(c.id) === String(chartId));
                             if (!chart || !window.echarts) {
-                                console.warn(`图表 ${chartId} 不存在或 ECharts 未加载`);
                                 return { match, imageData: null, error: `图表 "${chartName}" 不存在或无法加载` };
                             }
 
@@ -1450,7 +1421,6 @@ const AnalysisSmartReportMixin = {
                                     const dataRes = await AnalysisApi.getDatasetData(chart.dataset_id, { page: 1, size: 1000 });
                                     chartData = dataRes.data?.items || dataRes.data?.data || [];
                                 } catch (e) {
-                                    console.warn(`获取图表数据失败: ${e.message}`);
                                     return { match, imageData: null, error: `获取图表数据失败: ${e.message}` };
                                 }
                             }
@@ -1533,7 +1503,6 @@ const AnalysisSmartReportMixin = {
 
                             return { match, imageData: imgData, error: null };
                         } catch (e) {
-                            console.error(`渲染图表 ${chartId} 失败:`, e);
                             return { match, imageData: null, error: `图表 "${chartName}" 渲染失败：${e.message}` };
                         }
                     });
@@ -1541,7 +1510,7 @@ const AnalysisSmartReportMixin = {
                     // 等待所有图表渲染完成
                     const results = await Promise.all(renderPromises);
 
-                    // 更新进度提示
+                    // 更新进度
                     progressToast.update(`正在处理 ${results.length} 个图表结果...`);
 
                     // 替换占位符
@@ -1554,11 +1523,10 @@ const AnalysisSmartReportMixin = {
                         }
                     }
 
-                    // 关闭进度提示
+                    // 关闭进度
                     progressToast.close();
                 } catch (e) {
                     progressToast.close();
-                    console.error('图表渲染过程出错:', e);
                     Toast.error('图表渲染过程出错: ' + e.message);
                 }
             }
@@ -1610,7 +1578,7 @@ const AnalysisSmartReportMixin = {
             });
 
             // 发送处理后的内容到后端（包含变量替换和图表图片）
-            // 注意：这里我们需要一个特殊的接口，或者修改现有接口支持传入内容
+            // 需要特殊接口或修改现有接口支持传入内容
             // 暂时使用现有接口，但需要确保后端能正确处理图表
 
             const config = {
@@ -1620,7 +1588,7 @@ const AnalysisSmartReportMixin = {
                 content_md: finalMdContent // 传入处理后的内容（包含图表图片）
             };
 
-            // 显示生成进度提示
+                // 显示生成进度
             const generateToast = Toast.loading('正在生成 PDF 文件，请稍候...', 0);
 
             try {
@@ -1645,7 +1613,7 @@ const AnalysisSmartReportMixin = {
 
                         // 验证是否为 PDF 类型
                         if (blob.type && !blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
-                            console.warn('文件类型可能不正确:', blob.type);
+                            // 文件类型可能不正确，但继续下载
                         }
 
                         const downloadUrl = window.URL.createObjectURL(blob);
@@ -1662,7 +1630,6 @@ const AnalysisSmartReportMixin = {
                             window.URL.revokeObjectURL(downloadUrl);
                         }, 100);
                     } catch (e) {
-                        console.error('PDF 下载错误:', e);
                         Toast.error('下载失败: ' + e.message);
                     }
                     // 刷新历史列表
@@ -1675,7 +1642,7 @@ const AnalysisSmartReportMixin = {
                 }
             } catch (e) {
                 generateToast.close();
-                console.error('报告生成异常:', e);
+                // 报告生成异常，已在下方处理
 
                 // 提供更详细的错误信息
                 let errorMsg = '报告生成失败';
@@ -1688,7 +1655,6 @@ const AnalysisSmartReportMixin = {
                 Toast.error(errorMsg);
             }
         } catch (e) {
-            console.error('报告生成过程异常:', e);
             let errorMsg = '后端处理异常';
             if (e.message) {
                 errorMsg += ': ' + e.message;
@@ -1882,7 +1848,7 @@ const AnalysisSmartReportMixin = {
             const res = await AnalysisApi.getCharts();
             this.setState({ analysisCharts: res.data || [] });
         } catch (e) {
-            console.error('获取分析图表失败', e);
+            // 获取分析图表失败，静默处理
         }
     },
 
@@ -1901,13 +1867,11 @@ const AnalysisSmartReportMixin = {
             const res = await AnalysisApi.getDatasetData(id, { page: 1, size: 1 });
             if (res.data && res.data.columns) {
                 this.state.reportDatasetColumns = res.data.columns;
-                console.log('[数据源] 获取到字段:', res.data.columns);
                 this._updateDatasourcePanel();
             } else {
                 throw new Error('数据集字段信息为空');
             }
         } catch (e) {
-            console.error('获取数据集字段失败:', e);
             this.state.reportDatasetColumns = [];
             this._updateDatasourcePanel();
             if (!silent) {
@@ -1959,8 +1923,6 @@ const AnalysisSmartReportMixin = {
         const datasets = this.state.datasets || [];
         const selectedDataset = this.state.reportDatasetId;
         const datasetColumns = this.state.reportDatasetColumns || [];
-
-        console.log('[数据源面板] 更新，字段:', datasetColumns);
 
         // 更新变量标签容器
         const varTagsWrapper = panel.querySelector('.var-tags-wrapper');
@@ -2015,6 +1977,14 @@ const AnalysisSmartReportMixin = {
     }
 };
 
-if (typeof AnalysisPage !== 'undefined') {
-    Object.assign(AnalysisPage.prototype, AnalysisSmartReportMixin);
-}
+// 混入到 AnalysisPage（延迟执行，确保 AnalysisPage 已定义）
+(function() {
+    function tryMixin() {
+        if (typeof AnalysisPage !== 'undefined' && AnalysisPage.prototype) {
+            Object.assign(AnalysisPage.prototype, AnalysisSmartReportMixin);
+        } else {
+            setTimeout(tryMixin, 50);
+        }
+    }
+    tryMixin();
+})();

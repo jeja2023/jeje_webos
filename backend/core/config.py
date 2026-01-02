@@ -43,8 +43,9 @@ class Settings(BaseSettings):
         encoded_pwd = quote_plus(self.db_password)
         return f"mysql+pymysql://{encoded_user}:{encoded_pwd}@{self.db_host}:{self.db_port}/{self.db_name}"
     
-    # MySQL二进制文件路径（可选，用于备份）
-    mysql_bin_path: str = ""  # 例如: "C:/Program Files/MySQL/MySQL Server 8.0/bin"
+    # MySQL二进制文件路径（已废弃，不再使用）
+    # 备份功能已改为使用纯 Python 方案（pymysql），无需配置此路径
+    mysql_bin_path: str = ""  # 保留此字段以保持向后兼容
     
     # Redis缓存配置
     redis_host: str = "localhost"
@@ -70,9 +71,6 @@ class Settings(BaseSettings):
     @classmethod
     def check_production_security(cls, values):
         """检查生产环境安全配置"""
-        # 注意: 在 Pydantic v2 中验证方式有所不同，这里假设是 compat 或 v1 风格，
-        # 为了稳健性，我们在 __init__ 后或使用 property 检查，或者简单地在 main.py 启动时检查。
-        # 这里仅修改默认值，安全检查建议放在 main.py 启动时统一处理，避免 Pydantic 版本兼容问题干扰。
         pass
     
     # JWT密钥自动轮换配置
@@ -93,19 +91,19 @@ class Settings(BaseSettings):
     audit_all_operations: bool = False  # 是否记录所有操作（包括 GET 请求）
     
     # CSRF 防护配置
-    csrf_enabled: bool = False  # 是否启用 CSRF 防护（默认关闭，生产环境建议开启）
+    csrf_enabled: bool = False
     
     # 速率限制配置
-    rate_limit_enabled: bool = True  # 是否启用速率限制（开发环境可关闭）
-    rate_limit_requests: int = 1000  # 默认请求数限制（每分钟）
-    rate_limit_window: int = 60  # 时间窗口（秒）
-    rate_limit_block_duration: int = 30  # 超限后封禁时间（秒），开发环境建议30秒，生产环境可设置为60-300秒
-    rate_limit_enable_whitelist_localhost: bool = True  # 是否将本地IP加入白名单（开发环境推荐开启）
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 1000
+    rate_limit_window: int = 60
+    rate_limit_block_duration: int = 30
+    rate_limit_enable_whitelist_localhost: bool = True
     
-    # 默认管理员账户配置（首次启动时创建）
+    # 默认管理员账户配置
     admin_username: str = "admin"
-    admin_password: str = "admin123"  # 首次启动后请立即修改
-    admin_phone: str = "13800138000"  # 管理员手机号（必填）
+    admin_password: str = "admin123"
+    admin_phone: str = "13800138000"
     admin_nickname: str = "系统管理员"
     
 
@@ -128,7 +126,6 @@ def get_settings() -> Settings:
     if _settings_instance is None:
         _settings_instance = Settings()
         
-        # 安全检查: 如果是生产环境且使用默认密钥，发出警告
         if not _settings_instance.debug and _settings_instance.jwt_secret == "your-secret-key-change-in-production":
             import logging
             logging.getLogger("core.config").warning(

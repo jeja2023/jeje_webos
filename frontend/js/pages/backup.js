@@ -156,9 +156,14 @@ class BackupPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header">
-                    <h1 class="page-title">数据备份</h1>
-                    <p class="page-desc">创建和管理系统备份</p>
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1 class="page-title">数据备份</h1>
+                        <p class="page-desc">创建和管理系统备份</p>
+                    </div>
+                    <div>
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('backup', '数据备份') : ''}
+                    </div>
                 </div>
 
                 <div class="card" style="margin-bottom: var(--spacing-lg);">
@@ -245,10 +250,18 @@ class BackupPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     destroy() {

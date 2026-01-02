@@ -12,8 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from io import BytesIO
 
 from core.database import get_db
-from core.security import get_current_user
-from models import User
+from core.security import get_current_user, require_permission, TokenData
 
 from .transfer_schemas import (
     SessionCreate, SessionJoin, SessionResponse, SessionStatus,
@@ -48,7 +47,7 @@ async def get_config():
 async def create_session(
     data: SessionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.send"))
 ):
     """
     创建一个新的传输会话，获取6位传输码
@@ -91,7 +90,7 @@ async def create_session(
 async def join_session(
     data: SessionJoin,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.receive"))
 ):
     """
     通过传输码加入会话
@@ -151,7 +150,7 @@ async def join_session(
 async def get_session_status(
     session_code: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.send"))
 ):
     """获取传输会话的当前状态"""
     session = await TransferService.get_session(db, session_code, current_user.user_id)
@@ -201,7 +200,7 @@ async def get_session_status(
 @router.get("/sessions", summary="获取活跃会话列表")
 async def get_active_sessions(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.send"))
 ):
     """获取当前用户的所有活跃传输会话"""
     sessions = await TransferService.get_active_sessions(db, current_user.user_id)
@@ -233,7 +232,7 @@ async def get_active_sessions(
 async def cancel_session(
     session_code: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.send"))
 ):
     """取消传输会话"""
     success = await TransferService.cancel_session(db, session_code, current_user.user_id)
@@ -256,7 +255,7 @@ async def upload_chunk(
     chunk_hash: Optional[str] = Form(None),
     chunk: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.send"))
 ):
     """
     上传文件分块
@@ -306,7 +305,7 @@ async def download_chunk(
     session_code: str,
     chunk_index: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.receive"))
 ):
     """
     下载文件分块
@@ -406,7 +405,7 @@ async def get_history(
     size: int = Query(20, ge=1, le=100),
     direction: Optional[str] = Query(None, description="发送/接收: send/receive"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.history"))
 ):
     """获取当前用户的传输历史记录"""
     # 转换方向参数
@@ -457,7 +456,7 @@ async def get_history(
 @router.get("/history/stats", summary="获取传输统计")
 async def get_history_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.history"))
 ):
     """获取当前用户的传输统计信息"""
     stats = await HistoryService.get_stats(db, current_user.user_id)
@@ -478,7 +477,7 @@ async def get_history_stats(
 async def delete_history(
     history_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(require_permission("transfer.history"))
 ):
     """删除指定的历史记录"""
     from sqlalchemy import select, delete
@@ -510,7 +509,7 @@ async def delete_history(
 @router.post("/cleanup", summary="清理过期数据")
 async def cleanup_expired(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """清理过期的会话和历史记录（需要管理员权限）"""
     if current_user.role not in ["admin", "manager"]:

@@ -56,7 +56,8 @@ class BlogListPage extends Component {
                         <h1 class="page-title">文章列表</h1>
                         <p class="page-desc">共 ${total} 篇文章</p>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('blog', '博客') : ''}
                         <a href="#/blog/category" class="btn btn-secondary">📁 分类管理</a>
                         <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
                             ➕ 发布文章
@@ -122,10 +123,18 @@ class BlogListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindEvents() {

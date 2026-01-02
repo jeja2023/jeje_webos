@@ -21,7 +21,7 @@ const Store = {
         // UI状态
         sidebarCollapsed: false,
         loading: false,
-        theme: 'dark', // 默认深色，可被系统设置/用户偏好覆盖
+        theme: 'neon', // 默认星夜霓虹，可被系统设置/用户偏好覆盖
 
         // 当前路由
         currentRoute: '/',
@@ -50,7 +50,15 @@ const Store = {
 
         if (userStr) {
             try {
-                this.state.user = JSON.parse(userStr);
+                const parsedUser = JSON.parse(userStr);
+                this.state.user = parsedUser;
+                // 确保 settings 中的 start_menu_shortcuts 是数组
+                if (parsedUser && parsedUser.settings) {
+                    if (!parsedUser.settings.start_menu_shortcuts || 
+                        !Array.isArray(parsedUser.settings.start_menu_shortcuts)) {
+                        parsedUser.settings.start_menu_shortcuts = [];
+                    }
+                }
             } catch (e) {
                 Config.error('解析用户信息失败');
             }
@@ -60,8 +68,11 @@ const Store = {
             this.state.sidebarCollapsed = true;
         }
 
-        if (['light', 'dark', 'auto', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn', 'custom'].includes(theme)) {
+        if (['sunrise', 'neon'].includes(theme)) {
             this.state.theme = theme;
+        } else {
+            // 如果存储的主题不在支持列表中，默认使用neon
+            this.state.theme = 'neon';
         }
 
         this.applyTheme(this.state.theme);
@@ -74,43 +85,15 @@ const Store = {
      */
     applyTheme(mode) {
         const root = document.documentElement;
-        root.classList.remove('theme-light', 'theme-dark', 'theme-auto', 'theme-sunrise', 'theme-neon', 'theme-summer', 'theme-winter', 'theme-spring', 'theme-autumn', 'theme-custom');
+        root.classList.remove('theme-sunrise', 'theme-neon');
         root.style = ''; // Reset inline styles
 
-        if (['light', 'dark', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn'].includes(mode)) {
+        if (mode === 'sunrise' || mode === 'neon') {
             root.classList.add(`theme-${mode}`);
-        } else if (mode === 'custom') {
-            // 自定义主题：先添加 light 作为基础，再覆盖自定义变量
-            root.classList.add('theme-light');
-            // Load custom theme config
-            try {
-                const customConfig = JSON.parse(localStorage.getItem('user_theme_custom_config') || '{}');
-                Object.entries(customConfig).forEach(([key, value]) => {
-                    if (key.startsWith('--')) {
-                        root.style.setProperty(key, value);
-                    }
-                });
-            } catch (e) {
-                console.error('加载自定义主题失败', e);
-            }
-        } else if (mode === 'auto') {
-            // Auto 模式：根据系统偏好自动切换
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            root.classList.add(prefersDark ? 'theme-dark' : 'theme-light');
-
-            // 监听系统主题变化
-            if (!this._themeMediaListener) {
-                this._themeMediaListener = (e) => {
-                    if (this.state.theme === 'auto') {
-                        root.classList.remove('theme-light', 'theme-dark');
-                        root.classList.add(e.matches ? 'theme-dark' : 'theme-light');
-                    }
-                };
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this._themeMediaListener);
-            }
         } else {
-            // Default fallback
-            root.classList.add('theme-dark');
+            // Default fallback to neon
+            root.classList.add('theme-neon');
+            this.state.theme = 'neon';
         }
     },
 
@@ -212,49 +195,47 @@ const Store = {
             // 合并策略：
             // 1. 如果后端返回的 settings 是空对象，则保留当前的 settings
             // 2. 否则合并：后端优先，但保留当前已有的设置（如果后端没有对应的键）
-            // 3. 特别处理 dock_pinned_apps：如果后端没有，尝试从当前 settings 或 localStorage 读取
+            // 3. 特别处理 dock_pinned_apps 和 start_menu_shortcuts：如果后端没有，尝试从当前 settings 或 localStorage 读取
             let mergedSettings;
             if (Object.keys(backendSettings).length === 0) {
                 // 后端返回空对象，保留当前的 settings
                 mergedSettings = currentSettings;
-                // 如果当前也没有，尝试从 localStorage 读取
-                if (!mergedSettings.dock_pinned_apps) {
-                    try {
-                        const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
-                        if (localPinnedApps) {
-                            const parsed = JSON.parse(localPinnedApps);
-                            if (Array.isArray(parsed) && parsed.length > 0) {
-                                mergedSettings = { ...mergedSettings, dock_pinned_apps: parsed };
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
-                    }
-                }
             } else {
                 // 后端有 settings，合并：后端优先，但保留当前已有的设置（如果后端没有对应的键）
                 mergedSettings = {
                     ...currentSettings,
                     ...backendSettings
                 };
-                // 如果后端没有 dock_pinned_apps，尝试从当前 settings 或 localStorage 获取
-                if (!backendSettings.dock_pinned_apps) {
-                    if (currentSettings.dock_pinned_apps) {
-                        mergedSettings.dock_pinned_apps = currentSettings.dock_pinned_apps;
-                    } else {
-                        // 尝试从 localStorage 读取
-                        try {
-                            const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
-                            if (localPinnedApps) {
-                                const parsed = JSON.parse(localPinnedApps);
-                                if (Array.isArray(parsed) && parsed.length > 0) {
-                                    mergedSettings.dock_pinned_apps = parsed;
-                                }
+            }
+
+            // 特别处理 dock_pinned_apps：如果后端没有，尝试从当前 settings 或 localStorage 获取
+            if (!mergedSettings.dock_pinned_apps) {
+                if (currentSettings.dock_pinned_apps) {
+                    mergedSettings.dock_pinned_apps = currentSettings.dock_pinned_apps;
+                } else {
+                    // 尝试从 localStorage 读取
+                    try {
+                        const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                        if (localPinnedApps) {
+                            const parsed = JSON.parse(localPinnedApps);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                mergedSettings.dock_pinned_apps = parsed;
                             }
-                        } catch (e) {
-                            console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
                         }
+                    } catch (e) {
+                        console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
                     }
+                }
+            }
+
+            // 特别处理 start_menu_shortcuts：确保快捷方式持久化
+            // 后端数据优先，但如果后端没有且当前有，则保留当前的
+            if (!mergedSettings.start_menu_shortcuts || !Array.isArray(mergedSettings.start_menu_shortcuts)) {
+                if (currentSettings.start_menu_shortcuts && Array.isArray(currentSettings.start_menu_shortcuts)) {
+                    mergedSettings.start_menu_shortcuts = currentSettings.start_menu_shortcuts;
+                } else {
+                    // 如果都没有，初始化为空数组
+                    mergedSettings.start_menu_shortcuts = [];
                 }
             }
 
@@ -285,12 +266,19 @@ const Store = {
         this.state.systemSettings = settings;
         this.notify('systemSettings', settings);
         const userPref = localStorage.getItem(Config.storageKeys.theme);
-        const mode = userPref || settings?.theme_mode || 'dark';
+        const systemTheme = settings?.theme_mode;
+        // 只接受sunrise或neon，否则使用neon作为默认值
+        let mode = 'neon';
+        if (userPref && ['sunrise', 'neon'].includes(userPref)) {
+            mode = userPref;
+        } else if (systemTheme && ['sunrise', 'neon'].includes(systemTheme)) {
+            mode = systemTheme;
+        }
         this.state.theme = mode;
         this.applyTheme(mode);
         // 仅在用户无偏好时，将系统默认写入存储
-        if (!userPref && settings?.theme_mode) {
-            localStorage.setItem(Config.storageKeys.theme, settings.theme_mode);
+        if (!userPref && systemTheme && ['sunrise', 'neon'].includes(systemTheme)) {
+            localStorage.setItem(Config.storageKeys.theme, systemTheme);
         }
     },
 
@@ -347,7 +335,7 @@ const Store = {
      * 设置主题
      */
     setTheme(mode) {
-        const themeMode = ['light', 'dark', 'auto', 'sunrise', 'neon', 'summer', 'winter', 'spring', 'autumn', 'custom'].includes(mode) ? mode : 'auto';
+        const themeMode = ['sunrise', 'neon'].includes(mode) ? mode : 'neon';
         this.state.theme = themeMode;
         localStorage.setItem(Config.storageKeys.theme, themeMode);
         this.applyTheme(themeMode);

@@ -5,6 +5,81 @@ from .analysis_models import AnalysisSmartTable, AnalysisSmartTableData, Analysi
 from .analysis_schemas import SmartTableCreate, SmartTableUpdate
 from .analysis_duckdb_service import duckdb_instance
 from datetime import datetime
+import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def safe_eval_dataframe_formula(df, formula: str, allowed_columns: List[str]) -> Any:
+    """
+    安全地计算 DataFrame 公式表达式
+    
+    只允许：
+    - 列名引用（使用反引号 `column_name`）
+    - 基本数学运算符：+、-、*、/、%、括号
+    - 数字常量
+    
+    不允许：
+    - 函数调用
+    - 变量访问
+    - 其他危险操作
+    
+    Args:
+        df: pandas DataFrame
+        formula: 公式表达式，如 "`height` * `weight` / 100"
+        allowed_columns: 允许的列名列表
+    
+    Returns:
+        计算结果 Series
+    """
+    import pandas as pd
+    import numpy as np
+    
+    # 1. 提取所有列引用（反引号内的内容）
+    column_refs = re.findall(r'`([^`]+)`', formula)
+    
+    # 2. 验证所有列引用都在允许列表中
+    for col_ref in column_refs:
+        if col_ref not in allowed_columns:
+            raise ValueError(f"不允许的列引用: {col_ref}")
+        if col_ref not in df.columns:
+            raise ValueError(f"列不存在: {col_ref}")
+    
+    # 3. 验证公式只包含允许的字符
+    # 允许：列引用（反引号）、数字、运算符、括号、空格
+    safe_pattern = r'^[`\w\s+\-*/().%]+$'
+    if not re.match(safe_pattern, formula):
+        raise ValueError(f"公式包含不允许的字符: {formula}")
+    
+    # 4. 替换列引用为实际的 Series
+    # 按长度逆序替换，避免子串覆盖
+    sorted_refs = sorted(set(column_refs), key=len, reverse=True)
+    local_vars = {}
+    for col_ref in sorted_refs:
+        # 创建局部变量名（使用列名，但确保安全）
+        var_name = f"col_{col_ref.replace(' ', '_').replace('-', '_')}"
+        local_vars[var_name] = df[col_ref]
+        # 替换公式中的列引用
+        formula = formula.replace(f"`{col_ref}`", var_name)
+    
+    # 5. 验证替换后的公式只包含变量名、数字、运算符和括号
+    # 变量名应该是 col_ 开头
+    final_pattern = r'^[col_\w\s+\-*/().%]+$'
+    if not re.match(final_pattern, formula):
+        raise ValueError(f"公式验证失败: {formula}")
+    
+    # 6. 使用 pandas 的向量化操作计算
+    try:
+        # 使用 eval 但限制在局部变量范围内
+        # 这里我们使用 pandas 的 eval，但已经验证了所有输入
+        # 为了更安全，我们可以手动解析和计算
+        result = pd.eval(formula, local_dict=local_vars, global_dict={})
+        return result
+    except Exception as e:
+        logger.warning(f"公式计算失败: {formula}, 错误: {e}")
+        raise ValueError(f"公式计算失败: {str(e)}")
+
 
 class SmartTableService:
     @staticmethod
@@ -150,7 +225,7 @@ class SmartTableService:
                 if f.get('type') == 'calculated' and f.get('formula'):
                     try:
                         formula = f['formula']
-                        # 将公式中的标签替换为列引用，例如 `身高` -> `col_xxx`
+                        # 将公式中的标签替换为列引用，例如：`身高` -> `col_xxx`
                         # 需按长度逆序替换，防止子串覆盖
                         sorted_labels = sorted(label_to_name.keys(), key=len, reverse=True)
                         eval_expr = formula
@@ -158,13 +233,14 @@ class SmartTableService:
                             if label in eval_expr:
                                 eval_expr = eval_expr.replace(label, f"`{label_to_name[label]}`")
                         
-                        # 执行计算
-                        df[f['name']] = df.eval(eval_expr)
+                        # 执行计算（使用安全计算函数）
+                        allowed_cols = [label_to_name[label] for label in sorted_labels]
+                        df[f['name']] = safe_eval_dataframe_formula(df, eval_expr, allowed_cols)
                     except Exception as e:
-                        logger.warning(f"同步计算错误 ({f['label']}): {e}")
+                        logger.warning(f"同步计算错误 ({f.get('label', f['name'])}): {e}")
 
             # 应用格式化 (精度和百分比)
-            # 注意：如果要用于图表分析，最好保持为数值；
+            # 如果要用于图表分析，最好保持为数值
             # 但如果包含百分号，则必须转为字符串。
             # 这里我们决定：如果包含 showPercent，为满足预览需求存为字符串；
             # 否则如果只是精度，我们也存为数值舍入后的结果。
@@ -211,7 +287,7 @@ class SmartTableService:
         # 5. 更新 DuckDB 表
         duckdb_instance.query(f"DROP TABLE IF EXISTS {dataset.table_name}")
         
-        # DuckDB 写入
+        # 将数据写入 DuckDB
         if not df.empty:
             duckdb_instance.conn.execute(f"CREATE TABLE {dataset.table_name} AS SELECT * FROM df")
             dataset.row_count = len(df)

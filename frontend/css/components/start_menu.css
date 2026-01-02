@@ -27,35 +27,7 @@
     --sm-scroll-thumb: rgba(0, 0, 0, 0.1);
 }
 
-/* 2. Dark Mode Variable Overrides */
-/* Use a mixin-like approach by updating variables in specific contexts */
-
-/* Manual Dark Theme Toggle */
-:root.theme-dark {
-    --sm-bg: rgba(30, 30, 40, 0.85);
-    --sm-border: 1px solid rgba(255, 255, 255, 0.1);
-    --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-    --sm-backdrop: blur(20px) saturate(180%);
-    --sm-text-primary: rgba(255, 255, 255, 0.9);
-    --sm-text-secondary: rgba(255, 255, 255, 0.7);
-
-    --sm-header-bg: rgba(255, 255, 255, 0.03);
-    --sm-header-border: 1px solid rgba(255, 255, 255, 0.06);
-
-    --sm-badge-bg: rgba(255, 255, 255, 0.15);
-    --sm-badge-text: rgba(255, 255, 255, 0.9);
-
-    --sm-item-hover-bg: rgba(255, 255, 255, 0.08);
-    --sm-item-hover-text: var(--color-text-inverse);
-
-    --sm-footer-bg: rgba(0, 0, 0, 0.2);
-    --sm-footer-border: 1px solid rgba(255, 255, 255, 0.06);
-
-    --sm-btn-hover-bg: rgba(255, 255, 255, 0.1);
-    --sm-btn-hover-text: var(--color-text-inverse);
-
-    --sm-scroll-thumb: rgba(255, 255, 255, 0.15);
-}
+/* 注意：已移除dark主题，只保留sunrise和neon两个主题 */
 
 /* 日出印象主题 (Sunrise) */
 :root.theme-sunrise {
@@ -113,113 +85,7 @@
     --sm-scroll-thumb: rgba(10, 132, 255, 0.4);
 }
 
-/* 仲夏之夜主题 (Summer Night) */
-:root.theme-summer {
-    --sm-bg: rgba(25, 25, 60, 0.9);
-    --sm-border: 1px solid rgba(156, 39, 176, 0.3);
-    --sm-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 25px rgba(156, 39, 176, 0.2);
-    --sm-backdrop: blur(30px) saturate(180%);
-    --sm-text-primary: #e8e8f0;
-    --sm-text-secondary: rgba(232, 232, 240, 0.8);
-
-    --sm-header-bg: rgba(156, 39, 176, 0.1);
-    --sm-header-border: 1px solid rgba(156, 39, 176, 0.2);
-
-    --sm-badge-bg: rgba(156, 39, 176, 0.3);
-    --sm-badge-text: #ffffff;
-
-    --sm-item-hover-bg: rgba(156, 39, 176, 0.25);
-    --sm-item-hover-text: #ffffff;
-
-    --sm-footer-bg: rgba(0, 0, 0, 0.4);
-    --sm-footer-border: 1px solid rgba(156, 39, 176, 0.2);
-
-    --sm-btn-hover-bg: rgba(156, 39, 176, 0.3);
-    --sm-btn-hover-text: #ffffff;
-
-    --sm-scroll-thumb: rgba(156, 39, 176, 0.4);
-}
-
-/* 冬日暖阳主题 (Winter Warmth) */
-:root.theme-winter {
-    --sm-bg: rgba(255, 255, 255, 0.95);
-    --sm-border: 1px solid rgba(255, 143, 0, 0.2);
-    --sm-shadow: 0 15px 40px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 183, 77, 0.15);
-    --sm-backdrop: blur(20px) saturate(120%);
-    --sm-text-primary: #37474f;
-    --sm-text-secondary: #546e7a;
-
-    --sm-header-bg: rgba(255, 183, 77, 0.1);
-    --sm-header-border: 1px solid rgba(255, 143, 0, 0.15);
-
-    --sm-badge-bg: rgba(255, 143, 0, 0.15);
-    --sm-badge-text: #e65100;
-
-    --sm-item-hover-bg: rgba(255, 183, 77, 0.25);
-    --sm-item-hover-text: #37474f;
-
-    --sm-footer-bg: rgba(236, 239, 241, 0.9);
-    --sm-footer-border: 1px solid rgba(176, 190, 197, 0.4);
-
-    --sm-btn-hover-bg: rgba(255, 143, 0, 0.15);
-    --sm-btn-hover-text: #37474f;
-
-    --sm-scroll-thumb: rgba(255, 143, 0, 0.3);
-}
-
-/* 春意盎然主题 (Spring Fresh) */
-:root.theme-spring {
-    --sm-bg: rgba(255, 255, 255, 0.95);
-    --sm-border: 1px solid rgba(76, 175, 80, 0.2);
-    --sm-shadow: 0 15px 40px rgba(0, 0, 0, 0.1), 0 0 20px rgba(129, 199, 132, 0.2);
-    --sm-backdrop: blur(20px) saturate(130%);
-    --sm-text-primary: #1b5e20;
-    --sm-text-secondary: #388e3c;
-
-    --sm-header-bg: rgba(129, 199, 132, 0.15);
-    --sm-header-border: 1px solid rgba(76, 175, 80, 0.2);
-
-    --sm-badge-bg: rgba(76, 175, 80, 0.2);
-    --sm-badge-text: #2e7d32;
-
-    --sm-item-hover-bg: rgba(129, 199, 132, 0.3);
-    --sm-item-hover-text: #1b5e20;
-
-    --sm-footer-bg: rgba(232, 245, 233, 0.9);
-    --sm-footer-border: 1px solid rgba(76, 175, 80, 0.2);
-
-    --sm-btn-hover-bg: rgba(76, 175, 80, 0.15);
-    --sm-btn-hover-text: #1b5e20;
-
-    --sm-scroll-thumb: rgba(76, 175, 80, 0.35);
-}
-
-/* 秋日私语主题 (Autumn Whisper) */
-:root.theme-autumn {
-    --sm-bg: rgba(255, 253, 248, 0.95);
-    --sm-border: 1px solid rgba(230, 81, 0, 0.2);
-    --sm-shadow: 0 15px 40px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 138, 101, 0.15);
-    --sm-backdrop: blur(20px) saturate(120%);
-    --sm-text-primary: #4e342e;
-    --sm-text-secondary: #6d4c41;
-
-    --sm-header-bg: rgba(255, 138, 101, 0.12);
-    --sm-header-border: 1px solid rgba(230, 81, 0, 0.15);
-
-    --sm-badge-bg: rgba(230, 81, 0, 0.15);
-    --sm-badge-text: #bf360c;
-
-    --sm-item-hover-bg: rgba(255, 138, 101, 0.25);
-    --sm-item-hover-text: #4e342e;
-
-    --sm-footer-bg: rgba(255, 248, 225, 0.9);
-    --sm-footer-border: 1px solid rgba(141, 110, 99, 0.3);
-
-    --sm-btn-hover-bg: rgba(230, 81, 0, 0.12);
-    --sm-btn-hover-text: #4e342e;
-
-    --sm-scroll-thumb: rgba(230, 81, 0, 0.3);
-}
+/* 以下主题已移除：summer, winter, spring, autumn */
 
 /* System Dark Mode Preference (Only applies if not overridden by explicit themes) */
 @media (prefers-color-scheme: dark) {
@@ -378,7 +244,7 @@
 
 /* Fix active state in dark mode to be subtle if needed, or keep blue */
 /* Currently keeping blue accent for consistency, but removing shadow in dark mode via override */
-:root.theme-dark .menu-item.expanded {
+:root.theme-neon .menu-item.expanded {
     box-shadow: none;
     background: rgba(255, 255, 255, 0.12);
     /* Use subtle glass in dark mode instead of harsh blue */
@@ -498,4 +364,46 @@
 
 .menu-item-shortcut .menu-title {
     color: var(--sm-text-primary);
+}
+
+/* 分组标题 */
+.menu-group-header {
+    padding: 8px 12px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sm-text-secondary);
+    opacity: 0.7;
+    user-select: none;
+}
+
+/* 空状态 */
+.menu-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--sm-text-secondary);
+}
+
+.menu-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.menu-empty-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sm-text-primary);
+    margin-bottom: 8px;
+}
+
+.menu-empty-hint {
+    font-size: 12px;
+    color: var(--sm-text-secondary);
+    opacity: 0.7;
 }

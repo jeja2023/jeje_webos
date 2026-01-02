@@ -277,7 +277,7 @@ const AnalysisImportMixin = {
         let data = null;
         try {
             if (localFile) {
-                // 对于本地尚未上传的文件，逻辑较复杂，先简单提示
+                // 对于本地尚未上传的文件，逻辑较复杂
                 Toast.info('本地文件需要先上传预览，我们直接读取前几行');
                 // 使用 FileReader 模拟预览逻辑 (仅限文本类)
                 return this.showLocalFilePreview(localFile);
@@ -660,7 +660,7 @@ const AnalysisImportMixin = {
             host: document.getElementById('db-host')?.closest('.form-group'),
             port: document.getElementById('db-port')?.closest('.form-group'),
             user: document.getElementById('db-user')?.closest('.form-group'),
-            pass: document.getElementById('db-pass')?.closest('.form-group'), // 注意：user/pass 可能在一行
+            pass: document.getElementById('db-pass')?.closest('.form-group'), // user/pass 可能在一行
             name: document.getElementById('db-name')?.closest('.form-group')
         };
 
@@ -695,7 +695,7 @@ const AnalysisImportMixin = {
             if (inputs.name) inputs.name.placeholder = '例如: D:/data/mydb.db';
 
         } else if (type === 'oracle') {
-            // Oracle: 更改 Name 标签为 Service Name
+            // Oracle：更改 Name 标签为 Service Name
             if (inputs.nameLabel) inputs.nameLabel.textContent = '服务名 (Service Name)';
             if (inputs.name) inputs.name.placeholder = '例如: ORCLPDB1';
             if (inputs.port && !inputs.port.value) inputs.port.value = '1521';

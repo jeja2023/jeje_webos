@@ -96,9 +96,10 @@ class MonitorPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header" style="margin-bottom: 16px;">
+                <div class="page-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
                     <h1 class="page-title">📊 系统监控</h1>
-                    <div style="display: flex; gap: 12px;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('monitor', '系统监控') : ''}
                         <button class="btn btn-secondary btn-sm" id="refreshMonitor">🔄 刷新</button>
                     </div>
                 </div>
@@ -338,6 +339,10 @@ class MonitorPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
         // 自动刷新（每30秒）- 仅在当前路由是监控页时刷新
         this.state.refreshInterval = setInterval(() => {
             // 检查当前路由是否仍在监控页面
@@ -353,6 +358,10 @@ class MonitorPage extends Component {
 
     afterUpdate() {
         this.bindEvents();
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     cleanup() {

@@ -69,7 +69,7 @@ class CleaningRequest(BaseModel):
     columns: Optional[List[str]] = None
     params: Optional[Dict[str, Any]] = None
     fill_value: Optional[str] = None  # 填充值
-    save_mode: str = "new"  # new: 新建数据集, preview: 仅预览不保存
+    save_mode: str = "new"  # 保存模式：new=新建数据集, preview=仅预览不保存
 
 # --- 数据建模 ---
 class ModelingSummaryRequest(BaseModel):
@@ -83,9 +83,9 @@ class ModelingCorrelationRequest(BaseModel):
 class ModelingAggregateRequest(BaseModel):
     dataset_id: int
     group_by: List[str]
-    aggregates: Dict[str, str]  # 字段名 -> 聚合函数 (sum, avg, count, max, min)
+    aggregates: Dict[str, str]  # 字段名到聚合函数的映射（sum, avg, count, max, min）
 
-# SQL建模请求
+# SQL 建模请求
 class ModelingSqlRequest(BaseModel):
     sql: str  # 用户自定义SQL语句
     save_as: Optional[str] = None  # 可选：保存结果为新数据集
@@ -105,7 +105,7 @@ class ModelUpdate(BaseModel):
     status: Optional[str] = None
 
 class ModelSaveGraphRequest(BaseModel):
-    graph_config: Dict[str, Any] # 包含 nodes, connections, etc.
+    graph_config: Dict[str, Any]  # 图配置，包含节点和连接等信息
     status: Optional[str] = None
 
 class ModelResponse(ModelBase):
@@ -125,12 +125,18 @@ class ETLExecuteNodeRequest(BaseModel):
     model_id: int  # 模型ID
     node_id: str   # 要执行的节点ID
     graph_config: Dict[str, Any]  # 完整的图配置
+    
+    class Config:
+        protected_namespaces = ()  # 允许使用 model_ 前缀的字段名
 
 
 class ETLPreviewNodeRequest(BaseModel):
     """预览节点数据请求"""
     model_id: int
     node_id: str
+    
+    class Config:
+        protected_namespaces = ()  # 允许使用 model_ 前缀的字段名
 
 # --- BI 仪表盘 ---
 class DashboardBase(BaseModel):
@@ -158,8 +164,8 @@ class DashboardResponse(DashboardBase):
 # --- 智能表格 ---
 class SmartTableBase(BaseModel):
     name: str
-    fields: List[Dict[str, Any]] # e.g. [{"name": "age", "type": "number", "label": "年龄"}]
-    config: Optional[Dict[str, Any]] = None # e.g. {"showSummary": true}
+    fields: List[Dict[str, Any]]  # 字段列表，例如：[{"name": "age", "type": "number", "label": "年龄"}]
+    config: Optional[Dict[str, Any]] = None  # 配置项，例如：{"showSummary": true}
 
 class SmartTableCreate(SmartTableBase):
     pass
@@ -192,7 +198,7 @@ class SmartReportBase(BaseModel):
 
 class SmartReportCreate(SmartReportBase):
     pass
-    # template_path 会在后端处理上传时生成，或者通过单独接口上传
+    # template_path 会在后端处理上传时生成，或通过单独接口上传
 
 class SmartReportUpdate(BaseModel):
     name: Optional[str] = None
@@ -229,7 +235,7 @@ class GenerateReportRequest(BaseModel):
     data: Dict[str, Any] # 注入模板的数据
     save_record: bool = False # 是否保存为记录
     record_name: Optional[str] = None
-    content_md: Optional[str] = None # 可选：处理后的 Markdown 内容（包含图表图片），如果提供则使用此内容而不是模板内容
+    content_md: Optional[str] = None  # 可选：处理后的 Markdown 内容（包含图表图片），如果提供则使用此内容而不是模板内容
 
 class SmartReportRecordResponse(BaseModel):
     id: int

@@ -16,7 +16,7 @@ from pathlib import Path
 
 from core.database import get_db
 from core.security import TokenData, require_admin, get_current_user
-from core.loader import get_module_loader, CORE_MODULES, SYSTEM_MODULES
+from core.loader import get_module_loader, CORE_MODULES
 from core.config import get_settings
 from schemas import success
 
@@ -64,8 +64,7 @@ async def list_market_modules(
             "version": manifest.version,
             "author": manifest.author,
             "installed": is_installed,
-            "enabled": state.enabled if state else False,
-            "isSystem": mid in SYSTEM_MODULES
+            "enabled": state.enabled if state else False
         })
         
     return success(market_list)
@@ -121,7 +120,7 @@ async def upload_package(
     1. 接收 zip 文件
     2. 校验文件结构
     3. 解压到 modules 目录
-    注意：上传后模块处于"待安装"状态，需要管理员在应用市场中手动安装
+    上传后模块处于"待安装"状态，需要管理员在应用市场中手动安装
     
     Args:
         file: 上传的 .jwapp 或 .zip 文件
@@ -152,7 +151,7 @@ async def upload_package(
         with zipfile.ZipFile(temp_zip, 'r') as zf:
             namelist = zf.namelist()
             
-            # 安全检查：防止路径遍历 (Zip Slip)
+            # 安全检查：防止路径遍历
             for name in namelist:
                 if ".." in name or name.startswith("/") or name.startswith("\\"):
                     raise HTTPException(status_code=400, detail=f"离线包包含非法路径元素: {name}")
@@ -223,7 +222,7 @@ async def upload_package(
         
         logger.info(f"离线包解压成功: {module_id} ({module_name})")
         
-        # 返回成功，提示用户去应用市场安装
+        # 返回成功信息
         msg = f"模块 \"{module_name}\" 已上传成功！请在「应用市场」中点击安装，然后在「应用管理」中启用。"
         if is_overwrite:
             msg = f"模块 \"{module_name}\" 已覆盖更新！请在「应用市场」中重新安装。"

@@ -97,19 +97,23 @@ class FeedbackService:
         if conditions:
             query = query.where(and_(*conditions))
         
-        # 总数
-        count_query = select(func.count()).select_from(Feedback)
+        # 总数（优化：使用 func.count(Feedback.id) 代替 func.count()）
+        count_query = select(func.count(Feedback.id))
         if conditions:
             count_query = count_query.where(and_(*conditions))
         total_result = await self.db.execute(count_query)
         total = total_result.scalar() or 0
         
-        # 排序和分页
-        query = query.order_by(
-            desc(Feedback.priority == FeedbackPriority.URGENT),
-            desc(Feedback.priority == FeedbackPriority.HIGH),
-            desc(Feedback.created_at)
+        # 排序和分页（优化：使用 CASE WHEN 实现优先级排序，性能更好）
+        from sqlalchemy import case
+        priority_order = case(
+            (Feedback.priority == FeedbackPriority.URGENT, 1),
+            (Feedback.priority == FeedbackPriority.HIGH, 2),
+            (Feedback.priority == FeedbackPriority.NORMAL, 3),
+            (Feedback.priority == FeedbackPriority.LOW, 4),
+            else_=5
         )
+        query = query.order_by(priority_order, desc(Feedback.created_at))
         query = query.offset((page - 1) * size).limit(size)
         
         result = await self.db.execute(query)
@@ -124,11 +128,9 @@ class FeedbackService:
         user_id: int
     ) -> Optional[Feedback]:
         """更新反馈（用户）"""
+        # 先查询是否存在且可修改（不需要加载关联对象）
         result = await self.db.execute(
-            select(Feedback).options(
-                selectinload(Feedback.user),
-                selectinload(Feedback.handler)
-            ).where(
+            select(Feedback).where(
                 and_(
                     Feedback.id == feedback_id,
                     Feedback.user_id == user_id,
@@ -140,12 +142,14 @@ class FeedbackService:
         if not feedback:
             return None
         
+        # 更新字段
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(feedback, key, value)
         
         await self.db.commit()
-        await self.db.refresh(feedback)
+        # 只在需要关联对象时再加载
+        await self.db.refresh(feedback, ["user", "handler"])
         return feedback
     
     async def reply_feedback(
@@ -154,12 +158,10 @@ class FeedbackService:
         data: FeedbackReply,
         handler_id: int
     ) -> Optional[Feedback]:
-        """回复反馈（管理员）"""
+        """回复反馈（管理员）- 优化：减少不必要的关联对象加载"""
+        # 先查询是否存在（不加载关联对象）
         result = await self.db.execute(
-            select(Feedback).options(
-                selectinload(Feedback.user),
-                selectinload(Feedback.handler)
-            ).where(Feedback.id == feedback_id)
+            select(Feedback).where(Feedback.id == feedback_id)
         )
         feedback = result.scalar_one_or_none()
         if not feedback:
@@ -176,7 +178,8 @@ class FeedbackService:
                 feedback.resolved_at = datetime.now(timezone.utc)
         
         await self.db.commit()
-        await self.db.refresh(feedback)
+        # 按需加载关联对象
+        await self.db.refresh(feedback, ["user", "handler"])
         return feedback
     
     async def admin_update_feedback(
@@ -184,12 +187,10 @@ class FeedbackService:
         feedback_id: int,
         data: FeedbackAdminUpdate
     ) -> Optional[Feedback]:
-        """管理员更新反馈"""
+        """管理员更新反馈（优化：减少不必要的关联对象加载）"""
+        # 先查询是否存在（不加载关联对象）
         result = await self.db.execute(
-            select(Feedback).options(
-                selectinload(Feedback.user),
-                selectinload(Feedback.handler)
-            ).where(Feedback.id == feedback_id)
+            select(Feedback).where(Feedback.id == feedback_id)
         )
         feedback = result.scalar_one_or_none()
         if not feedback:
@@ -204,54 +205,47 @@ class FeedbackService:
             feedback.resolved_at = datetime.now(timezone.utc)
         
         await self.db.commit()
-        await self.db.refresh(feedback)
+        # 按需加载关联对象
+        await self.db.refresh(feedback, ["user", "handler"])
         return feedback
     
     async def delete_feedback(self, feedback_id: int, user_id: Optional[int] = None) -> bool:
-        """删除反馈"""
+        """删除反馈（使用批量删除优化）"""
         conditions = [Feedback.id == feedback_id]
         
         # 如果不是管理员，只能删除自己的
         if user_id:
             conditions.append(Feedback.user_id == user_id)
         
+        # 直接使用 delete 语句，避免先查询
+        from sqlalchemy import delete as sql_delete
         result = await self.db.execute(
-            select(Feedback).where(and_(*conditions))
+            sql_delete(Feedback).where(and_(*conditions))
         )
-        feedback = result.scalar_one_or_none()
-        if not feedback:
-            return False
-        
-        await self.db.delete(feedback)
         await self.db.commit()
-        return True
+        
+        # 返回是否删除了记录
+        return result.rowcount > 0
     
     async def get_statistics(self) -> dict:
         """获取统计信息（管理员）"""
-        # 总数
-        total_result = await self.db.execute(select(func.count(Feedback.id)))
+        # 顺序执行统计查询（SQLAlchemy 同一会话不支持并发查询）
+        total_query = select(func.count(Feedback.id))
+        status_query = select(Feedback.status, func.count(Feedback.id)).group_by(Feedback.status)
+        type_query = select(Feedback.type, func.count(Feedback.id)).group_by(Feedback.type)
+        
+        # 顺序执行查询
+        total_result = await self.db.execute(total_query)
+        status_result = await self.db.execute(status_query)
+        type_result = await self.db.execute(type_query)
+        
         total = total_result.scalar() or 0
-        
-        # 按状态统计
-        status_result = await self.db.execute(
-            select(Feedback.status, func.count(Feedback.id))
-            .group_by(Feedback.status)
-        )
         status_stats = {row[0]: row[1] for row in status_result.all()}
-        
-        # 按类型统计
-        type_result = await self.db.execute(
-            select(Feedback.type, func.count(Feedback.id))
-            .group_by(Feedback.type)
-        )
         type_stats = {row[0]: row[1] for row in type_result.all()}
-        
-        # 待处理数量
-        pending_count = status_stats.get(FeedbackStatus.PENDING, 0)
         
         return {
             "total": total,
-            "pending": pending_count,
+            "pending": status_stats.get(FeedbackStatus.PENDING, 0),
             "processing": status_stats.get(FeedbackStatus.PROCESSING, 0),
             "resolved": status_stats.get(FeedbackStatus.RESOLVED, 0),
             "closed": status_stats.get(FeedbackStatus.CLOSED, 0),

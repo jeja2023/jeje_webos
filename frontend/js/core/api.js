@@ -42,6 +42,36 @@ const Api = {
             const contentType = response.headers.get('content-type') || '';
             const isJson = contentType.includes('application/json');
 
+            // 先检查401状态，即使不是JSON也要处理
+            if (response.status === 401) {
+                // 尝试读取错误信息
+                let errorMessage = '登录已过期，请重新登录';
+                if (isJson) {
+                    try {
+                        const data = await response.json();
+                        if (data.detail) {
+                            if (Array.isArray(data.detail)) {
+                                errorMessage = data.detail[0]?.msg || errorMessage;
+                            } else {
+                                errorMessage = data.detail;
+                            }
+                        } else if (data.message) {
+                            errorMessage = data.message;
+                        }
+                    } catch (_) {
+                        // 忽略JSON解析错误
+                    }
+                }
+                
+                // 清除认证并跳转登录（只执行一次）
+                if (Store.get('isLoggedIn')) {
+                    Store.clearAuth();
+                    Router.push('/login');
+                }
+                
+                throw new Error(errorMessage);
+            }
+
             // JSON 响应
             if (isJson) {
                 const data = await response.json();
@@ -71,12 +101,6 @@ const Api = {
                         } else {
                             errorMessage = data.detail;
                         }
-                    }
-
-                    if (response.status === 401) {
-                        Store.clearAuth();
-                        Router.push('/login');
-                        throw new Error(errorMessage || '登录已过期，请重新登录');
                     }
 
                     throw new Error(errorMessage);
@@ -427,21 +451,20 @@ const MonitorApi = {
 };
 
 // 通知系统 API
-const MessageApi = {
-    create: (data) => Api.post('/message', data),
-    list: (params) => Api.get('/message', params),
-    unreadCount: () => Api.get('/message/unread-count'),
-    markRead: (id) => Api.put(`/message/${id}/read`),
-    markAllRead: () => Api.put('/message/read-all'),
-    delete: (id) => Api.delete(`/message/${id}`),
-    deleteAll: () => Api.delete('/message')
+const NotificationApi = {
+    create: (data) => Api.post('/notification', data),
+    list: (params) => Api.get('/notification', params),
+    unreadCount: () => Api.get('/notification/unread-count'),
+    markRead: (id) => Api.put(`/notification/${id}/read`),
+    markAllRead: () => Api.put('/notification/read-all'),
+    delete: (id) => Api.delete(`/notification/${id}`),
+    deleteAll: () => Api.delete('/notification')
 };
 
 // 数据导入导出 API
 const ExportApi = {
     exportUsers: (format = 'csv') => `${Config.apiBase}/export/users?format=${format}`,
-    exportMessages: (format = 'csv') => `${Config.apiBase}/export/message?format=${format}`,
-    exportNotifications: (format = 'csv') => `${Config.apiBase}/export/message?format=${format}`,
+    exportNotifications: (format = 'csv') => `${Config.apiBase}/export/notification?format=${format}`,
     exportFiles: (format = 'csv') => `${Config.apiBase}/export/files?format=${format}`,
     importUsers: (file) => Api.upload('/export/import/users', file)
 };
@@ -470,7 +493,7 @@ window.FeedbackApi = FeedbackApi;
 window.StorageApi = StorageApi;
 window.BackupApi = BackupApi;
 window.MonitorApi = MonitorApi;
-window.MessageApi = MessageApi;
+window.NotificationApi = NotificationApi;
 window.ExportApi = ExportApi;
 window.AnnouncementApi = AnnouncementApi;
 window.GroupApi = GroupApi;

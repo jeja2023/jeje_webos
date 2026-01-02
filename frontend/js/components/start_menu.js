@@ -1,6 +1,11 @@
 /**
  * 开始菜单组件
  * 动态显示已启用模块和用户权限对应的菜单
+ * 
+ * 菜单结构：
+ * 1. 快捷方式分组 - 用户自定义的快捷方式
+ * 2. 应用分组 - 已启用的模块应用（排除 Dock 固定项）
+ * 3. 系统工具分组 - 系统内置应用（排除 Dock 固定项）
  */
 class StartMenuComponent extends Component {
     constructor(container) {
@@ -17,19 +22,66 @@ class StartMenuComponent extends Component {
         Store.subscribe('user', updateVisible);
     }
 
-    // 动态构建菜单树
-    buildMenuTree() {
+    /**
+     * 获取 Dock 中已固定的应用 ID 集合
+     * 这些应用不会在开始菜单中显示
+     */
+    _getPinnedAppIds() {
         const user = Store.get('user');
         const isAdmin = user?.role === 'admin';
         const isManager = user?.role === 'manager';
+        const dockPinnedApps = user?.settings?.dock_pinned_apps || [];
+        const pinnedIds = new Set([...dockPinnedApps]);
+
+        // 默认固定在 Dock 的应用
+        pinnedIds.add('message');
+        pinnedIds.add('apps');
+        
+        // 管理员/经理固定在 Dock 的应用
+        if (isAdmin || isManager) {
+            pinnedIds.add('announcement');
+            pinnedIds.add('users');
+        }
+        
+        // 管理员固定在 Dock 的应用
+        if (isAdmin) {
+            pinnedIds.add('system');
+        }
+
+        return pinnedIds;
+    }
+
+    /**
+     * 从模块配置中获取菜单路径
+     * 优先级：模块配置的 menu.path > 默认路径 /{moduleId}
+     */
+    _getModulePath(module) {
+        // 优先使用模块配置中的路径
+        if (module.menu?.path) {
+            return module.menu.path;
+        }
+        
+        // 如果没有配置，使用默认路径
+        return `/${module.id}`;
+    }
+
+    /**
+     * 动态构建菜单树（带分组）
+     */
+    buildMenuTree() {
+        const user = Store.get('user');
         const modules = Store.get('modules') || [];
+        const pinnedIds = this._getPinnedAppIds();
 
         const menuTree = [];
+        let hasShortcuts = false;
+        let hasApps = false;
+        let hasSystemTools = false;
 
-        // 1. 获取用户自定义快捷方式 (从 user.settings.start_menu_shortcuts)
+        // ========== 1. 快捷方式分组 ==========
         const allShortcuts = user?.settings?.start_menu_shortcuts || [];
-
         if (allShortcuts.length > 0) {
+            menuTree.push({ isGroupHeader: true, title: '快捷方式' });
             allShortcuts.forEach(shortcut => {
                 menuTree.push({
                     id: shortcut.id,
@@ -40,59 +92,52 @@ class StartMenuComponent extends Component {
                     type: shortcut.type
                 });
             });
-
-            if (menuTree.length > 0) {
-                menuTree.push({ isSeparator: true });
-            }
+            hasShortcuts = true;
         }
 
-        // 2. 获取 Dock 中已存在的应用 ID
-        const dockPinnedApps = user?.settings?.dock_pinned_apps || [];
-        const pinnedIds = new Set([...dockPinnedApps]);
-
-        pinnedIds.add('message');
-        pinnedIds.add('apps');
-        if (isAdmin || isManager) {
-            pinnedIds.add('announcement');
-            pinnedIds.add('users');
-        }
-        if (isAdmin) {
-            pinnedIds.add('system');
-        }
-
-        // 3. 遍历模块
-        const menuConfigs = {
-            'blog': '/blog/list',
-            'notes': '/notes/list',
-            'feedback': '/feedback/my'
-        };
-
+        // ========== 2. 应用分组 - 已启用的模块 ==========
+        const appItems = [];
         for (const mod of modules) {
             if (!mod.enabled) continue;
             if (pinnedIds.has(mod.id)) continue;
 
-            const targetPath = menuConfigs[mod.id];
-
-            menuTree.push({
+            appItems.push({
                 id: mod.id,
                 title: mod.name,
                 icon: mod.icon || '📦',
-                children: null,
-                path: targetPath || (mod.menu?.path || `/${mod.id}`)
+                path: this._getModulePath(mod)
             });
         }
 
-        // 系统内置应用
-        const sysApps = [
+        if (appItems.length > 0) {
+            if (hasShortcuts) {
+                menuTree.push({ isSeparator: true });
+            }
+            menuTree.push({ isGroupHeader: true, title: '应用' });
+            menuTree.push(...appItems);
+            hasApps = true;
+        }
+
+        // ========== 3. 系统工具分组 - 系统内置应用 ==========
+        const systemApps = [
             { id: 'filemanager', title: '文件管理', icon: '📂', path: '/filemanager' },
-            { id: 'transfer', title: '快传', icon: '⚡', path: '/transfer' },
-            { id: 'theme', title: '主题', icon: '🎨', path: '/theme/editor' }
+            { id: 'transfer', title: '快传', icon: '⚡', path: '/transfer' }
         ];
 
-        for (const app of sysApps) {
-            if (!pinnedIds.has(app.id)) {
-                menuTree.push(app);
+        const systemItems = systemApps.filter(app => !pinnedIds.has(app.id));
+
+        if (systemItems.length > 0) {
+            if (hasShortcuts || hasApps) {
+                menuTree.push({ isSeparator: true });
             }
+            menuTree.push({ isGroupHeader: true, title: '系统工具' });
+            menuTree.push(...systemItems);
+            hasSystemTools = true;
+        }
+
+        // 如果没有任何菜单项，返回空数组
+        if (!hasShortcuts && !hasApps && !hasSystemTools) {
+            return [];
         }
 
         return menuTree;
@@ -132,48 +177,59 @@ class StartMenuComponent extends Component {
         return spec.emoji;
     }
 
+    /**
+     * 渲染菜单项
+     */
     render() {
-        const user = Store.get('user');
-        const isAdmin = user?.role === 'admin';
+        const menuTree = this.buildMenuTree();
 
-        const renderItem = (item, level = 0, parentId = '') => {
+        const renderItem = (item) => {
+            // 分隔符
             if (item.isSeparator) {
                 return '<div class="menu-separator"></div>';
             }
-            if (item.admin && !isAdmin) return '';
 
-            const hasChildren = item.children && item.children.length > 0;
-            const uniqueId = item.id || (parentId ? `${parentId}-${item.title}` : item.title);
-            const isExpanded = this.expanded[uniqueId] === true;
-            const indent = level * 16;
-            const itemClass = `menu-item ${hasChildren ? 'has-children' : ''} ${isExpanded ? 'expanded' : ''} ${item.isShortcut ? 'menu-item-shortcut' : ''}`;
+            // 分组标题
+            if (item.isGroupHeader) {
+                return `<div class="menu-group-header">${item.title}</div>`;
+            }
+
+            // 普通菜单项
+            const uniqueId = item.id || `item-${item.title}`;
+            const itemClass = `menu-item ${item.isShortcut ? 'menu-item-shortcut' : ''}`;
 
             return `
                 <div class="menu-item-wrapper">
                     <div class="${itemClass}" 
                          data-id="${uniqueId}" 
-                         ${item.path ? `data-path="${item.path}"` : ''}
-                         style="padding-left: ${16 + indent}px">
+                         ${item.path ? `data-path="${item.path}"` : ''}>
                         <span class="menu-icon">${this._renderIcon(item.id, item.icon)}</span>
                         <span class="menu-title">${item.title}</span>
-                         ${item.isShortcut ? '<span class="menu-badge"><i class="ri-pushpin-2-fill"></i></span>' : ''}
-                        ${hasChildren ? `
-                            <span class="menu-arrow"><i class="ri-arrow-down-s-line"></i></span>
-                        ` : ''}
+                        ${item.isShortcut ? '<span class="menu-badge"><i class="ri-pushpin-2-fill"></i></span>' : ''}
                     </div>
-                    ${hasChildren ? `
-                        <div class="menu-children ${isExpanded ? 'show' : ''}" id="children-${uniqueId}">
-                            ${item.children.map(child => renderItem(child, level + 1, uniqueId)).join('')}
-                        </div>
-                    ` : ''}
                 </div>
             `;
         };
 
+        // 空状态
+        if (menuTree.length === 0) {
+            return `
+                <div class="start-menu glass-panel ${this.visible ? 'visible' : ''}">
+                    <div class="start-menu-body custom-scrollbar">
+                        <div class="menu-empty-state">
+                            <div class="menu-empty-icon">📋</div>
+                            <div class="menu-empty-text">暂无可用应用</div>
+                            <div class="menu-empty-hint">所有应用已固定在 Dock</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         return `
             <div class="start-menu glass-panel ${this.visible ? 'visible' : ''}">
                 <div class="start-menu-body custom-scrollbar">
-                    ${this.buildMenuTree().map(item => renderItem(item)).join('')}
+                    ${menuTree.map(item => renderItem(item)).join('')}
                 </div>
             </div>
         `;
@@ -213,44 +269,28 @@ class StartMenuComponent extends Component {
         }
     }
 
+    /**
+     * 绑定事件处理
+     * 优化：统一使用 .menu-item 选择器，避免重复绑定
+     */
     bindEvents() {
+        // 统一处理菜单项点击事件
         this.delegate('click', '.menu-item', (e, el) => {
             e.stopPropagation();
             const path = el.dataset.path;
-            const id = el.dataset.id;
-
+            
+            // 如果有路径，跳转并关闭菜单
             if (path) {
                 Router.push(path);
                 this.hide();
-            } else {
-                const childrenContainer = this.container.querySelector(`#children-${id}`);
-                if (childrenContainer) {
-                    const isExpanded = el.classList.contains('expanded');
-                    if (isExpanded) {
-                        el.classList.remove('expanded');
-                        childrenContainer.classList.remove('show');
-                        this.expanded[id] = false;
-                    } else {
-                        el.classList.add('expanded');
-                        childrenContainer.classList.add('show');
-                        this.expanded[id] = true;
-                    }
-                }
             }
         });
 
+        // 处理退出登录按钮（如果存在）
         this.delegate('click', '#menuLogoutBtn', () => {
             Store.clearAuth();
             Toast.success('已安全退出');
             Router.push('/login');
-        });
-
-        this.delegate('click', '[data-path]', (e, el) => {
-            const path = el.dataset.path;
-            if (path) {
-                Router.push(path);
-                this.hide();
-            }
         });
     }
 

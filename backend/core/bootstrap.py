@@ -60,11 +60,31 @@ async def init_admin_user():
     
     async with async_session() as db:
         try:
-            # 检查是否已存在管理员账户
+            # 优化：合并查询，一次性检查管理员、用户名和手机号
+            from sqlalchemy import or_
             result = await db.execute(
-                select(User).where(User.role == "admin")
+                select(User).where(
+                    or_(
+                        User.role == "admin",
+                        User.username == settings.admin_username,
+                        User.phone == admin_phone
+                    )
+                )
             )
-            admin_exists = result.scalar_one_or_none()
+            existing_users = result.scalars().all()
+            
+            # 在内存中检查
+            admin_exists = None
+            username_exists = None
+            phone_exists = None
+            
+            for user in existing_users:
+                if user.role == "admin":
+                    admin_exists = user
+                if user.username == settings.admin_username:
+                    username_exists = user
+                if user.phone == admin_phone:
+                    phone_exists = user
             
             if admin_exists:
                 logger.debug(f"管理员账户已存在: {admin_exists.username}")
@@ -73,24 +93,12 @@ async def init_admin_user():
                     "message": f"管理员账户已存在: {admin_exists.username}"
                 }
             
-            # 检查默认用户名是否已被使用
-            result = await db.execute(
-                select(User).where(User.username == settings.admin_username)
-            )
-            username_exists = result.scalar_one_or_none()
-            
             if username_exists:
                 logger.warning(f"用户名 '{settings.admin_username}' 已被使用，跳过创建默认管理员")
                 return {
                     "created": False,
                     "message": f"用户名 '{settings.admin_username}' 已被使用"
                 }
-            
-            # 检查手机号是否已被使用
-            result = await db.execute(
-                select(User).where(User.phone == admin_phone)
-            )
-            phone_exists = result.scalar_one_or_none()
             
             if phone_exists:
                 logger.warning(f"手机号 '{admin_phone}' 已被使用，跳过创建默认管理员")
