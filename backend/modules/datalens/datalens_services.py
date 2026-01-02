@@ -712,6 +712,24 @@ class QueryExecutor:
             raise QueryExecutionError(f"查询执行失败: {str(e)}")
 
     @staticmethod
+    def _validate_join_on(join_on: str) -> bool:
+        """
+        验证 JOIN ON 条件安全性
+        仅允许: 字母、数字、下划线、点、空格、等号
+        例如: t1.id = t2.uid
+        """
+        import re
+        # 允许的模式: 标识符 操作符 标识符
+        # 操作符支持: =
+        # 暂时只支持等号连接，这是最常见的情况
+        if not join_on:
+            return True
+        # 简单宽松的正则，防止明显的分号截断或子查询
+        # 允许 a.b = c.d 格式
+        pattern = r"^[a-zA-Z0-9_.]+\s*=\s*[a-zA-Z0-9_.]+$"
+        return bool(re.match(pattern, join_on.strip()))
+
+    @staticmethod
     async def _execute_sql_query(
         source_type: str,
         conn_config: Dict[str, Any],
@@ -773,13 +791,49 @@ class QueryExecutor:
                     join_table = join.get("table", "")
                     join_on = join.get("on", "")
                     
+                    # 验证 join_on 安全性
+                    if join_on and not QueryExecutor._validate_join_on(join_on):
+                        logger.warning(f"检测到潜在的 JOIN ON 注入尝试: {join_on}")
+                        # 忽略不安全的 ON 条件，或者抛出错误
+                        continue
+
                     join_table_ref = f"`{join_table}`" if db_type == "mysql" else f'"{join_table}"'
                     if join_table and join_on:
                         base_sql += f" {join_type} {join_table_ref} ON {join_on}"
             
-            where = query_config.get("where", "")
-            if where:
-                base_sql += f" WHERE {where}"
+            # 处理基础筛选 (View 自身的筛选配置)
+            # 优先使用 structured filters
+            view_filters = query_config.get("filters")
+            view_where = ""
+            
+            if isinstance(view_filters, list) and view_filters:
+                # 前端传递的是 string 数组 ["col='val'", ...] 或者 对象数组？
+                # datalens_editor.js 简单模式传递的是: filters: ["field = 'val'", ...] 字符串数组
+                # 这使得_build_filter_clause 难以直接复用（它期望 dict {field: {op, val}}）
+                
+                # Editor 传递的 filters 其实是 WHERE 子句片段数组
+                # 我们需要验证这些片段
+                safe_filters = []
+                for f in view_filters:
+                    # 简单验证: 必须包含 =, !=, >, <, LIKE, IS NULL 等
+                    # 且不包含 ; -- /* 等
+                    if validate_sql("SELECT * FROM t WHERE " + f):
+                        safe_filters.append(f)
+                
+                if safe_filters:
+                    view_where = " AND ".join(safe_filters)
+            else:
+                # 兼容旧格式或直接字符串
+                where_str = query_config.get("where", "")
+                if where_str and validate_sql("SELECT * FROM t WHERE " + where_str):
+                    view_where = where_str
+
+            if view_where:
+                base_sql += f" WHERE {view_where}"
+
+            # 最终验证生成的 SQL (Double Check)
+            if not validate_sql(base_sql):
+                 raise QueryExecutionError("生成的 SQL 语句包含潜在风险")
 
         # 包装成子查询以便后续添加筛选和排序
         wrapped_sql = f"SELECT * FROM ({base_sql}) AS base_query"

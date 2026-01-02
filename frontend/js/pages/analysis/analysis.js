@@ -135,7 +135,7 @@ class AnalysisPage extends Component {
                 xField: '',
                 yField: '',
                 groupField: '',
-                aggregateType: 'count' // count, sum, avg, max, min
+                aggregationType: 'none' // none, count, sum, avg, max, min
             },
             hasGeneratedChart: false, // 是否已经生成了图表
             cleaningTasks: [], // 多步骤清洗任务
@@ -206,13 +206,13 @@ class AnalysisPage extends Component {
     afterMount() {
         // 添加全局错误处理
         this._setupErrorHandling();
-        
+
         this.fetchDatasets();
         this.bindEvents();
         // 绑定数据工具事件
         if (this.bindDataToolsEvents) this.bindDataToolsEvents();
     }
-    
+
     /**
      * 设置全局错误处理
      */
@@ -260,6 +260,16 @@ class AnalysisPage extends Component {
             if (this.bindChartEvents && !this._chartEventsBound) {
                 this.bindChartEvents();
             }
+
+            // 每次更新后都初始化图表配置交互（因为 DOM 可能已重新渲染）
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const configPanel = document.querySelector('.chart-config-panel');
+                    if (configPanel) {
+                        ChartConfigUI.initInteractions(configPanel);
+                    }
+                });
+            });
 
             // 如果显示 ChartHub，确保列表已更新
             if (this.state.showChartHub) {

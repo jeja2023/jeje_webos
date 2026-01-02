@@ -96,12 +96,12 @@ class DataLensPage extends Component {
         openTabs.forEach(tab => {
             if (tab._chartInstance && tab.viewMode === 'chart') {
                 // 销毁旧图表
-                tab._chartInstance.dispose();
-                if (tab._chartResizeHandler) {
-                    window.removeEventListener('resize', tab._chartResizeHandler);
+                ChartHelper.disposeChart(tab._chartInstance);
+                if (tab._chartResizeCleanup) {
+                    tab._chartResizeCleanup();
                 }
                 tab._chartInstance = null;
-                tab._chartResizeHandler = null;
+                tab._chartResizeCleanup = null;
                 // 重新初始化
                 setTimeout(() => this._initChart(tab), 100);
             }
@@ -117,9 +117,9 @@ class DataLensPage extends Component {
         const { openTabs } = this.state;
         openTabs.forEach(tab => {
             if (tab._chartInstance) {
-                tab._chartInstance.dispose();
-                if (tab._chartResizeHandler) {
-                    window.removeEventListener('resize', tab._chartResizeHandler);
+                ChartHelper.disposeChart(tab._chartInstance);
+                if (tab._chartResizeCleanup) {
+                    tab._chartResizeCleanup();
                 }
             }
         });
@@ -170,9 +170,9 @@ class DataLensPage extends Component {
 
         // 清除图表实例
         if (closingTab?._chartInstance) {
-            closingTab._chartInstance.dispose();
-            if (closingTab._chartResizeHandler) {
-                window.removeEventListener('resize', closingTab._chartResizeHandler);
+            ChartHelper.disposeChart(closingTab._chartInstance);
+            if (closingTab._chartResizeCleanup) {
+                closingTab._chartResizeCleanup();
             }
         }
 

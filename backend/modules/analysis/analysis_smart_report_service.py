@@ -459,12 +459,15 @@ class SmartReportService:
             report_id: 报告模板 ID
             data_context: 数据上下文（用于变量替换）
             save_record: 是否保存为记录
-            record_name: 记录名称
-            content_md: 可选的处理后的 Markdown 内容（如果提供，则使用此内容而不是模板内容）
-            user_id: 用户ID（用于文件目录隔离）
+        :param record_name: 记录名称
+        :param content_md: 可选的处理后的 Markdown 内容（如果提供，则使用此内容而不是模板内容）
+        :param user_id: 用户ID（用于文件目录隔离）
         """
+        import time
         import logging
         logger = logging.getLogger(__name__)
+        
+        pdf_start_time = time.time()
         
         logger.info(f"开始生成报告，报告ID: {report_id}, 用户ID: {user_id}")
         
@@ -720,6 +723,7 @@ class SmartReportService:
         """删除报告记录及其关联的本地文件（包括临时图片目录和调试文件）"""
         import logging
         import shutil
+        import glob
         logger = logging.getLogger(__name__)
         
         record = await SmartReportService.get_record(db, record_id)
@@ -761,14 +765,19 @@ class SmartReportService:
             
             # 删除本地 DOCX 文件（如果有）
             if record.docx_file_path:
-                for storage_dir in [TEMP_DIR, ARCHIVE_DIR]:
-                    file_path = os.path.join(str(storage_dir), record.docx_file_path)
-                    if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            logger.info(f"已删除 DOCX 文件: {file_path}")
-                        except Exception as e:
-                            logger.warning(f"删除 DOCX 文件失败: {file_path}, 错误: {e}")
+                # 尝试在临时和归档目录查找
+                module_root = storage_manager.modules_dir / MODULE_NAME
+                for sub_dir_name in ["temp", "archive"]:
+                    sub_root = module_root / sub_dir_name
+                    if sub_root.exists():
+                         # 查找可能的文件
+                        pattern = os.path.join(str(sub_root), "user_*", record.docx_file_path)
+                        for file_path_str in glob.glob(pattern):
+                            try:
+                                os.remove(file_path_str)
+                                logger.info(f"已删除 DOCX 文件: {file_path_str}")
+                            except Exception as e:
+                                logger.warning(f"删除 DOCX 文件失败: {file_path_str}, 错误: {e}")
             
             # 删除数据库记录
             await db.delete(record)

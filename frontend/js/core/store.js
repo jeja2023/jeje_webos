@@ -54,7 +54,7 @@ const Store = {
                 this.state.user = parsedUser;
                 // 确保 settings 中的 start_menu_shortcuts 是数组
                 if (parsedUser && parsedUser.settings) {
-                    if (!parsedUser.settings.start_menu_shortcuts || 
+                    if (!parsedUser.settings.start_menu_shortcuts ||
                         !Array.isArray(parsedUser.settings.start_menu_shortcuts)) {
                         parsedUser.settings.start_menu_shortcuts = [];
                     }
@@ -223,7 +223,7 @@ const Store = {
                             }
                         }
                     } catch (e) {
-                        console.warn('[Store] setSystemInfo - 读取 localStorage 失败:', e);
+                        // 静默处理 localStorage 读取异常
                     }
                 }
             }

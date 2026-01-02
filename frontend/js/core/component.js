@@ -376,46 +376,74 @@ const Utils = {
     },
 
     /**
-     * 数据聚合处理
+     * 数据聚合处理（性能优化版）
      * 用于图表分析和 BI 仪表盘的数据聚合
      * @param {Array} data - 原始数据数组
      * @param {string} xField - X轴分类字段
      * @param {string} yField - Y轴数值字段
      * @param {string} aggregateType - 聚合类型: none, count, sum, avg, max, min, value
-     * @param {Object} options - 可选配置 { maxItems: 20, nullLabel: '空值' }
+     * @param {Object} options - 可选配置
+     *   - maxItems: 最大返回数量，默认 20
+     *   - nullLabel: 空值标签，默认 '空值'
+     *   - sortField: 排序字段 ('name' 或 'value')
+     *   - sortOrder: 排序方式 ('asc' 或 'desc')
+     *   - originalYField: 原始 Y 轴字段名，用于判断是否对聚合值排序
      * @returns {Array} 聚合后的数据 [{ name, value }, ...]
      */
     aggregateData(data, xField, yField, aggregateType, options = {}) {
-        const { maxItems = 20, nullLabel = '空值' } = options;
+        const {
+            maxItems = 20,
+            nullLabel = '空值',
+            sortField = null,
+            sortOrder = null,
+            originalYField = null
+        } = options;
+
+        if (!data || data.length === 0) {
+            return [];
+        }
 
         // 不聚合模式：直接返回前 N 条明细
         if (aggregateType === 'none') {
-            return data.slice(0, maxItems).map(row => ({
+            const result = data.slice(0, maxItems).map(row => ({
                 name: row[xField] ?? nullLabel,
                 value: row[yField] ? parseFloat(row[yField]) : 0
             }));
+            // 应用排序
+            if (sortField && sortOrder) {
+                this._sortAggregatedData(result, sortField, sortOrder, yField, originalYField);
+            }
+            return result;
         }
 
-        // 分组统计
-        const groups = {};
-        data.forEach(row => {
+        // 使用 Map 进行分组统计（性能优化）
+        const groups = new Map();
+
+        for (const row of data) {
             const key = String(row[xField] ?? nullLabel);
-            if (!groups[key]) {
-                groups[key] = { values: [], count: 0 };
+
+            if (!groups.has(key)) {
+                groups.set(key, { values: [], count: 0, sum: 0 });
             }
-            groups[key].count++;
+
+            const group = groups.get(key);
+            group.count++;
+
             if (yField && row[yField] !== null && row[yField] !== undefined) {
                 const num = parseFloat(row[yField]);
                 if (!isNaN(num)) {
-                    groups[key].values.push(num);
+                    group.values.push(num);
+                    group.sum += num;  // 预计算 sum，避免后续 reduce
                 }
             }
-        });
+        }
 
         // 计算聚合值
         const result = [];
-        for (const [name, group] of Object.entries(groups)) {
+
+        for (const [name, group] of groups) {
             let value = 0;
+
             switch (aggregateType) {
                 case 'value':
                     // 原值：取第一个值（适合每个X只有一条记录的场景）
@@ -425,12 +453,10 @@ const Utils = {
                     value = group.count;
                     break;
                 case 'sum':
-                    value = group.values.reduce((a, b) => a + b, 0);
+                    value = group.sum;  // 使用预计算的 sum
                     break;
                 case 'avg':
-                    value = group.values.length > 0
-                        ? group.values.reduce((a, b) => a + b, 0) / group.values.length
-                        : 0;
+                    value = group.values.length > 0 ? group.sum / group.values.length : 0;
                     break;
                 case 'max':
                     value = group.values.length > 0 ? Math.max(...group.values) : 0;
@@ -439,10 +465,164 @@ const Utils = {
                     value = group.values.length > 0 ? Math.min(...group.values) : 0;
                     break;
             }
+
             result.push({ name, value: Math.round(value * 100) / 100 });
         }
 
-        // 按值降序排序并限制数量
-        return result.sort((a, b) => b.value - a.value).slice(0, maxItems);
+        // 应用排序（如果配置了）
+        if (sortField && sortOrder) {
+            this._sortAggregatedData(result, sortField, sortOrder, yField, originalYField);
+        }
+
+        // 限制数量
+        return result.slice(0, maxItems);
+    },
+
+    /**
+     * 对聚合后的数据进行排序（统一排序逻辑）
+     * @param {Array} data - 聚合后的数据 [{ name, value }, ...]
+     * @param {string} sortField - 排序字段
+     * @param {string} sortOrder - 排序方式 ('asc' 或 'desc')
+     * @param {string} yField - 当前 Y 轴字段
+     * @param {string} originalYField - 原始 Y 轴字段（用于判断是否对值排序）
+     */
+    _sortAggregatedData(data, sortField, sortOrder, yField, originalYField) {
+        if (!data || data.length === 0 || !sortOrder) return;
+
+        const order = sortOrder === 'desc' ? -1 : 1;
+
+        // 判断是否对值字段排序
+        const sortByValue = sortField === 'value' ||
+            sortField === yField ||
+            sortField === originalYField ||
+            sortField === 'yField';
+
+        data.sort((a, b) => {
+            const valA = sortByValue ? a.value : a.name;
+            const valB = sortByValue ? b.value : b.name;
+
+            // 处理 null/undefined
+            if (valA == null && valB == null) return 0;
+            if (valA == null) return order;
+            if (valB == null) return -order;
+
+            // 数值比较
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return (valA - valB) * order;
+            }
+
+            // 字符串比较
+            return String(valA).localeCompare(String(valB), undefined, {
+                numeric: true,
+                sensitivity: 'base'
+            }) * order;
+        });
+    },
+
+    /**
+     * 将原始数据转换为图表数据格式
+     * 用于无聚合模式下的数据格式化
+     * @param {Array} data - 原始数据
+     * @param {string} xField - X轴字段
+     * @param {string} yField - Y轴字段
+     * @param {Object} options - 可选配置
+     * @returns {Array} [{ name, value }, ...]
+     */
+    convertToChartData(data, xField, yField, options = {}) {
+        const { maxItems = null, nullLabel = '空值' } = options;
+
+        if (!data || data.length === 0) {
+            return [];
+        }
+
+        let result = data.map(row => ({
+            name: row[xField] ?? nullLabel,
+            value: parseFloat(row[yField]) || 0
+        })).filter(d => d.name != null);
+
+        if (maxItems && result.length > maxItems) {
+            result = result.slice(0, maxItems);
+        }
+
+        return result;
+    },
+
+    /**
+     * 智能推荐图表类型
+     * 根据数据特征推荐最适合的图表类型
+     * @param {Array} data - 数据
+     * @param {Object} fieldInfo - 字段信息 { xField, yField, fields }
+     * @returns {Array} 推荐的图表类型列表（按优先级排序）
+     */
+    recommendChartType(data, fieldInfo = {}) {
+        if (!data || data.length === 0) {
+            return ['bar'];
+        }
+
+        const { xField, yField, fields = [] } = fieldInfo;
+        const sampleSize = Math.min(100, data.length);
+        const sample = data.slice(0, sampleSize);
+
+        const recommendations = [];
+
+        // 分析 X 轴字段特征
+        if (xField) {
+            const xValues = sample.map(row => row[xField]);
+            const uniqueX = new Set(xValues).size;
+            const isDateLike = xValues.some(v => {
+                if (!v) return false;
+                const str = String(v);
+                return /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(str) ||
+                    /^\d{4}年/.test(str) ||
+                    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(str);
+            });
+
+            // 时间序列 → 推荐折线图
+            if (isDateLike) {
+                recommendations.push('line', 'bar');
+            }
+            // 少量分类 → 饼图/柱状图
+            else if (uniqueX <= 8) {
+                recommendations.push('pie', 'bar');
+            }
+            // 中等分类 → 柱状图
+            else if (uniqueX <= 20) {
+                recommendations.push('bar', 'line');
+            }
+            // 大量分类 → 柱状图（带滚动）
+            else {
+                recommendations.push('bar', 'scatter');
+            }
+        }
+
+        // 分析 Y 轴字段特征
+        if (yField) {
+            const yValues = sample.map(row => parseFloat(row[yField])).filter(v => !isNaN(v));
+
+            // 只有一个值或全部相同 → 仪表盘
+            if (new Set(yValues).size === 1) {
+                recommendations.unshift('gauge');
+            }
+        }
+
+        // 多数值字段 → 热力图
+        if (fields && fields.length >= 3) {
+            const numericFields = fields.filter(f => {
+                const values = sample.map(row => row[f]);
+                return values.some(v => !isNaN(parseFloat(v)));
+            });
+
+            if (numericFields.length >= 3) {
+                recommendations.push('heatmap');
+            }
+        }
+
+        // 如果没有推荐，默认柱状图
+        if (recommendations.length === 0) {
+            recommendations.push('bar', 'line', 'pie');
+        }
+
+        // 去重
+        return [...new Set(recommendations)];
     }
 };

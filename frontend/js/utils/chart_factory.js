@@ -5,6 +5,62 @@
 class ChartFactory {
 
     /**
+     * 支持的图表类型
+     */
+    static CHART_TYPES = ['bar', 'line', 'pie', 'scatter', 'histogram', 'boxplot', 'heatmap', 'forecast', 'gauge'];
+
+    /**
+     * 支持的聚合类型
+     */
+    static AGGREGATION_TYPES = ['none', 'count', 'sum', 'avg', 'max', 'min', 'value'];
+
+    /**
+     * 验证图表配置
+     * @param {Object} config - 配置对象
+     * @param {Object} options - 验证选项
+     * @returns {Object} { valid: boolean, errors: string[] }
+     */
+    static validateConfig(config, options = {}) {
+        const { requireFields = false, strictMode = false } = options;
+        const errors = [];
+
+        // 1. 图表类型验证
+        if (!config.chartType) {
+            if (strictMode) {
+                errors.push('缺少图表类型 (chartType)');
+            }
+        } else if (!this.CHART_TYPES.includes(config.chartType)) {
+            errors.push(`无效的图表类型: ${config.chartType}，支持: ${this.CHART_TYPES.join(', ')}`);
+        }
+
+        // 2. 字段验证（对于基础图表）
+        const basicTypes = ['bar', 'line', 'pie', 'scatter'];
+        if (requireFields && basicTypes.includes(config.chartType)) {
+            if (!config.xField) {
+                errors.push('缺少 X 轴字段 (xField)');
+            }
+            if (!config.yField && config.chartType !== 'pie') {
+                errors.push('缺少 Y 轴字段 (yField)');
+            }
+        }
+
+        // 3. 聚合类型验证
+        if (config.aggregationType && !this.AGGREGATION_TYPES.includes(config.aggregationType)) {
+            errors.push(`无效的聚合类型: ${config.aggregationType}，支持: ${this.AGGREGATION_TYPES.join(', ')}`);
+        }
+
+        // 4. 排序方式验证
+        if (config.sortOrder && !['asc', 'desc'].includes(config.sortOrder)) {
+            errors.push(`无效的排序方式: ${config.sortOrder}，支持 'asc' 或 'desc'`);
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors
+        };
+    }
+
+    /**
      * 获取数据过滤后的结果
      * @param {Array} data 原始数据
      * @param {Object} config 配置对象
@@ -12,7 +68,7 @@ class ChartFactory {
     static filterData(data, config) {
         if (!data || data.length === 0) return [];
         let filtered = [...data];
-        const { excludeValues, filterField, filterOp, filterValue, xField } = config;
+        const { excludeValues, filterField, filterOp, filterValue, xField, sortField, sortOrder } = config;
 
         // 归一化函数：去除所有空格并转小写
         const normalize = (str) => String(str || '').replace(/\s+/g, '').toLowerCase();
@@ -82,22 +138,42 @@ class ChartFactory {
             });
         }
 
+        // 3. 应用数据排序
+        if (sortField && filtered.length > 0) {
+            const actualSortField = findMatchingField(filtered[0], sortField);
+            if (actualSortField) {
+                const order = sortOrder === 'desc' ? -1 : 1;
+                filtered.sort((a, b) => {
+                    const valA = a[actualSortField];
+                    const valB = b[actualSortField];
+
+                    // 处理 null/undefined
+                    if (valA == null && valB == null) return 0;
+                    if (valA == null) return order;
+                    if (valB == null) return -order;
+
+                    // 尝试数值比较
+                    const numA = parseFloat(valA);
+                    const numB = parseFloat(valB);
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return (numA - numB) * order;
+                    }
+
+                    // 字符串比较
+                    return String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' }) * order;
+                });
+            }
+        }
+
         return filtered;
     }
 
     /**
-     * 获取配色方案
+     * 获取配色方案（使用统一的样式配置）
      */
     static getColorScheme(scheme) {
-        const schemes = {
-            default: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#4992ff'],
-            warm: ['#ff7c43', '#ffa600', '#d45087', '#f95d6a', '#ff6b6b', '#fab005', '#fcc419', '#ffe066', '#ffec99', '#fff3bf'],
-            cool: ['#4e79a7', '#59a14f', '#76b7b2', '#86bcb6', '#499894', '#4a8fbf', '#69b3a2', '#8dc6bf', '#a5d5cf', '#c7e9e5'],
-            rainbow: ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6', '#fabebe', '#bfef45'],
-            mono: ['#1a237e', '#283593', '#303f9f', '#3949ab', '#3f51b5', '#5c6bc0', '#7986cb', '#9fa8da', '#c5cae9', '#e8eaf6'],
-            business: ['#1565c0', '#1976d2', '#1e88e5', '#2196f3', '#42a5f5', '#64b5f6', '#90caf9', '#bbdefb', '#e3f2fd', '#0d47a1']
-        };
-        return schemes[scheme] || schemes.default;
+        // 使用统一的 ChartStyleConfig 获取颜色主题
+        return ChartStyleConfig.getColorScheme(scheme);
     }
 
     /**
@@ -109,12 +185,16 @@ class ChartFactory {
      */
     static generateOption(type, data, config, rawData = []) {
         // 解构配置
-        const { xField, yField, customTitle, colorScheme, showLabel, stacked, dualAxis, y2Field, y3Field, xFields, forecastSteps } = config;
+        const { xField, yField, customTitle, colorScheme, showLabel, stacked, dualAxis, y2Field, y3Field, xFields, forecastSteps, xLabel, yLabel } = config;
 
         // 准备通用参数
         // 支持传入自定义颜色数组或预定义方案名
         const colors = Array.isArray(colorScheme) ? colorScheme : this.getColorScheme(colorScheme);
         const options = { customTitle, colors, showLabel, stacked, dualAxis, y2Field, y3Field, forecastSteps };
+
+        // 确定轴标签：优先使用 xLabel/yLabel，否则使用 xField/yField
+        const finalXLabel = xLabel || xField || '';
+        const finalYLabel = yLabel || yField || '';
 
         let option = {};
 
@@ -135,7 +215,7 @@ class ChartFactory {
             case 'line':
             case 'pie':
             case 'scatter':
-                option = this._getBasicChartOption(type, data, rawData, xField, yField, options);
+                option = this._getBasicChartOption(type, data, rawData, finalXLabel, finalYLabel, options);
                 break;
             case 'gauge':
                 option = this._getGaugeOption(data, yField, options);
@@ -177,7 +257,8 @@ class ChartFactory {
                 textStyle: { color: '#fff' }
             },
             legend: { top: 35, textStyle: { color: '#aaa' } },
-            grid: { left: '3%', right: dualAxis ? '8%' : '4%', bottom: '12%', top: 80, containLabel: true }
+            // 增加左边距以容纳 Y 轴标签
+            grid: { left: '8%', right: dualAxis ? '10%' : '5%', bottom: '15%', top: 80, containLabel: true }
         };
 
         const series = [];
@@ -205,20 +286,66 @@ class ChartFactory {
             });
             option.legend = { orient: 'vertical', left: 'left', textStyle: { color: '#aaa' } };
         } else {
+            // 根据数据量和标签长度动态计算间距
+            const needsRotation = names.length > 8;
+            const maxLabelLength = Math.max(...names.map(n => String(n).length));
+            // 标签旋转时需要更大的间距，同时考虑标签长度
+            const xAxisNameGap = needsRotation ?
+                Math.max(40, Math.min(60, maxLabelLength * 4 + 20)) :
+                35;
+
             option.xAxis = {
                 type: 'category',
+                name: xLabel || '分类',
+                nameLocation: 'center',
+                nameGap: xAxisNameGap,
+                nameTextStyle: {
+                    color: '#ddd', // 使用更亮的颜色
+                    fontSize: 13,
+                    fontWeight: 500
+                },
                 data: names,
-                axisLabel: { rotate: names.length > 8 ? 45 : 0, color: '#aaa' },
-                axisLine: { lineStyle: { color: '#444' } }
+                axisLabel: {
+                    rotate: needsRotation ? 45 : 0,
+                    color: '#bbb', // 轴标签颜色稍亮
+                    show: true
+                },
+                axisLine: {
+                    show: true,
+                    lineStyle: { color: '#555' }
+                },
+                axisTick: {
+                    show: true
+                }
             };
 
             yAxisList.push({
                 type: 'value',
-                name: yLabel,
+                name: yLabel || '数值',
+                nameLocation: 'end', // 顶部显示
+                nameTextStyle: {
+                    color: '#ddd', // 使用更亮的颜色
+                    fontSize: 13,
+                    fontWeight: 500,
+                    padding: [0, 0, 0, 40] // 增加左侧 padding
+                },
                 position: 'left',
-                axisLabel: { color: '#aaa' },
-                splitLine: { lineStyle: { color: '#333' } },
-                axisLine: { show: true, lineStyle: { color: '#444' } }
+                axisLabel: {
+                    color: '#bbb', // 轴标签颜色稍亮
+                    show: true,
+                    formatter: '{value}'
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: { color: '#333' }
+                },
+                axisLine: {
+                    show: true,
+                    lineStyle: { color: '#444' }
+                },
+                axisTick: {
+                    show: true
+                }
             });
 
             const hasMultiSeries = !!(y2Field || y3Field);
@@ -326,6 +453,9 @@ class ChartFactory {
             grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
             xAxis: {
                 type: 'category',
+                name: field,
+                nameLocation: 'center',
+                nameGap: 35,
                 data: binLabels,
                 axisLabel: { rotate: 45, color: '#aaa', fontSize: 10 }
             },
@@ -387,7 +517,7 @@ class ChartFactory {
                     return `异常值: ${params.data[1]}`;
                 }
             },
-            grid: { left: '10%', right: '10%', bottom: '15%', top: '15%' },
+            grid: { left: '10%', right: '10%', bottom: '15%', top: '15%', containLabel: true },
             xAxis: { type: 'category', data: [field], axisLabel: { color: '#aaa' } },
             yAxis: { type: 'value', name: '数值', axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333' } } },
             series: [
@@ -452,7 +582,7 @@ class ChartFactory {
                 position: 'top',
                 formatter: (p) => `${fields[p.data[0]]} ↔ ${fields[p.data[1]]}<br/>相关系数: ${p.data[2]}`
             },
-            grid: { left: '15%', right: '10%', bottom: '15%', top: '10%' },
+            grid: { left: '10%', right: '10%', bottom: '15%', top: '10%', containLabel: true },
             xAxis: { type: 'category', data: fields, axisLabel: { rotate: 45, color: '#aaa', fontSize: 11 } },
             yAxis: { type: 'category', data: fields, axisLabel: { color: '#aaa', fontSize: 11 } },
             visualMap: {
@@ -494,8 +624,16 @@ class ChartFactory {
             backgroundColor: 'transparent',
             title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
             tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
             legend: { data: ['历史数据', '预测数据'], bottom: 0, textStyle: { color: '#aaa' } },
-            xAxis: { type: 'category', data: [...xValues, ...forecastX], axisLabel: { rotate: 45, color: '#aaa' } },
+            xAxis: {
+                type: 'category',
+                name: xField,
+                nameLocation: 'center',
+                nameGap: 35,
+                data: [...xValues, ...forecastX],
+                axisLabel: { rotate: 45, color: '#aaa' }
+            },
             yAxis: { type: 'value', name: yField, axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333' } } },
             series: [
                 {

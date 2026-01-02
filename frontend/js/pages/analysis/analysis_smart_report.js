@@ -1000,9 +1000,7 @@ const AnalysisSmartReportMixin = {
             // 清理之前的图表实例
             if (this._previewChartInstances) {
                 Object.values(this._previewChartInstances).forEach(chart => {
-                    if (chart && typeof chart.dispose === 'function') {
-                        try { chart.dispose(); } catch (e) { }
-                    }
+                    ChartHelper.disposeChart(chart);
                 });
             }
             this._previewChartInstances = {};
@@ -1046,10 +1044,16 @@ const AnalysisSmartReportMixin = {
 
                     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-                    const myChart = echarts.init(container, null, {
+                    // 使用统一的图表初始化工具
+                    const chartResult = ChartHelper.initChart(container, {
+                        theme: null,
                         devicePixelRatio: window.devicePixelRatio || 1,
                         renderer: 'canvas'
                     });
+                    if (!chartResult) {
+                        throw new Error('图表初始化失败');
+                    }
+                    const myChart = chartResult.instance;
 
                     // 图表的 config 是参数配置，需要根据它生成 ECharts option
                     const config = chart.config || {};
@@ -1127,13 +1131,27 @@ const AnalysisSmartReportMixin = {
 
         try {
             if (['bar', 'line', 'pie', 'scatter'].includes(chartType)) {
-                const { xField, yField, aggregate } = config;
+                const { xField, yField, aggregationType } = config;
+                const agg = aggregationType || 'none';
+
                 if (xField) {
+                    // 使用优化后的 Utils.aggregateData（内置排序功能，同时支持聚合和非聚合模式）
                     const aggregatedData = (window.Utils && Utils.aggregateData)
-                        ? Utils.aggregateData(filteredData, xField, yField, aggregate || 'count', { maxItems: 20 })
+                        ? Utils.aggregateData(filteredData, xField, yField, agg, {
+                            maxItems: 20,
+                            sortField: config.sortField,
+                            sortOrder: config.sortOrder,
+                            originalYField: yField
+                        })
                         : [];
 
-                    option = ChartFactory.generateOption(chartType, aggregatedData, config, filteredData);
+                    option = ChartFactory.generateOption(chartType, aggregatedData, {
+                        ...config,
+                        xField: 'name',  // 数据字段名
+                        yField: 'value', // 数据字段名
+                        xLabel: xField,  // 原始X轴字段名用于标签显示
+                        yLabel: yField   // 原始Y轴字段名用于标签显示
+                    }, filteredData);
                 }
             } else {
                 option = ChartFactory.generateOption(chartType, filteredData, config);
@@ -1324,9 +1342,7 @@ const AnalysisSmartReportMixin = {
         // 清理图表实例
         if (this._previewChartInstances) {
             Object.values(this._previewChartInstances).forEach(chart => {
-                if (chart && typeof chart.dispose === 'function') {
-                    chart.dispose();
-                }
+                ChartHelper.disposeChart(chart);
             });
             this._previewChartInstances = {};
         }
@@ -1460,13 +1476,20 @@ const AnalysisSmartReportMixin = {
                                         chartName
                                     );
 
-                                    // 初始化 ECharts 实例（使用固定宽高）
-                                    const myChart = echarts.init(container, null, {
+                                    // 使用统一的图表初始化工具（使用固定宽高）
+                                    const chartResult = ChartHelper.initChart(container, {
+                                        theme: null,
                                         width: 800,
                                         height: 600,
                                         devicePixelRatio: 2,
                                         renderer: 'canvas'
                                     });
+
+                                    if (!chartResult) {
+                                        throw new Error('图表初始化失败');
+                                    }
+
+                                    const myChart = chartResult.instance;
 
                                     // 设置图表配置
                                     myChart.setOption(option, true);
@@ -1489,8 +1512,8 @@ const AnalysisSmartReportMixin = {
                                         cache.set(chartId, chartData, imgData);
                                     }
 
-                                    // 清理图表实例和容器
-                                    myChart.dispose();
+                                    // 清理图表实例和容器（使用统一工具）
+                                    ChartHelper.disposeChart(myChart);
                                     document.body.removeChild(container);
                                 } catch (renderError) {
                                     // 清理容器
@@ -1588,7 +1611,7 @@ const AnalysisSmartReportMixin = {
                 content_md: finalMdContent // 传入处理后的内容（包含图表图片）
             };
 
-                // 显示生成进度
+            // 显示生成进度
             const generateToast = Toast.loading('正在生成 PDF 文件，请稍候...', 0);
 
             try {
@@ -1978,7 +2001,7 @@ const AnalysisSmartReportMixin = {
 };
 
 // 混入到 AnalysisPage（延迟执行，确保 AnalysisPage 已定义）
-(function() {
+(function () {
     function tryMixin() {
         if (typeof AnalysisPage !== 'undefined' && AnalysisPage.prototype) {
             Object.assign(AnalysisPage.prototype, AnalysisSmartReportMixin);

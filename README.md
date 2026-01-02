@@ -44,6 +44,9 @@
 ### 后端 (Python / FastAPI)
 - **微内核设计**：核心层仅负责启动、配置、数据库和事件总线
 - **模块化架构**：业务逻辑完全解耦在 `modules/` 目录中
+- **性能优化**：
+  - 文件上传流式写入，内存占用恒定
+  - 系统设置 Redis 缓存，减少数据库查询
 - **自动化运维**：
   - JWT 自动轮换（每 25-35 天）
   - 速率限制（基于 Redis 滑动窗口）
@@ -216,7 +219,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.1.3 |
+| | `APP_VERSION` | 系统版本 | 2.2.0 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

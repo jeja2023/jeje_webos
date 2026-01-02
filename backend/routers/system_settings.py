@@ -1,8 +1,11 @@
 """
 系统设置接口
 仅管理员可修改
+
+优化：使用 Redis 缓存系统设置，减少数据库查询
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,11 +13,19 @@ from sqlalchemy import select
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin
 from core.config import get_settings
+from core.cache import Cache
 from schemas import success
 from schemas.system_setting import SystemSettingInfo, SystemSettingUpdate
 from models import SystemSetting, SystemLog
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1", tags=["系统设置"])
+
+# 缓存配置
+CACHE_KEY_SYSTEM_SETTINGS = "system:settings"
+CACHE_TTL_SECONDS = 300  # 5分钟
+
 
 # 默认设置（当数据库未保存时使用）
 def _default_settings():
@@ -31,13 +42,41 @@ def _default_settings():
     )
 
 
-async def _get_settings(db: AsyncSession) -> SystemSettingInfo:
+async def _get_settings_from_db(db: AsyncSession) -> SystemSettingInfo:
+    """从数据库获取系统设置（内部方法）"""
     result = await db.execute(select(SystemSetting).where(SystemSetting.key == "system"))
     row = result.scalar_one_or_none()
     if not row:
         return _default_settings()
     value = row.value or {}
     return SystemSettingInfo(**{**_default_settings().model_dump(), **value})
+
+
+async def _get_settings(db: AsyncSession) -> SystemSettingInfo:
+    """获取系统设置（优先从缓存读取）"""
+    # 1. 尝试从 Redis 缓存读取
+    cached = await Cache.get(CACHE_KEY_SYSTEM_SETTINGS)
+    if cached:
+        try:
+            return SystemSettingInfo(**cached)
+        except Exception:
+            # 缓存数据格式异常，清除并重新加载
+            await Cache.delete(CACHE_KEY_SYSTEM_SETTINGS)
+    
+    # 2. 从数据库读取
+    settings = await _get_settings_from_db(db)
+    
+    # 3. 写入缓存
+    await Cache.set(CACHE_KEY_SYSTEM_SETTINGS, settings.model_dump(), expire=CACHE_TTL_SECONDS)
+    
+    return settings
+
+
+async def _invalidate_settings_cache():
+    """清除系统设置缓存"""
+    deleted = await Cache.delete(CACHE_KEY_SYSTEM_SETTINGS)
+    if deleted:
+        logger.debug("系统设置缓存已清除")
 
 
 @router.get("/system/settings")
@@ -72,8 +111,6 @@ async def update_system_settings(
     # 动态更新速率限制
     if any(k.startswith("rate_limit") for k in data.model_dump(exclude_unset=True).keys()):
         from core.rate_limit import rate_limiter
-        import logging
-        logger = logging.getLogger(__name__)
         
         rate_limiter.configure(
             requests=new_data["rate_limit_requests"],
@@ -93,19 +130,21 @@ async def update_system_settings(
     db.add(log)
     
     await db.commit()
+    
+    # 清除缓存，下次读取时自动从数据库加载最新值
+    await _invalidate_settings_cache()
+    
     return success(new_data, "更新成功")
 
 
 async def load_settings_on_startup():
-    """启动时加载系统设置"""
+    """启动时加载系统设置并预热缓存"""
     from core.database import async_session
     from core.rate_limit import rate_limiter
-    import logging
-    
-    logger = logging.getLogger(__name__)
     
     try:
         async with async_session() as db:
+            # 使用带缓存的方法，自动预热缓存
             settings = await _get_settings(db)
             
             # 应用速率限制

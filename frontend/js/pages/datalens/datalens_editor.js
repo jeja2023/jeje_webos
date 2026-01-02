@@ -143,39 +143,32 @@ const DataLensEditorMixin = {
                 `).join('');
             };
 
+            // 准备 ChartConfigUI 需要的配置值
+            const chartValues = {
+                chartType: chartConfig.type || 'bar',
+                xField: chartConfig.xAxis,
+                yField: chartConfig.yAxis,
+                aggregationType: chartConfig.aggregation,
+                title: chartConfig.title,
+                colorScheme: chartConfig.colorScheme,
+                sortField: chartConfig.sortField,
+                sortOrder: chartConfig.sortOrder || 'asc',
+                // 高级字段映射 (如果已保存过)
+                ...chartConfig
+            };
+
+            const chartFormHtml = ChartConfigUI.getFormHtml({
+                values: chartValues,
+                fields: columns,
+                datasets: [], // 不显示数据集选择器
+                showLayoutConfig: false
+            });
+
             const modalContent = `
                 <div class="lens-editor" style="display: flex; flex-direction: row; gap: 24px; flex-wrap: wrap;">
                     <div class="lens-editor-section" style="flex: 1; min-width: 280px;">
                         <h4>📊 图表配置</h4>
-                        <div class="form-group">
-                            <label>图表类型</label>
-                            <select id="lens-visual-chart-type" class="form-control">
-                                <option value="bar" ${chartConfig.type === 'bar' ? 'selected' : ''}>柱状图</option>
-                                <option value="line" ${chartConfig.type === 'line' ? 'selected' : ''}>折线图</option>
-                                <option value="pie" ${chartConfig.type === 'pie' ? 'selected' : ''}>饼图</option>
-                                <option value="scatter" ${chartConfig.type === 'scatter' ? 'selected' : ''}>散点图</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>维度字段 (X轴)</label>
-                            <select id="lens-visual-chart-x" class="form-control">${buildFieldOptions(chartConfig.xAxis)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>数值字段 (Y轴)</label>
-                            <select id="lens-visual-chart-y" class="form-control">${buildFieldOptions(chartConfig.yAxis)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>聚合方式</label>
-                            <select id="lens-visual-chart-agg" class="form-control">
-                                <option value="" ${!chartConfig.aggregation ? 'selected' : ''}>无</option>
-                                <option value="sum" ${chartConfig.aggregation === 'sum' ? 'selected' : ''}>求和 (SUM)</option>
-                                <option value="avg" ${chartConfig.aggregation === 'avg' ? 'selected' : ''}>平均值 (AVG)</option>
-                                <option value="count" ${chartConfig.aggregation === 'count' ? 'selected' : ''}>计数 (COUNT)</option>
-                                <option value="max" ${chartConfig.aggregation === 'max' ? 'selected' : ''}>最大值 (MAX)</option>
-                                <option value="min" ${chartConfig.aggregation === 'min' ? 'selected' : ''}>最小值 (MIN)</option>
-                            </select>
-                            <small class="form-hint">按维度字段分组后对数值字段进行聚合计算</small>
-                        </div>
+                        ${chartFormHtml}
                     </div>
                     <div class="lens-editor-section" style="flex: 2; min-width: 480px;">
                         <h4>📝 表格配置</h4>
@@ -211,13 +204,32 @@ const DataLensEditorMixin = {
                     const $ = (s) => overlay.querySelector(s);
                     const $$ = (s) => overlay.querySelectorAll(s);
 
-                    // 收集图表配置
-                    const agg = $('#lens-visual-chart-agg')?.value;
+                    // 收集图表配置 (使用 ChartConfigUI)
+                    const formValues = ChartConfigUI.getFormValues(overlay);
+
+                    // 映射回 DataLens 格式
                     const chart_config = {
-                        type: $('#lens-visual-chart-type')?.value,
-                        xAxis: $('#lens-visual-chart-x')?.value,
-                        yAxis: $('#lens-visual-chart-y')?.value,
-                        aggregation: agg || null
+                        type: formValues.chartType,
+                        xAxis: formValues.xField,
+                        xFields: formValues.xFields, // 热力图多字段
+                        yAxis: formValues.yField,
+                        aggregation: formValues.aggregationType,
+
+                        // 保存高级配置
+                        colorScheme: formValues.colorScheme,
+                        title: formValues.title,
+                        showLabel: formValues.showLabel,
+                        stacked: formValues.stacked,
+                        dualAxis: formValues.dualAxis,
+                        y2Field: formValues.y2Field,
+                        y3Field: formValues.y3Field,
+                        forecastSteps: formValues.forecastSteps,
+                        excludeValues: formValues.excludeValues,
+                        filterField: formValues.filterField,
+                        filterOp: formValues.filterOp,
+                        filterValue: formValues.filterValue,
+                        sortField: formValues.sortField,
+                        sortOrder: formValues.sortOrder
                     };
 
                     // 收集显示配置
@@ -255,8 +267,8 @@ const DataLensEditorMixin = {
 
                     try {
                         await LensApi.updateView(viewId, {
-                            display_config: Object.keys(display_config).length > 0 ? display_config : null,
-                            status_config: Object.keys(status_config).length > 0 ? status_config : null,
+                            display_config: (display_config && Object.keys(display_config).length > 0) ? display_config : null,
+                            status_config: (status_config && Object.keys(status_config).length > 0) ? status_config : null,
                             chart_config
                         });
                         Toast.success('视觉配置已更新');
@@ -287,9 +299,14 @@ const DataLensEditorMixin = {
                 }
             });
 
-            // 绑定添加状态按钮
+            // 初始化图表配置交互（必须在 overlay 可用后立即调用）
             const overlay = modal.overlay;
             if (overlay) {
+                // 使用 requestAnimationFrame 确保 DOM 已完全渲染
+                requestAnimationFrame(() => {
+                    ChartConfigUI.initInteractions(overlay);
+                });
+
                 const $ = (s) => overlay.querySelector(s);
                 const $$ = (s) => overlay.querySelectorAll(s);
 
@@ -550,6 +567,11 @@ const DataLensEditorMixin = {
             // 局部辅助函数：缩短 DOM 查询代码并确保作用域在当前 Overlay
             const $ = (s) => overlay.querySelector(s);
             const $$ = (s) => overlay.querySelectorAll(s);
+
+            // 初始化图表配置交互（使用 requestAnimationFrame 确保 DOM 已完全渲染）
+            requestAnimationFrame(() => {
+                ChartConfigUI.initInteractions(overlay);
+            });
 
             // 初始化图标选择器
             this._initIconPicker(overlay, 'lens-view-icon');

@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from core.config import get_settings
+from utils.request import get_client_ip as _get_client_ip_util
 
 logger = logging.getLogger(__name__)
 
@@ -116,20 +117,6 @@ class RateLimiter:
         """移除黑名单IP"""
         self._blacklist.discard(ip)
     
-    def _get_client_ip(self, request: Request) -> str:
-        """获取客户端真实IP"""
-        # 优先从代理头获取
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
-        
-        # 回退到直连IP
-        return request.client.host if request.client else "unknown"
-    
     def _cleanup_stale_clients(self):
         """清理过期的客户端状态（性能优化）"""
         current_time = time.time()
@@ -192,7 +179,7 @@ class RateLimiter:
             self._request_count = 0
             self._cleanup_stale_clients()
         
-        client_ip = self._get_client_ip(request)
+        client_ip = _get_client_ip_util(request)
         current_time = time.time()
         path = request.url.path
         
@@ -462,5 +449,3 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 def get_rate_limiter() -> RateLimiter:
     """获取速率限制器实例"""
     return rate_limiter
-
-

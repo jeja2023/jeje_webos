@@ -9,6 +9,7 @@ import traceback
 import os
 import sys
 from typing import Optional, List
+from pathlib import Path
 import httpx
 from mimetypes import guess_type
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Body

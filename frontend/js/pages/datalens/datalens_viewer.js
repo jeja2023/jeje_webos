@@ -258,12 +258,20 @@ const DataLensViewerMixin = {
 
     _initChart(tab) {
         const container = document.getElementById(`lens-chart-${tab.id}`);
-        if (!container || !window.echarts) return;
+        if (!container) return;
 
         try {
             const chartConfig = tab.chart_config;
             const data = tab.data.data;
-            const myChart = echarts.init(container, Store.get('theme') === 'dark' ? 'dark' : null);
+
+            // 使用统一的图表初始化工具
+            const themeMode = ChartHelper.getThemeMode();
+            const chartResult = ChartHelper.initChart(container, { theme: themeMode });
+            if (!chartResult) {
+                container.innerHTML = '<div class="lens-empty">图表初始化失败</div>';
+                return;
+            }
+            const myChart = chartResult.instance;
 
             let options = {};
 
@@ -271,208 +279,92 @@ const DataLensViewerMixin = {
             if (chartConfig.baseOption) {
                 options = chartConfig.baseOption;
             } else {
-                // 极简配置模式：支持常用的柱状、折线、饼图
+                // 统一使用 ChartFactory 生成 ECharts 配置
                 const type = chartConfig.type || 'bar';
-                const xField = chartConfig.xAxis;
-                const yFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis];
-                const aggregation = chartConfig.aggregation;
 
-                // 如果设置了聚合方式，先对数据进行分组聚合
-                let processedData = data;
-                if (aggregation && xField) {
-                    const grouped = {};
-                    data.forEach(item => {
-                        const key = item[xField] || '未知';
-                        if (!grouped[key]) {
-                            grouped[key] = { _key: key, _values: [], _count: 0 };
-                        }
-                        yFields.forEach(yf => {
-                            if (!grouped[key][yf]) grouped[key][yf] = [];
-                            const val = parseFloat(item[yf]);
-                            if (!isNaN(val)) grouped[key][yf].push(val);
-                        });
-                        grouped[key]._count++;
-                    });
+                // 1. 映射配置到 ChartFactory 格式
+                const factoryConfig = {
+                    ...chartConfig,
+                    xField: chartConfig.xAxis,
+                    yField: chartConfig.yAxis,
+                    colorScheme: chartConfig.theme || 'default',
+                    // DataLens 特有字段映射
+                    y2Field: chartConfig.y2Field,
+                    y3Field: chartConfig.y3Field,
+                    stacked: chartConfig.stacked,
+                    dualAxis: chartConfig.dualAxis,
+                    title: chartConfig.customTitle,
+                    showLabel: chartConfig.showLabel,
+                    // 筛选配置
+                    excludeValues: chartConfig.excludeValues,
+                    filterField: chartConfig.filterField,
+                    filterOp: chartConfig.filterOp,
+                    filterValue: chartConfig.filterValue,
+                    // 排序配置
+                    sortField: chartConfig.sortField,
+                    sortOrder: chartConfig.sortOrder,
+                    forecastSteps: chartConfig.forecastSteps
+                };
 
-                    processedData = Object.values(grouped).map(g => {
-                        const result = { [xField]: g._key };
-                        yFields.forEach(yf => {
-                            const vals = g[yf] || [];
-                            if (aggregation === 'sum') result[yf] = vals.reduce((a, b) => a + b, 0);
-                            else if (aggregation === 'avg') result[yf] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-                            else if (aggregation === 'count') result[yf] = g._count;
-                            else if (aggregation === 'max') result[yf] = vals.length ? Math.max(...vals) : 0;
-                            else if (aggregation === 'min') result[yf] = vals.length ? Math.min(...vals) : 0;
-                            else result[yf] = vals[0] || 0;
-                        });
-                        return result;
-                    });
+                // 2. 数据过滤
+                const filteredData = ChartFactory.filterData(data, factoryConfig);
+
+                if (!filteredData || filteredData.length === 0) {
+                    // 即使无数据也继续，Factory 会处理空状态
                 }
 
-                // 定义渐变色系（所有图表类型共用）
-                const colors = [
-                    ['#667eea', '#764ba2'],
-                    ['#f093fb', '#f5576c'],
-                    ['#4facfe', '#00f2fe'],
-                    ['#43e97b', '#38f9d7'],
-                    ['#fa709a', '#fee140']
-                ];
+                // 3. 生成 Option
+                // 基础图表 (Bar/Line/Pie/Scatter) 若有聚合配置需先聚合
+                if (['bar', 'line', 'pie', 'scatter'].includes(type)) {
+                    const aggregation = chartConfig.aggregation || 'none';
 
-                if (type === 'pie') {
-                    options = {
-                        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-                        legend: { bottom: '5%', left: 'center', textStyle: { color: '#aaa' } },
-                        series: [{
-                            type: 'pie',
-                            radius: ['40%', '70%'],
-                            label: {
-                                show: true,
-                                formatter: '{b}: {c}',
-                                color: '#aaa'
-                            },
-                            labelLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                            data: processedData.map((item, idx) => {
-                                const cp = colors[idx % colors.length];
-                                return {
-                                    name: item[xField],
-                                    value: parseFloat(item[yFields[0]]) || 0,
-                                    itemStyle: {
-                                        color: {
-                                            type: 'linear', x: 0, y: 0, x2: 1, y2: 1,
-                                            colorStops: [
-                                                { offset: 0, color: cp[0] },
-                                                { offset: 1, color: cp[1] }
-                                            ]
-                                        }
-                                    }
-                                };
-                            })
-                        }]
-                    };
-                } else {
-                    // 过滤无效的 Y 字段
-                    const validYFields = yFields.filter(yf => yf && processedData.some(item => item[yf] !== undefined));
+                    if (factoryConfig.xField && factoryConfig.yField) {
+                        // 保存原始字段名用于轴标签显示
+                        const originalXField = factoryConfig.xField;
+                        const originalYField = factoryConfig.yField;
 
-                    if (validYFields.length === 0) {
-                        container.innerHTML = `<div class="lens-error" style="padding:40px; text-align:center;">
-                            <p>⚠️ 图表配置不完整</p>
-                            <p style="font-size:12px; opacity:0.7;">请在"配置"中设置有效的数值字段（Y轴）</p>
-                        </div>`;
-                        return;
+                        // 使用优化后的 Utils.aggregateData（内置排序功能）
+                        const aggregatedData = Utils.aggregateData(filteredData, factoryConfig.xField, factoryConfig.yField, aggregation, {
+                            sortField: factoryConfig.sortField,
+                            sortOrder: factoryConfig.sortOrder,
+                            originalYField: originalYField
+                        });
+
+                        options = ChartFactory.generateOption(type, aggregatedData, {
+                            ...factoryConfig,
+                            xField: 'name',  // 数据字段名
+                            yField: 'value', // 数据字段名
+                            // 保留原始字段名用于轴标签
+                            xLabel: originalXField,
+                            yLabel: originalYField
+                        }, filteredData);
+                    } else {
+                        // 缺少必要字段
+                        options = {
+                            title: { text: '配置不完整：请设置X轴和Y轴字段', left: 'center', textStyle: { color: '#888' } }
+                        };
                     }
-
-                    options = {
-                        tooltip: {
-                            trigger: 'axis',
-                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            textStyle: { color: '#fff' }
-                        },
-                        legend: {
-                            data: validYFields,
-                            textStyle: { color: '#aaa' }
-                        },
-                        grid: { left: '3%', right: '4%', bottom: '15%', top: '15%', containLabel: true },
-                        xAxis: {
-                            type: 'category',
-                            data: processedData.map(item => item[xField] || ''),
-                            axisLabel: {
-                                interval: 0,
-                                rotate: processedData.length > 10 ? 45 : 0,
-                                color: '#888'
-                            },
-                            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-                            splitLine: { show: false }
-                        },
-                        yAxis: {
-                            type: 'value',
-                            axisLabel: { color: '#888' },
-                            axisLine: { show: false },
-                            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
-                        },
-                        series: validYFields.map((yf, idx) => {
-                            const colorPair = colors[idx % colors.length];
-                            const baseConfig = {
-                                name: yf,
-                                type: type,
-                                data: processedData.map(item => parseFloat(item[yf]) || 0),
-                                smooth: type === 'line',
-                                animationDuration: 1000,
-                                animationEasing: 'elasticOut'
-                            };
-
-                            if (type === 'bar') {
-                                // 每个柱子使用不同颜色
-                                baseConfig.data = processedData.map((item, dataIdx) => {
-                                    const cp = colors[dataIdx % colors.length];
-                                    return {
-                                        value: parseFloat(item[yf]) || 0,
-                                        itemStyle: {
-                                            borderRadius: [4, 4, 0, 0],
-                                            color: {
-                                                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                                colorStops: [
-                                                    { offset: 0, color: cp[0] },
-                                                    { offset: 1, color: cp[1] }
-                                                ]
-                                            }
-                                        }
-                                    };
-                                });
-                                baseConfig.label = {
-                                    show: true,
-                                    position: 'top',
-                                    color: '#aaa',
-                                    fontSize: 11,
-                                    formatter: '{c}'
-                                };
-                                baseConfig.emphasis = {
-                                    itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' }
-                                };
-                            } else if (type === 'line') {
-                                baseConfig.lineStyle = { width: 3, color: colorPair[0] };
-                                baseConfig.itemStyle = { color: colorPair[0] };
-                                baseConfig.label = {
-                                    show: true,
-                                    position: 'top',
-                                    color: '#aaa',
-                                    fontSize: 11,
-                                    formatter: '{c}'
-                                };
-                                baseConfig.areaStyle = {
-                                    color: {
-                                        type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                                        colorStops: [
-                                            { offset: 0, color: colorPair[0] + '40' },
-                                            { offset: 1, color: 'transparent' }
-                                        ]
-                                    }
-                                };
-                            } else if (type === 'scatter') {
-                                baseConfig.itemStyle = { color: colorPair[0] };
-                                baseConfig.label = {
-                                    show: true,
-                                    position: 'right',
-                                    color: '#aaa',
-                                    fontSize: 10,
-                                    formatter: '{c}'
-                                };
-                            }
-                            return baseConfig;
-                        })
-                    };
+                } else {
+                    // 其他情况（特殊图表如直方图/预测图）直接使用过滤后的数据
+                    options = ChartFactory.generateOption(type, filteredData, factoryConfig);
                 }
             }
 
-            myChart.setOption(options);
+            if (options && Object.keys(options).length > 0) {
+                myChart.setOption(options, true);
+            } else {
+                container.innerHTML = '<div class="lens-empty">无法生成图表 (配置无效或无数据)</div>';
+                ChartHelper.disposeChart(myChart);
+                return;
+            }
 
-            // 响应式
-            const resizeHandler = () => myChart.resize();
-            window.addEventListener('resize', resizeHandler);
+            // 使用统一的 resize 处理
+            const resizeHandler = ChartHelper.createResizeHandler({ [tab.id]: myChart }, 200);
+            ChartHelper.registerGlobalResize(resizeHandler);
 
-            // 存储实例以便之后销毁
+            // 存储实例和清理函数以便之后销毁
             tab._chartInstance = myChart;
-            tab._chartResizeHandler = resizeHandler;
+            tab._chartResizeCleanup = resizeHandler;
 
         } catch (e) {
             console.error('渲染图表失败:', e);

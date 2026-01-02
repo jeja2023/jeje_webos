@@ -43,6 +43,3 @@ def get_user_agent(request: Request) -> str:
 def is_ajax(request: Request) -> bool:
     """判断是否为AJAX请求"""
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
-
-

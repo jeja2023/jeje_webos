@@ -35,51 +35,85 @@ body {
 /* 窗口容器（包裹实际页面内容） */
 .window-container {
     background: var(--color-bg-primary);
-    /* 干净的主题背景 */
     color: var(--color-text-primary);
-    /* 主题文本 */
     border: 1px solid var(--color-border);
-    /* 主题边框 */
     border-radius: 12px;
-    box-shadow: var(--shadow-lg);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.08);
 
-    /* 移除固定宽高，由 JS 控制 */
-    /* width: 90%; height: 85%; max-width: 1400px; */
     min-width: 320px;
     min-height: 200px;
 
     position: absolute;
-    /* 关键：绝对定位 */
     display: flex;
     flex-direction: column;
 
-    /* 动画 */
-    animation: windowPopup 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    /* 优化的弹出动画 - 更流畅的贝塞尔曲线 */
+    animation: windowPopup 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     z-index: 50;
-    /* 默认层级 */
 
-    /* 确保 backdrop filter 生效 */
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    /* 增强磨砂玻璃效果 */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
 
-    /* 移除通用 transition，因为它会干扰拖拽性能 */
-    /* transition: all 0.3s ...; */
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    /* 精细的过渡效果 - 仅针对视觉属性，不影响拖拽性能 */
+    transition:
+        opacity 0.25s ease,
+        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s ease;
+
+    /* 窗口边缘微光效果 */
+    outline: 1px solid rgba(255, 255, 255, 0.05);
+    outline-offset: -1px;
 }
 
-/* 激活状态 */
+/* 失焦状态 - 柔和的视觉降级 */
+.window-container:not(.active) {
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.08),
+        0 1px 4px rgba(0, 0, 0, 0.05);
+    border-color: var(--color-border-light);
+    opacity: 0.95;
+}
+
+/* 激活状态 - 突出显示 */
 .window-container.active {
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.25),
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 0 1px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    opacity: 1;
 }
 
-/* 最小化状态 */
+/* 最小化状态 - 平滑缩小到 Dock 方向 */
 .window-container.minimized {
-    display: none !important;
-    /* 未来可以添加飞入Dock的动画 */
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    transform: scale(0.5) translateY(100px) !important;
+    pointer-events: none !important;
+    transition:
+        opacity 0.25s cubic-bezier(0.4, 0, 1, 1),
+        transform 0.3s cubic-bezier(0.4, 0, 1, 1) !important;
+}
+
+/* 最小化完成后隐藏（使用动画延迟） */
+.window-container.minimized {
+    animation: windowMinimize 0.3s ease forwards;
+}
+
+@keyframes windowMinimize {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.5) translateY(100px);
+        visibility: hidden;
+    }
 }
 
 /* 最大化状态 - 覆盖全屏（包括顶部状态栏） */
@@ -103,20 +137,22 @@ body {
     display: none !important;
 }
 
-/* 关闭动画 */
+/* 关闭动画 - 优雅的缩小淡出 */
 .window-container.closing {
-    animation: windowClose 0.2s ease forwards;
+    animation: windowClose 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes windowClose {
-    from {
+    0% {
         opacity: 1;
         transform: scale(1);
+        filter: blur(0);
     }
 
-    to {
+    100% {
         opacity: 0;
-        transform: scale(0.9);
+        transform: scale(0.92);
+        filter: blur(4px);
     }
 }
 
@@ -222,15 +258,24 @@ body {
     border-radius: 0;
 }
 
+/* 优化的窗口弹出动画 - 带有微妙弹跳效果 */
 @keyframes windowPopup {
-    from {
-        transform: scale(0.95);
+    0% {
+        transform: scale(0.88) translateY(20px);
         opacity: 0;
+        filter: blur(8px);
     }
 
-    to {
-        transform: scale(1);
+    60% {
+        transform: scale(1.02) translateY(-2px);
         opacity: 1;
+        filter: blur(0);
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+        filter: blur(0);
     }
 }
 

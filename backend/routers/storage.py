@@ -46,16 +46,19 @@ async def upload_file(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    上传文件
+    上传文件（流式写入优化版）
     
     需要权限：storage.upload (或者特定业务权限)
     category: 默认为 attachment。可选值: avatar, blog, note, attachment
-    """
-    # 权限检查 - 细化权限控制
-    # 1. 头像上传：任何登录用户都可以上传自己的头像
-    # 2. 博客/笔记图片：需要相应模块的权限
-    # 3. 通用附件：需要 storage.upload 权限
     
+    优化点：
+    - 采用流式写入，避免大文件占用过多内存
+    - 先写入临时文件，验证通过后再移动到目标位置
+    """
+    import tempfile
+    import shutil
+    
+    # 权限检查 - 细化权限控制
     has_permission = False
     
     if category == "avatar":
@@ -65,7 +68,6 @@ async def upload_file(
     elif category == "note":
         has_permission = current_user.permissions and ("*" in current_user.permissions or "notes.create" in current_user.permissions or "notes.update" in current_user.permissions)
     else:
-        # 通用附件，需要 storage.upload
         has_permission = current_user.permissions and ("*" in current_user.permissions or "storage.upload" in current_user.permissions)
 
     if not has_permission:
@@ -75,8 +77,7 @@ async def upload_file(
     max_size = storage.max_size
     max_size_mb = max_size / 1024 / 1024
     
-    # 1. 检查 Content-Length 头（如果可用）
-    content_length = None
+    # 1. 检查 Content-Length 头（快速拦截明显超限的请求）
     if hasattr(file, 'headers'):
         content_length_str = file.headers.get('content-length')
         if content_length_str:
@@ -90,61 +91,70 @@ async def upload_file(
             except (ValueError, TypeError):
                 pass
     
-    # 2. 流式读取并检查大小
-    content_chunks = []
-    total_size = 0
+    # 2. 流式写入临时文件（内存占用恒定，仅为 chunk_size）
     chunk_size = 1024 * 1024  # 1MB 块大小
+    total_size = 0
+    temp_file = None
+    first_chunk = None  # 用于文件类型验证
     
     try:
+        # 创建临时文件
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename or "unknown").suffix)
+        temp_path = temp_file.name
+        
         while True:
             chunk = await file.read(chunk_size)
             if not chunk:
                 break
             
+            # 保存第一个块用于文件类型验证
+            if first_chunk is None:
+                first_chunk = chunk
+            
             total_size += len(chunk)
             
-            # 实时检查大小
+            # 实时检查大小（边读边检查，超限立即中断）
             if total_size > max_size:
+                temp_file.close()
+                os.unlink(temp_path)
                 raise HTTPException(
                     status_code=413,
                     detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
                 )
             
-            content_chunks.append(chunk)
+            # 直接写入临时文件（不占用额外内存）
+            temp_file.write(chunk)
+        
+        temp_file.close()
+        file_size = total_size
+        
     except HTTPException:
         raise
     except Exception as e:
+        if temp_file:
+            try:
+                temp_file.close()
+                os.unlink(temp_file.name)
+            except:
+                pass
         raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
     
-    # 3. 合并所有块
-    content = b''.join(content_chunks)
-    file_size = len(content)
-    
-    # 4. 最终验证
-    if file_size > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {file_size / 1024 / 1024:.1f}MB）"
-        )
-    
-    # 5. 验证文件（包括内容验证）
-    is_valid, error_msg = storage.validate_file(file.filename or "unknown", file_size, content)
+    # 3. 验证文件类型（使用第一个块进行内容检测）
+    is_valid, error_msg = storage.validate_file(file.filename or "unknown", file_size, first_chunk)
     if not is_valid:
+        os.unlink(temp_path)
         raise HTTPException(status_code=400, detail=error_msg)
     
-    # 6. 检查用户存储配额（头像除外，因为头像通常很小）
+    # 4. 检查用户存储配额（头像除外）
     if category != "avatar":
         from sqlalchemy import func, select
         from models.account import User
         from models.storage import FileRecord as StorageFileRecord
         
-        # 获取用户信息
         user_result = await db.execute(select(User).where(User.id == current_user.user_id))
         user = user_result.scalar_one_or_none()
         
         if user and user.storage_quota is not None:
-            # 计算当前已使用空间（包括 storage 和 filemanager 的文件）
-            # 这里只统计 storage 模块的文件，filemanager 的文件单独统计
             size_result = await db.execute(
                 select(func.coalesce(func.sum(StorageFileRecord.file_size), 0))
                 .select_from(StorageFileRecord)
@@ -152,8 +162,8 @@ async def upload_file(
             )
             current_size = size_result.scalar_one()
             
-            # 检查是否超过配额
             if current_size + file_size > user.storage_quota:
+                os.unlink(temp_path)
                 used_mb = current_size / 1024 / 1024
                 quota_mb = user.storage_quota / 1024 / 1024
                 file_mb = file_size / 1024 / 1024
@@ -164,30 +174,34 @@ async def upload_file(
                            f"请删除部分文件或联系管理员增加配额。"
                 )
     
-    # 如果是头像，额外检查是否为图片
+    # 5. 头像额外检查
     if category == "avatar":
         if not (file.content_type and file.content_type.startswith("image/")):
-             raise HTTPException(status_code=400, detail="头像必须是图片格式")
+            os.unlink(temp_path)
+            raise HTTPException(status_code=400, detail="头像必须是图片格式")
     
-    # 生成存储路径
+    # 6. 生成存储路径并移动文件（原子操作）
     relative_path, full_path = storage.generate_filename(
         file.filename or "unknown",
         current_user.user_id,
         category=category
     )
     
-    # 保存文件
     try:
         Path(full_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(full_path, "wb") as f:
-            f.write(content)
+        # 使用 shutil.move 进行原子移动（比重新写入更高效）
+        shutil.move(temp_path, full_path)
     except Exception as e:
+        # 清理临时文件
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
     
-    # 获取 MIME 类型
+    # 7. 保存文件记录到数据库
     mime_type = file.content_type
     
-    # 保存文件记录到数据库
     file_record = FileRecord(
         filename=file.filename or "unknown",
         storage_path=relative_path,
@@ -380,8 +394,4 @@ async def get_file_info(
         raise HTTPException(status_code=403, detail="无权查看此文件")
     
     return success(FileInfo.model_validate(file_record).model_dump())
-
-
-
-
 

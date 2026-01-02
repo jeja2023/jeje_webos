@@ -775,8 +775,7 @@ async def execute_etl_node(
             return error(message=result.get('error', '执行失败'))
             
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"ETL 节点执行失败: {e}", exc_info=True)
         return error(format_error_message(e, "ETL 节点执行失败"))
 
 
@@ -874,8 +873,7 @@ async def list_dashboards(
         items = await BIService.list_dashboards(db)
         return success([DashboardResponse.model_validate(i).model_dump() for i in items])
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"获取仪表盘列表失败: {e}", exc_info=True)
         return error(format_error_message(e))
 
 @router.post("/dashboards")
@@ -1245,8 +1243,7 @@ async def import_smart_report(
         
         return success(SmartReportResponse.model_validate(report).model_dump(), "模板导入成功")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"导入智能报告模板失败: {e}", exc_info=True)
         return error(format_error_message(e))
 
 @router.post("/smart-reports/{report_id}/duplicate")
@@ -1370,8 +1367,7 @@ async def preview_smart_report(
         result = await SmartReportService.preview_report(db, report_id, req.data)
         return success(result)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"预览报告失败: {e}", exc_info=True)
         return error(format_error_message(e))
 
 @router.get("/smart-reports/download/temp/{file_path:path}")

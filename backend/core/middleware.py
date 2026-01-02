@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+from utils.request import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +50,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """检查是否跳过日志记录"""
         return any(path.startswith(p) for p in self.skip_paths)
     
-    def _get_client_ip(self, request: Request) -> str:
-        """获取客户端IP"""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
-        
-        return request.client.host if request.client else "unknown"
-    
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 跳过指定路径
         if self._should_skip(request.url.path):
@@ -73,7 +62,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         
         # 获取请求信息
-        client_ip = self._get_client_ip(request)
+        client_ip = get_client_ip(request)
         method = request.method
         path = request.url.path
         
@@ -160,7 +149,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         # 存储到 request.state
         request.state.request_id = request_id
         request.state.start_time = time.time()
-        request.state.client_ip = self._get_client_ip(request)
+        request.state.client_ip = get_client_ip(request)
         
         try:
             response = await call_next(request)
@@ -172,13 +161,6 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
         
         return response
-    
-    def _get_client_ip(self, request: Request) -> str:
-        """获取客户端IP"""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
 
 
 # ==================== 请求统计 ====================
@@ -407,18 +389,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
         else:
             return method not in self.WRITE_METHODS
     
-    def _get_client_ip(self, request: Request) -> str:
-        """获取客户端 IP"""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
-        
-        return request.client.host if request.client else "unknown"
-    
     def _parse_path(self, path: str, method: str) -> tuple:
         """
         解析路径，返回 (模块, 操作, 描述)
@@ -459,7 +429,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # 获取请求信息
-        client_ip = self._get_client_ip(request)
+        client_ip = get_client_ip(request)
         module, action, description = self._parse_path(path, method)
         
         # 尝试获取用户 ID（从 JWT 令牌）
