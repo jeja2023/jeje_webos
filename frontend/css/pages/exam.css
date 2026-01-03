@@ -1,0 +1,708 @@
+/**
+ * 考试模块样式
+ * Premium MacOS 风格设计
+ */
+
+.exam-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 导航栏 */
+.exam-nav {
+    display: flex;
+    gap: 8px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+}
+
+.exam-nav .nav-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.exam-nav .nav-btn:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.exam-nav .nav-btn.active {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* 内容区域 */
+.exam-content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* 首页样式 */
+.exam-home .section {
+    margin-bottom: 32px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.empty-text {
+    color: var(--color-text-tertiary);
+    font-size: 14px;
+}
+
+/* 考试卡片网格 */
+.exam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.exam-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.exam-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary-faded);
+}
+
+.exam-card-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exam-card-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.exam-card-body {
+    padding: 16px;
+}
+
+.exam-card-body p {
+    margin: 8px 0;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.exam-card-footer {
+    padding: 16px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* 记录列表 */
+.record-list {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.record-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    gap: 16px;
+}
+
+.record-item:last-child {
+    border-bottom: none;
+}
+
+.record-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.record-title {
+    font-weight: 500;
+}
+
+.record-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.record-status.status-graded {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--color-success);
+}
+
+.record-status.status-submitted {
+    background: rgba(255, 149, 0, 0.1);
+    color: var(--color-warning);
+}
+
+.record-status.status-in_progress {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--color-primary);
+}
+
+.record-score {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.record-score .pass {
+    color: var(--color-success);
+}
+
+.record-score .fail {
+    color: var(--color-danger);
+}
+
+/* 题库视图 */
+.questions-view {
+    display: flex;
+    gap: 24px;
+    height: calc(100vh - 200px);
+}
+
+.questions-sidebar {
+    width: 260px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.bank-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.bank-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+}
+
+.bank-item:hover {
+    background: var(--color-bg-tertiary);
+}
+
+.bank-item.active {
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+}
+
+.bank-count {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin-left: auto;
+}
+
+.bank-actions {
+    display: none;
+    gap: 4px;
+}
+
+.bank-item:hover .bank-actions {
+    display: flex;
+}
+
+.bank-item:hover .bank-count {
+    display: none;
+}
+
+.bank-actions button {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+    border-radius: 4px;
+}
+
+.bank-actions button:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.questions-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbar {
+    margin-bottom: 16px;
+}
+
+.question-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.question-item {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.question-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.question-type {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.question-type.type-single {
+    background: rgba(0, 122, 255, 0.1);
+    color: #007aff;
+}
+
+.question-type.type-multiple {
+    background: rgba(175, 82, 222, 0.1);
+    color: #af52de;
+}
+
+.question-type.type-judge {
+    background: rgba(52, 199, 89, 0.1);
+    color: #34c759;
+}
+
+.question-type.type-fill {
+    background: rgba(255, 149, 0, 0.1);
+    color: #ff9500;
+}
+
+.question-type.type-essay {
+    background: rgba(255, 59, 48, 0.1);
+    color: #ff3b30;
+}
+
+.question-score {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+.question-title {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--color-text-primary);
+}
+
+.question-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: none;
+    gap: 4px;
+}
+
+.question-item:hover .question-actions {
+    display: flex;
+}
+
+.question-actions button {
+    background: var(--color-bg-tertiary);
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+}
+
+.question-actions button:hover {
+    color: var(--color-text-primary);
+}
+
+/* 试卷视图 */
+.papers-view .toolbar {
+    margin-bottom: 20px;
+}
+
+.paper-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.paper-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.paper-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.paper-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.paper-info {
+    display: flex;
+    gap: 16px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.paper-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 试卷详情 */
+.paper-detail .detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.paper-detail .detail-header h2 {
+    flex: 1;
+    margin: 0;
+}
+
+.detail-questions {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.detail-question {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.detail-question:last-child {
+    border-bottom: none;
+}
+
+.detail-question .q-num {
+    width: 28px;
+    height: 28px;
+    background: var(--color-bg-tertiary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.detail-question .q-type {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.detail-question .q-title {
+    flex: 1;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+
+.detail-question .q-score {
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+}
+
+/* 考试界面 */
+.take-exam {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--color-bg-secondary);
+    border-radius: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.exam-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.exam-timer {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.exam-timer.warning {
+    color: var(--color-danger);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.exam-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.exam-question {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.eq-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.eq-num {
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.eq-type {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.eq-score {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+}
+
+.eq-title {
+    font-size: 15px;
+    line-height: 1.8;
+    margin-bottom: 16px;
+}
+
+.exam-answer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.radio-option,
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--color-bg-tertiary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.radio-option:hover,
+.checkbox-option:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.radio-option input,
+.checkbox-option input {
+    margin: 0;
+}
+
+.exam-footer {
+    padding: 24px 0;
+    text-align: center;
+}
+
+/* 标签样式 */
+.tag {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.tag-primary {
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+}
+
+.tag-draft {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+}
+
+.tag-published {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--color-success);
+}
+
+/* 阅卷视图 */
+.grading-view h2 {
+    margin-bottom: 20px;
+}
+
+/* 题目选择列表 */
+.question-select-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.question-select-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
+.question-select-item:hover {
+    background: var(--color-bg-tertiary);
+}
+
+.question-select-item input {
+    margin: 0;
+}
+
+/* 表单样式增强 */
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.option-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.option-row input {
+    flex: 1;
+}
+
+.option-row button {
+    background: none;
+    border: none;
+    color: var(--color-danger);
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .exam-nav {
+        flex-wrap: wrap;
+    }
+
+    .questions-view {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .questions-sidebar {
+        width: 100%;
+        max-height: 200px;
+    }
+
+    .exam-grid,
+    .paper-list {
+        grid-template-columns: 1fr;
+    }
+}

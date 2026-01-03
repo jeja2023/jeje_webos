@@ -1,0 +1,636 @@
+/**
+ * 日程管理页面组件
+ * 支持日历视图、日程列表和提醒管理
+ */
+
+class SchedulePage extends Component {
+    constructor(container) {
+        super(container);
+
+        const today = new Date();
+        this.state = {
+            view: 'calendar', // calendar, list, reminders
+            currentYear: today.getFullYear(),
+            currentMonth: today.getMonth() + 1,
+            events: [],
+            eventDates: [],
+            todayEvents: [],
+            upcomingEvents: [],
+            reminders: [],
+            stats: null,
+            selectedDate: null,
+            selectedEvent: null,
+            loading: true
+        };
+    }
+
+    async loadData() {
+        this.setState({ loading: true });
+        try {
+            const { view, currentYear, currentMonth } = this.state;
+
+            if (view === 'calendar') {
+                const [monthRes, statsRes] = await Promise.all([
+                    Api.get(`/schedule/events/month?year=${currentYear}&month=${currentMonth}`),
+                    Api.get('/schedule/stats')
+                ]);
+                this.setState({
+                    events: monthRes.data?.events || [],
+                    eventDates: monthRes.data?.event_dates || [],
+                    stats: statsRes.data || {},
+                    loading: false
+                });
+            } else if (view === 'list') {
+                const [todayRes, upcomingRes, statsRes] = await Promise.all([
+                    Api.get('/schedule/events/today'),
+                    Api.get('/schedule/events/upcoming?days=7'),
+                    Api.get('/schedule/stats')
+                ]);
+                this.setState({
+                    todayEvents: todayRes.data || [],
+                    upcomingEvents: upcomingRes.data || [],
+                    stats: statsRes.data || {},
+                    loading: false
+                });
+            } else if (view === 'reminders') {
+                const res = await Api.get('/schedule/reminders');
+                this.setState({
+                    reminders: res.data || [],
+                    loading: false
+                });
+            }
+        } catch (e) {
+            Toast.error('加载数据失败');
+            this.setState({ loading: false });
+        }
+    }
+
+    render() {
+        const { view, loading } = this.state;
+
+        return `
+            <div class="schedule-page">
+                <!-- 侧边栏 -->
+                <aside class="schedule-sidebar">
+                    <div class="sidebar-header">
+                        <i class="ri-calendar-schedule-line"></i>
+                        <span>日程管理</span>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <div class="nav-item ${view === 'calendar' ? 'active' : ''}" data-view="calendar">
+                            <i class="ri-calendar-2-line"></i>
+                            <span>日历视图</span>
+                        </div>
+                        <div class="nav-item ${view === 'list' ? 'active' : ''}" data-view="list">
+                            <i class="ri-list-check-2"></i>
+                            <span>我的日程</span>
+                        </div>
+                        <div class="nav-item ${view === 'reminders' ? 'active' : ''}" data-view="reminders">
+                            <i class="ri-notification-3-line"></i>
+                            <span>提醒中心</span>
+                        </div>
+                    </nav>
+                    
+                    <!-- 快捷操作 -->
+                    <div class="sidebar-actions">
+                        <button class="btn btn-primary btn-block" id="btn-add-event">
+                            <i class="ri-add-line"></i> 新建日程
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- 主内容区 -->
+                <main class="schedule-main">
+                    ${loading ? this.renderLoading() : this.renderContent()}
+                </main>
+            </div>
+        `;
+    }
+
+    renderLoading() {
+        return `
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>加载中...</p>
+            </div>
+        `;
+    }
+
+    renderContent() {
+        const { view } = this.state;
+
+        switch (view) {
+            case 'calendar': return this.renderCalendar();
+            case 'list': return this.renderList();
+            case 'reminders': return this.renderReminders();
+            default: return this.renderCalendar();
+        }
+    }
+
+    renderCalendar() {
+        const { currentYear, currentMonth, events, eventDates, stats, selectedDate } = this.state;
+
+        const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月',
+            '七月', '八月', '九月', '十月', '十一月', '十二月'];
+        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+        // 生成日历网格
+        const firstDay = new Date(currentYear, currentMonth - 1, 1);
+        const lastDay = new Date(currentYear, currentMonth, 0);
+        const startWeekDay = firstDay.getDay();
+        const totalDays = lastDay.getDate();
+
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        let calendarDays = [];
+
+        // 上月填充
+        const prevMonthLastDay = new Date(currentYear, currentMonth - 1, 0).getDate();
+        for (let i = startWeekDay - 1; i >= 0; i--) {
+            calendarDays.push({ day: prevMonthLastDay - i, isOtherMonth: true });
+        }
+
+        // 本月
+        for (let i = 1; i <= totalDays; i++) {
+            const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            calendarDays.push({
+                day: i,
+                isToday: dateStr === todayStr,
+                isSelected: dateStr === selectedDate,
+                hasEvent: eventDates.includes(dateStr),
+                dateStr: dateStr
+            });
+        }
+
+        // 下月填充
+        const remainingDays = 42 - calendarDays.length;
+        for (let i = 1; i <= remainingDays; i++) {
+            calendarDays.push({ day: i, isOtherMonth: true });
+        }
+
+        // 获取选中日期的日程
+        const selectedEvents = selectedDate
+            ? events.filter(e => e.start_date === selectedDate || (e.start_date <= selectedDate && e.end_date >= selectedDate))
+            : [];
+
+        return `
+            <div class="content-section fade-in">
+                <!-- 统计卡片 -->
+                <div class="stats-mini">
+                    <div class="stat-item">
+                        <span class="stat-num">${stats?.today_events || 0}</span>
+                        <span class="stat-text">今日</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-num">${stats?.upcoming_events || 0}</span>
+                        <span class="stat-text">本周</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-num">${stats?.overdue_events || 0}</span>
+                        <span class="stat-text">逾期</span>
+                    </div>
+                </div>
+
+                <div class="calendar-container">
+                    <!-- 日历头部 -->
+                    <div class="calendar-header">
+                        <button class="btn-nav" id="btn-prev-month"><i class="ri-arrow-left-s-line"></i></button>
+                        <h2>${currentYear}年 ${monthNames[currentMonth - 1]}</h2>
+                        <button class="btn-nav" id="btn-next-month"><i class="ri-arrow-right-s-line"></i></button>
+                        <button class="btn-today" id="btn-goto-today">今天</button>
+                    </div>
+
+                    <!-- 星期头 -->
+                    <div class="calendar-weekdays">
+                        ${weekDays.map(d => `<div class="weekday">${d}</div>`).join('')}
+                    </div>
+
+                    <!-- 日历网格 -->
+                    <div class="calendar-grid">
+                        ${calendarDays.map(d => `
+                            <div class="calendar-day ${d.isOtherMonth ? 'other-month' : ''} ${d.isToday ? 'today' : ''} ${d.isSelected ? 'selected' : ''} ${d.hasEvent ? 'has-event' : ''}"
+                                 ${d.dateStr ? `data-date="${d.dateStr}"` : ''}>
+                                <span class="day-num">${d.day}</span>
+                                ${d.hasEvent ? '<span class="event-dot"></span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 选中日期的日程 -->
+                ${selectedDate ? `
+                    <div class="day-events">
+                        <h3>${selectedDate} 的日程</h3>
+                        ${selectedEvents.length > 0 ? `
+                            <div class="event-list">
+                                ${selectedEvents.map(e => this.renderEventItem(e)).join('')}
+                            </div>
+                        ` : `
+                            <div class="empty-hint">
+                                <i class="ri-calendar-line"></i>
+                                <p>这一天没有日程</p>
+                                <button class="btn btn-sm btn-primary" data-add-date="${selectedDate}">添加日程</button>
+                            </div>
+                        `}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    renderList() {
+        const { todayEvents, upcomingEvents, stats } = this.state;
+
+        return `
+            <div class="content-section fade-in">
+                <div class="section-header">
+                    <h2>我的日程</h2>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="stats-row">
+                    <div class="stat-card today">
+                        <div class="stat-icon"><i class="ri-calendar-check-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">${stats?.today_events || 0}</span>
+                            <span class="stat-label">今日日程</span>
+                        </div>
+                    </div>
+                    <div class="stat-card upcoming">
+                        <div class="stat-icon"><i class="ri-calendar-todo-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">${stats?.upcoming_events || 0}</span>
+                            <span class="stat-label">本周待办</span>
+                        </div>
+                    </div>
+                    <div class="stat-card completed">
+                        <div class="stat-icon"><i class="ri-checkbox-circle-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">${stats?.completed_events || 0}</span>
+                            <span class="stat-label">已完成</span>
+                        </div>
+                    </div>
+                    <div class="stat-card overdue">
+                        <div class="stat-icon"><i class="ri-error-warning-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">${stats?.overdue_events || 0}</span>
+                            <span class="stat-label">已逾期</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 今日日程 -->
+                <div class="event-section">
+                    <h3><i class="ri-sun-line"></i> 今日日程</h3>
+                    ${todayEvents.length > 0 ? `
+                        <div class="event-list">
+                            ${todayEvents.map(e => this.renderEventItem(e)).join('')}
+                        </div>
+                    ` : `
+                        <div class="empty-hint">
+                            <p>今天没有安排</p>
+                        </div>
+                    `}
+                </div>
+
+                <!-- 近期日程 -->
+                <div class="event-section">
+                    <h3><i class="ri-calendar-line"></i> 未来7天</h3>
+                    ${upcomingEvents.length > 0 ? `
+                        <div class="event-list">
+                            ${upcomingEvents.map(e => this.renderEventItem(e)).join('')}
+                        </div>
+                    ` : `
+                        <div class="empty-hint">
+                            <p>近期没有安排</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    renderEventItem(event) {
+        const typeColors = {
+            'meeting': '#3b82f6',
+            'task': '#22c55e',
+            'reminder': '#f59e0b',
+            'birthday': '#ec4899',
+            'holiday': '#8b5cf6',
+            'other': '#6b7280'
+        };
+        const color = event.color || typeColors[event.event_type] || typeColors.other;
+
+        const typeLabels = {
+            'meeting': '会议',
+            'task': '任务',
+            'reminder': '提醒',
+            'birthday': '生日',
+            'holiday': '节假日',
+            'other': '其他'
+        };
+
+        return `
+            <div class="event-item ${event.is_completed ? 'completed' : ''}" 
+                 data-event-id="${event.id}"
+                 style="--event-color: ${color}">
+                <div class="event-color-bar"></div>
+                <div class="event-content">
+                    <div class="event-header">
+                        <span class="event-title">${Utils.escapeHtml(event.title)}</span>
+                        <span class="event-type">${typeLabels[event.event_type] || '其他'}</span>
+                    </div>
+                    <div class="event-meta">
+                        ${event.is_all_day ? `
+                            <span><i class="ri-time-line"></i> 全天</span>
+                        ` : event.start_time ? `
+                            <span><i class="ri-time-line"></i> ${event.start_time}</span>
+                        ` : ''}
+                        ${event.location ? `
+                            <span><i class="ri-map-pin-line"></i> ${Utils.escapeHtml(event.location)}</span>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="event-actions">
+                    ${!event.is_completed ? `
+                        <button class="btn-icon" data-complete-event="${event.id}" title="完成">
+                            <i class="ri-checkbox-circle-line"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn-icon" data-edit-event="${event.id}" title="编辑">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="btn-icon danger" data-delete-event="${event.id}" title="删除">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderReminders() {
+        const { reminders } = this.state;
+
+        return `
+            <div class="content-section fade-in">
+                <div class="section-header">
+                    <h2>提醒中心</h2>
+                </div>
+
+                <div class="reminder-list">
+                    ${reminders.length > 0 ? reminders.map(item => `
+                        <div class="reminder-item">
+                            <div class="reminder-icon">
+                                <i class="ri-notification-3-fill"></i>
+                            </div>
+                            <div class="reminder-content">
+                                <h4>${Utils.escapeHtml(item.event.title)}</h4>
+                                <p>提醒时间：${new Date(item.reminder.remind_time).toLocaleString('zh-CN')}</p>
+                                <p>日程时间：${item.event.start_date} ${item.event.start_time || '全天'}</p>
+                            </div>
+                            <div class="reminder-status ${item.reminder.is_sent ? 'sent' : 'pending'}">
+                                ${item.reminder.is_sent ? '已提醒' : '待提醒'}
+                            </div>
+                        </div>
+                    `).join('') : `
+                        <div class="empty-state">
+                            <i class="ri-notification-off-line"></i>
+                            <p>暂无提醒</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    bindEvents() {
+        // 侧边栏导航
+        this.delegate('click', '.nav-item', (e, el) => {
+            const view = el.dataset.view;
+            this.setState({ view });
+            this.loadData();
+        });
+
+        // 新建日程
+        this.delegate('click', '#btn-add-event', () => {
+            this.showEventModal();
+        });
+
+        // 上一月
+        this.delegate('click', '#btn-prev-month', () => {
+            let { currentYear, currentMonth } = this.state;
+            currentMonth--;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            this.setState({ currentYear, currentMonth, selectedDate: null });
+            this.loadData();
+        });
+
+        // 下一月
+        this.delegate('click', '#btn-next-month', () => {
+            let { currentYear, currentMonth } = this.state;
+            currentMonth++;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            this.setState({ currentYear, currentMonth, selectedDate: null });
+            this.loadData();
+        });
+
+        // 回到今天
+        this.delegate('click', '#btn-goto-today', () => {
+            const today = new Date();
+            this.setState({
+                currentYear: today.getFullYear(),
+                currentMonth: today.getMonth() + 1,
+                selectedDate: today.toISOString().split('T')[0]
+            });
+            this.loadData();
+        });
+
+        // 选择日期
+        this.delegate('click', '.calendar-day:not(.other-month)', (e, el) => {
+            const dateStr = el.dataset.date;
+            if (dateStr) {
+                this.setState({ selectedDate: dateStr });
+            }
+        });
+
+        // 从空日期添加日程
+        this.delegate('click', '[data-add-date]', (e, el) => {
+            const dateStr = el.dataset.addDate;
+            this.showEventModal(null, dateStr);
+        });
+
+        // 完成日程
+        this.delegate('click', '[data-complete-event]', async (e, el) => {
+            e.stopPropagation();
+            const eventId = el.dataset.completeEvent;
+            try {
+                await Api.post(`/schedule/events/${eventId}/complete`);
+                Toast.success('日程已完成');
+                this.loadData();
+            } catch (err) {
+                Toast.error('操作失败');
+            }
+        });
+
+        // 编辑日程
+        this.delegate('click', '[data-edit-event]', async (e, el) => {
+            e.stopPropagation();
+            const eventId = el.dataset.editEvent;
+            try {
+                const res = await Api.get(`/schedule/events/${eventId}`);
+                this.showEventModal(res.data);
+            } catch (err) {
+                Toast.error('加载日程失败');
+            }
+        });
+
+        // 删除日程
+        this.delegate('click', '[data-delete-event]', async (e, el) => {
+            e.stopPropagation();
+            const eventId = el.dataset.deleteEvent;
+            const confirmed = await Modal.confirm('确认删除', '确定要删除这个日程吗？');
+            if (confirmed) {
+                try {
+                    await Api.delete(`/schedule/events/${eventId}`);
+                    Toast.success('日程已删除');
+                    this.loadData();
+                } catch (err) {
+                    Toast.error('删除失败');
+                }
+            }
+        });
+    }
+
+    showEventModal(event = null, defaultDate = null) {
+        const isEdit = !!event;
+        const today = defaultDate || new Date().toISOString().split('T')[0];
+
+        new Modal({
+            title: isEdit ? '编辑日程' : '新建日程',
+            content: `
+                <form id="event-form">
+                    <div class="form-group">
+                        <label>标题 *</label>
+                        <input type="text" class="form-input" name="title" value="${event?.title || ''}" required placeholder="请输入日程标题">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>开始日期 *</label>
+                            <input type="date" class="form-input" name="start_date" value="${event?.start_date || today}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>开始时间</label>
+                            <input type="time" class="form-input" name="start_time" value="${event?.start_time || ''}">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" class="form-input" name="end_date" value="${event?.end_date || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>结束时间</label>
+                            <input type="time" class="form-input" name="end_time" value="${event?.end_time || ''}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="is_all_day" ${event?.is_all_day ? 'checked' : ''}>
+                            <span>全天事件</span>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>类型</label>
+                            <select class="form-select" name="event_type">
+                                <option value="other" ${event?.event_type === 'other' ? 'selected' : ''}>其他</option>
+                                <option value="meeting" ${event?.event_type === 'meeting' ? 'selected' : ''}>会议</option>
+                                <option value="task" ${event?.event_type === 'task' ? 'selected' : ''}>任务</option>
+                                <option value="reminder" ${event?.event_type === 'reminder' ? 'selected' : ''}>提醒</option>
+                                <option value="birthday" ${event?.event_type === 'birthday' ? 'selected' : ''}>生日</option>
+                                <option value="holiday" ${event?.event_type === 'holiday' ? 'selected' : ''}>节假日</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>颜色</label>
+                            <input type="color" class="form-input form-color" name="color" value="${event?.color || '#3b82f6'}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>地点</label>
+                        <input type="text" class="form-input" name="location" value="${event?.location || ''}" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea class="form-input" name="description" rows="2" placeholder="可选">${event?.description || ''}</textarea>
+                    </div>
+                    ${!isEdit ? `
+                        <div class="form-group">
+                            <label>提醒</label>
+                            <select class="form-select" name="remind_before_minutes">
+                                <option value="">不提醒</option>
+                                <option value="0">事件开始时</option>
+                                <option value="5">提前5分钟</option>
+                                <option value="15" selected>提前15分钟</option>
+                                <option value="30">提前30分钟</option>
+                                <option value="60">提前1小时</option>
+                                <option value="1440">提前1天</option>
+                            </select>
+                        </div>
+                    ` : ''}
+                </form>
+            `,
+            confirmText: isEdit ? '保存' : '创建',
+            onConfirm: async () => {
+                const form = document.getElementById('event-form');
+                if (!form.reportValidity()) return false;
+
+                const data = {
+                    title: form.title.value.trim(),
+                    start_date: form.start_date.value,
+                    start_time: form.start_time.value || null,
+                    end_date: form.end_date.value || null,
+                    end_time: form.end_time.value || null,
+                    is_all_day: form.is_all_day.checked,
+                    event_type: form.event_type.value,
+                    color: form.color.value,
+                    location: form.location.value.trim() || null,
+                    description: form.description.value.trim() || null
+                };
+
+                if (!isEdit && form.remind_before_minutes) {
+                    const remind = form.remind_before_minutes.value;
+                    if (remind !== '') {
+                        data.remind_before_minutes = parseInt(remind);
+                    }
+                }
+
+                try {
+                    if (isEdit) {
+                        await Api.put(`/schedule/events/${event.id}`, data);
+                        Toast.success('日程已更新');
+                    } else {
+                        await Api.post('/schedule/events', data);
+                        Toast.success('日程已创建');
+                    }
+                    this.loadData();
+                    return true;
+                } catch (e) {
+                    Toast.error(isEdit ? '更新失败' : '创建失败');
+                    return false;
+                }
+            }
+        }).show();
+    }
+
+    async afterMount() {
+        await this.loadData();
+    }
+}

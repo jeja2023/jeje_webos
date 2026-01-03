@@ -104,6 +104,11 @@ const Store = {
         const oldValue = this.state[key];
         this.state[key] = value;
 
+        // 自动持久化核心数据
+        if (key === 'user' && value) {
+            localStorage.setItem(Config.storageKeys.user, JSON.stringify(value));
+        }
+
         // 通知监听器
         this.notify(key, value, oldValue);
     },
@@ -246,6 +251,9 @@ const Store = {
             };
             this.set('user', newUser);
             this.set('isLoggedIn', true);
+
+            // 同步持久化到 localStorage
+            localStorage.setItem(Config.storageKeys.user, JSON.stringify(newUser));
 
             // 触发 user 更新事件，通知 Dock 等组件更新
             this.notify('user', newUser);

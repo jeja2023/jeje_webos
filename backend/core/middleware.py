@@ -16,6 +16,48 @@ from utils.request import get_client_ip
 
 logger = logging.getLogger(__name__)
 
+# 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
+# 需要在所有中间件中跳过，避免客户端断开时触发 "No response returned" 错误
+STREAMING_PATHS = [
+    "/api/v1/ai/chat",  # AI 聊天流式响应
+]
+
+
+class StreamingPathMiddleware:
+    """
+    纯 ASGI 中间件：处理流式响应路径
+    
+    这个中间件必须在所有 BaseHTTPMiddleware 之后添加（即最先执行），
+    用于捕获流式响应路径的请求，直接传递给应用而不经过其他中间件处理。
+    
+    这样可以避免 BaseHTTPMiddleware 与 StreamingResponse 的兼容性问题：
+    当客户端取消流式请求时，BaseHTTPMiddleware 会抛出 "No response returned" 错误。
+    """
+    
+    def __init__(self, app: ASGIApp):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            # 检查是否是流式响应路径
+            if any(path.startswith(sp) for sp in STREAMING_PATHS):
+                # 直接传递给下一层，不做任何包装处理
+                # 这样可以避免 BaseHTTPMiddleware 的问题
+                try:
+                    await self.app(scope, receive, send)
+                except Exception as e:
+                    # 捕获所有异常，避免在流式响应取消时产生错误日志
+                    error_str = str(e)
+                    if "No response returned" in error_str or "CancelledError" in type(e).__name__:
+                        logger.debug(f"[流式响应取消] {scope.get('method', 'UNKNOWN')} {path}")
+                    else:
+                        logger.error(f"[流式响应异常] {scope.get('method', 'UNKNOWN')} {path}: {e}")
+                return
+        
+        # 非流式路径，正常传递
+        await self.app(scope, receive, send)
+
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
@@ -51,8 +93,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return any(path.startswith(p) for p in self.skip_paths)
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        path = request.url.path
+        
         # 跳过指定路径
-        if self._should_skip(request.url.path):
+        if self._should_skip(path):
+            return await call_next(request)
+        
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(path.startswith(sp) for sp in STREAMING_PATHS):
             return await call_next(request)
         
         # 生成请求ID
@@ -93,6 +141,18 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             
             return response
             
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
+                if path.startswith("/api/v1/ai/chat"):
+                    logger.debug(f"[客户端断开] {method} {path}")
+                else:
+                    logger.info(f"[客户端断开] {method} {path}")
+                return Response(status_code=499)
+            
+            logger.error(f"[运行时错误] {method} {path} | {str(e)}")
+            raise
+            
         except Exception as e:
             # 记录异常
             duration = time.time() - start_time
@@ -111,8 +171,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        path = request.url.path
+        
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(path.startswith(sp) for sp in STREAMING_PATHS):
+            return await call_next(request)
+        
         try:
             response = await call_next(request)
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
+                path = request.url.path
+                if path.startswith("/api/v1/ai/chat"):
+                    logger.debug(f"[客户端断开] {request.method} {path} (SecurityHeadersMiddleware)")
+                else:
+                    logger.info(f"[客户端断开] {request.method} {path} (SecurityHeadersMiddleware)")
+                return Response(status_code=499)
+            logger.error(f"安全头中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             logger.error(f"安全头中间件捕获异常: {e}")
             raise
@@ -143,6 +220,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(request.url.path.startswith(sp) for sp in STREAMING_PATHS):
+            return await call_next(request)
+        
         # 生成请求ID
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
         
@@ -153,6 +234,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                return Response(status_code=499)
+            logger.error(f"请求上下文中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             logger.error(f"请求上下文中间件捕获异常: {e}")
             raise
@@ -268,8 +354,14 @@ class StatsMiddleware(BaseHTTPMiddleware):
         self.skip_paths = skip_paths or ["/static/", "/health"]
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        path = request.url.path
+        
         # 跳过指定路径
-        if any(request.url.path.startswith(p) for p in self.skip_paths):
+        if any(path.startswith(p) for p in self.skip_paths):
+            return await call_next(request)
+        
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(path.startswith(sp) for sp in STREAMING_PATHS):
             return await call_next(request)
         
         start_time = time.time()
@@ -278,6 +370,11 @@ class StatsMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             status_code = response.status_code
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                return Response(status_code=499)
+            logger.error(f"统计中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             logger.error(f"统计中间件捕获异常: {e}")
             raise
@@ -428,6 +525,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
         if self._should_skip(path, method):
             return await call_next(request)
         
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(path.startswith(sp) for sp in STREAMING_PATHS):
+            return await call_next(request)
+        
         # 获取请求信息
         client_ip = get_client_ip(request)
         module, action, description = self._parse_path(path, method)
@@ -448,6 +549,16 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # 执行请求（添加异常处理防止 "No response returned" 错误）
         try:
             response = await call_next(request)
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
+                if path.startswith("/api/v1/ai/chat"):
+                    logger.debug(f"[客户端断开] {method} {path} (AuditMiddleware)")
+                else:
+                    logger.info(f"[客户端断开] {method} {path} (AuditMiddleware)")
+                return Response(status_code=499)
+            logger.error(f"审计中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             logger.error(f"审计中间件捕获异常: {e}")
             raise

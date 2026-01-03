@@ -10,7 +10,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
 
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 
 
@@ -412,10 +412,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     在main.py中通过 app.add_middleware(RateLimitMiddleware) 注册
     """
     
+    # 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
+    STREAMING_PATHS = [
+        "/api/v1/ai/chat",  # AI 聊天流式响应
+    ]
+    
     async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        
         # 跳过静态资源和健康检查
         skip_paths = ["/static/", "/health", "/api/docs", "/api/redoc", "/api/openapi.json"]
-        if any(request.url.path.startswith(p) for p in skip_paths):
+        if any(path.startswith(p) for p in skip_paths):
+            return await call_next(request)
+        
+        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+        if any(path.startswith(sp) for sp in self.STREAMING_PATHS):
             return await call_next(request)
         
         allowed, info = rate_limiter.check(request)
@@ -433,6 +444,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
+        except RuntimeError as e:
+            if str(e) == "No response returned":
+                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
+                path = str(request.url.path)
+                if path.startswith("/api/v1/ai/chat"):
+                    logger.debug(f"[客户端断开] {request.method} {path} (RateLimitMiddleware)")
+                else:
+                    logger.info(f"[客户端断开] {request.method} {path} (RateLimitMiddleware)")
+                return Response(status_code=499)
+            # 其他运行时错误才记录为错误
+            logger.error(f"速率限制中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             logger.error(f"速率限制中间件捕获异常: {e}")
             raise

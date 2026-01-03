@@ -14,16 +14,16 @@ class FileRecord(Base):
     """文件记录表"""
     __tablename__ = "sys_files"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    filename: Mapped[str] = mapped_column(String(255))  # 原始文件名
-    storage_path: Mapped[str] = mapped_column(String(500))  # 存储相对路径
-    file_size: Mapped[int] = mapped_column(Integer)  # 文件大小（字节）
-    mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # MIME 类型
-    uploader_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sys_users.id"), nullable=True)  # 上传者ID
-    category: Mapped[str] = mapped_column(String(50), default="attachment", server_default="attachment")  # 业务分类：avatar, blog, note, attachment
-    ref_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 关联业务ID（可选）
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 文件描述
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    filename: Mapped[str] = mapped_column(String(255), comment="原始文件名")
+    storage_path: Mapped[str] = mapped_column(String(500), comment="存储路径")
+    file_size: Mapped[int] = mapped_column(Integer, comment="文件大小(字节)")
+    mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="MIME类型")
+    uploader_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sys_users.id"), nullable=True, comment="上传者ID")
+    category: Mapped[str] = mapped_column(String(50), default="attachment", server_default="attachment", comment="业务分类")
+    ref_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="关联业务ID")
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="文件描述")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
     
     # 索引
     __table_args__ = (

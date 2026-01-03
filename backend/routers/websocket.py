@@ -92,6 +92,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     elif message_type.startswith("transfer_"):
                         await handle_transfer_message(websocket, user_id, message_type, message.get("data", {}))
                     
+                    # 处理即时通讯相关消息
+                    elif message_type.startswith("im_"):
+                        try:
+                            from modules.im.im_websocket import handle_im_message
+                            await handle_im_message(websocket, user_id, message_type, message.get("data", {}))
+                        except ImportError:
+                            logger.warning("即时通讯模块未加载")
+                        except Exception as e:
+                            logger.error(f"处理IM消息失败: {e}", exc_info=True)
+                    
                     else:
                         # 其他消息类型可以在这里处理
                         logger.debug(f"收到消息: {message}")

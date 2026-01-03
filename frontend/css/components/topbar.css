@@ -14,7 +14,7 @@
     align-items: center;
     pointer-events: none;
     /* 穿透点击 */
-    z-index: 1000;
+    z-index: 5000;
 }
 
 .top-bar-left {

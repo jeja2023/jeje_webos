@@ -23,6 +23,10 @@ mv _template_models.py task_manager_models.py
 mv _template_schemas.py task_manager_schemas.py
 mv _template_router.py task_manager_router.py
 mv _template_services.py task_manager_services.py
+
+# 重命名测试目录（必须添加模块前缀）
+mv _template_tests task_manager_tests
+mv task_manager_tests/test_{module_id}.py task_manager_tests/test_task_manager.py
 ```
 
 ### 3. 替换占位符
@@ -46,7 +50,27 @@ mv _template_services.py task_manager_services.py
 - **服务**：实现业务逻辑
 - **路由**：定义API接口
 
-### 5. 开发前端
+### 5. 编写测试（必须）
+
+在 `{module_id}_tests/` 目录中编写测试用例：
+
+```bash
+# 运行模块测试
+pytest modules/{module_id}/{module_id}_tests/ -v
+
+# 运行单个测试文件
+pytest modules/{module_id}/{module_id}_tests/test_{module_id}.py -v --tb=short
+```
+
+测试目录结构：
+```
+{module_id}_tests/
+├── __init__.py          # 测试包初始化
+├── conftest.py          # 测试夹具和配置
+└── test_{module_id}.py  # 单元测试
+```
+
+### 6. 开发前端
 
 参考 `frontend/js/pages/blog.js` 或 `notes.js` 创建前端页面。
 
@@ -54,13 +78,13 @@ mv _template_services.py task_manager_services.py
 
 - [模块开发指南](../../MODULE_DEVELOPMENT_GUIDE.md)
 - [快速开始指南](../../QUICK_START.md)
-- [开发规范](../../SPECIFICATION.md)
+- [开发规范](../../../开发规范.md)
 
 ## ✅ 检查清单
 
 开发完成后，请确认：
 
-- [ ] 所有文件已重命名
+- [ ] 所有文件已重命名（包括测试目录）
 - [ ] 所有占位符已替换
 - [ ] 模块ID唯一
 - [ ] 表名使用模块前缀
@@ -71,11 +95,14 @@ mv _template_services.py task_manager_services.py
 - [ ] 前端页面已创建
 - [ ] API接口已注册
 - [ ] 路由已配置
-- [ ] (可选) 添加了 tests/ 目录和测试用例
+- [ ] ✅ 已创建 `{module_id}_tests/` 目录
+- [ ] ✅ 已编写基本测试用例
+- [ ] ✅ 测试全部通过
 
 ## 🎉 开始开发
 
 现在可以开始实现你的业务逻辑了！
+
 
 
 

@@ -118,9 +118,16 @@ const WindowManager = {
 
         const win = this.windows.get(id);
 
-        // 置顶
+        // 置顶逻辑
         this.zIndexCounter++;
-        win.element.style.zIndex = this.zIndexCounter;
+        let newZ = this.zIndexCounter;
+
+        // 如果窗口最大化，赋予更高的 z-index 以盖住 TopBar (z=5000)
+        // 普通窗口 z-index ~3000+, 最大化窗口 z-index ~8000+
+        if (win.maximized) {
+            newZ += 5000;
+        }
+        win.element.style.zIndex = newZ;
 
         // 更新激活类
         this.windows.forEach(w => w.element.classList.remove('active'));
@@ -191,6 +198,8 @@ const WindowManager = {
             win.maximized = true;
         }
         this.checkMaximizedState();
+        // 重新聚焦以更新 z-index
+        this.focus(id);
     },
 
     restore(id) {
@@ -203,6 +212,7 @@ const WindowManager = {
 
         this.updateDesktopState();
         this.checkMaximizedState();
+        this.focus(id);
     },
 
     focusLastActive() {
@@ -263,13 +273,13 @@ const WindowManager = {
             <div class="window-header">
                 <div class="window-controls">
                     <button class="window-btn close" title="关闭">
-                        <svg class="btn-icon" viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <i class="ri-close-line"></i>
                     </button>
                     <button class="window-btn minimize" title="最小化">
-                        <svg class="btn-icon" viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <i class="ri-subtract-line"></i>
                     </button>
                     <button class="window-btn maximize" title="最大化">
-                        <svg class="btn-icon" viewBox="0 0 12 12"><path d="M2 10L10 2M2 10V6M2 10H6M10 2V6M10 2H6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <i class="ri-checkbox-blank-line"></i>
                     </button>
                 </div>
                 <div class="window-title">${title}</div>

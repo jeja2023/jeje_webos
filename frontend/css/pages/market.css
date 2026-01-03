@@ -6,14 +6,13 @@
 .apps-dashboard {
     padding: 30px;
     height: 100%;
-    overflow-y: auto;
 }
 
 /* 应用网格布局 */
 .apps-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 24px;
+    gap: 32px;
     padding: 10px;
 }
 
@@ -31,15 +30,19 @@
 
 /* 应用卡片基础样式 */
 .app-card {
-    width: 90px;
+    width: 96px;
     display: flex;
     flex-direction: column;
     align-items: center;
     cursor: pointer;
     position: relative;
-    padding: 10px;
+    padding: 12px;
     border-radius: 20px;
     transition: all 0.3s ease;
+}
+
+.app-card:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 /* 图标容器 - Squircle 风格 */
@@ -47,7 +50,6 @@
     width: 72px;
     height: 72px;
     border-radius: 18px;
-    /* iOS 风格比例 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -88,16 +90,15 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* 固定状态图标/按钮 */
 .pin-status {
     position: absolute;
-    top: 0px;
-    right: 0px;
-    width: 26px;
-    height: 26px;
+    top: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: rgba(var(--color-bg-primary-rgb), 0.8);
     backdrop-filter: blur(4px);
@@ -111,7 +112,6 @@
     transform: scale(0.8);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 10;
-    box-shadow: var(--shadow-sm);
 }
 
 .app-card:hover .pin-status {
@@ -125,46 +125,11 @@
     background: var(--color-primary);
     color: #ffffff;
     border-color: var(--color-primary);
-    box-shadow: 0 2px 8px var(--color-primary-glow);
 }
 
 .pin-status:hover {
     background: var(--color-primary-hover);
     color: #ffffff;
-    border-color: var(--color-primary-hover);
-}
-
-.system-pinned {
-    background: var(--color-bg-tertiary);
-    color: var(--color-text-tertiary);
-    cursor: default;
-}
-
-/* 子页面中的图标样式 */
-.module-icon-box {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #ffffff;
-    flex-shrink: 0;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-.module-icon-box::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-    pointer-events: none;
 }
 
 /* 渐变色方案库 */
@@ -237,30 +202,276 @@
 }
 
 .gradient-default {
-    background: linear-gradient(135deg, #d5d4d0 0%, #d5d4d0 1%, #eeeeec 31%, #efeeec 75%, #e9e9e7 100%);
+    background: linear-gradient(135deg, #d5d4d0 0%, #eeeeec 100%);
     color: #666;
 }
 
-/* 页面公共头部样式 */
-.sub-page-header {
+/* 两栏布局 (Sidebar Layout) */
+.app-center-layout {
+    display: flex;
+    height: 100%;
+    background: var(--color-bg-primary);
+    overflow: hidden;
+}
+
+/* 侧边栏样式 */
+.app-center-sidebar {
+    width: 240px;
+    background: rgba(var(--color-bg-secondary-rgb), 0.5);
+    backdrop-filter: blur(25px) saturate(180%);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.sidebar-header {
+    padding: 32px 24px 24px;
+}
+
+.sidebar-logo {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--color-border);
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-primary);
 }
 
-.sub-page-title {
-    font-size: 20px;
+.sidebar-logo i {
+    font-size: 24px;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 0 12px;
+    overflow-y: auto;
+}
+
+.nav-group-title {
+    padding: 24px 16px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-tertiary);
+    opacity: 0.6;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    margin-bottom: 4px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-primary);
+    transform: translateX(4px);
+}
+
+.nav-item.active {
+    background: var(--color-primary);
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px var(--color-primary-glow);
+}
+
+.nav-item i {
+    font-size: 18px;
+}
+
+.nav-separator {
+    height: 1px;
+    background: var(--color-border);
+    margin: 12px 16px;
+    opacity: 0.5;
+}
+
+/* 页脚用户信息 - Scoped to this sidebar */
+.app-center-sidebar .sidebar-footer {
+    padding: 16px;
+    margin-top: auto;
+}
+
+.app-center-sidebar .user-brief {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.app-center-sidebar .user-brief:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.app-center-sidebar .user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-primary), #a855f7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
     font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* 兼容深色模式 */
-[class*="theme-neon"] .app-icon-box {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+.app-center-sidebar .user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
-[class*="theme-neon"] .app-icon-box::after {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+.app-center-sidebar .user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 2px;
+}
+
+.app-center-sidebar .user-role {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.app-center-sidebar .user-role::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-success);
+}
+
+/* 主内容区 */
+.app-center-main {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--color-bg-primary);
+}
+
+.main-content-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 64px;
+}
+
+/* 视图头部 */
+.view-header {
+    margin-bottom: 40px;
+}
+
+.view-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+}
+
+.view-subtitle {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+/* 空状态 */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 0;
+    color: var(--color-text-tertiary);
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 72px;
+    margin-bottom: 24px;
+    opacity: 0.2;
+}
+
+/* 通用网格 */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* 模块卡片增强 */
+.module-card {
+    transition: all 0.3s ease;
+    border: 1px solid var(--color-border);
+}
+
+.module-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary-faded);
+}
+
+.module-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 响应式适配 */
+@media (max-width: 1024px) {
+    .app-center-sidebar {
+        width: 72px;
+    }
+
+    .sidebar-logo span,
+    .nav-item span,
+    .nav-group-title,
+    .user-info,
+    .sidebar-header {
+        display: none;
+    }
+
+    .sidebar-logo {
+        padding: 32px 0;
+        justify-content: center;
+    }
+
+    .nav-item {
+        justify-content: center;
+        padding: 14px;
+    }
+
+    .main-content-container {
+        padding: 32px;
+    }
 }

@@ -47,24 +47,36 @@ class DockComponent extends Component {
 
     // 获取用户固定的应用列表
     getPinnedApps() {
+        // 智脑 AI、知识库、地图、桌面等核心模块默认固定
+        const DEFAULT_APPS = ['knowledge', 'notes', 'ai', 'map'];
+
         // 1. 优先从用户 Store 设置中读取（已同步后端）
         const user = Store.get('user');
+        let pinned = [];
 
         if (user && user.settings && user.settings.dock_pinned_apps) {
-            const apps = Array.isArray(user.settings.dock_pinned_apps)
+            pinned = Array.isArray(user.settings.dock_pinned_apps)
                 ? user.settings.dock_pinned_apps
                 : [];
-            return apps;
+        } else {
+            // 2. 只有在未登录或无设置时降级读取本地缓存
+            try {
+                const saved = localStorage.getItem(this.PINNED_APPS_KEY);
+                pinned = saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                pinned = [];
+            }
         }
 
-        // 2. 只有在未登录或无设置时降级读取本地缓存
-        try {
-            const saved = localStorage.getItem(this.PINNED_APPS_KEY);
-            const apps = saved ? JSON.parse(saved) : [];
-            return apps;
-        } catch (e) {
-            return [];
-        }
+        // 3. 彻底修复：合并默认固定应用，确保像 AI 这样的新模块即便没点击“固定”也能显示
+        const result = [...pinned];
+        DEFAULT_APPS.forEach(id => {
+            if (!result.includes(id)) {
+                result.push(id);
+            }
+        });
+
+        return result;
     }
 
     // 保存固定的应用列表
@@ -213,6 +225,7 @@ class DockComponent extends Component {
         const iconMap = {
             'launcher': { ri: 'ri-menu-line', gradient: 'gradient-blue' }, // 开始按钮（菜单图标）
             'notification': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' }, // 通知
+            'knowledge': { ri: 'ri-book-read-line', gradient: 'gradient-blue' },
             'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
             'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
             'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
@@ -235,6 +248,16 @@ class DockComponent extends Component {
             'sys_announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' }, // 公告管理
             'sys_users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
             'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+            'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
+            'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
+            'office': { ri: 'ri-file-text-line', gradient: 'gradient-blue' },
+            'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
+            'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
+            'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
+            'exam': { ri: 'ri-file-list-3-line', gradient: 'gradient-orange' },
+            'ocr': { ri: 'ri-scan-2-line', gradient: 'gradient-cyan' },
+            'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
+            'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
         };
 
         return iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
@@ -256,6 +279,18 @@ class DockComponent extends Component {
                 singleEntry: true,
                 path: '/blog/list'
             },
+            'knowledge': {
+                singleEntry: true,
+                path: '/knowledge/list'
+            },
+            'ai': {
+                singleEntry: true,
+                path: '/ai'
+            },
+            'map': {
+                singleEntry: true,
+                path: '/map'
+            },
             // 笔记：单一入口，侧边栏已整合收藏和标签
             'notes': {
                 singleEntry: true,
@@ -270,6 +305,11 @@ class DockComponent extends Component {
             'announcement': {
                 singleEntry: true,
                 path: '/announcement/list'
+            },
+            // 协同办公：单一入口
+            'office': {
+                singleEntry: true,
+                path: '/office/list'
             }
         };
 

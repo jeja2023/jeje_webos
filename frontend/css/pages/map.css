@@ -1,0 +1,550 @@
+/* 地图模块样式 - 全面重构版本 */
+.map-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg-container);
+}
+
+.map-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-container);
+    backdrop-filter: blur(20px);
+    z-index: 100 !important;
+    position: relative;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+    transform: translateZ(0);
+    pointer-events: auto !important;
+}
+
+/* 侧边栏头部 */
+.sidebar-header {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.brand-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.brand-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 轨迹资源树 */
+.trail-files-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.trail-folder-item,
+.trail-file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.trail-folder-item:hover,
+.trail-file-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.folder-info,
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.folder-info i {
+    font-size: 18px;
+}
+
+.folder-name,
+.file-name {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.folder-actions,
+.file-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.folder-toggle {
+    transition: transform 0.3s;
+    opacity: 0.4;
+}
+
+.trail-folder-container.collapsed .folder-toggle {
+    transform: rotate(-90deg);
+}
+
+.trail-folder-container.collapsed .folder-children {
+    display: none !important;
+}
+
+.file-meta {
+    font-size: 10px;
+    opacity: 0.4;
+}
+
+.btn-icon.active {
+    color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* 比例尺定位微调 */
+.leaflet-control-scale {
+    margin-bottom: 20px !important;
+    margin-right: 20px !important;
+}
+
+.brand-info i {
+    font-size: 24px;
+    color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+    padding: 8px;
+    border-radius: 10px;
+}
+
+.brand-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.brand-version {
+    font-size: 10px;
+    opacity: 0.4;
+    font-family: monospace;
+}
+
+/* 搜索容器 */
+.map-search-container {
+    position: relative;
+}
+
+.map-search-box {
+    display: flex;
+    background: var(--color-bg-hover);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.map-search-box:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.map-search-box i {
+    padding: 10px 0 10px 12px;
+    color: var(--color-text-secondary);
+}
+
+.map-search-box input {
+    background: transparent;
+    border: none;
+    color: var(--color-text);
+    padding: 10px 12px;
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    outline: none;
+}
+
+.map-search-box button {
+    background: var(--color-primary);
+    border: none;
+    color: white;
+    padding: 0 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.map-search-box button:hover {
+    opacity: 0.9;
+}
+
+/* 搜索结果下拉 */
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--color-bg-container);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.search-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.search-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.search-item i {
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+/* 导入按钮区域 */
+.action-area {
+    width: 100%;
+}
+
+.btn-import-primary {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white !important;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.btn-import-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.btn-import-primary:active {
+    transform: translateY(0);
+}
+
+/* 列表区域 */
+.dataset-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 20px;
+}
+
+.list-section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin: 20px 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-text-only {
+    background: transparent;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-text-only:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.dataset-item {
+    background: var(--color-bg-hover);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.dataset-item:hover {
+    border-color: rgba(var(--color-primary-rgb), 0.3);
+    background: var(--color-bg-tertiary);
+}
+
+.trail-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.trail-file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--color-bg-tertiary);
+    border: 1px dashed var(--color-border);
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.trail-file-item:hover {
+    border-style: solid;
+    border-color: var(--color-primary);
+    background: var(--color-bg-hover);
+}
+
+.trail-file-item .file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.trail-file-item .file-info i {
+    font-size: 20px;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-primary);
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.trail-file-item .file-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.trail-file-item .file-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.trail-file-item .file-meta {
+    font-size: 11px;
+    opacity: 0.5;
+}
+
+.ds-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.ds-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.ds-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.empty-hint {
+    padding: 20px;
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+.empty-hint i {
+    font-size: 48px;
+    opacity: 0.1;
+    margin-bottom: 16px;
+    display: block;
+}
+
+/* 侧边栏页脚 */
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-container);
+    position: relative;
+    z-index: 200;
+    pointer-events: auto !important;
+}
+
+.mode-switch-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 201;
+}
+
+.switch-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.mode-tabs {
+    background: var(--color-bg-tertiary);
+    padding: 4px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    position: relative;
+    z-index: 202;
+}
+
+.mode-tab {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+    position: relative;
+    z-index: 203;
+    pointer-events: auto !important;
+}
+
+.mode-tab:hover {
+    color: var(--color-text);
+}
+
+.mode-tab.active {
+    background: var(--color-bg-container);
+    color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+}
+
+/* 地图主区域 */
+.map-main {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+    /* 创建新的堆叠上下文，防止内部元素影响外部 */
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.map-canvas {
+    width: 100%;
+    height: 100%;
+    /* 确保不会超出容器边界 */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.zoom-indicator {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 100;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Leaflet 覆盖 */
+.leaflet-container {
+    background: var(--color-bg-container) !important;
+    /* 确保地图交互层不会超出容器边界 */
+    overflow: hidden !important;
+}
+
+/* 确保 Leaflet 的所有覆盖层保持在地图区域内 */
+.map-main .leaflet-pane,
+.map-main .leaflet-control-container {
+    z-index: auto !important;
+}
+
+.leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+.leaflet-control-zoom a {
+    background: var(--color-bg-container) !important;
+    color: var(--color-text) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--color-bg-container) !important;
+    color: var(--color-text) !important;
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(10px);
+}
+
+.leaflet-popup-tip {
+    background: var(--color-bg-container) !important;
+}

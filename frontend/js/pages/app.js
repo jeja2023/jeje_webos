@@ -135,6 +135,28 @@ const App = {
                     // 只是不聚焦任何特定 App
                 }
             }
+            ,
+            // ========== 相册模块路由 (自动生成) ==========
+            '/album': {
+                auth: true,
+                handler: () => {
+                    Router.replace('/album/list');
+                }
+            },
+            '/album/list': {
+                auth: true,
+                handler: () => {
+                    this.renderLayout({});
+                    this.destroyCurrentPage();
+                    if (typeof AlbumPage !== 'undefined') {
+                        this.currentPage = new AlbumPage(this.content);
+                        this.currentPage.mount();
+                    } else {
+                        this.content.innerHTML = '<div class="error-message">AlbumPage 组件未定义。</div>';
+                    }
+                    this.setWindowTitle('相册');
+                }
+            },
         });
 
         // 多窗口包装器
@@ -216,12 +238,81 @@ const App = {
             '/filemanager': { auth: true, handler: wrap(FileManagerPage, '文件管理') },
             '/transfer': { auth: true, handler: wrap(TransferPage, '快传') },
 
+            '/knowledge': { auth: true, handler: wrap(KnowledgeListPage, '知识库') },
+            '/knowledge/list': { auth: true, handler: wrap(KnowledgeListPage, '知识库') },
+            '/knowledge/view/:id': { auth: true, handler: wrap(KnowledgeViewPage, '知识库详情') },
+
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
             '/analysis': { auth: true, handler: wrap(AnalysisPage, '数据分析') },
+            '/ai': { auth: true, handler: wrap(AIPage, '智脑 AI') },
+            '/ai/chat': { auth: true, handler: wrap(AIPage, '聊天对话') },
+            '/map': { auth: true, handler: wrap(MapPage, '智能地图') },
+
+            // 即时通讯
+            '/im': { auth: true, handler: wrap(IMPage, '即时通讯') },
+            '/im/messages': { auth: true, handler: wrap(IMPage, '即时通讯') },
+            '/im/contacts': { auth: true, handler: wrap(IMPage, '联系人') },
 
             // DataLens 数据透镜
             '/lens': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
             '/lens/view/:id': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
+
+            // 协同办公
+            '/office': { auth: true, handler: wrap(OfficeListPage, '协同办公') },
+            '/office/list': { auth: true, handler: wrap(OfficeListPage, '协同办公') },
+            '/office/doc/new': {
+                auth: true,
+                handler: async () => {
+                    this.ensureDesktopEnvironment();
+                    try {
+                        const res = await OfficeApi.create({ title: '无标题文档', doc_type: 'doc' });
+                        Router.replace(`/office/doc/${res.data.id}`);
+                    } catch (err) {
+                        Toast.error('创建文档失败');
+                    }
+                }
+            },
+            '/office/sheet/new': {
+                auth: true,
+                handler: async () => {
+                    this.ensureDesktopEnvironment();
+                    try {
+                        const res = await OfficeApi.create({ title: '无标题表格', doc_type: 'sheet' });
+                        Router.replace(`/office/sheet/${res.data.id}`);
+                    } catch (err) {
+                        Toast.error('创建表格失败');
+                    }
+                }
+            },
+            '/office/doc/:id': { auth: true, handler: wrap(OfficeDocPage, '文档编辑') },
+            '/office/sheet/:id': { auth: true, handler: wrap(OfficeSheetPage, '表格编辑') },
+
+            // 相册
+            '/album': { auth: true, handler: wrap(AlbumPage, '我的相册') },
+
+            // 视频
+            '/video': { auth: true, handler: wrap(VideoPage, '我的视频') },
+
+            // 考试
+            '/exam': { auth: true, handler: wrap(ExamPage, '在线考试') },
+            '/exam/questions': { auth: true, handler: wrap(ExamPage, '题库管理') },
+            '/exam/papers': { auth: true, handler: wrap(ExamPage, '试卷管理') },
+
+            // 图文识别
+            '/ocr': { auth: true, handler: wrap(OCRPage, '图文识别') },
+            '/ocr/recognize': { auth: true, handler: wrap(OCRPage, '识别图片') },
+
+            // 课程学习
+            '/course': { auth: true, handler: wrap(CoursePage, '课程学习') },
+            '/course/list': { auth: true, handler: wrap(CoursePage, '课程中心') },
+            '/course/learning': { auth: true, handler: wrap(CoursePage, '我的学习') },
+            '/course/manage': { auth: true, handler: wrap(CoursePage, '课程管理') },
+
+            // 日程管理
+            '/schedule': { auth: true, handler: wrap(SchedulePage, '日程管理') },
+            '/schedule/calendar': { auth: true, handler: wrap(SchedulePage, '日历视图') },
+            '/schedule/list': { auth: true, handler: wrap(SchedulePage, '我的日程') },
+            '/schedule/reminders': { auth: true, handler: wrap(SchedulePage, '提醒中心') },
         });
 
     },

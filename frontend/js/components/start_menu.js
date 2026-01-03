@@ -36,13 +36,13 @@ class StartMenuComponent extends Component {
         // 默认固定在 Dock 的应用
         pinnedIds.add('message');
         pinnedIds.add('apps');
-        
+
         // 管理员/经理固定在 Dock 的应用
         if (isAdmin || isManager) {
             pinnedIds.add('announcement');
             pinnedIds.add('users');
         }
-        
+
         // 管理员固定在 Dock 的应用
         if (isAdmin) {
             pinnedIds.add('system');
@@ -60,7 +60,7 @@ class StartMenuComponent extends Component {
         if (module.menu?.path) {
             return module.menu.path;
         }
-        
+
         // 如果没有配置，使用默认路径
         return `/${module.id}`;
     }
@@ -147,6 +147,7 @@ class StartMenuComponent extends Component {
     _getIconSpec(id, defaultIcon = '📦') {
         const iconMap = {
             'blog': { ri: 'ri-article-line' },
+            'knowledge': { ri: 'ri-book-read-line' },
             'notes': { ri: 'ri-sticky-note-line' },
             'feedback': { ri: 'ri-feedback-line' },
             'announcement': { ri: 'ri-notification-3-line' },
@@ -162,7 +163,17 @@ class StartMenuComponent extends Component {
             'message': { ri: 'ri-message-3-line' },
             'market': { ri: 'ri-store-2-line' },
             'theme': { ri: 'ri-palette-line' },
-            'launcher': { ri: 'ri-rocket-2-line' }
+            'launcher': { ri: 'ri-rocket-2-line' },
+            'ai': { ri: 'ri-brain-line' },
+            'map': { ri: 'ri-map-2-line' },
+            'im': { ri: 'ri-message-3-line' },
+            'office': { ri: 'ri-file-text-line' },
+            'album': { ri: 'ri-image-2-line' },
+            'video': { ri: 'ri-video-line' },
+            'exam': { ri: 'ri-file-list-3-line' },
+            'ocr': { ri: 'ri-scan-2-line' },
+            'course': { ri: 'ri-book-open-line' },
+            'schedule': { ri: 'ri-calendar-schedule-line' }
         };
 
         return iconMap[id] || { ri: null, emoji: defaultIcon };
@@ -278,7 +289,7 @@ class StartMenuComponent extends Component {
         this.delegate('click', '.menu-item', (e, el) => {
             e.stopPropagation();
             const path = el.dataset.path;
-            
+
             // 如果有路径，跳转并关闭菜单
             if (path) {
                 Router.push(path);

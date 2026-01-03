@@ -8,6 +8,8 @@
     transform: translateX(-50%);
     z-index: 9500;
     /* 低于 Modal(10000) */
+    /* 关键修复：容器本身不拦截点击，让底层的最大化窗口可以接收点击事件 */
+    pointer-events: none;
 }
 
 .dock {
@@ -30,6 +32,8 @@
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* 关键修复：实际的 dock 栏拦截点击 */
+    pointer-events: auto;
 }
 
 .dock.auto-hide {

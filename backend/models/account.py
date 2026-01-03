@@ -16,19 +16,19 @@ class User(Base):
     __tablename__ = "sys_users"
     __table_args__ = {"comment": "系统用户表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(11), unique=True, nullable=True)  # 手机号码
-    password_hash: Mapped[str] = mapped_column(String(128))
-    nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(20), default="guest")  # 角色：admin/guest/自定义
-    permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
-    role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
-    settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)  # 用户个性化设置
-    storage_quota: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 存储配额（字节），None 表示无限制
-    is_active: Mapped[bool] = mapped_column(Boolean, default=False)  # 默认未激活，需管理员审核
-    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, comment="用户名")
+    phone: Mapped[Optional[str]] = mapped_column(String(11), unique=True, nullable=True, comment="手机号码")
+    password_hash: Mapped[str] = mapped_column(String(128), comment="密码哈希")
+    nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="昵称")
+    avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="头像URL")
+    role: Mapped[str] = mapped_column(String(20), default="guest", comment="角色")
+    permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="权限列表")
+    role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="角色ID列表")
+    settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict, comment="个性化设置")
+    storage_quota: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="存储配额(字节)")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否激活")
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="最后登录时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 

@@ -122,8 +122,8 @@ class TopBarComponent extends Component {
             <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
                 <div class="top-bar-left">
                      <!-- Brand Title -->
-                    <div class="status-pill" id="brandPill" style="border:none; background:none; box-shadow:none; padding:0; height:auto; cursor: pointer;">
-                        <span class="brand-icon">🌐</span>
+                    <div id="brandPill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <img src="/images/logo.jpg" class="brand-icon" style="height: 28px; width: auto; border-radius: 6px;">
                         <span class="brand-title">${displayAppName}</span>
                     </div>
                 </div>
@@ -481,7 +481,7 @@ class TopBarComponent extends Component {
             `,
             footer: false
         });
-        
+
         // 禁用"关于本机"对话框的滚动条
         if (modalResult && modalResult.overlay) {
             const modalBody = modalResult.overlay.querySelector('.modal-body');

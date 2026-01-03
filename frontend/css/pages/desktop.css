@@ -293,51 +293,118 @@ body {
     /* 匹配容器圆角 */
 }
 
-/* 交通红绿灯按钮 */
+/* 交通红绿灯按钮 - 纯色风格加黑色图标 */
 .window-controls {
     display: flex;
     gap: 8px;
+    /* 恢复紧凑间距 */
 }
 
 .window-btn {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    /* 恢复标准尺寸 */
+    height: 14px;
     border-radius: 50%;
     border: none;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s ease;
-    position: relative;
+    transition: opacity 0.2s ease;
+    box-shadow: none;
+    /* 移除阴影 */
 }
 
-.window-btn .btn-icon {
-    width: 14px;
-    height: 14px;
-    opacity: 0;
-    color: rgba(0, 0, 0, 0.9);
-    transition: opacity 0.15s ease;
-    fill: none;
-    stroke-width: 2.5;
+/* 悬停时稍微加深 */
+.window-btn:hover {
+    opacity: 0.8;
 }
 
-/* 悬停在控制按钮区域时显示所有图标 */
-.window-controls:hover .window-btn .btn-icon {
-    opacity: 1;
+/* 适配字体图标 */
+/* 适配字体图标 */
+.window-btn i,
+.window-btn [class^="ri-"] {
+    font-size: 10px !important;
+    color: #000000 !important;
+    opacity: 0 !important;
+    /* 默认隐藏 */
+    font-weight: 900 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    line-height: normal !important;
+    transform: none !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: 100% !important;
+    transition: opacity 0.2s ease !important;
+    /* 添加过渡 */
+}
+
+/* 悬停在控制区域时显示图标 */
+.window-controls:hover .window-btn i {
+    opacity: 1 !important;
+}
+
+.window-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+
+/* 单独微调每个图标的视觉中心 */
+.window-btn.minimize i {
+    font-size: 10px !important;
+    transform: translateY(-0.5px) !important;
+    /* 字体横线通常偏低，稍微上提 */
+}
+
+.window-btn.maximize i {
+    font-size: 9px !important;
+    /* 最大化框稍微小一点点更精致 */
+    font-weight: 600 !important;
+    /* 稍微细一点，避免糊成一团 */
+}
+
+.window-btn.close i {
+    transform: scale(1.1) !important;
+    /* 关闭叉号稍微放大 */
 }
 
 .window-btn.close {
     background-color: #ff5f56;
+    /* 纯红 */
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .window-btn.minimize {
     background-color: #ffbd2e;
+    /* 纯黄 */
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .window-btn.maximize {
     background-color: #27c93f;
+    /* 纯绿 */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Maximized button reset (redundant block cleanup) */
+.window-btn.maximize {
+    background-color: #27c93f;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.window-btn.maximize:hover {
+    background-color: #27c93f;
+    box-shadow: none;
+}
+
+/* 点击时的缩放反馈 */
+.window-btn:active {
+    transform: scale(0.9);
+    filter: brightness(0.9);
 }
 
 .window-title {

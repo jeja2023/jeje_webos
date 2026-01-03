@@ -29,6 +29,7 @@
 - **⚡ 快传 (Transfer)**：局域网跨设备文件传输、传输码机制、WebSocket 实时进度
 - **👁️ 数据透镜 (DataLens)**：万能数据视窗、支持多种数据源（MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API）、表格与图表双模态
 - **📊 数据分析 (Analysis)**：ETL 数据建模、BI 数据大屏、智能报告、图表分析
+- **🗺️ 智能地图 (Smart Map)**：支持离线/在线双模式、GPS 轨迹回放、热力图分析、多图层叠加与路径测距
 
 ### ⚙️ 系统管理
 - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）
@@ -283,5 +284,5 @@ MIT License. Copyright (c) 2025 JeJe WebOS.
 ## 📧 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- GitHub Issues: [提交问题](https://github.com/jeja2023/jeje-webos/issues)
+- GitHub Issues: [提交问题](https://github.com/jeja2023/jeje_webos/issues)
 - Email: jejajeja2023@gmail.com

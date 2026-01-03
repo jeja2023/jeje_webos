@@ -15,28 +15,28 @@ class Announcement(Base):
     """公告表"""
     __tablename__ = "sys_announcements"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(200))  # 公告标题
-    content: Mapped[str] = mapped_column(Text)  # 公告内容
-    type: Mapped[str] = mapped_column(String(20), default="info")  # 类型：info, success, warning, error
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    title: Mapped[str] = mapped_column(String(200), comment="公告标题")
+    content: Mapped[str] = mapped_column(Text, comment="公告内容")
+    type: Mapped[str] = mapped_column(String(20), default="info", comment="类型")
     
     # 作者
-    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id"), index=True)  # 创建者ID
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id"), index=True, comment="创建者ID")
     
     # 状态
-    is_published: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否发布
-    is_top: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否置顶
+    is_published: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否发布")
+    is_top: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否置顶")
     
     # 有效期
-    start_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 开始时间
-    end_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 结束时间
+    start_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="开始时间")
+    end_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="结束时间")
     
     # 统计
-    views: Mapped[int] = mapped_column(Integer, default=0)  # 浏览次数
+    views: Mapped[int] = mapped_column(Integer, default=0, comment="浏览次数")
     
     # 时间
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
     
     # 关联
     author: Mapped["User"] = relationship(User, foreign_keys="Announcement.author_id", lazy="selectin", viewonly=True)

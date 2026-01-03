@@ -25,7 +25,8 @@ class DuckDBService:
         # 使用 StorageManager 获取标准化存储路径
         from utils.storage import get_storage_manager
         storage = get_storage_manager()
-        self.db_dir = storage.get_module_dir("analysis")
+        # 数据库文件存放于 storage/modules/analysis/
+        self.db_dir = storage.get_module_dir("analysis", "")
         self.db_path = os.path.join(self.db_dir, "analysis.db")
         
 

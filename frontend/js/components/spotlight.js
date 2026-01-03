@@ -18,6 +18,7 @@ const Spotlight = {
         { title: '个人资料', desc: '修改昵称、头像', icon: '👤', action: 'profile' },
         { title: '修改密码', desc: '修改当前登录密码', icon: '🔐', action: 'changePassword' },
         { title: '文件管理', desc: '浏览、上传、下载文件', icon: '📁', path: '/filemanager' },
+        { title: '知识库', desc: '企业级知识管理与文档协作', icon: '📚', path: '/knowledge' },
         { title: '应用中心', desc: '安装、管理应用模块', icon: 'qy', path: '/apps' },
         { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/apps' },
         { title: '待审核用户', desc: '查看等待审核的新注册用户', icon: '⏳', path: '/users/pending', permission: 'admin' },

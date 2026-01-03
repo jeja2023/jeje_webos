@@ -204,11 +204,13 @@ class AppCenterMarketPage extends Component {
         // 1. 优先使用显式定义的路径映射（针对已整合成单一入口的应用）
         const pathMap = {
             'blog': '/blog/list',
+            'knowledge': '/knowledge/list',
             'notes': '/notes/list',
             'feedback': '/feedback/my',
             'announcement': '/announcement/list',
             'users': '/users/list',
-            'filemanager': '/filemanager'
+            'filemanager': '/filemanager',
+            'ai': '/ai'
         };
 
         if (pathMap[module.id]) {
@@ -260,6 +262,7 @@ class AppCenterMarketPage extends Component {
     _getIconSpec(item) {
         const iconMap = {
             'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
+            'knowledge': { ri: 'ri-book-read-line', gradient: 'gradient-blue' },
             'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
             'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
             'announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' },
@@ -280,6 +283,16 @@ class AppCenterMarketPage extends Component {
             'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
             'profile': { ri: 'ri-user-settings-line', gradient: 'gradient-sky' },
             'help': { ri: 'ri-help-circle-line', gradient: 'gradient-blue' },
+            'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
+            'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
+            'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
+            'office': { ri: 'ri-file-text-line', gradient: 'gradient-blue' },
+            'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
+            'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
+            'exam': { ri: 'ri-file-list-3-line', gradient: 'gradient-orange' },
+            'ocr': { ri: 'ri-scan-2-line', gradient: 'gradient-cyan' },
+            'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
+            'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
         };
 
         return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || '📦' };
@@ -288,84 +301,61 @@ class AppCenterMarketPage extends Component {
     // 渲染主页：应用图标网格
     renderHome() {
         const { modules } = this.state;
-        const enabledModules = modules.filter(m => m.enabled);
-
-        // 内置管理界面
-        const builtinApps = [];
-
-        if (this.isAdmin) {
-            builtinApps.push({ id: 'sys_manage', name: '应用管理', icon: '⚙️', viewTarget: 'manage' });
-        }
-        builtinApps.push({ id: 'sys_market', name: '应用市场', icon: '🏪', viewTarget: 'market' });
-        builtinApps.push({ id: 'sys_dev', name: '开发套件', icon: '🛠️', viewTarget: 'dev' });
-
-        const allItems = [...enabledModules, ...builtinApps];
+        // 过滤掉内置管理模块，只显示业务应用
+        const apps = modules.filter(m => m.enabled && !['market', 'sys_manage', 'sys_dev'].includes(m.id));
 
         // 获取已固定的应用列表
         const pinnedApps = this.getPinnedApps();
 
         return `
             <div class="apps-dashboard fade-in">
+                <div class="view-header">
+                    <h2 class="view-title">我的应用</h2>
+                    <p class="view-subtitle">快速启动已安装的业务模块</p>
+                </div>
+
                 <div class="apps-grid">
-                    ${allItems.map(item => {
-            const isBuiltinApp = item.viewTarget; // 内置管理界面有 viewTarget 属性
-            const children = !isBuiltinApp ? this.getChildLinks(item) : null;
-            const hasChildren = children && children.length > 0;
-            const entryPath = !isBuiltinApp && !hasChildren ? this.getAppEntryPath(item) : null;
-            const isPinned = !isBuiltinApp && pinnedApps.includes(item.id);
+                    ${apps.length > 0 ? apps.map(item => {
+            const entryPath = this.getAppEntryPath(item);
+            const isPinned = pinnedApps.includes(item.id);
             const iconSpec = this._getIconSpec(item);
 
             return `
-                            <div class="app-card-wrapper" data-id="${item.id}" ${hasChildren ? 'data-has-popup="true"' : ''}>
-                                <div class="app-card clickable"
-                                     ${isBuiltinApp ? `data-view-target="${item.viewTarget}"` : ''}
-                                     ${entryPath ? `data-app-path="${entryPath}"` : ''}
-                                     ${hasChildren ? `data-toggle-popup="${item.id}"` : ''}>
+                            <div class="app-card-wrapper" data-id="${item.id}">
+                                <div class="app-card clickable" data-app-path="${entryPath}">
                                     <div class="app-icon-box ${iconSpec.gradient}">
                                         ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
                                     </div>
                                     <div class="app-name">${Utils.escapeHtml(item.name)}</div>
-                                    ${!isBuiltinApp ? `
-                                        <button class="pin-status ${isPinned ? 'pinned' : ''}" 
-                                                data-pin-app="${item.id}" 
-                                                title="${isPinned ? '从 Dock 取消固定' : '固定到 Dock'}">
-                                            <i class="${isPinned ? 'ri-pushpin-2-fill' : 'ri-pushpin-2-line'}"></i>
-                                        </button>
-                                    ` : ''}
+                                    <button class="pin-status ${isPinned ? 'pinned' : ''}" 
+                                            data-pin-app="${item.id}" 
+                                            title="${isPinned ? '从 Dock 取消固定' : '固定到 Dock'}">
+                                        <i class="${isPinned ? 'ri-pushpin-2-fill' : 'ri-pushpin-2-line'}"></i>
+                                    </button>
                                 </div>
-
-                                ${hasChildren ? `
-                                    <div class="app-popup">
-                                        <div class="app-popup-arrow"></div>
-                                        <div class="app-popup-content">
-                                            ${children.map(child => `
-                                                <div class="app-popup-item" data-app-path="${child.path}">
-                                                    <span class="popup-icon">${child.icon}</span>
-                                                    <span class="popup-text">${child.title}</span>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : ''}
                             </div>
                         `;
-        }).join('')}
+        }).join('') : `
+                        <div class="empty-state">
+                            <i class="ri-inbox-line"></i>
+                            <p>暂无可用应用，请前往“应用市场”安装。</p>
+                        </div>
+                    `}
                 </div>
             </div>
         `;
     }
 
-    renderHeader(title, backView = 'home') {
+    renderHeader(title) {
         return `
-            <div class="sub-page-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="btn btn-ghost btn-icon" data-view-target="${backView}">
-                        ⬅️ 返回
-                    </button>
-                    <div class="sub-page-title">${title}</div>
-                </div>
-                <div>
-                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('market', '应用市场') : ''}
+            <div class="view-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <h2 class="view-title">${title}</h2>
+                    </div>
+                    <div>
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('market', title) : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -375,7 +365,7 @@ class AppCenterMarketPage extends Component {
     renderManage() {
         const { modules, processingId } = this.state;
         return `
-            <div class="sub-page fade-in">
+            <div class="view-content fade-in">
                 ${this.renderHeader('应用管理')}
                 <div class="card-grid">
                     ${modules.map(m => {
@@ -388,15 +378,17 @@ class AppCenterMarketPage extends Component {
                                         ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
                                     </div>
                                     <div class="module-info">
-                                        <h3 class="module-title">
-                                            ${Utils.escapeHtml(m.name)}
-                                            <span class="tag tag-default">${m.version || '1.0.0'}</span>
-                                        </h3>
-                                        <div class="module-actions">
-                                            <label class="switch">
-                                                <input type="checkbox" ${m.enabled ? 'checked' : ''} ${processingId === m.id ? 'disabled' : ''} data-toggle="${m.id}">
-                                                <span class="slider round"></span>
-                                            </label>
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <h3 class="module-title">
+                                                ${Utils.escapeHtml(m.name)}
+                                                <span class="tag tag-default">${m.version || '1.0.0'}</span>
+                                            </h3>
+                                            <div class="module-actions">
+                                                <label class="switch">
+                                                    <input type="checkbox" ${m.enabled ? 'checked' : ''} ${processingId === m.id ? 'disabled' : ''} data-toggle="${m.id}">
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -415,9 +407,9 @@ class AppCenterMarketPage extends Component {
 
         if (marketLoading) {
             return `
-                <div class="sub-page fade-in">
+                <div class="view-content fade-in">
                     ${this.renderHeader('应用市场')}
-                    <div class="loading">加载中...</div>
+                    <div class="loading-full"><div class="loading-spinner"></div></div>
                 </div>
             `;
         }
@@ -426,16 +418,16 @@ class AppCenterMarketPage extends Component {
         const installedModules = marketModules.filter(m => m.installed);
 
         return `
-            <div class="sub-page fade-in">
+            <div class="view-content fade-in">
                 ${this.renderHeader('应用市场')}
                 
                 ${availableModules.length > 0 ? `
-                    <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">📦 可安装的应用</h3>
-                    <div class="card-grid" style="margin-bottom: 32px;">
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">📦 可安装的应用</h3>
+                    <div class="card-grid" style="margin-bottom: 40px;">
                         ${availableModules.map(app => {
             const iconSpec = this._getIconSpec(app);
             return `
-                            <div class="card">
+                            <div class="card module-card">
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
@@ -446,7 +438,7 @@ class AppCenterMarketPage extends Component {
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
                                         </div>
                                     </div>
-                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-secondary);">
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
                                         <span>版本: ${app.version || '1.0.0'}</span>
                                         ${app.author ? `<span style="margin-left: 12px;">作者: ${Utils.escapeHtml(app.author)}</span>` : ''}
                                     </div>
@@ -463,12 +455,12 @@ class AppCenterMarketPage extends Component {
                 ` : ''}
 
                 ${installedModules.length > 0 ? `
-                    <h3 style="margin-bottom: 16px; color: var(--color-text-secondary);">✅ 已安装的应用</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">✅ 已安装的应用</h3>
                     <div class="card-grid">
                         ${installedModules.map(app => {
             const iconSpec = this._getIconSpec(app);
             return `
-                            <div class="card">
+                            <div class="card module-card">
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
@@ -479,9 +471,9 @@ class AppCenterMarketPage extends Component {
                                             <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
                                         </div>
                                     </div>
-                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-secondary);">
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
                                         <span>版本: ${app.version || '1.0.0'}</span>
-                                        <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--color-text-secondary)'};">
+                                        <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)'};">
                                             ${app.enabled ? '● 已启用' : '○ 未启用'}
                                         </span>
                                     </div>
@@ -489,7 +481,7 @@ class AppCenterMarketPage extends Component {
                                         <button class="btn btn-ghost" data-uninstall="${app.id}" style="flex: 1;">
                                             🗑️ 卸载
                                         </button>
-                                        <button class="btn btn-primary" data-view-target="manage" style="flex: 1;">
+                                        <button class="btn btn-secondary" data-view-target="manage" style="flex: 1;">
                                             ⚙️ 管理
                                         </button>
                                     </div>
@@ -500,9 +492,10 @@ class AppCenterMarketPage extends Component {
                     </div>
                 ` : ''}
 
-                ${marketModules.length === 0 ? `
-                    <div class="info-banner">
-                        <p>📭 暂无可用应用。使用「开发套件」创建新应用后，重启后端即可在此看到。</p>
+                ${marketModules.length === 0 && !marketLoading ? `
+                    <div class="empty-state">
+                        <i class="ri-store-2-line"></i>
+                        <p>市场记录为空</p>
                     </div>
                 ` : ''}
             </div>
@@ -511,31 +504,27 @@ class AppCenterMarketPage extends Component {
 
     renderDev() {
         return `
-            <div class="sub-page fade-in">
+            <div class="view-content fade-in">
                 ${this.renderHeader('开发套件')}
                 
-                <!-- Action Buttons -->
-                <div class="wrapper" style="margin-bottom: 24px;">
+                <div style="margin-bottom: 32px;">
                      <div class="btn-group">
                          <button class="btn btn-primary" data-action="create-app">
-                             <span class="icon">➕</span> 创建应用
+                             <i class="ri-add-line"></i> 创建应用
                          </button>
                          <button class="btn btn-secondary" data-action="upload-app" title="上传 .jwapp 离线包安装">
-                             <span class="icon">📦</span> 离线安装
+                             <i class="ri-upload-cloud-2-line"></i> 离线安装
                          </button>
-                         <button class="btn btn-danger" data-action="delete-app">
-                             <span class="icon">🗑️</span> 删除应用
+                         <button class="btn btn-ghost" data-action="delete-app" style="color: var(--color-danger);">
+                             <i class="ri-delete-bin-line"></i> 删除应用
                          </button>
                      </div>
                      <input type="file" id="jwappPackageInput" accept=".jwapp,.zip" style="display:none;">
                 </div>
 
 
-                <!-- Documentation -->
                 <div class="dev-grid">
-                    
-                    <!-- Guide -->
-                    <div class="card">
+                    <div class="card module-card">
                         <div class="card-header"><h3 class="card-title">📖 模块开发指南</h3></div>
                         <div class="card-body">
                              <div class="markdown-body">
@@ -546,60 +535,30 @@ class AppCenterMarketPage extends Component {
                                  <h4>2. 后端开发</h4>
                                  <p>在 <code>backend/modules/{id}/</code> 中定义路由、模型和业务逻辑。</p>
                                  <p><strong>⚠️ 注意：所有文件必须带有包含模块ID的前缀！</strong></p>
-                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
-                                     <li><code>{id}_manifest.py</code>: 模块定义 (入口)</li>
-                                     <li><code>{id}_router.py</code>: API 路由入口</li>
-                                     <li><code>{id}_models.py</code>: 数据库模型</li>
-                                     <li><code>{id}_schemas.py</code>: Pydantic 数据验证</li>
-                                     <li><code>{id}_services.py</code>: 业务逻辑层</li>
-                                 </ul>
-
-                                 <h4>3. 前端开发</h4>
-                                 <p>在 <code>frontend/js/pages/{id}.js</code> 中编写页面组件。</p>
-                                 <p>组件需继承 <code>Component</code> 类，并实现 <code>render()</code> 方法。</p>
                                  
-                                 <h4>4. 注册与测试</h4>
-                                 <p>新模块创建后需重启后端服务以生效。</p>
-                                 <p>前端页面路由已自动注册。</p>
+                                 <h4>3. 前端开发</h4>
+                                 <p>在 <code>frontend/js/pages/{id}.js</code> 中编写页面组件。组件需继承 <code>Component</code> 类，并实现 <code>render()</code> 方法。</p>
                              </div>
                         </div>
                     </div>
 
-                    <!-- Standards -->
-                    <div class="card">
+                    <div class="card module-card">
                         <div class="card-header"><h3 class="card-title">📏 开发规范</h3></div>
                         <div class="card-body">
                              <div class="markdown-body">
                                  <h4>命名规范</h4>
-                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
+                                 <ul style="padding-left: 20px; color: var(--color-text-secondary); font-size: 13px;">
                                      <li><strong>文件名</strong>: 必须使用 <code>{module_id}_</code> 前缀 (e.g., <code>todo_router.py</code>)</li>
-                                     <li><strong>模块ID</strong>: 全小写英文，无空格 (e.g., <code>todo_list</code>)</li>
+                                     <li><strong>模块ID</strong>: 全小写英文，无空格</li>
                                      <li><strong>类名</strong>: PascalCase (e.g., <code>TodoListPage</code>)</li>
-                                     <li><strong>变量/函数</strong>: camelCase (JS), snake_case (Python)</li>
-                                 </ul>
-                                 
-                                 <h4>API 规范</h4>
-                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
-                                     <li>前缀: <code>/api/v1/{module_id}</code></li>
-                                     <li>响应: 统一使用 <code>core.schemas.success()</code> 封装</li>
-                                 </ul>
-
-                                 <h4>最佳实践</h4>
-                                 <ul style="padding-left: 20px; color: var(--color-text-secondary);">
-                                     <li>严禁跨模块 Import 代码，请使用事件总线解耦。</li>
-                                     <li>后端仅返回数据，严禁返回 HTML 片段。</li>
-                                     <li>所有 UI 文本应尽可能支持国际化。</li>
-                                     <li>组件销毁时请务必清理定时器和事件监听 (<code>destroy()</code>)。</li>
                                  </ul>
                                  
                                  <h4>📦 模块打包发布</h4>
-                                 <div style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px; border-radius: 8px; font-size: 13px;">
-                                    <p style="margin-bottom: 8px;">开发完成后，可以使用提供的工具生成 <strong>.jwapp</strong> 离线安装包：</p>
-                                    <code style="display: block; background: var(--color-bg-tertiary); padding: 8px; border-radius: 4px; user-select: text;">
+                                 <div style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 10px;">
+                                    <code style="display: block; background: var(--color-bg-tertiary); padding: 8px; border-radius: 4px; user-select: text; font-size: 11px;">
                                         cd backend<br>
-                                        python scripts/pack_module.py <模块ID>
+                                        python scripts/pack_module.py &lt;模块ID&gt;
                                     </code>
-                                    <p style="margin-top: 8px; color: var(--color-text-secondary);">生成的安装包位于项目根目录的 <code>dist/</code> 文件夹中，可在<a onclick="document.querySelector('.tab-btn[data-tab=market]').click()" style="cursor: pointer; color: var(--color-primary); text-decoration: underline;">应用市场</a>上传安装。</p>
                                  </div>
                              </div>
                         </div>
@@ -818,239 +777,79 @@ class AppCenterMarketPage extends Component {
         }
     }
 
-    render() {
+    // 渲染当前视图
+    renderCurrentView() {
+        const { view } = this.state;
+        switch (view) {
+            case 'home': return this.renderHome();
+            case 'manage': return this.renderManage();
+            case 'market': return this.renderMarket();
+            case 'dev': return this.renderDev();
+            default: return this.renderHome();
+        }
+    }
 
+    render() {
         const { loading, view } = this.state;
-        if (loading) return '<div class="loading"></div>';
+        if (loading) return '<div class="loading-full"><div class="loading-spinner"></div></div>';
 
         return `
-            <div class="page app-center-page">
-                ${view === 'home' ? this.renderHome() : ''}
-                ${view === 'manage' ? this.renderManage() : ''}
-                ${view === 'market' ? this.renderMarket() : ''}
-                ${view === 'dev' ? this.renderDev() : ''}
+            <div class="app-center-layout fade-in">
+                <!-- 左侧导航栏 -->
+                <aside class="app-center-sidebar">
+                    <div class="sidebar-header">
+                        <div class="sidebar-logo">
+                            <i class="ri-apps-2-line"></i>
+                            <span>应用中心</span>
+                        </div>
+                    </div>
+                    
+                    <nav class="sidebar-nav">
+                        <div class="nav-group">
+                            <div class="nav-item ${view === 'home' ? 'active' : ''}" data-view-target="home">
+                                <i class="ri-home-4-line"></i>
+                                <span>我的应用</span>
+                            </div>
+                            <div class="nav-item ${view === 'market' ? 'active' : ''}" data-view-target="market">
+                                <i class="ri-store-2-line"></i>
+                                <span>应用市场</span>
+                            </div>
+                        </div>
+
+                        ${this.isAdmin ? `
+                            <div class="nav-separator"></div>
+                            <div class="nav-group-title">系统管理</div>
+                            <div class="nav-group">
+                                <div class="nav-item ${view === 'manage' ? 'active' : ''}" data-view-target="manage">
+                                    <i class="ri-settings-5-line"></i>
+                                    <span>应用管理</span>
+                                </div>
+                                <div class="nav-item ${view === 'dev' ? 'active' : ''}" data-view-target="dev">
+                                    <i class="ri-code-s-slash-line"></i>
+                                    <span>开发套件</span>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </nav>
+
+                    <div class="sidebar-footer">
+                        <div class="user-brief">
+                            <div class="user-avatar">${(Store.get('user')?.nickname || 'U').charAt(0)}</div>
+                            <div class="user-info">
+                                <div class="user-name">${Store.get('user')?.nickname || '用户'}</div>
+                                <div class="user-role">${Store.get('user')?.role === 'admin' ? '管理员' : '普通用户'}</div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- 右侧主内容区 -->
+                <main class="app-center-main custom-scrollbar">
+                    <div class="main-content-container">
+                        ${this.renderCurrentView()}
+                    </div>
+                </main>
             </div>
-
-            <style>
-                .app-center-page { padding: 20px; min-height: 100%; }
-                .sub-page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-                .sub-page-title { font-size: 20px; font-weight: 600; }
-
-                /* Grid Layout */
-                .apps-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                    gap: 32px 24px;
-                    justify-content: center;
-                    padding: 20px 0;
-                }
-
-                .app-card-wrapper {
-                    position: relative;
-                    display: flex;
-                    justify-content: center;
-                }
-
-                .app-card {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    text-align: center;
-                    transition: all 0.2s;
-                    border-radius: 12px;
-                    padding: 12px;
-                    width: 100%;
-                    position: relative; /* 为固定按钮提供定位上下文 */
-                }
-
-                .app-card:hover {
-                    background: rgba(255,255,255,0.1);
-                    transform: translateY(-4px);
-                }
-
-                .app-icon-large {
-                    width: 72px;
-                    height: 72px;
-                    margin-bottom: 12px;
-                    background: linear-gradient(135deg, var(--color-info), var(--color-primary));
-                    border-radius: 18px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 36px;
-                    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-                    color: white;
-                }
-
-                .app-name {
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: var(--color-text-primary);
-                }
-
-                /* Pin Button */
-                .pin-btn {
-                    position: absolute;
-                    top: 8px;
-                    right: 8px;
-                    width: 32px;
-                    height: 32px;
-                    border: 2px solid rgba(255,255,255,0.3);
-                    background: rgba(0,0,0,0.4);
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-size: 14px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    opacity: 0.6;
-                    transition: all 0.25s ease;
-                    backdrop-filter: blur(4px);
-                    z-index: 10; /* 确保在应用卡片之上 */
-                    pointer-events: auto; /* 确保可以点击 */
-                }
-                .app-card:hover .pin-btn {
-                    opacity: 1;
-                    transform: scale(1.05);
-                }
-                .pin-btn:hover {
-                    background: var(--color-primary);
-                    border-color: var(--color-primary);
-                    transform: scale(1.15);
-                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-                }
-                .pin-btn.pinned {
-                    opacity: 1;
-                    background: linear-gradient(135deg, var(--color-info), var(--color-primary));
-                    border-color: transparent;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                }
-                .pin-btn.pinned:hover {
-                    background: rgba(255,100,100,0.8);
-                    border-color: transparent;
-                }
-                .pin-btn.system-pinned {
-                    cursor: default;
-                    background: rgba(100,100,100,0.6);
-                    border-color: rgba(150,150,150,0.3);
-                    font-size: 12px;
-                }
-                .pin-btn.system-pinned:hover {
-                    transform: none;
-                    background: rgba(100,100,100,0.6);
-                    box-shadow: none;
-                }
-
-                /* Popup Menu */
-                .app-popup {
-                    position: absolute;
-                    top: 100%;
-                    left: 50%;
-                    transform: translateX(-50%) translateY(10px) scale(0.95);
-                    background: var(--color-bg-secondary);
-                    border: 1px solid var(--color-border);
-                    border-radius: 12px;
-                    padding: 6px;
-                    min-width: 160px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-                    z-index: 100;
-                }
-
-                .app-popup.show {
-                    opacity: 1;
-                    visibility: visible;
-                    transform: translateX(-50%) translateY(0) scale(1);
-                }
-
-                .app-popup-arrow {
-                    position: absolute;
-                    top: -6px;
-                    left: 50%;
-                    transform: translateX(-50%) rotate(45deg);
-                    width: 12px;
-                    height: 12px;
-                    background: var(--color-bg-secondary);
-                    border-left: 1px solid var(--color-border);
-                    border-top: 1px solid var(--color-border);
-                }
-
-                .app-popup-content {
-                    position: relative;
-                    z-index: 1;
-                    background: var(--color-bg-secondary);
-                    border-radius: 8px;
-                }
-
-                .app-popup-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    padding: 10px 12px;
-                    color: var(--color-text-primary);
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    white-space: nowrap;
-                }
-
-                .app-popup-item:hover {
-                    background: var(--color-bg-tertiary);
-                }
-
-                .popup-icon { font-size: 16px; }
-                .popup-text { font-size: 13px; font-weight: 500; }
-
-                /* Other Styles */
-                .card-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                }
-                .module-card { border: 1px solid var(--color-border); }
-                .module-icon { width: 48px; height: 48px; background: var(--color-bg-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
-                .module-header { display: flex; gap: 16px; margin-bottom: 16px; }
-                .module-info { flex: 1; min-width: 0; }
-                .module-title { font-size: 16px; font-weight: 600; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px; }
-                .module-desc { font-size: 13px; color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-                .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-                .switch input { opacity: 0; width: 0; height: 0; }
-                .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-                .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; }
-                input:checked + .slider { background-color: var(--color-primary); }
-                input:focus + .slider { box-shadow: 0 0 1px var(--color-primary); }
-                input:checked + .slider:before { transform: translateX(20px); }
-                .slider.round { border-radius: 20px; }
-                .slider.round:before { border-radius: 50%; }
-                .module-card.disabled .module-icon { filter: grayscale(1); opacity: 0.6; }
-                
-                /* Dev Tools Styles */
-                .dev-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-                    gap: 20px;
-                }
-                .markdown-body h4 {
-                    margin-top: 16px;
-                    margin-bottom: 8px;
-                    color: var(--color-text-primary);
-                    font-size: 15px;
-                }
-                .markdown-body p, .markdown-body ul {
-                    margin-bottom: 12px;
-                    font-size: 14px;
-                    line-height: 1.6;
-                }
-                .markdown-body code {
-                    background: rgba(255,255,255,0.1);
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-family: monospace;
-                    color: var(--color-primary);
-                }
-            </style>
         `;
     }
 

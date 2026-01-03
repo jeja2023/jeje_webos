@@ -78,6 +78,45 @@ class StorageManager:
         # 确保基础目录存在
         for d in [self.public_dir, self.users_dir, self.modules_dir, self.system_dir]:
             d.mkdir(parents=True, exist_ok=True)
+        
+        # 初始化所有标准模块目录
+        self._init_standard_dirs()
+    
+    def _init_standard_dirs(self):
+        """
+        初始化所有标准模块存储目录
+        系统启动时自动创建，确保目录结构符合开发规范
+        """
+        # 定义标准模块目录结构
+        # 格式：{模块名: [子目录列表]}
+        standard_module_dirs = {
+            # AI 模块
+            "ai": ["ai_models"],
+            # OCR 模块  
+            "ocr": ["ocr_models"],
+            # 地图模块
+            "map": ["map_tiles", "map_gps"],
+            # 知识库模块
+            "knowledge": ["embedding_models", "vector_db"],
+            # 数据分析模块
+            "analysis": ["temp"],
+            # 智能报告模块
+            "report": ["temp", "archive"],
+            # 相册模块
+            "album": ["photos", "thumbnails"],
+            # 视频模块
+            "video": ["videos", "thumbnails"],
+        }
+        
+        for module_name, sub_dirs in standard_module_dirs.items():
+            module_dir = self.modules_dir / module_name
+            module_dir.mkdir(parents=True, exist_ok=True)
+            
+            for sub_dir in sub_dirs:
+                target_dir = module_dir / sub_dir
+                target_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.debug("标准存储目录初始化完成")
 
     def get_user_dir(self, user_id: int, sub_dir: str = "") -> Path:
         """

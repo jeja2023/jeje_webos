@@ -23,7 +23,7 @@ manifest = ModuleManifest(
         "title": "快传",
         "icon": "⚡",
         "path": "/transfer",
-        "order": 6,
+        "order": 9,
         "children": []
     },
     

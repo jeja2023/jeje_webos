@@ -301,6 +301,11 @@ if settings.csrf_enabled:
     from core.csrf import CSRFMiddleware
     app.add_middleware(CSRFMiddleware)
 
+# 7. 流式响应路径中间件（纯 ASGI 中间件，必须最后添加以最先执行）
+# 这个中间件会捕获流式响应路径（如 AI 聊天），避免 BaseHTTPMiddleware 的兼容性问题
+from core.middleware import StreamingPathMiddleware
+app.add_middleware(StreamingPathMiddleware)
+
 
 # ==================== 异常处理器 ====================
 register_exception_handlers(app)
@@ -314,6 +319,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     # 如果是 HTTPException，不在这里处理，让 FastAPI 默认处理器处理
     if isinstance(exc, StarletteHTTPException):
         raise exc
+    
+    # 处理 "No response returned" 运行时错误
+    # 这通常发生在流式响应（如 AI chat）时客户端断开连接
+    if isinstance(exc, RuntimeError) and str(exc) == "No response returned.":
+        path = request.url.path
+        if path.startswith("/api/v1/ai/chat"):
+            logger.debug(f"[客户端断开] {request.method} {path} (GlobalExceptionHandler)")
+        else:
+            logger.info(f"[客户端断开] {request.method} {path} (GlobalExceptionHandler)")
+        from fastapi import Response
+        return Response(status_code=499)
     
     logger.error(f"未处理异常: {exc}\n路径: {request.url.path}\n方法: {request.method}\n{traceback.format_exc()}")
     return JSONResponse(
@@ -330,6 +346,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ==================== 加载模块路由 ====================
 from core.loader import init_loader
 
+# 初始化加载器并加载所有模块
+# 这里的 load_all 会注册所有路由和模型
 _module_loader = init_loader(app)
 _module_results = _module_loader.load_all()
 
@@ -385,6 +403,8 @@ def _mount_static_resources(app: FastAPI):
         images_path = os.path.join(FRONTEND_PATH, "images")
         if os.path.exists(images_path):
             app.mount("/static/images", CachedStaticFiles(directory=images_path), name="images")
+            # 同时也挂载到 /images 以兼容前端请求
+            app.mount("/images", CachedStaticFiles(directory=images_path), name="root_images")
         
         # 挂载 fonts（带缓存控制）
         fonts_path = os.path.join(FRONTEND_PATH, "fonts")
@@ -409,7 +429,11 @@ def _mount_static_resources(app: FastAPI):
                     CachedStaticFiles(directory=module_static),
                     name=f"static_{module_name}"
                 )
-                logger.info(f"📁 挂载模块静态资源: /static/{module_name}/")
+    
+    # 挂载公共存储目录 (用于离线地图瓦片等)
+    storage_root = os.environ.get("STORAGE_PATH", os.path.join(os.path.dirname(__file__), "..", "storage"))
+    if os.path.exists(storage_root):
+        app.mount("/static/storage", CachedStaticFiles(directory=storage_root), name="static_storage")
 
 # 挂载静态资源（必须在 SPA 回退路由之前）
 _mount_static_resources(app)
@@ -430,6 +454,26 @@ async def favicon():
         
     return HTTPException(status_code=404)
 
+
+@app.get("/api/v1/map/tile-proxy", include_in_schema=False)
+async def map_tile_proxy(url: str):
+    """底图反向代理，解决前端网络拦截问题"""
+    import httpx
+    from fastapi import Response
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        try:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            resp = await client.get(url, timeout=10.0, headers=headers)
+            if resp.status_code != 200:
+                logger.error(f"⚠️ 地图瓦片抓取异常: HTTP {resp.status_code}, URL: {url}")
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                media_type="image/png"
+            )
+        except Exception as e:
+            logger.error(f"❌ 地图代理底层连接失败: {str(e)}, URL: {url}")
+            return Response(status_code=502, content=f"Proxy Error: {str(e)}")
 
 @app.get("/", include_in_schema=False)
 async def root():

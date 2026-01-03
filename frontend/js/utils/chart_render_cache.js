@@ -196,3 +196,9 @@ setInterval(() => {
     window.ChartRenderCache.cleanup();
 }, 10 * 60 * 1000);
 
+
+
+
+
+
+

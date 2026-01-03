@@ -48,9 +48,9 @@ manifest = ModuleManifest(
     # 菜单配置
     menu={
         "title": "数据分析",
-        "icon": "📈",
+        "icon": "📊",
         "path": "/analysis",
-        "order": 100,
+        "order": 10,
         "children": []
     },
 

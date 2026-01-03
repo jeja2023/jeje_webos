@@ -292,6 +292,97 @@ class Modal {
     }
 
     /**
+     * 静态方法：快速创建表单模态框
+     * @param {Object} options 
+     */
+    static form(options = {}) {
+        const { fields = [], onSubmit, ...modalOptions } = options;
+
+        const formId = Utils.uniqueId('modal-form-');
+        const content = `
+            <form id="${formId}">
+                ${fields.map(field => {
+            const id = Utils.uniqueId('field-');
+            const label = field.label || field.name;
+            const type = field.type || 'text';
+            const required = field.required ? 'required' : '';
+            const placeholder = field.placeholder || '';
+            const value = field.value || '';
+
+            if (type === 'checkbox') {
+                return `
+                            <div class="form-group">
+                                <label class="checkbox" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                    <input type="checkbox" name="${field.name}" ${value ? 'checked' : ''}>
+                                    <span>${label}</span>
+                                </label>
+                            </div>
+                        `;
+            }
+
+            if (type === 'textarea') {
+                return `
+                    <div class="form-group">
+                        <label class="form-label" for="${id}">${label}</label>
+                        <textarea class="form-input" id="${id}" name="${field.name}" 
+                                  placeholder="${placeholder}" ${required}>${value}</textarea>
+                    </div>
+                `;
+            }
+
+            if (type === 'select') {
+                const optionsHtml = (field.options || []).map(opt => `
+                    <option value="${opt.value}" ${opt.value == value ? 'selected' : ''}>${opt.text || opt.value}</option>
+                `).join('');
+                return `
+                    <div class="form-group">
+                        <label class="form-label" for="${id}">${label}</label>
+                        <select class="form-input" id="${id}" name="${field.name}" ${required}>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="form-group">
+                    <label class="form-label" for="${id}">${label}</label>
+                    <input type="${type}" class="form-input" id="${id}" name="${field.name}" 
+                           value="${value}" placeholder="${placeholder}" ${required}>
+                </div>
+            `;
+        }).join('')}
+            </form>
+        `;
+
+        return new Modal({
+            ...modalOptions,
+            content,
+            onConfirm: async () => {
+                const form = document.getElementById(formId);
+                if (!form.reportValidity()) return false;
+
+                const formData = new FormData(form);
+                const data = {};
+                fields.forEach(f => {
+                    if (f.type === 'checkbox') {
+                        data[f.name] = formData.has(f.name);
+                    } else if (f.type === 'number') {
+                        data[f.name] = Number(formData.get(f.name));
+                    } else {
+                        data[f.name] = formData.get(f.name);
+                    }
+                });
+
+                if (onSubmit) {
+                    await onSubmit(data);
+                }
+                return true;
+            }
+        }).show();
+    }
+
+    /**
      * 静态方法：关闭所有模态框
      */
     static closeAll() {

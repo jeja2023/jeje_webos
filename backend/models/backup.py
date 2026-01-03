@@ -31,17 +31,17 @@ class BackupRecord(Base):
     """备份记录表"""
     __tablename__ = "sys_backups"
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    backup_type: Mapped[str] = mapped_column(String(20))  # 备份类型
-    status: Mapped[str] = mapped_column(String(20), default=BackupStatus.PENDING.value)  # 备份状态
-    file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # 备份文件路径
-    file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 备份文件大小（字节）
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 备份描述
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 错误信息
-    created_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 创建者ID
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 开始时间
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 完成时间
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    backup_type: Mapped[str] = mapped_column(String(20), comment="备份类型")
+    status: Mapped[str] = mapped_column(String(20), default=BackupStatus.PENDING.value, comment="备份状态")
+    file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="备份文件路径")
+    file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="备份文件大小(字节)")
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="备份描述")
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="错误信息")
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="创建者ID")
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="开始时间")
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="完成时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
     
     # 索引
     __table_args__ = (
