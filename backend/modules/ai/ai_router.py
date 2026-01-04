@@ -1,5 +1,5 @@
 """
-AI 模块路由
+AI助手模块路由
 """
 
 import os
@@ -28,6 +28,8 @@ class ChatRequest(BaseModel):
     knowledge_base_id: Optional[int] = None
     use_analysis: bool = False
     provider: str = "local" # local | online
+    role_preset: str = "default"  # 角色预设: default/coder/writer/translator/analyst
+    model_name: Optional[str] = None  # 本地模型名称，为None时使用默认模型
     api_config: Optional[Dict[str, str]] = None # allows temporary front-end config
     session_id: Optional[int] = None # 会话ID，如果提供则保存消息到此会话
 
@@ -95,6 +97,8 @@ async def chat(
                     knowledge_base_id=request.knowledge_base_id,
                     use_analysis=request.use_analysis,
                     provider=request.provider,
+                    role_preset=request.role_preset,
+                    model_name=request.model_name,
                     api_config=request.api_config
                 )
     

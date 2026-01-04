@@ -47,7 +47,7 @@ class DockComponent extends Component {
 
     // 获取用户固定的应用列表
     getPinnedApps() {
-        // 智脑 AI、知识库、地图、桌面等核心模块默认固定
+        // AI助手、知识库、地图、桌面等核心模块默认固定
         const DEFAULT_APPS = ['knowledge', 'notes', 'ai', 'map'];
 
         // 1. 优先从用户 Store 设置中读取（已同步后端）

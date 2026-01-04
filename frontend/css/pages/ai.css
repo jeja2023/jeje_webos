@@ -1,4 +1,4 @@
-/* AI 智脑页面样式 */
+/* AI助手页面样式 */
 .ai-layout {
     display: flex;
     height: 100%;
@@ -84,6 +84,26 @@
 .session-item.active {
     background: var(--color-primary-light);
     color: var(--color-primary);
+}
+
+/* 会话信息区域 */
+.session-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.session-title {
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+
+.session-time {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    opacity: 0.7;
 }
 
 .session-delete-btn {
@@ -339,6 +359,21 @@
 
 .message-wrapper.ai .message-content-wrapper {
     align-items: flex-start;
+}
+
+/* 消息元信息（时间等） */
+.message-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    opacity: 0.6;
 }
 
 .message-content {
@@ -617,6 +652,16 @@
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.ai-footer-info .token-stats {
+    color: var(--color-primary);
+    font-weight: 500;
 }
 
 /* 点点点加载动画 */

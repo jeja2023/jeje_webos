@@ -1,9 +1,38 @@
 /**
- * 智脑 AI 页面组件
+ * AI助手页面组件
  * 实现混合模式（本地+在线）、知识库挂载与数据分析交互
+ * 支持多模型切换、角色预设、Token统计
  */
 
 class AIPage extends Component {
+    // 预设角色模板
+    static ROLE_PRESETS = [
+        { id: 'default', name: '通用助手', icon: '🧠', prompt: '你是一个全能智能助手。' },
+        { id: 'coder', name: '编程助手', icon: '💻', prompt: '你是一个专业的编程助手，擅长多种编程语言和框架。请提供清晰、高效、可维护的代码解决方案。' },
+        { id: 'writer', name: '写作助手', icon: '✍️', prompt: '你是一个专业的写作助手，擅长各种文体风格。请帮助我创作、修改和改进文字内容。' },
+        { id: 'translator', name: '翻译助手', icon: '🌍', prompt: '你是一个专业的翻译助手，精通中英双语翻译。请帮助我翻译文本，保持原文的语气和风格。' },
+        { id: 'analyst', name: '数据助手', icon: '📊', prompt: '你是一个数据分析专家，擅长SQL、Python和数据可视化。请帮助我分析数据并提供洞察。' }
+    ];
+
+    // 简单的加密方法（Base64 + 字符偏移）
+    static encryptKey(text) {
+        if (!text) return '';
+        // 字符偏移 + Base64
+        const shifted = text.split('').map(c => String.fromCharCode(c.charCodeAt(0) + 3)).join('');
+        return btoa(shifted);
+    }
+
+    // 解密方法
+    static decryptKey(encrypted) {
+        if (!encrypted) return '';
+        try {
+            const shifted = atob(encrypted);
+            return shifted.split('').map(c => String.fromCharCode(c.charCodeAt(0) - 3)).join('');
+        } catch (e) {
+            return encrypted; // 如果解密失败，返回原文（兼容旧数据）
+        }
+    }
+
     constructor(container) {
         super(container);
 
@@ -18,6 +47,12 @@ class AIPage extends Component {
             knowledgeBases: [],
             _eventsBound: false, // 标记事件是否已绑定，防止重复绑定
             _saving: false, // 防止重复保存
+            rolePreset: 'default', // 当前角色预设
+            selectedModel: null, // 选中的本地模型
+            availableModels: [], // 可用的本地模型列表
+            tokenStats: { prompt: 0, completion: 0, total: 0 }, // Token统计
+            generationSpeed: 0, // 生成速度 (tokens/s)
+            sessionSearchQuery: '', // 会话搜索关键词
             apiConfig: {
                 apiKey: '',
                 baseUrl: 'https://api.deepseek.com/v1',
@@ -26,6 +61,13 @@ class AIPage extends Component {
         };
 
         this._abortController = null;
+        this._generationStartTime = null;
+        this._tokenCount = 0;
+
+        // 输入历史记录
+        this._inputHistory = [];
+        this._historyIndex = -1;
+        this._maxHistorySize = 50;
     }
 
     // 从后端加载会话
@@ -172,24 +214,42 @@ class AIPage extends Component {
 
     async loadData() {
         try {
-            // 并行加载知识库和会话
-            const [kbRes] = await Promise.all([
+            // 并行加载知识库、会话和AI状态
+            const [kbRes, aiStatusRes] = await Promise.all([
                 Api.get('/knowledge/bases'),
+                Api.get('/ai/status'),
                 this.loadSessions() // 加载会话
             ]);
 
-            // 从 LocalStorage 加载 API 配置
+            // 从 LocalStorage 加载 API 配置（解密API密钥）
             const savedConfig = localStorage.getItem('jeje_ai_config');
             let apiConfig = this.state.apiConfig;
             if (savedConfig) {
                 try {
-                    apiConfig = { ...apiConfig, ...JSON.parse(savedConfig) };
+                    const parsed = JSON.parse(savedConfig);
+                    // 解密API密钥
+                    if (parsed.apiKey) {
+                        parsed.apiKey = AIPage.decryptKey(parsed.apiKey);
+                    }
+                    apiConfig = { ...apiConfig, ...parsed };
                 } catch (e) { console.error('Parsed config error', e); }
+            }
+
+            // 从 LocalStorage 加载选中的模型
+            const savedModel = localStorage.getItem('jeje_ai_selected_model');
+            let selectedModel = null;
+            const availableModels = aiStatusRes.data?.available_models || [];
+            if (savedModel && availableModels.includes(savedModel)) {
+                selectedModel = savedModel;
+            } else if (availableModels.length > 0) {
+                selectedModel = availableModels[0];
             }
 
             this.setState({
                 knowledgeBases: kbRes.data || [],
-                apiConfig: apiConfig
+                apiConfig: apiConfig,
+                availableModels: availableModels,
+                selectedModel: selectedModel
             });
         } catch (e) {
             console.error('加载数据失败', e);
@@ -197,7 +257,7 @@ class AIPage extends Component {
     }
 
     render() {
-        const { sessions, activeSessionId, isGenerating, inputMessage, knowledgeBases, selectedKb, useAnalysis, provider, apiConfig } = this.state;
+        const { sessions, activeSessionId, isGenerating, inputMessage, knowledgeBases, selectedKb, useAnalysis, provider, apiConfig, availableModels, selectedModel } = this.state;
         const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
 
         return `
@@ -206,23 +266,53 @@ class AIPage extends Component {
                 <div class="ai-sidebar">
                     <div class="sidebar-header">
                         <button class="btn btn-primary btn-block" id="btnNewChat">➕ 新建对话</button>
+                        <div class="session-search" style="margin-top: 8px;">
+                            <input type="text" class="form-input btn-sm" id="sessionSearch" 
+                                placeholder="🔍 搜索会话..." 
+                                value="${this.state.sessionSearchQuery}"
+                                style="width: 100%;">
+                        </div>
                     </div>
                     <div class="session-list">
-                        ${sessions.map(s => `
-                            <div class="session-item ${s.id === activeSessionId ? 'active' : ''}" data-id="${s.id}">
-                                <i class="ri-message-3-line"></i>
-                                <span class="text-truncate">${Utils.escapeHtml(s.title)}</span>
-                                <button class="session-delete-btn" data-delete-session="${s.id}" title="删除会话">
-                                    <i class="ri-close-line"></i>
-                                </button>
-                            </div>
-                        `).join('')}
+                        ${(() => {
+                // 过滤会话列表
+                const query = this.state.sessionSearchQuery.toLowerCase().trim();
+                const filteredSessions = query
+                    ? sessions.filter(s => s.title.toLowerCase().includes(query))
+                    : sessions;
+
+                if (filteredSessions.length === 0 && query) {
+                    return '<div class="session-empty" style="padding: 12px; text-align: center; opacity: 0.6;">未找到匹配的会话</div>';
+                }
+
+                return filteredSessions.map(s => `
+                                <div class="session-item ${s.id === activeSessionId ? 'active' : ''}" data-id="${s.id}">
+                                    <i class="ri-message-3-line"></i>
+                                    <div class="session-info">
+                                        <span class="session-title text-truncate">${Utils.escapeHtml(s.title)}</span>
+                                        <span class="session-time">${this.formatSessionTime(s.updated_at || s.created_at)}</span>
+                                    </div>
+                                    <button class="session-delete-btn" data-delete-session="${s.id}" title="删除会话">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                </div>
+                            `).join('');
+            })()}
                     </div>
                     <div class="sidebar-footer">
                         <div class="mode-switch">
                             <button class="mode-btn ${provider === 'local' ? 'active' : ''}" data-mode="local">🏠 本地</button>
                             <button class="mode-btn ${provider === 'online' ? 'active' : ''}" data-mode="online">☁️ 在线</button>
                         </div>
+                        ${provider === 'local' && availableModels.length > 0 ? `
+                            <div class="model-selector" style="margin-top: 8px;">
+                                <select class="form-input btn-sm" id="modelSelector" style="width: 100%;" title="选择本地模型">
+                                    ${availableModels.map(m => `
+                                        <option value="${m}" ${selectedModel === m ? 'selected' : ''}>${m.replace('.gguf', '').substring(0, 20)}${m.length > 25 ? '...' : ''}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
 
@@ -230,21 +320,32 @@ class AIPage extends Component {
                 <div class="ai-main">
                     <div class="ai-header">
                         <div class="ai-title">
-                            <h3>智脑 AI <small style="font-size: 10px; opacity: 0.5;">v2.1</small></h3>
+                            <h3>AI助手 <small style="font-size: 10px; opacity: 0.5;">v3.0</small></h3>
                             <span class="ai-badge">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
                             ${selectedKb ? '<span class="ai-badge secondary">📚 已挂载知识库</span>' : ''}
                         </div>
                         <div class="ai-options">
-                            <label class="checkbox-label" title="开启将调用数据分析能力">
-                                <input type="checkbox" id="checkAnalysis" ${useAnalysis ? 'checked' : ''}> 📊 数据助手
+                            <!-- 角色预设选择器 -->
+                            <select class="form-input btn-sm" id="roleSelector" style="width: 120px;" title="选择AI角色">
+                                ${AIPage.ROLE_PRESETS.map(r => `
+                                    <option value="${r.id}" ${this.state.rolePreset === r.id ? 'selected' : ''}>${r.icon} ${r.name}</option>
+                                `).join('')}
+                            </select>
+                            
+                            <label class="checkbox-label" title="开启将连接数据分析模块">
+                                <input type="checkbox" id="checkAnalysis" ${useAnalysis ? 'checked' : ''}> 📈 数据模式
                             </label>
                             
-                            <select class="form-input btn-sm" id="kbSelector" style="width: 140px;">
+                            <select class="form-input btn-sm" id="kbSelector" style="width: 130px;">
                                 <option value="">无知识库</option>
                                 ${knowledgeBases.map(kb => `
                                     <option value="${kb.id}" ${selectedKb == kb.id ? 'selected' : ''}>📚 ${kb.name}</option>
                                 `).join('')}
                             </select>
+
+                            <button class="btn-icon-only" id="btnExport" title="导出对话">
+                                <i class="ri-download-line"></i>
+                            </button>
 
                             <button class="btn-icon-only" id="btnConfig" title="API 设置">
                                 <i class="ri-settings-3-line"></i>
@@ -256,7 +357,7 @@ class AIPage extends Component {
                         ${activeSession.messages.length === 0 ? `
                             <div class="ai-welcome">
                                 <div class="welcome-icon">🧠</div>
-                                <h2>你好，我是智脑 AI</h2>
+                                <h2>你好，我是AI助手</h2>
                                 <p>当前处于 <b>${provider === 'local' ? '本地离线模式' : '在线 API 模式'}</b></p>
                                 <p>我可以帮你总结文档、分析数据或进行通用对话。请选择一个模式开始吧！</p>
                                 <div class="welcome-hints">
@@ -273,6 +374,9 @@ class AIPage extends Component {
                                         <div class="message-content-wrapper">
                                             <div class="message-content markdown-body ${msg.isError ? 'error-message' : ''}">
                                                 ${this.renderMarkdown(msg.content)}
+                                            </div>
+                                            <div class="message-meta">
+                                                <span class="message-time">${this.formatMessageTime(msg.timestamp)}</span>
                                             </div>
                                             <div class="message-actions">
                                                 <button class="msg-action-btn" data-action="copy" data-message-idx="${idx}" title="复制">
@@ -313,11 +417,104 @@ class AIPage extends Component {
                                 ${isGenerating ? '<i class="ri-stop-fill"></i>' : '<i class="ri-send-plane-2-fill"></i>'}
                             </button>
                         </div>
-                        <div class="ai-footer-info">引擎：${provider === 'local' ? '本地 (llama-cpp)' : `在线 (${apiConfig.model})`}</div>
+                        <div class="ai-footer-info">
+                            <span>引擎：${provider === 'local' ? '本地 (llama-cpp)' : `在线 (${apiConfig.model})`}</span>
+                            ${this.state.tokenStats.total > 0 ? `
+                                <span class="token-stats">
+                                    | Tokens: ${this.state.tokenStats.total}
+                                    ${this.state.generationSpeed > 0 ? ` | ${this.state.generationSpeed.toFixed(1)} tokens/s` : ''}
+                                </span>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * 格式化消息时间戳（显示完整日期时分秒）
+     * @param {number|string} timestamp - 时间戳或时间字符串
+     * @returns {string} 格式化后的时间
+     */
+    formatMessageTime(timestamp) {
+        if (!timestamp) return '';
+
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) return '';
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        const timeStr = `${hours}:${minutes}:${seconds}`;
+
+        // 判断是否是今天
+        if (msgDate.getTime() === today.getTime()) {
+            return `今天 ${timeStr}`;
+        }
+
+        // 判断是否是昨天
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (msgDate.getTime() === yesterday.getTime()) {
+            return `昨天 ${timeStr}`;
+        }
+
+        // 判断是否是今年
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        if (date.getFullYear() === now.getFullYear()) {
+            return `${month}-${day} ${timeStr}`;
+        }
+
+        // 其他情况显示完整日期
+        return `${date.getFullYear()}-${month}-${day} ${timeStr}`;
+    }
+
+    /**
+     * 格式化会话时间（用于左侧会话列表）
+     * @param {number|string} timestamp - 时间戳或时间字符串
+     * @returns {string} 格式化后的时间
+     */
+    formatSessionTime(timestamp) {
+        if (!timestamp) return '';
+
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) return '';
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const sessionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`;
+
+        // 判断是否是今天
+        if (sessionDate.getTime() === today.getTime()) {
+            return timeStr;
+        }
+
+        // 判断是否是昨天
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (sessionDate.getTime() === yesterday.getTime()) {
+            return '昨天';
+        }
+
+        // 判断是否是今年
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        if (date.getFullYear() === now.getFullYear()) {
+            return `${month}-${day}`;
+        }
+
+        // 其他情况显示完整日期
+        return `${date.getFullYear()}-${month}-${day}`;
     }
 
     renderMarkdown(text) {
@@ -441,10 +638,18 @@ class AIPage extends Component {
                     return false; // 阻止关闭
                 }
 
+                // 保存时加密API密钥
+                const configToSave = {
+                    apiKey: AIPage.encryptKey(apiKey),
+                    baseUrl,
+                    model
+                };
+                localStorage.setItem('jeje_ai_config', JSON.stringify(configToSave));
+
+                // 状态中保存解密后的密钥（用于实际请求）
                 const newConfig = { apiKey, baseUrl, model };
-                localStorage.setItem('jeje_ai_config', JSON.stringify(newConfig));
                 this.setState({ apiConfig: newConfig, provider: 'online' });
-                Toast.success('API 配置已保存');
+                Toast.success('API 配置已保存（密钥已加密存储）');
                 return true; // 允许关闭
             }
         });
@@ -538,6 +743,11 @@ class AIPage extends Component {
             this.handleSendMessage();
         });
 
+        // 会话搜索
+        this.delegate('input', '#sessionSearch', (e) => {
+            this.setState({ sessionSearchQuery: e.target.value });
+        });
+
         // 模式切换
         this.delegate('click', '.mode-btn', (e, el) => {
             this.setState({ provider: el.dataset.mode });
@@ -549,6 +759,29 @@ class AIPage extends Component {
 
         this.delegate('change', '#checkAnalysis', (e) => {
             this.setState({ useAnalysis: e.target.checked });
+        });
+
+        // 角色预设切换
+        this.delegate('change', '#roleSelector', (e) => {
+            const roleId = e.target.value;
+            this.setState({ rolePreset: roleId });
+            const preset = AIPage.ROLE_PRESETS.find(r => r.id === roleId);
+            if (preset) {
+                Toast.success(`已切换为${preset.icon} ${preset.name}模式`);
+            }
+        });
+
+        // 本地模型切换
+        this.delegate('change', '#modelSelector', (e) => {
+            const modelName = e.target.value;
+            this.setState({ selectedModel: modelName });
+            localStorage.setItem('jeje_ai_selected_model', modelName);
+            Toast.success(`已切换模型: ${modelName.replace('.gguf', '').substring(0, 15)}...`);
+        });
+
+        // 导出对话
+        this.delegate('click', '#btnExport', () => {
+            this.exportConversation();
         });
 
         // 消息操作
@@ -677,9 +910,19 @@ class AIPage extends Component {
         }
 
         const session = sessions.find(s => s.id === activeSessionId);
-        const userMsg = { role: 'user', content: currentInput };
+        const userMsg = { role: 'user', content: currentInput, timestamp: Date.now() };
+
+        // 保存到输入历史
+        if (this._inputHistory[this._inputHistory.length - 1] !== currentInput) {
+            this._inputHistory.push(currentInput);
+            if (this._inputHistory.length > this._maxHistorySize) {
+                this._inputHistory.shift(); // 超过最大长度时移除最早的
+            }
+        }
+        this._historyIndex = -1; // 重置历史索引
 
         session.messages.push(userMsg);
+        session.updated_at = Date.now(); // 更新会话时间
         if (session.messages.length === 1) {
             session.title = Utils.truncate(currentInput, 15);
         }
@@ -720,9 +963,16 @@ class AIPage extends Component {
 
         // 准备发送，此时清空输入框
         if (inputEl) inputEl.value = '';
+
+        // 初始化Token统计
+        this._generationStartTime = Date.now();
+        this._tokenCount = 0;
+
         this.setState({
             inputMessage: '',
-            isGenerating: true
+            isGenerating: true,
+            tokenStats: { prompt: 0, completion: 0, total: 0 },
+            generationSpeed: 0
         });
 
         this.scrollToBottom();
@@ -748,6 +998,10 @@ class AIPage extends Component {
                     knowledge_base_id: selectedKb ? parseInt(selectedKb) : null,
                     use_analysis: useAnalysis,
                     provider: provider,
+                    // 传递角色预设
+                    role_preset: this.state.rolePreset,
+                    // 传递本地模型名称
+                    model_name: provider === 'local' ? this.state.selectedModel : null,
                     // 传递临时 API 配置
                     api_config: provider === 'online' ? apiConfig : null,
                     // 传递会话ID，用于保存消息到数据库
@@ -759,7 +1013,7 @@ class AIPage extends Component {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let aiMsg = { role: 'assistant', content: '' };
+            let aiMsg = { role: 'assistant', content: '', timestamp: Date.now() };
             session.messages.push(aiMsg);
 
             // 使用节流优化更新频率
@@ -819,7 +1073,18 @@ class AIPage extends Component {
                             }
                             if (data.content) {
                                 aiMsg.content += data.content;
+                                // Token统计：简单估算，每4个字符约等于1个token
+                                this._tokenCount += Math.ceil(data.content.length / 4);
                                 throttledUpdate(); // 使用节流更新
+                            }
+                            // 更新生成速度
+                            if (this._generationStartTime && this._tokenCount > 0) {
+                                const elapsed = (Date.now() - this._generationStartTime) / 1000;
+                                if (elapsed > 0.5) { // 至少0.5秒后才计算
+                                    this.state.generationSpeed = this._tokenCount / elapsed;
+                                    this.state.tokenStats.completion = this._tokenCount;
+                                    this.state.tokenStats.total = this._tokenCount;
+                                }
                             }
                         } catch (e) {
                             if (dataStr !== '[DONE]') console.error('Parse SSE error', e);
@@ -893,13 +1158,16 @@ class AIPage extends Component {
 
     async createNewSession() {
         const newId = `temp_${Date.now()}`;
+        const now = Date.now();
         const newSession = {
             id: newId,
             title: '新对话',
             messages: [],
             provider: this.state.provider,
             knowledge_base_id: this.state.selectedKb ? parseInt(this.state.selectedKb) : null,
-            use_analysis: this.state.useAnalysis
+            use_analysis: this.state.useAnalysis,
+            created_at: now,
+            updated_at: now
         };
         this.setState({
             sessions: [newSession, ...this.state.sessions],
@@ -924,8 +1192,40 @@ class AIPage extends Component {
 
     afterUpdate() {
         this.bindDomEvents(); // 仅重新绑定非委托事件
+        this.bindInputHistoryEvents(); // 绑定输入历史事件
         this.adjustMessageButtonPosition(); // 调整按钮位置
         this.scrollToBottom();
+    }
+
+    /**
+     * 绑定输入框历史记录事件
+     */
+    bindInputHistoryEvents() {
+        const inputEl = this.$('#aiInput');
+        if (!inputEl || inputEl._historyBound) return;
+        inputEl._historyBound = true;
+
+        inputEl.addEventListener('keydown', (e) => {
+            // 上箭头：切换到上一条历史
+            if (e.key === 'ArrowUp' && !e.shiftKey && inputEl.value === '') {
+                e.preventDefault();
+                if (this._inputHistory.length > 0 && this._historyIndex < this._inputHistory.length - 1) {
+                    this._historyIndex++;
+                    inputEl.value = this._inputHistory[this._inputHistory.length - 1 - this._historyIndex];
+                }
+            }
+            // 下箭头：切换到下一条历史
+            else if (e.key === 'ArrowDown' && !e.shiftKey) {
+                e.preventDefault();
+                if (this._historyIndex > 0) {
+                    this._historyIndex--;
+                    inputEl.value = this._inputHistory[this._inputHistory.length - 1 - this._historyIndex];
+                } else if (this._historyIndex === 0) {
+                    this._historyIndex = -1;
+                    inputEl.value = '';
+                }
+            }
+        });
     }
 
     /**
@@ -949,5 +1249,59 @@ class AIPage extends Component {
                 wrapper.classList.remove('message-long');
             }
         });
+    }
+
+    /**
+     * 导出当前对话为Markdown文件
+     */
+    exportConversation() {
+        const session = this.state.sessions.find(s => s.id === this.state.activeSessionId);
+        if (!session || session.messages.length === 0) {
+            Toast.warning('当前对话为空，无法导出');
+            return;
+        }
+
+        // 生成Markdown内容
+        const now = new Date();
+        const dateStr = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).replace(/\//g, '-');
+
+        let markdown = `# ${session.title}\n\n`;
+        markdown += `> 导出时间: ${dateStr}\n`;
+        markdown += `> 模式: ${this.state.provider === 'local' ? '本地模型' : '在线API'}\n`;
+        if (this.state.provider === 'local' && this.state.selectedModel) {
+            markdown += `> 模型: ${this.state.selectedModel}\n`;
+        }
+        markdown += `\n---\n\n`;
+
+        session.messages.forEach((msg, idx) => {
+            if (msg.role === 'user') {
+                markdown += `## 👤 用户\n\n${msg.content}\n\n`;
+            } else if (msg.role === 'assistant') {
+                markdown += `## 🧠 AI助手\n\n${msg.content}\n\n`;
+            } else if (msg.role === 'system' && msg.isError) {
+                markdown += `## ⚠️ 系统提示\n\n${msg.content}\n\n`;
+            }
+        });
+
+        markdown += `---\n\n*由 JeJe WebOS AI助手导出*\n`;
+
+        // 创建下载
+        const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `对话_${session.title.substring(0, 20)}_${dateStr.replace(/[:\s]/g, '_')}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        Toast.success('对话已导出为 Markdown 文件');
     }
 }

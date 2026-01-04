@@ -1,5 +1,5 @@
 """
-AI 智能中心模块清单
+AI助手模块清单
 """
 
 from core.loader import ModuleManifest
@@ -10,7 +10,7 @@ from . import ai_models  # noqa: F401
 
 manifest = ModuleManifest(
     id="ai",
-    name="智脑 AI",
+    name="AI助手",
     version="1.0.0",
     description="本地大模型驱动的智能助手，集成知识库与数据分析能力",
     icon="🧠",
@@ -20,13 +20,13 @@ manifest = ModuleManifest(
     router=router,
     
     menu={
-        "title": "智脑 AI",
+        "title": "AI助手",
         "icon": "🧠",
         "path": "/ai",
         "order": 0,
         "children": [
             {"title": "聊天对话", "path": "/ai/chat", "icon": "💬"},
-            {"title": "智脑设置", "path": "/ai/settings", "icon": "⚙️"}
+            {"title": "AI设置", "path": "/ai/settings", "icon": "⚙️"}
         ]
     },
     

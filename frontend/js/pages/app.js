@@ -244,7 +244,7 @@ const App = {
 
             '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
             '/analysis': { auth: true, handler: wrap(AnalysisPage, '数据分析') },
-            '/ai': { auth: true, handler: wrap(AIPage, '智脑 AI') },
+            '/ai': { auth: true, handler: wrap(AIPage, 'AI助手') },
             '/ai/chat': { auth: true, handler: wrap(AIPage, '聊天对话') },
             '/map': { auth: true, handler: wrap(MapPage, '智能地图') },
 
