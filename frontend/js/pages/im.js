@@ -33,10 +33,10 @@ class IMPage extends Component {
         this.setupWebSocketListeners();
 
         // 绑定refs
-        this.$nextTick(() => {
+        setTimeout(() => {
             this.messageInput = this.container.querySelector('.im-input');
             this.messagesContainer = this.container.querySelector('.im-messages');
-        });
+        }, 0);
     }
 
     setupWebSocketListeners() {
@@ -118,9 +118,9 @@ class IMPage extends Component {
                 });
 
                 // 滚动到底部
-                this.$nextTick(() => {
+                setTimeout(() => {
                     this.scrollToBottom();
-                });
+                }, 0);
             }
         } catch (error) {
             Config.error('加载消息失败', error);
@@ -173,9 +173,9 @@ class IMPage extends Component {
                 messages: [...this.state.messages, message]
             });
 
-            this.$nextTick(() => {
+            setTimeout(() => {
                 this.scrollToBottom();
-            });
+            }, 0);
         }
 
         // 更新会话列表
@@ -227,6 +227,23 @@ class IMPage extends Component {
             hour: '2-digit',
             minute: '2-digit'
         });
+    }
+
+    /**
+     * HTML转义，防止XSS攻击
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        // 使用Utils.escapeHtml如果存在，否则使用简单实现
+        if (typeof Utils !== 'undefined' && Utils.escapeHtml) {
+            return Utils.escapeHtml(text);
+        }
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     render() {
