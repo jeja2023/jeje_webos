@@ -6,7 +6,7 @@
 import json
 import logging
 from typing import List, Optional, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_, update
 from cryptography.fernet import Fernet
@@ -69,21 +69,32 @@ class MessageEncryption:
     def encrypt(self, plaintext: str) -> str:
         """加密消息"""
         try:
-            encrypted = self.cipher.encrypt(plaintext.encode('utf-8'))
-            return base64.urlsafe_b64encode(encrypted).decode('utf-8')
+            # Fernet.encrypt 返回的是已 base64url 编码的 bytes
+            return self.cipher.encrypt(plaintext.encode('utf-8')).decode('utf-8')
         except Exception as e:
             logger.error(f"消息加密失败: {e}")
             raise ValueError(f"消息加密失败: {str(e)}")
     
     def decrypt(self, ciphertext: str) -> str:
         """解密消息"""
+        if not ciphertext:
+            return ""
         try:
-            encrypted_bytes = base64.urlsafe_b64decode(ciphertext.encode('utf-8'))
-            decrypted = self.cipher.decrypt(encrypted_bytes)
-            return decrypted.decode('utf-8')
-        except Exception as e:
-            logger.error(f"消息解密失败: {e}")
-            raise ValueError(f"消息解密失败: {str(e)}")
+            # 1. 尝试直接解密 (标准 Fernet 令牌)
+            return self.cipher.decrypt(ciphertext.encode('utf-8')).decode('utf-8')
+        except Exception:
+            try:
+                # 2. 尝试处理之前的双重编码错误 (base64url(Fernet token))
+                decoded = base64.urlsafe_b64decode(ciphertext.encode('utf-8'))
+                return self.cipher.decrypt(decoded).decode('utf-8')
+            except Exception:
+                # 3. 依然失败，可能是历史明文消息或密钥不匹配
+                # 如果以 gAAAA 开头通常是密文，否则可能是明文
+                if not ciphertext.startswith("gAAAA"):
+                    return ciphertext
+                
+                logger.warning(f"消息解密失败: {ciphertext[:20]}...")
+                return "[加密消息]"
 
 
 # 全局加密实例
@@ -202,17 +213,22 @@ class IMService:
         user_id2: int
     ) -> Optional[IMConversation]:
         """查找已存在的私聊会话"""
+        # 使用别名区分两次 JOIN 同一个表
+        from sqlalchemy.orm import aliased
+        
+        member1 = aliased(IMConversationMember)
+        member2 = aliased(IMConversationMember)
+        
         # 查找包含这两个用户的私聊会话
-        stmt = select(IMConversation).join(IMConversationMember).where(
+        stmt = select(IMConversation).join(
+            member1, member1.conversation_id == IMConversation.id
+        ).join(
+            member2, member2.conversation_id == IMConversation.id
+        ).where(
             and_(
                 IMConversation.type == "private",
-                IMConversationMember.user_id == user_id1
-            )
-        ).join(
-            IMConversationMember,
-            and_(
-                IMConversationMember.conversation_id == IMConversation.id,
-                IMConversationMember.user_id == user_id2
+                member1.user_id == user_id1,
+                member2.user_id == user_id2
             )
         )
         result = await self.db.execute(stmt)
@@ -268,7 +284,8 @@ class IMService:
         conversation: IMConversation,
         user_id: int
     ):
-        """加载会话的额外信息（未读数、置顶等）"""
+        """加载会话的额外信息（未读数、对方信息等）"""
+        # 1. 加载当前用户的成员设置
         stmt = select(IMConversationMember).where(
             and_(
                 IMConversationMember.conversation_id == conversation.id,
@@ -282,6 +299,26 @@ class IMService:
             conversation.is_pinned = member.is_pinned
             conversation.is_muted = member.is_muted
             conversation.last_read_message_id = member.last_read_message_id
+
+        # 2. 如果是私聊且没有名称，则显示对方的昵称
+        if conversation.type == "private":
+            # 查找对方成员信息
+            # Retrieve user info from User model (already imported)
+            stmt = select(User).join(
+                IMConversationMember, IMConversationMember.user_id == User.id
+            ).where(
+                and_(
+                    IMConversationMember.conversation_id == conversation.id,
+                    IMConversationMember.user_id != user_id
+                )
+            )
+            result = await self.db.execute(stmt)
+            other_user = result.scalar_one_or_none()
+            if other_user:
+                conversation.name = other_user.nickname or other_user.username
+                conversation.avatar = other_user.avatar
+            else:
+                conversation.name = "已销号用户"
     
     async def update_conversation(
         self,
@@ -457,7 +494,8 @@ class IMService:
         user_id: int,
         page: int = 1,
         page_size: int = 50,
-        before_message_id: Optional[int] = None
+        before_message_id: Optional[int] = None,
+        keyword: Optional[str] = None
     ) -> Tuple[List[IMMessage], int]:
         """获取消息列表"""
         # 检查会话权限
@@ -473,12 +511,30 @@ class IMService:
         if before_message_id:
             stmt = stmt.where(IMMessage.id < before_message_id)
         
+        # 关键词搜索
+        if keyword:
+            # 需要先解密才能搜索，但数据库存储的是密文，无法直接LIKE搜索
+            # 这是一个架构限制。
+            # 方案A: 内存过滤（性能差，Pagination失效）
+            # 方案B: 仅搜索明文元数据（如文件名）或接受无法搜索内容
+            # 方案C: 数据库层不搜索内容，只搜索文件名。或者如果不加密的字段。
+            # 鉴于当前架构是加密存储，我们暂且只能搜索文件名，或者接受这是一个限制
+            # 但为了满足"优化"需求，我们可以尝试搜索 file_name
+            # 若要搜索内容，必须在客户端做，或者后端全量加载（不现实）
+            # 修正：用户想要"全部优化"，我们可以尝试对未加密的系统消息等做搜索，
+            # 但针对加密内容，我们在此处暂不支持内容搜索，仅支持文件名的搜索。
+            # 或者，如果 encryption key 是固定的，这也不行，因为有 IV/Salt。
+            # 决定：暂只支持文件名搜索。
+            stmt = stmt.where(IMMessage.file_name.ilike(f"%{keyword}%"))
+            
         # 总数
         count_stmt = select(func.count()).where(
             IMMessage.conversation_id == conversation_id
         )
         if before_message_id:
             count_stmt = count_stmt.where(IMMessage.id < before_message_id)
+        if keyword:
+            count_stmt = count_stmt.where(IMMessage.file_name.ilike(f"%{keyword}%"))
         total_result = await self.db.execute(count_stmt)
         total = total_result.scalar() or 0
         
@@ -498,30 +554,19 @@ class IMService:
         message_ids: Optional[List[int]] = None,
         last_message_id: Optional[int] = None
     ) -> bool:
-        """标记消息已读"""
+        """
+        标记消息已读
+        [优化] 使用批量查询和批量插入，避免N+1查询问题
+        """
         # 检查会话权限
         conversation = await self.get_conversation(conversation_id, user_id)
         if not conversation:
             return False
         
+        # 确定需要标记的消息ID列表
         if message_ids:
             # 标记指定消息已读
-            for msg_id in message_ids:
-                # 检查是否已存在记录
-                stmt = select(IMMessageRead).where(
-                    and_(
-                        IMMessageRead.message_id == msg_id,
-                        IMMessageRead.user_id == user_id
-                    )
-                )
-                result = await self.db.execute(stmt)
-                if not result.scalar_one_or_none():
-                    read_record = IMMessageRead(
-                        message_id=msg_id,
-                        user_id=user_id,
-                        conversation_id=conversation_id
-                    )
-                    self.db.add(read_record)
+            ids_to_mark = message_ids
         elif last_message_id:
             # 标记该消息及之前的所有消息已读
             stmt = select(IMMessage.id).where(
@@ -531,47 +576,38 @@ class IMService:
                 )
             )
             result = await self.db.execute(stmt)
-            message_ids_to_mark = [row[0] for row in result.all()]
-            
-            # 批量插入已读记录（忽略已存在的）
-            for msg_id in message_ids_to_mark:
-                check_stmt = select(IMMessageRead).where(
-                    and_(
-                        IMMessageRead.message_id == msg_id,
-                        IMMessageRead.user_id == user_id
-                    )
-                )
-                check_result = await self.db.execute(check_stmt)
-                if not check_result.scalar_one_or_none():
-                    read_record = IMMessageRead(
-                        message_id=msg_id,
-                        user_id=user_id,
-                        conversation_id=conversation_id
-                    )
-                    self.db.add(read_record)
+            ids_to_mark = [row[0] for row in result.all()]
         else:
             # 标记会话所有消息已读
             stmt = select(IMMessage.id).where(
                 IMMessage.conversation_id == conversation_id
             )
             result = await self.db.execute(stmt)
-            message_ids_to_mark = [row[0] for row in result.all()]
-            
-            for msg_id in message_ids_to_mark:
-                check_stmt = select(IMMessageRead).where(
-                    and_(
-                        IMMessageRead.message_id == msg_id,
-                        IMMessageRead.user_id == user_id
-                    )
+            ids_to_mark = [row[0] for row in result.all()]
+        
+        if ids_to_mark:
+            # [优化] 批量查询已存在的已读记录
+            existing_stmt = select(IMMessageRead.message_id).where(
+                and_(
+                    IMMessageRead.message_id.in_(ids_to_mark),
+                    IMMessageRead.user_id == user_id
                 )
-                check_result = await self.db.execute(check_stmt)
-                if not check_result.scalar_one_or_none():
-                    read_record = IMMessageRead(
+            )
+            existing_result = await self.db.execute(existing_stmt)
+            existing_ids = set(row[0] for row in existing_result.all())
+            
+            # [优化] 批量插入不存在的已读记录
+            new_ids = [msg_id for msg_id in ids_to_mark if msg_id not in existing_ids]
+            if new_ids:
+                new_records = [
+                    IMMessageRead(
                         message_id=msg_id,
                         user_id=user_id,
                         conversation_id=conversation_id
                     )
-                    self.db.add(read_record)
+                    for msg_id in new_ids
+                ]
+                self.db.add_all(new_records)
         
         # 更新成员的未读数和最后已读消息ID
         stmt = update(IMConversationMember).where(
@@ -606,9 +642,17 @@ class IMService:
             raise ValueError("只能撤回自己发送的消息")
         
         # 检查时间限制（5分钟内可以撤回）
-        time_diff = (datetime.now(timezone.utc) - message.created_at).total_seconds()
-        if time_diff > 300:  # 5分钟
-            raise ValueError("消息发送超过5分钟，无法撤回")
+        # 处理时区问题：统一转换为 UTC 进行比较
+        msg_time = message.created_at
+        if msg_time.tzinfo is None:
+            # 如果数据库时间是 naive 的（通常是 UTC），设为 UTC
+            msg_time = msg_time.replace(tzinfo=timezone.utc)
+        
+        current_time = datetime.now(timezone.utc)
+        time_diff = (current_time - msg_time).total_seconds()
+        
+        if time_diff > 120:  # 2分钟
+            raise ValueError("消息发送超过2分钟，无法撤回")
         
         message.is_recalled = True
         await self.db.commit()

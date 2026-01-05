@@ -11,7 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from core.ws_manager import manager
 from core.security import decode_token, TokenData
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1", tags=["WebSocket"])
 logger = logging.getLogger(__name__)
 
 
@@ -81,6 +81,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     message = json.loads(data)
                     message_type = message.get("type", "unknown")
                     
+                    if not isinstance(message_type, str):
+                        logger.warning(f"无效的消息类型格式: {message_type}")
+                        continue
+
                     # 处理心跳
                     if message_type == "ping":
                         await websocket.send_text(json.dumps({
@@ -97,8 +101,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         try:
                             from modules.im.im_websocket import handle_im_message
                             await handle_im_message(websocket, user_id, message_type, message.get("data", {}))
-                        except ImportError:
-                            logger.warning("即时通讯模块未加载")
+                        except ImportError as e:
+                            logger.warning(f"即时通讯模块未加载: {e}")
                         except Exception as e:
                             logger.error(f"处理IM消息失败: {e}", exc_info=True)
                     

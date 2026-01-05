@@ -85,6 +85,46 @@ async def update_profile(
     }, "资料更新成功")
 
 
+@router.get("/search")
+async def search_users(
+    query: str = Query(..., min_length=1, description="搜索关键词"),
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    公共用户搜索接口
+    允许登录用户通过用户名或昵称搜索其他激活用户
+    返回精简的公开信息
+    """
+    stmt = select(User).where(
+        and_(
+            User.is_active == True,
+            or_(
+                User.username.like(f"%{query}%"),
+                User.nickname.like(f"%{query}%"),
+                User.phone.like(f"%{query}%")
+            )
+        )
+    ).limit(20)
+    
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+    
+    # 限制返回的数据，保护隐私
+    items = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "nickname": u.nickname,
+            "avatar": u.avatar
+        }
+        for u in users
+    ]
+    
+    from schemas.response import success as _success
+    return _success(items)
+
+
 @router.get("")
 async def list_users(
     page: int = Query(1, ge=1),

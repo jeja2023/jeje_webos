@@ -49,6 +49,7 @@ class ConversationResponse(BaseModel):
     is_pinned: bool = False
     is_muted: bool = False
     last_read_message_id: Optional[int] = None
+    target_user_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     members: Optional[List[ConversationMemberInfo]] = None
@@ -67,6 +68,7 @@ class ConversationListItem(BaseModel):
     unread_count: int = 0
     is_pinned: bool = False
     is_muted: bool = False
+    target_user_id: Optional[int] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

@@ -24,7 +24,7 @@ const WebSocketClient = {
         // 构建 WebSocket URL（使用当前页面的主机地址）
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+        const wsUrl = `${protocol}//${host}/api/v1/ws?token=${token}`;
 
         Config.log('WebSocket: 正在连接...', wsUrl);
 
@@ -85,7 +85,7 @@ const WebSocketClient = {
     reconnect() {
         this.reconnectAttempts++;
         Config.log(`WebSocket: 尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-        
+
         setTimeout(() => {
             this.connect();
         }, this.reconnectDelay * this.reconnectAttempts);
@@ -165,16 +165,16 @@ const WebSocketClient = {
             'warning': () => Toast.warning(data.title || data.content),
             'error': () => Toast.error(data.title || data.content)
         };
-        
+
         (typeMap[data.type] || typeMap.info)();
 
         // 触发通知事件（其他组件可以监听此事件）
         this.emit('notification', data);
-        
+
         // 如果当前在通知页面，刷新通知列表
-        if (window.currentPage && window.currentPage.constructor && 
-            (window.currentPage.constructor.name === 'NotificationsPage' || 
-             window.currentPage.constructor.name === 'MessagesPage') && 
+        if (window.currentPage && window.currentPage.constructor &&
+            (window.currentPage.constructor.name === 'NotificationsPage' ||
+                window.currentPage.constructor.name === 'MessagesPage') &&
             typeof window.currentPage.loadData === 'function') {
             window.currentPage.loadData();
         }

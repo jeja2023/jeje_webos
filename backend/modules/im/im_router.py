@@ -22,6 +22,7 @@ from .im_schemas import (
 )
 from .im_services import IMService
 from .im_models import IMMessage, IMConversation
+from .im_websocket import notify_new_message, notify_message_recalled, notify_message_read
 from models import User
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ async def create_conversation(
     conversation = await service.create_conversation(user.user_id, data)
     
     # 加载用户信息
-    await _load_conversation_user_info(db, conversation)
+    await _load_conversation_user_info(db, conversation, user.user_id)
     
     return success_response(
         data=ConversationResponse.model_validate(conversation),
@@ -70,7 +71,7 @@ async def get_conversation_list(
     
     # 加载用户信息
     for conv in conversations:
-        await _load_conversation_user_info(db, conv)
+        await _load_conversation_user_info(db, conv, user.user_id)
     
     return create_page_response(
         items=[ConversationListItem.model_validate(conv) for conv in conversations],
@@ -95,7 +96,7 @@ async def get_conversation(
         raise NotFoundException("会话", conversation_id)
     
     # 加载用户信息和成员信息
-    await _load_conversation_user_info(db, conversation)
+    await _load_conversation_user_info(db, conversation, user.user_id)
     await _load_conversation_members(db, conversation)
     
     return success_response(
@@ -120,7 +121,7 @@ async def update_conversation(
     if not conversation:
         raise NotFoundException("会话", conversation_id)
     
-    await _load_conversation_user_info(db, conversation)
+    await _load_conversation_user_info(db, conversation, user.user_id)
     
     return success_response(
         data=ConversationResponse.model_validate(conversation),
@@ -216,6 +217,9 @@ async def send_message(
     
     # 加载发送者信息
     await _load_message_user_info(db, message)
+    
+    # 发送 WebSocket 广播通知
+    await notify_new_message(db, message)
     
     return success_response(
         data=MessageResponse.model_validate(message),
@@ -333,6 +337,9 @@ async def upload_message_file(
     # 加载发送者信息
     await _load_message_user_info(db, message)
     
+    # 发送 WebSocket 广播通知
+    await notify_new_message(db, message)
+    
     return success_response(
         data=MessageResponse.model_validate(message),
         message="文件上传成功"
@@ -345,13 +352,14 @@ async def get_messages(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(50, ge=1, le=100, description="每页数量"),
     before_message_id: Optional[int] = Query(None, description="在此消息ID之前查询"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
     """获取消息列表"""
     service = get_service(db)
     messages, total = await service.get_messages(
-        conversation_id, user.user_id, page, page_size, before_message_id
+        conversation_id, user.user_id, page, page_size, before_message_id, keyword
     )
     
     # 加载用户信息和已读状态
@@ -389,8 +397,9 @@ async def mark_messages_read(
         data.last_message_id
     )
     
-    if not success:
-        raise NotFoundException("会话", data.conversation_id)
+    if success:
+        # 发送 WebSocket 广播通知
+        await notify_message_read(db, data.conversation_id, user.user_id, data.last_message_id)
     
     return success_response(message="已标记为已读")
 
@@ -403,10 +412,18 @@ async def recall_message(
 ):
     """撤回消息"""
     service = get_service(db)
-    success = await service.recall_message(message_id, user.user_id)
+    try:
+        success = await service.recall_message(message_id, user.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
-    if not success:
-        raise NotFoundException("消息", message_id)
+    if success:
+        # 获取消息的会话ID用于广播
+        stmt = select(IMMessage.conversation_id).where(IMMessage.id == message_id)
+        result = await db.execute(stmt)
+        conversation_id = result.scalar()
+        if conversation_id:
+            await notify_message_recalled(db, conversation_id, message_id, user.user_id)
     
     return success_response(message="消息已撤回")
 
@@ -490,8 +507,9 @@ async def delete_contact(
 
 # ==================== 辅助函数 ====================
 
-async def _load_conversation_user_info(db: AsyncSession, conversation):
+async def _load_conversation_user_info(db: AsyncSession, conversation, current_user_id: int = None):
     """加载会话的用户信息"""
+    # 加载群主信息
     if conversation.owner_id:
         stmt = select(User).where(User.id == conversation.owner_id)
         result = await db.execute(stmt)
@@ -500,6 +518,27 @@ async def _load_conversation_user_info(db: AsyncSession, conversation):
             conversation.owner_username = owner.username
             conversation.owner_nickname = owner.nickname
             conversation.owner_avatar = owner.avatar
+
+    # 如果是私聊，且没有名字/头像，则取对方的信息
+    if conversation.type == "private" and current_user_id:
+        from .im_models import IMConversationMember
+        # 查找对方成员
+        stmt = select(User).join(
+            IMConversationMember, IMConversationMember.user_id == User.id
+        ).where(
+            and_(
+                IMConversationMember.conversation_id == conversation.id,
+                IMConversationMember.user_id != current_user_id
+            )
+        )
+        result = await db.execute(stmt)
+        other_user = result.scalar_one_or_none()
+        if other_user:
+            conversation.target_user_id = other_user.id
+            if not conversation.name:
+                conversation.name = other_user.nickname or other_user.username
+            if not conversation.avatar:
+                conversation.avatar = other_user.avatar
 
 
 async def _load_conversation_members(db: AsyncSession, conversation):
@@ -539,6 +578,9 @@ async def _load_message_user_info(db: AsyncSession, message):
         message.sender_avatar = sender.avatar
     
     # 解密内容
+    # 将消息对象从会话中移除，避免解密后的明文或错误信息被保存回数据库
+    db.expunge(message)
+    
     from .im_services import get_encryption
     encryption = get_encryption()
     try:

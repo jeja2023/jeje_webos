@@ -11,7 +11,7 @@ class MapPage extends Component {
             trailFiles: [], // { id, filename, size, created_at }
             mapMode: 'offline', // offline | online
             tileSource: 'amap_offline',
-            onlineTileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            onlineTileUrl: 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
             loading: false,
             _eventsBound: false,
             searchQuery: '',
@@ -416,7 +416,7 @@ class MapPage extends Component {
                 }
             }
         } else {
-            url = onlineTileUrl ? onlineTileUrl.replace('{s}', 'a') : "";
+            url = onlineTileUrl || "";
         }
 
         // [Fix] 移除 loading 状态更新，防止触发 render -> afterUpdate -> initMap -> updateTileLayer -> setState 的无限循环
@@ -954,7 +954,7 @@ class MapPage extends Component {
                     <div class="form-group" style="margin-bottom: 24px;">
                         <label class="form-label" style="font-weight: 600; margin-bottom: 10px; display: block; font-size: 13px;">在线 XYZ 地图服务</label>
                         <input type="text" class="form-input" id="cfgOnlineUrl" 
-                               placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                               placeholder="高德: https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
                                value="${escape(onlineTileUrl)}" style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text); outline: none;">
                     </div>
                     <div class="form-group">
