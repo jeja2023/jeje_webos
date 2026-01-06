@@ -350,6 +350,7 @@ class AIPage extends Component {
                             <button class="btn-icon-only" id="btnConfig" title="API 设置">
                                 <i class="ri-settings-3-line"></i>
                             </button>
+                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('ai', 'AI 助手') : ''}
                         </div>
                     </div>
 

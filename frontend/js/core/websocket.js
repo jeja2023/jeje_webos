@@ -128,10 +128,69 @@ const WebSocketClient = {
                 Config.log('WebSocket: 系统消息', data);
                 break;
 
+            case 'schedule_reminder':
+                // 日程提醒
+                this.handleScheduleReminder(data);
+                break;
+
             default:
                 // 触发自定义监听器
                 this.emit(type, data);
         }
+    },
+
+    /**
+     * 处理日程提醒
+     */
+    handleScheduleReminder(data) {
+        // 构建提醒时间描述
+        let timeDesc = '';
+        if (data.is_all_day) {
+            timeDesc = '全天事件';
+        } else if (data.start_time) {
+            timeDesc = `${data.start_date} ${data.start_time}`;
+        } else {
+            timeDesc = data.start_date;
+        }
+
+        // 根据提前分钟数构建描述
+        let reminderDesc = '';
+        if (data.remind_before_minutes === 0) {
+            reminderDesc = '现在开始';
+        } else if (data.remind_before_minutes < 60) {
+            reminderDesc = `${data.remind_before_minutes}分钟后开始`;
+        } else if (data.remind_before_minutes === 60) {
+            reminderDesc = '1小时后开始';
+        } else if (data.remind_before_minutes === 1440) {
+            reminderDesc = '明天开始';
+        } else {
+            reminderDesc = `${data.remind_before_minutes}分钟后开始`;
+        }
+
+        // 显示 Toast 提醒
+        Toast.warning(`📅 ${data.title} - ${reminderDesc}`, 8000);
+
+        // 显示系统通知（如果浏览器支持）
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification('日程提醒', {
+                body: `${data.title}\n${timeDesc}${data.location ? ' · ' + data.location : ''}`,
+                icon: '/images/logo.jpg',
+                tag: `schedule-${data.event_id}`,
+                requireInteraction: true
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                // 跳转到日程页面
+                if (window.Router) {
+                    Router.navigate(`/schedule?event=${data.event_id}`);
+                }
+                notification.close();
+            };
+        }
+
+        // 触发日程提醒事件
+        this.emit('schedule_reminder', data);
     },
 
     /**

@@ -20,7 +20,13 @@ class SchedulePage extends Component {
             stats: null,
             selectedDate: null,
             selectedEvent: null,
-            loading: true
+            loading: true,
+            // 新增状态
+            _eventsBound: false, // 防止事件重复绑定
+            searchQuery: '',      // 搜索关键词
+            categories: [],       // 用户分类
+            selectedCategory: '', // 选中的分类筛选
+            filteredEvents: []    // 筛选后的日程
         };
     }
 
@@ -28,6 +34,9 @@ class SchedulePage extends Component {
         this.setState({ loading: true });
         try {
             const { view, currentYear, currentMonth } = this.state;
+
+            // 始终加载分类数据
+            const categoriesRes = await Api.get('/schedule/categories').catch(() => ({ data: [] }));
 
             if (view === 'calendar') {
                 const [monthRes, statsRes] = await Promise.all([
@@ -38,6 +47,7 @@ class SchedulePage extends Component {
                     events: monthRes.data?.events || [],
                     eventDates: monthRes.data?.event_dates || [],
                     stats: statsRes.data || {},
+                    categories: categoriesRes.data || [],
                     loading: false
                 });
             } else if (view === 'list') {
@@ -50,12 +60,14 @@ class SchedulePage extends Component {
                     todayEvents: todayRes.data || [],
                     upcomingEvents: upcomingRes.data || [],
                     stats: statsRes.data || {},
+                    categories: categoriesRes.data || [],
                     loading: false
                 });
             } else if (view === 'reminders') {
                 const res = await Api.get('/schedule/reminders');
                 this.setState({
                     reminders: res.data || [],
+                    categories: categoriesRes.data || [],
                     loading: false
                 });
             }
@@ -66,16 +78,31 @@ class SchedulePage extends Component {
     }
 
     render() {
-        const { view, loading } = this.state;
+        const { view, loading, searchQuery, categories, selectedCategory } = this.state;
 
         return `
             <div class="schedule-page">
                 <!-- 侧边栏 -->
                 <aside class="schedule-sidebar">
                     <div class="sidebar-header">
-                        <i class="ri-calendar-schedule-line"></i>
-                        <span>日程管理</span>
+                        <div class="header-title">
+                            <i class="ri-calendar-schedule-line"></i>
+                            <span>日程管理</span>
+                        </div>
+                        <div class="header-actions">
+                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('schedule', '日程管理') : ''}
+                        </div>
                     </div>
+                    
+                    <!-- 搜索框 -->
+                    <div class="sidebar-search">
+                        <div class="search-box">
+                            <i class="ri-search-line"></i>
+                            <input type="text" id="schedule-search" placeholder="搜索日程..." value="${Utils.escapeHtml(searchQuery)}">
+                            ${searchQuery ? '<button class="search-clear" id="btn-clear-search"><i class="ri-close-line"></i></button>' : ''}
+                        </div>
+                    </div>
+                    
                     <nav class="sidebar-nav">
                         <div class="nav-item ${view === 'calendar' ? 'active' : ''}" data-view="calendar">
                             <i class="ri-calendar-2-line"></i>
@@ -90,6 +117,30 @@ class SchedulePage extends Component {
                             <span>提醒中心</span>
                         </div>
                     </nav>
+                    
+                    <!-- 分类筛选 -->
+                    ${categories.length > 0 ? `
+                        <div class="sidebar-categories">
+                            <div class="category-header">
+                                <span>我的分类</span>
+                                <button class="btn-icon-sm" id="btn-manage-categories" title="管理分类">
+                                    <i class="ri-settings-3-line"></i>
+                                </button>
+                            </div>
+                            <div class="category-list">
+                                <div class="category-item ${!selectedCategory ? 'active' : ''}" data-category="">
+                                    <span class="category-color" style="background: var(--accent-color)"></span>
+                                    <span>全部</span>
+                                </div>
+                                ${categories.map(c => `
+                                    <div class="category-item ${selectedCategory === c.id.toString() ? 'active' : ''}" data-category="${c.id}">
+                                        <span class="category-color" style="background: ${c.color}"></span>
+                                        <span>${Utils.escapeHtml(c.name)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                     
                     <!-- 快捷操作 -->
                     <div class="sidebar-actions">
@@ -123,6 +174,7 @@ class SchedulePage extends Component {
             case 'calendar': return this.renderCalendar();
             case 'list': return this.renderList();
             case 'reminders': return this.renderReminders();
+            case 'search': return this.renderSearchResults();
             default: return this.renderCalendar();
         }
     }
@@ -404,17 +456,82 @@ class SchedulePage extends Component {
         `;
     }
 
+    /**
+     * 渲染搜索结果
+     */
+    renderSearchResults() {
+        const { filteredEvents, searchQuery } = this.state;
+
+        return `
+            <div class="content-section fade-in">
+                <div class="section-header">
+                    <h2><i class="ri-search-line"></i> 搜索结果</h2>
+                    <p class="search-info">找到 ${filteredEvents.length} 条与 "${Utils.escapeHtml(searchQuery)}" 相关的日程</p>
+                </div>
+
+                <div class="event-section">
+                    ${filteredEvents.length > 0 ? `
+                        <div class="event-list">
+                            ${filteredEvents.map(e => this.renderEventItem(e)).join('')}
+                        </div>
+                    ` : `
+                        <div class="empty-state">
+                            <i class="ri-search-line"></i>
+                            <p>未找到匹配的日程</p>
+                            <p class="sub-text">尝试使用其他关键词搜索</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
     bindEvents() {
+        // 防止重复绑定
+        if (this.state._eventsBound) return;
+        this.state._eventsBound = true;
+
         // 侧边栏导航
         this.delegate('click', '.nav-item', (e, el) => {
             const view = el.dataset.view;
-            this.setState({ view });
+            this.setState({ view, searchQuery: '' });
             this.loadData();
         });
 
         // 新建日程
         this.delegate('click', '#btn-add-event', () => {
             this.showEventModal();
+        });
+
+        // 搜索功能
+        this.delegate('input', '#schedule-search', (e) => {
+            this.setState({ searchQuery: e.target.value });
+            this._debounceSearch();
+        });
+
+        this.delegate('keydown', '#schedule-search', (e) => {
+            if (e.key === 'Enter') {
+                this.handleSearch();
+            }
+        });
+
+        this.delegate('click', '#btn-clear-search', () => {
+            this.setState({ searchQuery: '', filteredEvents: [] });
+        });
+
+        // 分类筛选
+        this.delegate('click', '.category-item', (e, el) => {
+            const categoryId = el.dataset.category;
+            this.setState({ selectedCategory: categoryId });
+            // 如果有搜索结果，则筛选搜索结果；否则重新加载
+            if (this.state.searchQuery) {
+                this.handleSearch();
+            }
+        });
+
+        // 管理分类
+        this.delegate('click', '#btn-manage-categories', () => {
+            this.showCategoryManager();
         });
 
         // 上一月
@@ -508,6 +625,128 @@ class SchedulePage extends Component {
         });
     }
 
+    /**
+     * 防抖搜索
+     */
+    _debounceSearch() {
+        if (this._searchTimer) clearTimeout(this._searchTimer);
+        this._searchTimer = setTimeout(() => {
+            this.handleSearch();
+        }, 300);
+    }
+
+    /**
+     * 执行搜索
+     */
+    async handleSearch() {
+        const query = this.state.searchQuery.trim();
+        if (!query) {
+            this.setState({ filteredEvents: [], view: 'calendar' });
+            return;
+        }
+
+        try {
+            // 使用后端搜索接口
+            const res = await Api.get(`/schedule/events/search?q=${encodeURIComponent(query)}`);
+            const filtered = res.data || [];
+
+            // 应用分类筛选
+            const finalFiltered = this.state.selectedCategory
+                ? filtered.filter(e => e.category_id?.toString() === this.state.selectedCategory)
+                : filtered;
+
+            this.setState({
+                filteredEvents: finalFiltered,
+                view: 'search'  // 切换到搜索结果视图
+            });
+
+            if (finalFiltered.length === 0) {
+                Toast.info('未找到匹配的日程');
+            }
+        } catch (e) {
+            console.error('搜索失败', e);
+            Toast.error('搜索失败');
+        }
+    }
+
+    /**
+     * 显示分类管理弹窗
+     */
+    showCategoryManager() {
+        const { categories } = this.state;
+
+        new Modal({
+            title: '管理分类',
+            width: '500px',
+            content: `
+                <div class="category-manager">
+                    <div class="category-manager-list">
+                        ${categories.length > 0 ? categories.map(c => `
+                            <div class="category-manager-item" data-id="${c.id}">
+                                <span class="category-color" style="background: ${c.color}"></span>
+                                <span class="category-name">${Utils.escapeHtml(c.name)}</span>
+                                <div class="category-actions">
+                                    <button class="btn-icon-sm" data-edit-category="${c.id}" title="编辑">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button class="btn-icon-sm danger" data-delete-category="${c.id}" title="删除">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="empty-hint">暂无分类，点击下方按钮创建</p>'}
+                    </div>
+                    <div class="category-add-form">
+                        <input type="text" class="form-input" id="new-category-name" placeholder="新分类名称">
+                        <input type="color" class="form-input form-color" id="new-category-color" value="#3b82f6">
+                        <button class="btn btn-primary" id="btn-add-category">
+                            <i class="ri-add-line"></i>
+                        </button>
+                    </div>
+                </div>
+            `,
+            showFooter: false,
+            onMount: (modalEl) => {
+                // 添加分类
+                modalEl.querySelector('#btn-add-category')?.addEventListener('click', async () => {
+                    const name = modalEl.querySelector('#new-category-name').value.trim();
+                    const color = modalEl.querySelector('#new-category-color').value;
+                    if (!name) {
+                        Toast.warning('请输入分类名称');
+                        return;
+                    }
+                    try {
+                        await Api.post('/schedule/categories', { name, color });
+                        Toast.success('分类创建成功');
+                        this.loadData();
+                        Modal.closeAll();
+                        setTimeout(() => this.showCategoryManager(), 300);
+                    } catch (e) {
+                        Toast.error('创建失败');
+                    }
+                });
+
+                // 删除分类
+                modalEl.querySelectorAll('[data-delete-category]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const id = btn.dataset.deleteCategory;
+                        if (await Modal.confirm('确认删除', '确定要删除这个分类吗？')) {
+                            try {
+                                await Api.delete(`/schedule/categories/${id}`);
+                                Toast.success('分类已删除');
+                                this.loadData();
+                                Modal.closeAll();
+                                setTimeout(() => this.showCategoryManager(), 300);
+                            } catch (e) {
+                                Toast.error('删除失败');
+                            }
+                        }
+                    });
+                });
+            }
+        }).show();
+    }
+
     showEventModal(event = null, defaultDate = null) {
         const isEdit = !!event;
         const today = defaultDate || new Date().toISOString().split('T')[0];
@@ -571,6 +810,25 @@ class SchedulePage extends Component {
                         <label>描述</label>
                         <textarea class="form-input" name="description" rows="2" placeholder="可选">${event?.description || ''}</textarea>
                     </div>
+                    
+                    <!-- 重复设置 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>重复</label>
+                            <select class="form-select" name="repeat_type" id="repeat-type-select">
+                                <option value="none" ${(!event?.repeat_type || event?.repeat_type === 'none') ? 'selected' : ''}>不重复</option>
+                                <option value="daily" ${event?.repeat_type === 'daily' ? 'selected' : ''}>每天</option>
+                                <option value="weekly" ${event?.repeat_type === 'weekly' ? 'selected' : ''}>每周</option>
+                                <option value="monthly" ${event?.repeat_type === 'monthly' ? 'selected' : ''}>每月</option>
+                                <option value="yearly" ${event?.repeat_type === 'yearly' ? 'selected' : ''}>每年</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="repeat-end-group" style="display: ${event?.repeat_type && event?.repeat_type !== 'none' ? 'block' : 'none'}">
+                            <label>重复截止</label>
+                            <input type="date" class="form-input" name="repeat_end_date" value="${event?.repeat_end_date || ''}">
+                        </div>
+                    </div>
+                    
                     ${!isEdit ? `
                         <div class="form-group">
                             <label>提醒</label>
@@ -588,6 +846,16 @@ class SchedulePage extends Component {
                 </form>
             `,
             confirmText: isEdit ? '保存' : '创建',
+            onMount: () => {
+                // 重复类型切换时显示/隐藏截止日期
+                const repeatSelect = document.getElementById('repeat-type-select');
+                const repeatEndGroup = document.getElementById('repeat-end-group');
+                if (repeatSelect && repeatEndGroup) {
+                    repeatSelect.addEventListener('change', (e) => {
+                        repeatEndGroup.style.display = e.target.value !== 'none' ? 'block' : 'none';
+                    });
+                }
+            },
             onConfirm: async () => {
                 const form = document.getElementById('event-form');
                 if (!form.reportValidity()) return false;
@@ -602,7 +870,9 @@ class SchedulePage extends Component {
                     event_type: form.event_type.value,
                     color: form.color.value,
                     location: form.location.value.trim() || null,
-                    description: form.description.value.trim() || null
+                    description: form.description.value.trim() || null,
+                    repeat_type: form.repeat_type.value,
+                    repeat_end_date: form.repeat_end_date?.value || null
                 };
 
                 if (!isEdit && form.remind_before_minutes) {

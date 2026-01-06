@@ -134,6 +134,25 @@ class ScheduleService:
         return await ScheduleService.get_events_by_date_range(db, user_id, today, end_date)
     
     @staticmethod
+    async def search_events(db: AsyncSession, user_id: int, query: str) -> List[ScheduleEvent]:
+        """搜索日程"""
+        search_pattern = f"%{query}%"
+        stmt = select(ScheduleEvent).where(
+            and_(
+                ScheduleEvent.user_id == user_id,
+                ScheduleEvent.is_deleted == False,
+                or_(
+                    ScheduleEvent.title.ilike(search_pattern),
+                    ScheduleEvent.description.ilike(search_pattern),
+                    ScheduleEvent.location.ilike(search_pattern)
+                )
+            )
+        ).order_by(ScheduleEvent.start_date.desc()).limit(50)
+        
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+    
+    @staticmethod
     async def update_event(db: AsyncSession, event_id: int, user_id: int, data: EventUpdate) -> Optional[ScheduleEvent]:
         """更新日程"""
         event = await ScheduleService.get_event_by_id(db, event_id, user_id)

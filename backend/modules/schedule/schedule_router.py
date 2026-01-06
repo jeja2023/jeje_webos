@@ -102,6 +102,21 @@ async def get_upcoming_events(
     return success(data=[EventResponse.model_validate(e).model_dump(mode='json') for e in events])
 
 
+@router.get("/events/search")
+async def search_events(
+    q: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """搜索日程"""
+    try:
+        events = await ScheduleService.search_events(db, user.user_id, q)
+        return success(data=[EventResponse.model_validate(e).model_dump(mode='json') for e in events])
+    except Exception as e:
+        logger.error(f"搜索日程失败: {e}")
+        return error(message="搜索失败")
+
+
 @router.get("/events/{event_id}")
 async def get_event_detail(
     event_id: int,

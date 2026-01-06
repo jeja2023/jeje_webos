@@ -1260,6 +1260,7 @@ class IMPage extends Component {
                                 <button class="btn-icon im-contacts-btn" title="联系人">
                                     <i class="ri-user-add-line"></i>
                                 </button>
+                                ${window.ModuleHelp ? ModuleHelp.createHelpButton('im', '即时通讯') : ''}
                             </div>
                         </div>
                         <div class="im-search-area">

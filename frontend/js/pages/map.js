@@ -165,6 +165,7 @@ class MapPage extends Component {
                                     <button class="btn-icon-only" id="btnMapHeatmap" title="热力图分析"><i class="ri-fire-line"></i></button>
                                     <button class="btn-icon-only" id="btnMapRuler" title="测量工具"><i class="ri-ruler-2-line"></i></button>
                                     <button class="btn-icon-only" id="btnMapConfig" title="配置中心"><i class="ri-settings-4-line"></i></button>
+                                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('map', '智能地图') : ''}
                                 </div>
                             </div>
                             

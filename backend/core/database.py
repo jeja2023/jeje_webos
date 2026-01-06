@@ -66,6 +66,29 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    获取数据库会话的上下文管理器版本
+    用于定时任务或非请求上下文中获取数据库连接
+    
+    使用示例:
+        async with get_db_session() as db:
+            result = await db.execute(...)
+    """
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
 async def ensure_database_exists():
     """确保数据库存在，如果不存在则尝试创建"""
     # 检查数据库密码是否配置

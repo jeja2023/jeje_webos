@@ -228,6 +228,64 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️  注册智能报告清理任务失败: {e}")
     
+    # 11. 日程提醒推送任务（每分钟检查一次）
+    try:
+        from core.database import get_db_session
+        from modules.schedule.schedule_services import ReminderService
+        
+        async def check_schedule_reminders():
+            """检查并推送日程提醒"""
+            try:
+                async with get_db_session() as db:
+                    # 获取待发送的提醒
+                    reminders = await ReminderService.get_pending_reminders(db)
+                    
+                    for reminder in reminders:
+                        try:
+                            # 获取关联的日程信息
+                            from modules.schedule.schedule_models import ScheduleEvent
+                            from sqlalchemy import select
+                            stmt = select(ScheduleEvent).where(ScheduleEvent.id == reminder.event_id)
+                            result = await db.execute(stmt)
+                            event = result.scalar_one_or_none()
+                            
+                            if event and not event.is_deleted:
+                                # 构建提醒消息
+                                message = {
+                                    "type": "schedule_reminder",
+                                    "data": {
+                                        "event_id": event.id,
+                                        "title": event.title,
+                                        "start_date": event.start_date.isoformat() if event.start_date else None,
+                                        "start_time": event.start_time.isoformat() if event.start_time else None,
+                                        "location": event.location,
+                                        "is_all_day": event.is_all_day,
+                                        "remind_before_minutes": reminder.remind_before_minutes
+                                    }
+                                }
+                                
+                                # 通过 WebSocket 推送给用户
+                                from core.ws_manager import manager as ws_manager
+                                await ws_manager.send_personal_message(message, event.user_id)
+                                logger.debug(f"📅 已推送日程提醒: {event.title} -> 用户 {event.user_id}")
+                            
+                            # 标记提醒已发送
+                            await ReminderService.mark_reminder_sent(db, reminder.id)
+                        except Exception as e:
+                            logger.error(f"推送单个提醒失败: {e}")
+                            
+            except Exception as e:
+                logger.error(f"检查日程提醒失败: {e}")
+        
+        await scheduler.schedule_periodic(
+            check_schedule_reminders,
+            interval_seconds=60,  # 每分钟检查一次
+            name="日程提醒推送"
+        )
+        logger.info("✅ 已注册日程提醒推送任务（每 60 秒检查）")
+    except Exception as e:
+        logger.warning(f"⚠️  注册日程提醒任务失败: {e}")
+    
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
     
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")
