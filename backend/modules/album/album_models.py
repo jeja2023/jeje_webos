@@ -3,11 +3,12 @@
 定义数据库表结构
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class Album(Base):
@@ -32,8 +33,8 @@ class Album(Base):
     is_public = Column(Boolean, default=False, comment="是否公开")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联照片
     photos = relationship("AlbumPhoto", back_populates="album", cascade="all, delete-orphan")
@@ -75,8 +76,8 @@ class AlbumPhoto(Base):
     sort_order = Column(Integer, default=0, comment="排序序号")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="上传时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="上传时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联相册
     album = relationship("Album", back_populates="photos")

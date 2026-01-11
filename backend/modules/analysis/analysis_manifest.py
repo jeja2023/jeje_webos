@@ -21,7 +21,7 @@ async def on_enable():
     try:
         from .analysis_duckdb_service import duckdb_instance
         duckdb_instance.ensure_connection()
-        logger.info("数据分析模块已启用，DuckDB 数据库已初始化")
+        logger.debug("数据分析模块已启用，DuckDB 数据库已初始化")
     except Exception as e:
         logger.error(f"初始化 DuckDB 数据库失败: {e}")
         # 不抛出异常，允许模块继续启用

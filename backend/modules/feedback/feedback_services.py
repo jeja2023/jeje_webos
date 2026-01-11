@@ -3,7 +3,7 @@
 """
 
 from typing import List, Optional, Tuple
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.orm import selectinload
@@ -168,14 +168,14 @@ class FeedbackService:
             return None
         
         feedback.reply_content = data.reply_content
-        feedback.reply_at = datetime.now(timezone.utc)
+        feedback.reply_at = get_beijing_time()
         feedback.handler_id = handler_id
         
         # 如果指定了状态，更新状态
         if data.status:
             feedback.status = data.status
             if data.status == FeedbackStatus.RESOLVED:
-                feedback.resolved_at = datetime.now(timezone.utc)
+                feedback.resolved_at = get_beijing_time()
         
         await self.db.commit()
         # 按需加载关联对象
@@ -202,7 +202,7 @@ class FeedbackService:
         
         # 如果状态变为已解决，设置解决时间
         if data.status == FeedbackStatus.RESOLVED and not feedback.resolved_at:
-            feedback.resolved_at = datetime.now(timezone.utc)
+            feedback.resolved_at = get_beijing_time()
         
         await self.db.commit()
         # 按需加载关联对象

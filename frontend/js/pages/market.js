@@ -94,20 +94,30 @@ class AppCenterMarketPage extends Component {
 
     // 固定应用相关方法
     getPinnedApps() {
+        // 初始默认固定应用（仅作为兜底）
+        const DEFAULT_APPS = ['knowledge', 'ai', 'map', 'notes'];
+
         // 1. 优先从用户 Store 设置中读取（已同步后端）
         const user = Store.get('user');
+        let pinned = null;
+
         if (user && user.settings && user.settings.dock_pinned_apps) {
-            return user.settings.dock_pinned_apps;
+            pinned = Array.isArray(user.settings.dock_pinned_apps)
+                ? user.settings.dock_pinned_apps
+                : null;
         }
 
-        // 2. 只有在未登录或无设置时降级读取本地缓存
-        try {
-            const saved = localStorage.getItem('jeje_pinned_apps');
-            const apps = saved ? JSON.parse(saved) : [];
-            return apps;
-        } catch (e) {
-            return [];
+        // 2. 只有在用户设置不存在时（初次使用），降级读取本地缓存或使用默认值
+        if (pinned === null) {
+            try {
+                const saved = localStorage.getItem('jeje_pinned_apps');
+                pinned = saved ? JSON.parse(saved) : DEFAULT_APPS;
+            } catch (e) {
+                pinned = DEFAULT_APPS;
+            }
         }
+
+        return pinned;
     }
 
     async savePinnedApps(apps) {

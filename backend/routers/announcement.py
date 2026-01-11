@@ -4,7 +4,7 @@
 """
 
 from typing import Optional, List, Tuple
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
@@ -53,7 +53,7 @@ async def list_announcements(
     
     # 有效期筛选
     if not include_expired:
-        now = datetime.now(timezone.utc)
+        now = get_beijing_time()
         conditions.append(
             or_(
                 Announcement.start_at.is_(None),
@@ -107,7 +107,7 @@ async def list_published_announcements(
     db: AsyncSession = Depends(get_db)
 ):
     """获取已发布的公告（公开接口，无需登录）"""
-    now = datetime.now(timezone.utc)
+    now = get_beijing_time()
     query = select(Announcement).options(selectinload(Announcement.author)).where(
         and_(
             Announcement.is_published == True,

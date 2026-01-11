@@ -35,7 +35,8 @@ class Scheduler:
         async def periodic_task():
             while self.running:
                 try:
-                    logger.info(f"执行定期任务: {name}")
+                    # 使用 DEBUG 级别，避免频繁任务日志刷屏
+                    logger.debug(f"执行定期任务: {name}")
                     await func()
                 except Exception as e:
                     logger.error(f"定期任务执行失败 {name}: {e}", exc_info=True)

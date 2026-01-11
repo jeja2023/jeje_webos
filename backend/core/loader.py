@@ -19,12 +19,13 @@ import logging
 from typing import Dict, List, Optional, Any, Callable, Awaitable
 from dataclasses import dataclass, field
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import FastAPI, APIRouter
 
 from .config import get_settings
 from .events import event_bus, Events, Event
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -104,7 +105,7 @@ class LoadedModule:
     manifest: ModuleManifest
     path: Path
     module: Any  # 模块对象
-    loaded_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    loaded_at: datetime = field(default_factory=get_beijing_time)
     installed_version: Optional[str] = None  # 已安装的版本（用于升级检测）
 
 
@@ -434,13 +435,13 @@ class ModuleLoader:
                 module_id=module_id,
                 version=manifest.version,
                 enabled=False,
-                installed_at=datetime.now(timezone.utc),
+                installed_at=get_beijing_time(),
                 last_enabled_at=None
             )
         else:
             self._states[module_id].version = manifest.version
             self._states[module_id].enabled = True
-            self._states[module_id].last_enabled_at = datetime.now(timezone.utc)
+            self._states[module_id].last_enabled_at = get_beijing_time()
         
         self._save_states()
         
@@ -511,7 +512,7 @@ class ModuleLoader:
             module_id=module_id,
             version=manifest.version,
             enabled=False,
-            installed_at=datetime.now(timezone.utc),
+            installed_at=get_beijing_time(),
             last_enabled_at=None
         )
         self._save_states()

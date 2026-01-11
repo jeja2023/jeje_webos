@@ -9,6 +9,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class LensDataSource(Base):
@@ -43,8 +44,8 @@ class LensDataSource(Base):
 
     # 归属
     created_by: Mapped[int] = mapped_column(Integer, nullable=False, comment="创建者ID")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 
 class LensCategory(Base):
@@ -62,8 +63,8 @@ class LensCategory(Base):
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序权重")
     parent_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="父分类ID")
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 
 class LensView(Base):
@@ -128,8 +129,8 @@ class LensView(Base):
 
     # 归属
     created_by: Mapped[int] = mapped_column(Integer, nullable=False, comment="创建者ID")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 
 class LensFavorite(Base):
@@ -144,7 +145,7 @@ class LensFavorite(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="用户ID")
     view_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="视图ID")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
 class LensRecentView(Base):
@@ -159,4 +160,4 @@ class LensRecentView(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="用户ID")
     view_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="视图ID")
-    accessed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="访问时间")
+    accessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="访问时间")

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey, DateTime, Boolean
 from sqlalchemy.sql import func
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 class MapTrail(Base):
     """地图轨迹元数据表"""
@@ -22,8 +23,8 @@ class MapTrail(Base):
     # 统计信息 (自动解析后存储)
     stats = Column(JSON, nullable=True, comment="轨迹统计信息如里程、海拔等")
     
-    created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 class MapConfig(Base):
     """地图个人配置持久化表"""
@@ -42,7 +43,7 @@ class MapConfig(Base):
     last_center = Column(JSON, comment="上次查看中心坐标 [lat, lng]")
     last_zoom = Column(Integer, default=12, comment="上次缩放级别")
     
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="最后更新时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="最后更新时间")
 
 class MapMarker(Base):
     """地图标记点持久化表"""
@@ -60,7 +61,7 @@ class MapMarker(Base):
     icon = Column(String(50), default="ri-map-pin-2-fill", comment="图标类名")
     description = Column(String(500), comment="描述/备注")
     
-    created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 class MapTileSource(Base):
     """离线瓦片资源库元数据表"""
@@ -78,4 +79,4 @@ class MapTileSource(Base):
     bounds = Column(JSON, comment="地理范围边界 [[lat_min, lng_min], [lat_max, lng_max]]")
     center = Column(JSON, comment="默认推荐中心点 [lat, lng]")
     
-    created_at = Column(DateTime, server_default=func.now(), comment="入库时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="入库时间")

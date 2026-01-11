@@ -5,11 +5,11 @@
 
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import get_current_user, TokenData
+from core.security import get_current_user, get_optional_user, TokenData
 from schemas.response import success, error
 from utils.storage import get_storage_manager
 
@@ -17,7 +17,7 @@ from .album_schemas import (
     AlbumCreate, AlbumUpdate, AlbumResponse, AlbumListResponse, AlbumDetailResponse,
     PhotoUpdate, PhotoResponse, PhotoListResponse
 )
-from .album_services import AlbumService
+from .album_services import AlbumService, create_zip_stream
 
 router = APIRouter()
 storage_manager = get_storage_manager()
@@ -40,8 +40,21 @@ async def get_album_list(
     
     # 构建响应数据
     items = []
+    items = []
     for album in albums:
-        album_data = AlbumResponse.model_validate(album).model_dump()
+        # 手动构建，避免 model_validate 可能的异常
+        album_data = {
+            "id": album.id,
+            "name": album.name,
+            "description": album.description,
+            "is_public": album.is_public,
+            "user_id": album.user_id,
+            "cover_photo_id": album.cover_photo_id,
+            "cover_url": None,
+            "photo_count": album.photo_count,
+            "created_at": album.created_at,
+            "updated_at": album.updated_at
+        }
         # 添加封面URL
         if album.cover_photo_id:
             album_data['cover_url'] = f"/api/v1/album/photos/{album.cover_photo_id}/thumbnail"
@@ -64,7 +77,20 @@ async def create_album(
     """创建新相册"""
     album = await AlbumService.create_album(db, user.user_id, data)
     await db.commit()
-    return success(data=AlbumResponse.model_validate(album).model_dump(), message="相册创建成功")
+    # 手动构建响应，避免 model_validate 潜在问题
+    album_data = {
+        "id": album.id,
+        "name": album.name,
+        "description": album.description,
+        "is_public": album.is_public,
+        "user_id": album.user_id,
+        "cover_photo_id": album.cover_photo_id,
+        "cover_url": None,
+        "photo_count": 0,
+        "created_at": album.created_at,
+        "updated_at": album.updated_at
+    }
+    return success(data=album_data, message="相册已成功创建")
 
 
 @router.get("/{album_id}", summary="获取相册详情")
@@ -224,12 +250,27 @@ async def get_album_photos(
 async def get_photo_file(
     photo_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(get_optional_user)
 ):
-    """获取照片原图文件"""
-    photo = await AlbumService.get_photo_by_id(db, photo_id, user.user_id)
+    """获取照片原图文件（支持公开相册匿名访问）"""
+    # 获取照片
+    photo = await AlbumService.get_photo_by_id(db, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="照片不存在")
+    
+    # 验证访问权限：已登录用户验证归属，或相册公开
+    if user:
+        # 已登录用户：验证照片归属
+        if photo.user_id != user.user_id:
+            # 检查相册是否公开
+            album = await AlbumService.get_album_by_id(db, photo.album_id)
+            if not album or not album.is_public:
+                raise HTTPException(status_code=403, detail="无权访问此照片")
+    else:
+        # 未登录用户：仅允许访问公开相册的照片
+        album = await AlbumService.get_album_by_id(db, photo.album_id)
+        if not album or not album.is_public:
+            raise HTTPException(status_code=401, detail="请先登录")
     
     if not os.path.exists(photo.storage_path):
         raise HTTPException(status_code=404, detail="文件不存在")
@@ -245,12 +286,27 @@ async def get_photo_file(
 async def get_photo_thumbnail(
     photo_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(get_current_user)
+    user: TokenData = Depends(get_optional_user)
 ):
-    """获取照片缩略图文件"""
-    photo = await AlbumService.get_photo_by_id(db, photo_id, user.user_id)
+    """获取照片缩略图文件（支持公开相册匿名访问）"""
+    # 获取照片
+    photo = await AlbumService.get_photo_by_id(db, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="照片不存在")
+    
+    # 验证访问权限：已登录用户验证归属，或相册公开
+    if user:
+        # 已登录用户：验证照片归属
+        if photo.user_id != user.user_id:
+            # 检查相册是否公开
+            album = await AlbumService.get_album_by_id(db, photo.album_id)
+            if not album or not album.is_public:
+                raise HTTPException(status_code=403, detail="无权访问此照片")
+    else:
+        # 未登录用户：仅允许访问公开相册的照片
+        album = await AlbumService.get_album_by_id(db, photo.album_id)
+        if not album or not album.is_public:
+            raise HTTPException(status_code=401, detail="请先登录")
     
     # 优先返回缩略图，没有则返回原图
     file_path = photo.thumbnail_path if photo.thumbnail_path and os.path.exists(photo.thumbnail_path) else photo.storage_path
@@ -287,9 +343,89 @@ async def delete_photo(
     user: TokenData = Depends(get_current_user)
 ):
     """删除指定照片"""
-    deleted = await AlbumService.delete_photo(db, photo_id, user.user_id)
-    if not deleted:
+    count = await AlbumService.delete_photos(db, [photo_id], user.user_id)
+    if count == 0:
         raise HTTPException(status_code=404, detail="照片不存在")
     
     await db.commit()
     return success(message="照片已删除")
+
+
+
+
+
+@router.post("/photos/batch-delete", summary="批量删除照片")
+async def batch_delete_photos(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """批量删除指定的一组照片"""
+    photo_ids = data.get("ids", [])
+    if not photo_ids:
+        raise HTTPException(status_code=400, detail="未提供照片ID列表")
+    
+    count = await AlbumService.delete_photos(db, photo_ids, user.user_id)
+    await db.commit()
+    
+    return success(message=f"成功删除 {count} 张照片")
+
+
+@router.post("/{album_id}/reorder", summary="更新照片排序")
+async def reorder_photos(
+    album_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """
+    更新照片排序
+    data: { ids: [id1, id2, id3...] }
+    """
+    photo_ids = data.get("ids", [])
+    if not photo_ids:
+        return success(message="无需更新")
+        
+    # 验证相册
+    album = await AlbumService.get_album_by_id(db, album_id, user.user_id)
+    if not album:
+        raise HTTPException(status_code=404, detail="相册不存在")
+        
+    await AlbumService.reorder_photos(db, album_id, photo_ids, user.user_id)
+    await db.commit()
+    
+    return success(message="排序已更新")
+
+
+@router.post("/photos/batch-download", summary="批量下载照片")
+async def batch_download_photos(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """批量打包下载照片"""
+    photo_ids = data.get("ids", [])
+    if not photo_ids:
+        raise HTTPException(status_code=400, detail="未提供照片ID列表")
+    
+    photos = await AlbumService.get_photos_by_ids(db, photo_ids, user.user_id)
+    if not photos:
+        raise HTTPException(status_code=404, detail="未找到有效照片")
+        
+    files_to_zip = []
+    for photo in photos:
+        if photo.storage_path and os.path.exists(photo.storage_path):
+            files_to_zip.append((photo.storage_path, photo.filename))
+            
+    if not files_to_zip:
+        raise HTTPException(status_code=404, detail="照片文件不存在")
+        
+    zip_stream = create_zip_stream(files_to_zip)
+    
+    filename = f"photos_download_{len(photos)}.zip"
+    return StreamingResponse(
+        zip_stream,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+

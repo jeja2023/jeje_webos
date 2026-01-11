@@ -10,6 +10,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey, Ind
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class OfficeDocument(Base):
@@ -49,9 +50,9 @@ class OfficeDocument(Base):
     version: Mapped[int] = mapped_column(Integer, default=1, comment="当前版本号")
     
     # 时间戳
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="删除时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, comment="删除时间")
 
 
 class OfficeVersion(Base):
@@ -68,7 +69,7 @@ class OfficeVersion(Base):
     content: Mapped[str] = mapped_column(Text, comment="版本内容快照")
     user_id: Mapped[int] = mapped_column(Integer, comment="修改用户ID")
     comment: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="版本备注")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
 class OfficeCollaborator(Base):
@@ -85,7 +86,7 @@ class OfficeCollaborator(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), comment="协作者用户ID")
     permission: Mapped[str] = mapped_column(String(20), default="edit", comment="权限: view/edit/admin")
     invited_by: Mapped[int] = mapped_column(Integer, comment="邀请人ID")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="邀请时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="邀请时间")
 
 
 class OfficeEditSession(Base):
@@ -102,5 +103,5 @@ class OfficeEditSession(Base):
     session_id: Mapped[str] = mapped_column(String(64), comment="WebSocket会话ID")
     cursor_position: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="光标位置(JSON)")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否活跃")
-    last_activity: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="最后活动时间")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="加入时间")
+    last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="最后活动时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="加入时间")

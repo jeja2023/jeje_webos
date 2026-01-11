@@ -6,7 +6,8 @@
 import json
 import logging
 from typing import List, Optional, Tuple
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
+from utils.timezone import get_beijing_time, BEIJING_TZ
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_, update
 from cryptography.fernet import Fernet
@@ -473,7 +474,7 @@ class IMService:
         
         # 更新会话最后消息
         conversation.last_message_id = message.id
-        conversation.last_message_time = datetime.now(timezone.utc)
+        conversation.last_message_time = get_beijing_time()
         
         # 更新所有成员的未读数（除了发送者）
         stmt = update(IMConversationMember).where(
@@ -645,10 +646,10 @@ class IMService:
         # 处理时区问题：统一转换为 UTC 进行比较
         msg_time = message.created_at
         if msg_time.tzinfo is None:
-            # 如果数据库时间是 naive 的（通常是 UTC），设为 UTC
-            msg_time = msg_time.replace(tzinfo=timezone.utc)
+            # 如果数据库时间是 naive 的（通常是北京时间），设为北京时区
+            msg_time = msg_time.replace(tzinfo=BEIJING_TZ)
         
-        current_time = datetime.now(timezone.utc)
+        current_time = get_beijing_time()
         time_diff = (current_time - msg_time).total_seconds()
         
         if time_diff > 120:  # 2分钟

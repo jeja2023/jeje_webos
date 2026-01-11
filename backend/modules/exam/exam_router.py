@@ -3,7 +3,7 @@
 定义 API 接口
 """
 
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -307,7 +307,7 @@ async def get_available_exams(
         db, user.user_id, page, page_size, status="published"
     )
     
-    now = datetime.now(timezone.utc)
+    now = get_beijing_time()
     available = []
     for p in papers:
         # 过滤时间范围
@@ -364,7 +364,7 @@ async def get_exam_paper(
     questions = await ExamService.get_paper_questions(db, record.paper_id)
     
     # 计算剩余时间
-    now = datetime.now(timezone.utc)
+    now = get_beijing_time()
     elapsed = (now - record.start_time).total_seconds() if record.start_time else 0
     remaining = max(0, paper.duration * 60 - int(elapsed))
     

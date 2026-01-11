@@ -2,13 +2,14 @@
 AI 模块数据模型
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models import User
+from utils.timezone import get_beijing_time
 
 
 class AIChatSession(Base):
@@ -26,8 +27,8 @@ class AIChatSession(Base):
     knowledge_base_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="知识库ID")
     use_analysis: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否使用数据分析")
     config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, comment="会话配置")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关系
     messages: Mapped[list["AIChatMessage"]] = relationship("AIChatMessage", back_populates="session", cascade="all, delete-orphan", order_by="AIChatMessage.created_at")
@@ -46,7 +47,7 @@ class AIChatMessage(Base):
     role: Mapped[str] = mapped_column(String(20), comment="角色: user/assistant/system")
     content: Mapped[str] = mapped_column(Text, comment="消息内容")
     is_error: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否为错误消息")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
     
     # 关系
     session: Mapped["AIChatSession"] = relationship("AIChatSession", back_populates="messages")

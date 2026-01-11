@@ -68,8 +68,6 @@ async def lifespan(app: FastAPI):
         loaded_count = len(loader.modules)
         logger.info(f"📦 已加载 {loaded_count} 个模块")
 
-
-    
     # 0. 检查并自动生成 JWT 密钥（如果使用默认密钥）
     try:
         from utils.jwt_rotate import get_jwt_rotator

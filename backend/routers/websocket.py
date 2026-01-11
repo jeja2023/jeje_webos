@@ -5,8 +5,9 @@ WebSocket 路由
 
 import json
 import logging
-from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+
+from utils.timezone import get_beijing_time
 
 from core.ws_manager import manager
 from core.security import decode_token, TokenData
@@ -68,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             "type": "connected",
             "message": "WebSocket 连接成功",
             "user_id": user_id,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": get_beijing_time().isoformat()
         }, ensure_ascii=False))
         
         # 保持连接并接收消息
@@ -89,7 +90,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     if message_type == "ping":
                         await websocket.send_text(json.dumps({
                             "type": "pong",
-                            "timestamp": datetime.now().isoformat()
+                            "timestamp": get_beijing_time().isoformat()
                         }, ensure_ascii=False))
                     
                     # 处理快传相关消息
@@ -190,7 +191,7 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
             await manager.send_personal_message({
                 "type": "transfer_peer_connected",
                 "data": {"session_code": session_code, "peer_id": user_id},
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_beijing_time().isoformat()
             }, sender_id)
             
             logger.info(f"快传会话已连接: {session_code}, 接收方: {user_id}")
@@ -207,7 +208,7 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
                 await manager.send_personal_message({
                     "type": "transfer_started",
                     "data": {"session_code": session_code},
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": get_beijing_time().isoformat()
                 }, peer_id)
     
     elif message_type == "transfer_progress":
@@ -220,7 +221,7 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
                     await manager.send_personal_message({
                         "type": "transfer_progress",
                         "data": data,
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": get_beijing_time().isoformat()
                     }, uid)
     
     elif message_type == "transfer_complete":
@@ -233,7 +234,7 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
                     await manager.send_personal_message({
                         "type": "transfer_completed",
                         "data": {"session_code": session_code},
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": get_beijing_time().isoformat()
                     }, uid)
             # 清理会话
             del transfer_sessions[session_code]
@@ -249,7 +250,7 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
                 await manager.send_personal_message({
                     "type": "transfer_cancelled",
                     "data": {"session_code": session_code, "cancelled_by": user_id},
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": get_beijing_time().isoformat()
                 }, peer_id)
             # 清理会话
             del transfer_sessions[session_code]

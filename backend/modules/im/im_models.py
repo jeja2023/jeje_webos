@@ -3,18 +3,14 @@
 表名遵循隔离协议：im_前缀
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey, BigInteger, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 from models import User
-
-
-def get_beijing_time():
-    """获取北京时间"""
-    return datetime.now(timezone(timedelta(hours=8)))
+from utils.timezone import get_beijing_time
 
 class IMConversation(Base):
     """会话表"""

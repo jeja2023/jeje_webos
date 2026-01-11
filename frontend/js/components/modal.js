@@ -141,12 +141,12 @@ class Modal {
         if (confirmBtn) {
             confirmBtn.onclick = async () => {
                 if (this.options.onConfirm) {
+                    const originalText = confirmBtn.innerText; // 移到 try 外面
                     try {
                         // 防止重复点击
                         if (confirmBtn.disabled) return;
 
                         // 设置加载状态
-                        const originalText = confirmBtn.innerText;
                         confirmBtn.classList.add('loading');
                         confirmBtn.disabled = true;
                         confirmBtn.innerText = '处理中...';
@@ -166,6 +166,8 @@ class Modal {
                         // 显示错误信息
                         const msg = e.message || e.toString();
                         if (msg !== 'false') { // 忽略主动返回false的情况
+                            // Modal.alert('❌ 操作失败', msg); 
+                            // 或者直接 alert，只要不卡死就行
                             alert(`❌ 操作失败: ${msg}`);
                         }
 

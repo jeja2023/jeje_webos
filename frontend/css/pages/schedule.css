@@ -18,6 +18,8 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    overflow: hidden;
+    /* 防止内容溢出 */
 }
 
 .schedule-sidebar .sidebar-header {
@@ -82,6 +84,12 @@
 .sidebar-actions {
     padding: 16px;
     border-top: 1px solid var(--border-color);
+    margin-top: auto;
+    /* 确保始终在底部 */
+}
+
+.sidebar-actions .btn {
+    width: 100%;
 }
 
 /* 主内容区 */
@@ -135,23 +143,61 @@
     color: var(--text-tertiary);
 }
 
+/* 双栏布局容器 */
+.calendar-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(280px, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
 /* 日历容器 */
 .calendar-container {
     background: var(--bg-secondary);
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 16px;
     border: 1px solid var(--border-color);
+}
+
+/* 右侧日程面板 */
+.day-events-panel {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    min-height: 300px;
+}
+
+.day-events-panel h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.day-events-panel h3 i {
+    color: var(--accent-color);
+}
+
+/* 响应式：小屏幕时改为单栏 */
+@media (max-width: 700px) {
+    .calendar-layout {
+        grid-template-columns: 1fr;
+    }
 }
 
 .calendar-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .calendar-header h2 {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
@@ -160,9 +206,9 @@
 }
 
 .btn-nav {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
     background: var(--bg-primary);
     color: var(--text-secondary);
@@ -170,7 +216,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 16px;
     transition: all 0.2s;
 }
 
@@ -181,12 +227,12 @@
 }
 
 .btn-today {
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
     background: var(--bg-primary);
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -201,14 +247,14 @@
 .calendar-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 2px;
+    margin-bottom: 4px;
 }
 
 .weekday {
     text-align: center;
-    padding: 8px;
-    font-size: 13px;
+    padding: 4px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--text-tertiary);
 }
@@ -217,7 +263,7 @@
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 3px;
 }
 
 .calendar-day {
@@ -226,15 +272,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     position: relative;
     background: var(--bg-primary);
+    min-height: 40px;
+    max-height: 52px;
+    border: 1px solid transparent;
 }
 
 .calendar-day:hover {
     background: var(--bg-hover);
+    transform: scale(1.05);
+    border-color: var(--border-color);
+    z-index: 1;
 }
 
 .calendar-day.other-month {
@@ -242,8 +294,14 @@
     cursor: default;
 }
 
+.calendar-day.other-month:hover {
+    transform: none;
+}
+
+/* 今天 - 特殊高亮 */
 .calendar-day.today {
-    background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.15);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+    border-color: rgba(59, 130, 246, 0.3);
 }
 
 .calendar-day.today .day-num {
@@ -251,30 +309,59 @@
     font-weight: 700;
 }
 
-.calendar-day.selected {
-    background: var(--accent-color);
-}
-
-.calendar-day.selected .day-num {
-    color: white;
-}
-
-.day-num {
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.event-dot {
+.calendar-day.today::before {
+    content: '';
     position: absolute;
-    bottom: 6px;
+    top: 3px;
+    right: 3px;
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: var(--accent-color);
 }
 
-.calendar-day.selected .event-dot {
+/* 选中状态 */
+.calendar-day.selected {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #8b5cf6 100%);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.calendar-day.selected .day-num {
+    color: white;
+}
+
+.calendar-day.selected::before {
+    display: none;
+}
+
+.day-num {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* 事件徽章 - 显示日程数量 */
+.event-badge {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent-color) 0%, #8b5cf6 100%);
+    color: white;
+    font-size: 9px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.calendar-day.selected .event-badge {
     background: white;
+    color: var(--accent-color);
 }
 
 /* 选中日期的日程 */
@@ -392,14 +479,19 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px;
+    padding: 14px 16px;
     background: var(--bg-primary);
-    border-radius: 10px;
-    transition: all 0.2s;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .event-item:hover {
     background: var(--bg-hover);
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color);
 }
 
 .event-item.completed {
@@ -659,6 +751,9 @@
 
 .sidebar-search .search-box input {
     flex: 1;
+    min-width: 0;
+    /* 防止flex子元素溢出 */
+    width: 100%;
     border: none;
     background: transparent;
     color: var(--text-primary);

@@ -9,7 +9,8 @@ import platform
 import psutil
 import logging
 from typing import Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime
+from utils.timezone import get_beijing_time, BEIJING_TZ
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class SystemMonitor:
                 "hostname": platform.node(),
                 "boot_time": uptime_seconds,
                 "python_version": platform.python_version(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": get_beijing_time().isoformat()
             }
         except Exception as e:
             logger.error(f"获取系统信息失败: {e}")
@@ -80,7 +81,7 @@ class SystemMonitor:
                 "boot_time": 0,
                 "python_version": platform.python_version(),
                 "error": str(e),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": get_beijing_time().isoformat()
             }
     
     @staticmethod
@@ -117,7 +118,7 @@ class SystemMonitor:
                 "num_threads": process.num_threads(),
                 "uptime": uptime_seconds,
                 "open_files": open_files,
-                "create_time": datetime.fromtimestamp(create_time, tz=timezone.utc).isoformat()
+                "create_time": datetime.fromtimestamp(create_time, tz=BEIJING_TZ).isoformat()
             }
         except Exception as e:
             logger.error(f"获取进程信息失败: {e}")

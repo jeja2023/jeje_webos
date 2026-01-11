@@ -3,11 +3,12 @@
 定义数据库表结构
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class ExamQuestionBank(Base):
@@ -29,8 +30,8 @@ class ExamQuestionBank(Base):
     question_count = Column(Integer, default=0, comment="题目数量")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联题目
     questions = relationship("ExamQuestion", back_populates="bank", cascade="all, delete-orphan")
@@ -71,8 +72,8 @@ class ExamQuestion(Base):
     is_active = Column(Boolean, default=True, comment="是否启用")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联
     bank = relationship("ExamQuestionBank", back_populates="questions")
@@ -119,8 +120,8 @@ class ExamPaper(Base):
     take_count = Column(Integer, default=0, comment="参考人数")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联
     paper_questions = relationship("ExamPaperQuestion", back_populates="paper", cascade="all, delete-orphan")
@@ -190,8 +191,8 @@ class ExamRecord(Base):
     review_comment = Column(Text, nullable=True, comment="阅卷评语")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联
     paper = relationship("ExamPaper", back_populates="records")
@@ -226,8 +227,8 @@ class ExamAnswer(Base):
     comment = Column(Text, nullable=True, comment="评语")
     
     # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联
     record = relationship("ExamRecord", back_populates="answers")

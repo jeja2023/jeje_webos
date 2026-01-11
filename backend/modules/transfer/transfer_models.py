@@ -7,6 +7,7 @@ from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Enum, Fore
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
+from utils.timezone import get_beijing_time
 import enum
 
 
@@ -66,7 +67,7 @@ class TransferSession(Base):
     temp_file_path = Column(String(512), nullable=True, comment="临时文件存储路径")
     
     # 时间戳
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
     connected_at = Column(DateTime(timezone=True), nullable=True, comment="连接时间")
     completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
     expires_at = Column(DateTime(timezone=True), nullable=False, comment="过期时间")
@@ -111,7 +112,7 @@ class TransferHistory(Base):
     duration_ms = Column(Integer, default=0, comment="传输耗时(毫秒)")
     
     # 时间戳
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="完成时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="完成时间")
     
     # 不定义与 User 模型的 relationship，避免跨模块导入问题
     # 如需获取用户/对方信息，应在业务层通过 user_id/peer_id 单独查询
@@ -140,7 +141,7 @@ class TransferChunk(Base):
     verified = Column(Boolean, default=False, comment="是否已验证")
     
     # 时间戳
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
     uploaded_at = Column(DateTime(timezone=True), nullable=True, comment="上传时间")
     
     # 关联关系

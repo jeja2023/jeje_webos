@@ -4,7 +4,8 @@
 """
 
 from typing import Optional
-from datetime import datetime, timedelta, timezone
+from utils.timezone import get_beijing_time
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
@@ -93,7 +94,7 @@ async def get_metrics(
     query = select(PerformanceMetric)
     
     # 时间范围
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = get_beijing_time() - timedelta(hours=hours)
     query = query.where(PerformanceMetric.created_at >= since)
     
     # 类型筛选
@@ -125,7 +126,7 @@ async def get_stats(
     
     仅系统管理员可访问
     """
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = get_beijing_time() - timedelta(hours=hours)
     
     # 获取各类型指标的平均值
     result = await db.execute(

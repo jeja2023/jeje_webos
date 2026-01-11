@@ -1171,7 +1171,7 @@ class IMPage extends Component {
         } else if (msg.type === 'file') {
             try {
                 let fileName = msg.file_name || '未命名文件';
-                let fileSize = msg.file_size ? Utils.formatSize(msg.file_size) : '';
+                let fileSize = msg.file_size ? Utils.formatBytes(msg.file_size) : '';
                 let filePath = msg.file_path || '#';
                 let fullPath;
                 if (filePath.startsWith('http') || filePath.startsWith('/static/')) {

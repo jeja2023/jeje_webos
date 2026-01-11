@@ -24,6 +24,55 @@ ALLOWED_EXTENSIONS = {'.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv', '.wmv', '
 ALLOWED_MIME_TYPES = {'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 
                        'video/x-matroska', 'video/x-flv', 'video/x-ms-wmv', 'video/x-m4v'}
 
+# FFmpeg 可用性标志（只检测一次）
+_ffmpeg_available = None
+_ffmpeg_checked = False
+
+
+def check_ffmpeg_available() -> bool:
+    """
+    检查 FFmpeg 是否可用（只检测一次）
+    """
+    global _ffmpeg_available, _ffmpeg_checked
+    
+    if _ffmpeg_checked:
+        return _ffmpeg_available
+    
+    _ffmpeg_checked = True
+    
+    try:
+        # 检测 ffmpeg
+        result = subprocess.run(
+            ['ffmpeg', '-version'], 
+            capture_output=True, 
+            timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+        if result.returncode != 0:
+            raise Exception("ffmpeg 返回错误")
+        
+        # 检测 ffprobe
+        result = subprocess.run(
+            ['ffprobe', '-version'], 
+            capture_output=True, 
+            timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+        if result.returncode != 0:
+            raise Exception("ffprobe 返回错误")
+        
+        _ffmpeg_available = True
+        logger.info("FFmpeg 已就绪，视频缩略图和元信息功能可用")
+    except Exception as e:
+        _ffmpeg_available = False
+        logger.warning(
+            f"FFmpeg 未安装或不可用 ({e})。视频仍可正常上传播放，"
+            "但无法生成缩略图和获取视频时长。"
+            "如需完整功能，请安装 FFmpeg: https://ffmpeg.org/download.html"
+        )
+    
+    return _ffmpeg_available
+
 
 class VideoService:
     """
@@ -197,22 +246,23 @@ class VideoService:
         with open(video_path, 'wb') as f:
             f.write(file_content)
         
-        # 获取视频信息并生成缩略图
+        # 获取视频信息并生成缩略图（仅在 FFmpeg 可用时）
         duration, width, height = None, None, None
         thumbnail_created = False
         
-        try:
-            # 使用 ffprobe 获取视频信息
-            probe_result = VideoService._get_video_info(video_path)
-            if probe_result:
-                duration = probe_result.get('duration')
-                width = probe_result.get('width')
-                height = probe_result.get('height')
-            
-            # 使用 ffmpeg 生成缩略图
-            thumbnail_created = VideoService._generate_thumbnail(video_path, thumb_path)
-        except Exception as e:
-            logger.warning(f"处理视频元数据失败: {e}")
+        if check_ffmpeg_available():
+            try:
+                # 使用 ffprobe 获取视频信息
+                probe_result = VideoService._get_video_info(video_path)
+                if probe_result:
+                    duration = probe_result.get('duration')
+                    width = probe_result.get('width')
+                    height = probe_result.get('height')
+                
+                # 使用 ffmpeg 生成缩略图
+                thumbnail_created = VideoService._generate_thumbnail(video_path, thumb_path)
+            except Exception as e:
+                logger.warning(f"处理视频元数据失败: {e}")
         
         # 创建数据库记录
         video = Video(
@@ -252,7 +302,12 @@ class VideoService:
                 'ffprobe', '-v', 'quiet', '-print_format', 'json',
                 '-show_format', '-show_streams', video_path
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            # Windows 上隐藏命令窗口
+            kwargs = {'capture_output': True, 'text': True, 'timeout': 30}
+            if os.name == 'nt':
+                kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            
+            result = subprocess.run(cmd, **kwargs)
             if result.returncode == 0:
                 import json
                 data = json.loads(result.stdout)
@@ -277,7 +332,7 @@ class VideoService:
                 
                 return info
         except Exception as e:
-            logger.warning(f"获取视频信息失败: {e}")
+            logger.debug(f"获取视频信息失败: {e}")
         return None
     
     @staticmethod
@@ -290,10 +345,15 @@ class VideoService:
                 '-vf', f'scale={THUMBNAIL_SIZE[0]}:{THUMBNAIL_SIZE[1]}:force_original_aspect_ratio=decrease',
                 '-y', thumb_path
             ]
-            result = subprocess.run(cmd, capture_output=True, timeout=60)
+            # Windows 上隐藏命令窗口
+            kwargs = {'capture_output': True, 'timeout': 60}
+            if os.name == 'nt':
+                kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            
+            result = subprocess.run(cmd, **kwargs)
             return result.returncode == 0 and os.path.exists(thumb_path)
         except Exception as e:
-            logger.warning(f"生成视频缩略图失败: {e}")
+            logger.debug(f"生成视频缩略图失败: {e}")
         return False
     
     @staticmethod
@@ -349,33 +409,54 @@ class VideoService:
         return video
     
     @staticmethod
-    async def delete_video(
+    async def delete_videos(
         db: AsyncSession,
-        video_id: int,
+        video_ids: List[int],
         user_id: int
-    ) -> bool:
-        """删除视频"""
-        video = await VideoService.get_video_by_id(db, video_id, user_id)
-        if not video:
-            return False
+    ) -> int:
+        """批量删除视频"""
+        query = select(Video).where(
+            and_(
+                Video.id.in_(video_ids),
+                Video.user_id == user_id
+            )
+        )
+        result = await db.execute(query)
+        videos = result.scalars().all()
         
-        collection_id = video.collection_id
+        if not videos:
+            return 0
         
-        # 删除物理文件
-        VideoService._delete_video_files(video)
+        collection_ids = set()
+        deleted_count = 0
         
-        await db.delete(video)
-        
-        # 更新视频集视频数量
-        collection = await VideoService.get_collection_by_id(db, collection_id, user_id)
-        if collection:
-            collection.video_count = max(0, collection.video_count - 1)
-            # 如果删除的是封面，清除封面
-            if collection.cover_video_id == video_id:
-                collection.cover_video_id = None
-        
-        logger.info(f"删除视频: id={video_id}")
-        return True
+        for video in videos:
+            collection_ids.add(video.collection_id)
+            # 删除物理文件
+            VideoService._delete_video_files(video)
+            await db.delete(video)
+            deleted_count += 1
+            
+        # 更新相关视频集的视频数量和封面
+        if collection_ids:
+            for collection_id in collection_ids:
+                # 重新计算该视频集的视频数量
+                count_query = select(func.count(Video.id)).where(Video.collection_id == collection_id)
+                count_res = await db.execute(count_query)
+                count = count_res.scalar() or 0
+                
+                collection = await VideoService.get_collection_by_id(db, collection_id, user_id)
+                if collection:
+                    collection.video_count = max(0, count)
+                    # 如果封面被删除，设为 None
+                    if collection.cover_video_id in video_ids:
+                        collection.cover_video_id = None
+
+        if deleted_count > 0:
+            msg = f"删除视频: id={video_ids[0]}" if len(video_ids) == 1 else f"批量删除视频: count={deleted_count}"
+            logger.info(f"{msg}, user_id={user_id}")
+            
+        return deleted_count
     
     @staticmethod
     def _delete_video_files(video: Video):
@@ -395,8 +476,8 @@ class VideoService:
     
     @staticmethod
     def get_thumbnail_url(video: Video, base_url: str = "/api/v1/video") -> str:
-        """获取缩略图访问URL"""
-        if video.thumbnail_path:
+        """获取缩略图访问URL（仅在文件存在时返回）"""
+        if video.thumbnail_path and os.path.exists(video.thumbnail_path):
             return f"{base_url}/videos/{video.id}/thumbnail"
         return ""
     

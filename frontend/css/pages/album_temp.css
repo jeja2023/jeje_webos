@@ -1,0 +1,5 @@
+.photo-item.drag-over-candidate {
+    border: 2px dashed var(--color-primary);
+    transform: scale(1.05);
+    z-index: 10;
+}

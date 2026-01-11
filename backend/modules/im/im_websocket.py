@@ -5,7 +5,7 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from typing import Optional, List
 from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +61,7 @@ async def notify_new_message(db: AsyncSession, message: IMMessage):
         await manager.send_personal_message({
             "type": "im_message_new",
             "data": message_response,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": get_beijing_time().isoformat()
         }, member.user_id)
 
 
@@ -81,7 +81,7 @@ async def notify_message_recalled(db: AsyncSession, conversation_id: int, messag
                 "conversation_id": conversation_id,
                 "recalled_by": user_id
             },
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": get_beijing_time().isoformat()
         }, member.user_id)
 
 
@@ -102,7 +102,7 @@ async def notify_message_read(db: AsyncSession, conversation_id: int, user_id: i
                     "user_id": user_id,
                     "last_read_message_id": last_message_id
                 },
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": get_beijing_time().isoformat()
             }, member.user_id)
 
 
@@ -149,7 +149,7 @@ async def handle_im_message(
                                 "user_id": user_id,
                                 "is_typing": is_typing
                             },
-                            "timestamp": datetime.now(timezone.utc).isoformat()
+                            "timestamp": get_beijing_time().isoformat()
                         }, member.user_id)
             
             # 其他消息类型（im_read, im_recall 等）建议走 HTTP 保证可靠性，然后再由服务器路由到 WS 广播
@@ -168,6 +168,6 @@ async def handle_im_message(
                 await websocket.send_text(json.dumps({
                     "type": "im_error",
                     "data": {"message": str(e)},
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": get_beijing_time().isoformat()
                 }, ensure_ascii=False))
             except: pass

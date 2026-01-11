@@ -6,7 +6,7 @@
 import logging
 import random
 from typing import Optional, List, Tuple
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -490,7 +490,7 @@ class ExamService:
             raise ValueError("试卷未发布")
         
         # 检查考试时间
-        now = datetime.now(timezone.utc)
+        now = get_beijing_time()
         if paper.start_time and now < paper.start_time:
             raise ValueError("考试尚未开始")
         if paper.end_time and now > paper.end_time:
@@ -584,7 +584,7 @@ class ExamService:
         if not paper:
             return None
         
-        now = datetime.now(timezone.utc)
+        now = get_beijing_time()
         
         # 保存所有答案
         for ans in answers:
@@ -789,7 +789,7 @@ class ExamService:
         record.is_passed = total_score >= paper.pass_score
         record.status = "graded"
         record.grader_id = grader_id
-        record.graded_at = datetime.now(timezone.utc)
+        record.graded_at = get_beijing_time()
         if review_comment:
             record.review_comment = review_comment
         

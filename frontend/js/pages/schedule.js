@@ -39,13 +39,29 @@ class SchedulePage extends Component {
             const categoriesRes = await Api.get('/schedule/categories').catch(() => ({ data: [] }));
 
             if (view === 'calendar') {
-                const [monthRes, statsRes] = await Promise.all([
-                    Api.get(`/schedule/events/month?year=${currentYear}&month=${currentMonth}`),
-                    Api.get('/schedule/stats')
-                ]);
+                // 缓存键
+                const cacheKey = `${currentYear}-${currentMonth}`;
+
+                // 检查缓存（5分钟有效期）
+                if (!this._monthCache) this._monthCache = {};
+                const cached = this._monthCache[cacheKey];
+                const now = Date.now();
+
+                let monthData;
+                if (cached && (now - cached.timestamp < 5 * 60 * 1000)) {
+                    // 使用缓存数据
+                    monthData = cached.data;
+                } else {
+                    // 请求新数据并缓存
+                    const monthRes = await Api.get(`/schedule/events/month?year=${currentYear}&month=${currentMonth}`);
+                    monthData = monthRes.data;
+                    this._monthCache[cacheKey] = { data: monthData, timestamp: now };
+                }
+
+                const statsRes = await Api.get('/schedule/stats');
                 this.setState({
-                    events: monthRes.data?.events || [],
-                    eventDates: monthRes.data?.event_dates || [],
+                    events: monthData?.events || [],
+                    eventDates: monthData?.event_dates || [],
                     stats: statsRes.data || {},
                     categories: categoriesRes.data || [],
                     loading: false
@@ -206,11 +222,17 @@ class SchedulePage extends Component {
         // 本月
         for (let i = 1; i <= totalDays; i++) {
             const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            // 计算当天的事件数量
+            const dayEvents = events.filter(e =>
+                e.start_date === dateStr ||
+                (e.start_date <= dateStr && e.end_date >= dateStr)
+            );
             calendarDays.push({
                 day: i,
                 isToday: dateStr === todayStr,
                 isSelected: dateStr === selectedDate,
-                hasEvent: eventDates.includes(dateStr),
+                hasEvent: dayEvents.length > 0,
+                eventCount: dayEvents.length,
                 dateStr: dateStr
             });
         }
@@ -228,7 +250,7 @@ class SchedulePage extends Component {
 
         return `
             <div class="content-section fade-in">
-                <!-- 统计卡片 -->
+                <!-- 顶部统计卡片 -->
                 <div class="stats-mini">
                     <div class="stat-item">
                         <span class="stat-num">${stats?.today_events || 0}</span>
@@ -244,49 +266,55 @@ class SchedulePage extends Component {
                     </div>
                 </div>
 
-                <div class="calendar-container">
-                    <!-- 日历头部 -->
-                    <div class="calendar-header">
-                        <button class="btn-nav" id="btn-prev-month"><i class="ri-arrow-left-s-line"></i></button>
-                        <h2>${currentYear}年 ${monthNames[currentMonth - 1]}</h2>
-                        <button class="btn-nav" id="btn-next-month"><i class="ri-arrow-right-s-line"></i></button>
-                        <button class="btn-today" id="btn-goto-today">今天</button>
+                <!-- 双栏布局：日历 + 日程详情 -->
+                <div class="calendar-layout">
+                    <!-- 左侧：日历 -->
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <button class="btn-nav" id="btn-prev-month"><i class="ri-arrow-left-s-line"></i></button>
+                            <h2>${currentYear}年 ${monthNames[currentMonth - 1]}</h2>
+                            <button class="btn-nav" id="btn-next-month"><i class="ri-arrow-right-s-line"></i></button>
+                            <button class="btn-today" id="btn-goto-today">今天</button>
+                        </div>
+
+                        <div class="calendar-weekdays">
+                            ${weekDays.map(d => `<div class="weekday">${d}</div>`).join('')}
+                        </div>
+
+                        <div class="calendar-grid">
+                            ${calendarDays.map(d => `
+                                <div class="calendar-day ${d.isOtherMonth ? 'other-month' : ''} ${d.isToday ? 'today' : ''} ${d.isSelected ? 'selected' : ''} ${d.hasEvent ? 'has-event' : ''}"
+                                     ${d.dateStr ? `data-date="${d.dateStr}"` : ''}>
+                                    <span class="day-num">${d.day}</span>
+                                    ${d.eventCount > 0 ? `<span class="event-badge">${d.eventCount > 9 ? '9+' : d.eventCount}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
 
-                    <!-- 星期头 -->
-                    <div class="calendar-weekdays">
-                        ${weekDays.map(d => `<div class="weekday">${d}</div>`).join('')}
-                    </div>
-
-                    <!-- 日历网格 -->
-                    <div class="calendar-grid">
-                        ${calendarDays.map(d => `
-                            <div class="calendar-day ${d.isOtherMonth ? 'other-month' : ''} ${d.isToday ? 'today' : ''} ${d.isSelected ? 'selected' : ''} ${d.hasEvent ? 'has-event' : ''}"
-                                 ${d.dateStr ? `data-date="${d.dateStr}"` : ''}>
-                                <span class="day-num">${d.day}</span>
-                                ${d.hasEvent ? '<span class="event-dot"></span>' : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <!-- 选中日期的日程 -->
-                ${selectedDate ? `
-                    <div class="day-events">
-                        <h3>${selectedDate} 的日程</h3>
-                        ${selectedEvents.length > 0 ? `
-                            <div class="event-list">
-                                ${selectedEvents.map(e => this.renderEventItem(e)).join('')}
-                            </div>
+                    <!-- 右侧：日程详情 -->
+                    <div class="day-events-panel">
+                        <h3><i class="ri-calendar-event-line"></i> ${selectedDate ? selectedDate : '选择日期查看日程'}</h3>
+                        ${selectedDate ? `
+                            ${selectedEvents.length > 0 ? `
+                                <div class="event-list">
+                                    ${selectedEvents.map(e => this.renderEventItem(e)).join('')}
+                                </div>
+                            ` : `
+                                <div class="empty-hint">
+                                    <i class="ri-calendar-line"></i>
+                                    <p>这一天没有日程</p>
+                                    <button class="btn btn-sm btn-primary" data-add-date="${selectedDate}">添加日程</button>
+                                </div>
+                            `}
                         ` : `
                             <div class="empty-hint">
-                                <i class="ri-calendar-line"></i>
-                                <p>这一天没有日程</p>
-                                <button class="btn btn-sm btn-primary" data-add-date="${selectedDate}">添加日程</button>
+                                <i class="ri-cursor-line"></i>
+                                <p>点击日历选择日期</p>
                             </div>
                         `}
                     </div>
-                ` : ''}
+                </div>
             </div>
         `;
     }
@@ -623,6 +651,62 @@ class SchedulePage extends Component {
                 }
             }
         });
+
+        // 键盘快捷键支持
+        this._keyboardHandler = (e) => {
+            // 如果正在输入框中，不触发快捷键
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const { view } = this.state;
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    // 上一月
+                    if (view === 'calendar') {
+                        let { currentYear, currentMonth } = this.state;
+                        currentMonth--;
+                        if (currentMonth < 1) {
+                            currentMonth = 12;
+                            currentYear--;
+                        }
+                        this.setState({ currentYear, currentMonth, selectedDate: null });
+                        this.loadData();
+                    }
+                    break;
+                case 'ArrowRight':
+                    // 下一月
+                    if (view === 'calendar') {
+                        let { currentYear, currentMonth } = this.state;
+                        currentMonth++;
+                        if (currentMonth > 12) {
+                            currentMonth = 1;
+                            currentYear++;
+                        }
+                        this.setState({ currentYear, currentMonth, selectedDate: null });
+                        this.loadData();
+                    }
+                    break;
+                case 'n':
+                case 'N':
+                    // 新建日程
+                    this.showEventModal();
+                    break;
+                case 't':
+                case 'T':
+                    // 回到今天
+                    if (view === 'calendar') {
+                        const today = new Date();
+                        this.setState({
+                            currentYear: today.getFullYear(),
+                            currentMonth: today.getMonth() + 1,
+                            selectedDate: today.toISOString().split('T')[0]
+                        });
+                        this.loadData();
+                    }
+                    break;
+            }
+        };
+        document.addEventListener('keydown', this._keyboardHandler);
     }
 
     /**
@@ -890,6 +974,8 @@ class SchedulePage extends Component {
                         await Api.post('/schedule/events', data);
                         Toast.success('日程已创建');
                     }
+                    // 清除缓存以刷新数据
+                    this._monthCache = {};
                     this.loadData();
                     return true;
                 } catch (e) {
@@ -901,6 +987,7 @@ class SchedulePage extends Component {
     }
 
     async afterMount() {
+        this.bindEvents();  // 绑定事件
         await this.loadData();
     }
 }

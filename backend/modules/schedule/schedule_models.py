@@ -11,6 +11,7 @@ import enum
 
 from core.database import Base
 from models import User
+from utils.timezone import get_beijing_time
 
 
 class EventType(str, enum.Enum):
@@ -62,8 +63,8 @@ class ScheduleEvent(Base):
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否已完成")
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否已删除")
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关联
     reminders: Mapped[List["ScheduleReminder"]] = relationship("ScheduleReminder", back_populates="event", cascade="all, delete-orphan")
@@ -96,4 +97,4 @@ class ScheduleCategory(Base):
     color: Mapped[str] = mapped_column(String(20), default="#3b82f6", comment="分类颜色")
     icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="分类图标")
     sort_order: Mapped[int] = mapped_column(Integer, default=0, comment="排序序号")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")

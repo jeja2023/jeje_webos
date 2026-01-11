@@ -3,7 +3,7 @@
 提供数据导出和导入功能
 """
 
-from datetime import datetime
+from utils.timezone import get_beijing_time
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse, Response
@@ -77,7 +77,7 @@ async def export_users(
     
     # 导出
     exporter = DataExporter()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
         file_stream = exporter.export_to_csv(data)
@@ -144,7 +144,7 @@ async def export_notifications(
     
     # 导出
     exporter = DataExporter()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
         file_stream = exporter.export_to_csv(data)
@@ -217,7 +217,7 @@ async def export_files(
     
     # 导出
     exporter = DataExporter()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
         file_stream = exporter.export_to_csv(data)

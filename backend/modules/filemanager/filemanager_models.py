@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, Text, Boolean, Index
 from sqlalchemy.orm import relationship, backref
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class VirtualFolder(Base):
@@ -25,8 +26,8 @@ class VirtualFolder(Base):
     user_id = Column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), nullable=False, comment="所属用户ID")
     path = Column(String(1024), nullable=False, default="/", comment="完整路径")
     
-    created_at = Column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关系 - 通过 VirtualFile 的 backref 自动创建 files
 
@@ -55,8 +56,8 @@ class VirtualFile(Base):
     description = Column(Text, nullable=True, comment="文件描述")
     is_starred = Column(Boolean, default=False, comment="是否收藏")
     
-    created_at = Column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 代码中直接使用 folder_id 进行查询，不需要 relationship
     # 如果需要访问 folder 对象，可以通过 folder_id 查询 VirtualFolder

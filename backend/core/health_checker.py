@@ -6,7 +6,7 @@
 import time
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from core.config import get_settings
 from core.database import async_session
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -222,7 +223,7 @@ class HealthChecker:
             "status": overall_status,
             "version": settings.app_version,
             "uptime_seconds": self.uptime_seconds,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": get_beijing_time().isoformat(),
             "components": {
                 c.name: {
                     "status": c.status,
@@ -308,7 +309,7 @@ async def liveness_check():
     """
     return {
         "status": "alive",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": get_beijing_time().isoformat()
     }
 
 

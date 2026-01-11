@@ -22,7 +22,7 @@ async def on_install():
     """
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"模块 {module_id} 安装完成")
+    logger.debug(f"模块 {module_id} 安装完成")
 
 
 async def on_enable():

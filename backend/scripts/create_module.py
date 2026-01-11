@@ -129,11 +129,12 @@ MODELS_TEMPLATE = '''"""
 定义数据库表结构
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class {ModelClass}(Base):
@@ -154,9 +155,9 @@ class {ModelClass}(Base):
     # 状态字段
     is_active = Column(Boolean, default=True, comment="是否启用")
     
-    # 时间戳
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), comment="创建时间")
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), comment="更新时间")
+    # 时间戳（统一使用东八区时间）
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     def __repr__(self):
         return f"<{ModelClass}(id={{self.id}}, title={{self.title}})>"

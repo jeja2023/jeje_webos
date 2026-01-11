@@ -47,36 +47,30 @@ class DockComponent extends Component {
 
     // 获取用户固定的应用列表
     getPinnedApps() {
-        // AI助手、知识库、地图、桌面等核心模块默认固定
-        const DEFAULT_APPS = ['knowledge', 'notes', 'ai', 'map'];
+        // 初始默认固定应用（仅作为兜底）
+        const DEFAULT_APPS = ['knowledge', 'ai', 'map', 'notes'];
 
         // 1. 优先从用户 Store 设置中读取（已同步后端）
         const user = Store.get('user');
-        let pinned = [];
+        let pinned = null;
 
         if (user && user.settings && user.settings.dock_pinned_apps) {
             pinned = Array.isArray(user.settings.dock_pinned_apps)
                 ? user.settings.dock_pinned_apps
-                : [];
-        } else {
-            // 2. 只有在未登录或无设置时降级读取本地缓存
+                : null;
+        }
+
+        // 2. 只有在用户设置不存在时（初次使用），降级读取本地缓存或使用默认值
+        if (pinned === null) {
             try {
                 const saved = localStorage.getItem(this.PINNED_APPS_KEY);
-                pinned = saved ? JSON.parse(saved) : [];
+                pinned = saved ? JSON.parse(saved) : DEFAULT_APPS;
             } catch (e) {
-                pinned = [];
+                pinned = DEFAULT_APPS;
             }
         }
 
-        // 3. 彻底修复：合并默认固定应用，确保像 AI 这样的新模块即便没点击“固定”也能显示
-        const result = [...pinned];
-        DEFAULT_APPS.forEach(id => {
-            if (!result.includes(id)) {
-                result.push(id);
-            }
-        });
-
-        return result;
+        return pinned;
     }
 
     // 保存固定的应用列表

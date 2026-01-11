@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models import User
+from utils.timezone import get_beijing_time
 
 class KnowledgeBase(Base):
     """知识库"""
@@ -25,8 +26,8 @@ class KnowledgeBase(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey(User.id), nullable=False, comment="所有者ID")
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否公开")
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 class KnowledgeNode(Base):
     """知识库节点（文档/文件夹/文件）"""
@@ -55,8 +56,8 @@ class KnowledgeNode(Base):
     status: Mapped[str] = mapped_column(String(20), default="draft", comment="状态")  # draft, published
     
     created_by: Mapped[int] = mapped_column(ForeignKey(User.id), comment="创建者ID")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     # 关系便于查询
     parent: Mapped[Optional["KnowledgeNode"]] = relationship("KnowledgeNode", remote_side=[id], back_populates="children")

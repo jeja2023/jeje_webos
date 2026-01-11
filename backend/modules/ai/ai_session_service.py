@@ -132,8 +132,8 @@ class AISessionService:
         await db.refresh(message)
         
         # 更新会话时间
-        from datetime import datetime, timezone
-        session.updated_at = datetime.now(timezone.utc)
+        from utils.timezone import get_beijing_time
+        session.updated_at = get_beijing_time()
         await db.commit()
         
         return message

@@ -5,9 +5,10 @@
 
 from typing import Callable, Dict, List, Any
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 import asyncio
 import logging
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class Event:
     name: str
     source: str  # 发送模块ID
     data: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=get_beijing_time)
 
 
 # 事件处理器类型

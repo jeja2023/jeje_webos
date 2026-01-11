@@ -181,6 +181,24 @@ async def get_current_user(
     return token_data
 
 
+async def get_optional_user(
+    token: Optional[str] = Query(None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[TokenData]:
+    """获取当前用户（可选，无token时返回None而非抛出异常）"""
+    jwt_token = None
+    if credentials:
+        jwt_token = credentials.credentials
+    elif token:
+        jwt_token = token
+    
+    if not jwt_token:
+        return None
+
+    token_data = decode_token(jwt_token)
+    return token_data
+
+
 def require_permission(permission: str):
     """
     权限检查装饰器工厂，支持通配符匹配

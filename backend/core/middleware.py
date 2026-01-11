@@ -7,19 +7,23 @@ import time
 import uuid
 import logging
 from typing import Callable, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from utils.request import get_client_ip
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 
 # 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
 # 需要在所有中间件中跳过，避免客户端断开时触发 "No response returned" 错误
 STREAMING_PATHS = [
-    "/api/v1/ai/chat",  # AI 聊天流式响应
+    "/api/v1/ai/chat",           # AI 聊天流式响应
+    "/api/v1/video/videos/",      # 视频流文件
+    "/api/v1/album/photos/",      # 相册媒体文件
+    "/api/v1/storage/download/",  # 通用存储下载
 ]
 
 
@@ -261,7 +265,7 @@ class RequestStats:
         self.total_duration = 0.0
         self.path_stats: dict = {}
         self.status_stats: dict = {}
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = get_beijing_time()
     
     def record(
         self,
@@ -298,7 +302,7 @@ class RequestStats:
     
     def get_summary(self) -> dict:
         """获取统计摘要"""
-        uptime = (datetime.now(timezone.utc) - self.start_time).total_seconds()
+        uptime = (get_beijing_time() - self.start_time).total_seconds()
         avg_duration = (
             self.total_duration / self.total_requests 
             if self.total_requests > 0 else 0

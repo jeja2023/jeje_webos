@@ -4,7 +4,7 @@
 """
 
 from typing import Optional
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
@@ -88,7 +88,7 @@ async def create_notification(
                 "type": data.type,
                 "action_url": data.action_url,
                 "sender_name": sender_name,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": get_beijing_time().isoformat()
             }
         }
         
@@ -135,7 +135,7 @@ async def create_notification(
                 "action_url": notification.action_url,
                 "sender_name": sender_name,
                 "is_read": False,
-                "created_at": notification.created_at.isoformat() if notification.created_at else datetime.now(timezone.utc).isoformat()
+                "created_at": notification.created_at.isoformat() if notification.created_at else get_beijing_time().isoformat()
             }
         }
         
@@ -253,7 +253,7 @@ async def mark_as_read(
     
     if not notification.is_read:
         notification.is_read = True
-        notification.read_at = datetime.now(timezone.utc)
+        notification.read_at = get_beijing_time()
         await db.commit()
     
     return success(NotificationInfo.model_validate(notification).model_dump(), "已标记为已读")
@@ -277,7 +277,7 @@ async def mark_all_as_read(
     )
     notifications = result.scalars().all()
     
-    now = datetime.now(timezone.utc)
+    now = get_beijing_time()
     for notification in notifications:
         notification.is_read = True
         notification.read_at = now

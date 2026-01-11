@@ -9,6 +9,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class BlogCategory(Base):
@@ -21,7 +22,7 @@ class BlogCategory(Base):
     slug: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
 class BlogPost(Base):
@@ -56,8 +57,8 @@ class BlogPost(Base):
     
     # 时间
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
     # 关联关系
     category: Mapped[Optional["BlogCategory"]] = relationship("BlogCategory", lazy="selectin", viewonly=True)
@@ -77,7 +78,7 @@ class BlogTag(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(30), unique=True)
     slug: Mapped[str] = mapped_column(String(30), unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
 class BlogPostTag(Base):

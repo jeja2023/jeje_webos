@@ -9,7 +9,7 @@
 """
 
 import logging
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -122,7 +122,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         raise HTTPException(status_code=403, detail="账户尚未激活，请等待管理员审核")
     
     # 更新最后登录时间
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = get_beijing_time()
     await db.commit()
     
     # 生成令牌对（访问令牌 + 刷新令牌）

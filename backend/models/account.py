@@ -9,6 +9,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class User(Base):
@@ -29,6 +30,6 @@ class User(Base):
     storage_quota: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="存储配额(字节)")
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否激活")
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="最后登录时间")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 

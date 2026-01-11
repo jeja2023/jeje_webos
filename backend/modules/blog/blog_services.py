@@ -2,7 +2,7 @@
 博客业务逻辑
 """
 
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, and_, or_
@@ -174,7 +174,7 @@ class BlogService:
         post_data["author_id"] = author_id
         
         if data.status == "published":
-            post_data["published_at"] = datetime.now(timezone.utc)
+            post_data["published_at"] = get_beijing_time()
         
         post = BlogPost(**post_data)
         self.db.add(post)
@@ -200,7 +200,7 @@ class BlogService:
         
         # 更新发布时间（需要知道当前状态）
         if data.status == "published" and post.status != "published":
-            update_data["published_at"] = datetime.now(timezone.utc)
+            update_data["published_at"] = get_beijing_time()
         
         # 如果有字段需要更新，使用直接更新
         if update_data:

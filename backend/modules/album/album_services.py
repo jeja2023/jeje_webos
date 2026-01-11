@@ -7,7 +7,7 @@ import os
 import logging
 from typing import Optional, List, Tuple
 from datetime import datetime
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from PIL import Image
@@ -23,6 +23,22 @@ THUMBNAIL_SIZE = (300, 300)
 # 允许的图片类型
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'}
+
+import zipfile
+
+def create_zip_stream(files: List[Tuple[str, str]]) -> io.BytesIO:
+    """
+    创建 ZIP 文件流
+    Args:
+        files: 文件列表，每个元素为 (file_path, archive_name)
+    """
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for file_path, archive_name in files:
+            if os.path.exists(file_path):
+                zf.write(file_path, archive_name)
+    memory_file.seek(0)
+    return memory_file
 
 
 class AlbumService:
@@ -205,7 +221,19 @@ class AlbumService:
             
             # 生成缩略图
             img.thumbnail(THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
-            img.save(thumb_path, quality=85)
+            
+            # 处理 RGBA 模式（PNG 透明图片），转换为 RGB 以便保存为 JPEG
+            if img.mode in ('RGBA', 'LA', 'P'):
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            img.save(thumb_path, 'JPEG', quality=85)
         except Exception as e:
             logger.warning(f"生成缩略图失败: {e}")
             thumb_path = None
@@ -292,33 +320,67 @@ class AlbumService:
         return photo
     
     @staticmethod
-    async def delete_photo(
+    async def delete_photos(
         db: AsyncSession,
-        photo_id: int,
+        photo_ids: List[int],
         user_id: int
-    ) -> bool:
-        """删除照片"""
-        photo = await AlbumService.get_photo_by_id(db, photo_id, user_id)
-        if not photo:
-            return False
+    ) -> int:
+        """批量删除照片"""
+        query = select(AlbumPhoto).where(
+            and_(
+                AlbumPhoto.id.in_(photo_ids),
+                AlbumPhoto.user_id == user_id
+            )
+        )
+        result = await db.execute(query)
+        photos = result.scalars().all()
         
-        album_id = photo.album_id
+        if not photos:
+            return 0
         
-        # 删除物理文件
-        AlbumService._delete_photo_files(photo)
+        album_ids = set()
+        deleted_count = 0
         
-        await db.delete(photo)
-        
-        # 更新相册照片数量
-        album = await AlbumService.get_album_by_id(db, album_id, user_id)
-        if album:
-            album.photo_count = max(0, album.photo_count - 1)
-            # 如果删除的是封面，清除封面
-            if album.cover_photo_id == photo_id:
-                album.cover_photo_id = None
-        
-        logger.info(f"删除照片: id={photo_id}")
-        return True
+        for photo in photos:
+            album_ids.add(photo.album_id)
+            # 删除物理文件
+            AlbumService._delete_photo_files(photo)
+            await db.delete(photo)
+            deleted_count += 1
+            
+        # 更新相关相册的照片数量和封面
+        if album_ids:
+            for album_id in album_ids:
+                # 重新计算该相册的照片数量
+                count_query = select(func.count(AlbumPhoto.id)).where(AlbumPhoto.album_id == album_id)
+                count_res = await db.execute(count_query)
+                count = count_res.scalar() or 0
+                
+                album = await AlbumService.get_album_by_id(db, album_id, user_id)
+                if album:
+                    album.photo_count = max(0, count)
+                    # 如果封面被删除，设为 None（或者设为第一张照片，这里简单处理为 None）
+                    if album.cover_photo_id in photo_ids:
+                        album.cover_photo_id = None
+
+        logger.info(f"批量删除照片: count={deleted_count}, user_id={user_id}")
+        return deleted_count
+
+    @staticmethod
+    async def get_photos_by_ids(
+        db: AsyncSession,
+        photo_ids: List[int],
+        user_id: int
+    ) -> List[AlbumPhoto]:
+        """根据 ID 列表获取照片"""
+        query = select(AlbumPhoto).where(
+            and_(
+                AlbumPhoto.id.in_(photo_ids),
+                AlbumPhoto.user_id == user_id
+            )
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all())
     
     @staticmethod
     def _delete_photo_files(photo: AlbumPhoto):
@@ -338,7 +400,30 @@ class AlbumService:
     
     @staticmethod
     def get_thumbnail_url(photo: AlbumPhoto, base_url: str = "/api/v1/album") -> str:
-        """获取缩略图访问URL"""
-        if photo.thumbnail_path:
+        """获取缩略图访问URL（仅在文件存在时返回）"""
+        if photo.thumbnail_path and os.path.exists(photo.thumbnail_path):
             return f"{base_url}/photos/{photo.id}/thumbnail"
         return AlbumService.get_photo_url(photo, base_url)
+
+    @staticmethod
+    async def reorder_photos(
+        db: AsyncSession,
+        album_id: int,
+        photo_ids: List[int],
+        user_id: int
+    ):
+        """
+        批量更新照片排序
+        """
+        for index, photo_id in enumerate(photo_ids):
+             await db.execute(
+                 update(AlbumPhoto)
+                 .where(
+                     and_(
+                         AlbumPhoto.id == photo_id,
+                         AlbumPhoto.album_id == album_id,
+                         AlbumPhoto.user_id == user_id
+                     )
+                 )
+                 .values(sort_order=index)
+             )

@@ -126,16 +126,36 @@ class GzipMiddleware:
         initial_message = {}
         body_parts = []
         response_started = False
+        should_buffer = False
         
         async def send_wrapper(message):
-            nonlocal initial_message, body_parts, response_started
+            nonlocal initial_message, body_parts, response_started, should_buffer
             
             if message["type"] == "http.response.start":
                 initial_message = message
-                response_started = True
+                
+                # 获取 Content-Type
+                content_type = ""
+                headers = dict(message.get("headers", []))
+                if b"content-type" in headers:
+                    content_type = headers[b"content-type"].decode("latin-1", errors="replace").lower()
+                
+                # 检查是否是可压缩类型
+                should_buffer = any(ct in content_type for ct in self.COMPRESSIBLE_TYPES)
+                
+                if not should_buffer:
+                    # 如果不需要压缩，直接发送并标记不再缓冲
+                    await send(message)
+                    response_started = True
                 return
             
             if message["type"] == "http.response.body":
+                if not should_buffer:
+                    # 透传模式
+                    await send(message)
+                    return
+                
+                # 缓冲模式
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
                 body_parts.append(body)
@@ -143,20 +163,9 @@ class GzipMiddleware:
                 if not more_body:
                     # 完整响应已收集
                     full_body = b"".join(body_parts)
-                    content_type = ""
                     
-                    # 获取 Content-Type
-                    headers = dict(initial_message.get("headers", []))
-                    if b"content-type" in headers:
-                        content_type = headers[b"content-type"].decode("latin-1", errors="replace")
-                    
-                    # 检查是否需要压缩
-                    should_compress = (
-                        len(full_body) >= self.minimum_size and
-                        any(ct in content_type for ct in self.COMPRESSIBLE_TYPES)
-                    )
-                    
-                    if should_compress:
+                    # 检查最终大小是否达到压缩阈值
+                    if len(full_body) >= self.minimum_size:
                         # 压缩内容
                         compressed_body = gzip.compress(full_body, compresslevel=self.compresslevel)
                         

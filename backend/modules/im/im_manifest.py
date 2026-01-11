@@ -14,7 +14,7 @@ async def on_install():
     首次安装时执行
     初始化默认配置
     """
-    logger.info("即时通讯模块安装完成")
+    logger.debug("即时通讯模块安装完成")
 
 
 async def on_enable():
@@ -22,14 +22,14 @@ async def on_enable():
     模块启用时执行
     每次系统启动且模块被加载时都会调用
     """
-    logger.info("即时通讯模块已启用")
+    logger.debug("即时通讯模块已启用")
 
 
 async def on_disable():
     """
     模块禁用时执行
     """
-    logger.info("即时通讯模块已禁用")
+    logger.debug("即时通讯模块已禁用")
 
 
 async def on_uninstall():
@@ -37,7 +37,7 @@ async def on_uninstall():
     模块卸载时执行
     清理资源、备份数据等
     """
-    logger.info("即时通讯模块已卸载")
+    logger.debug("即时通讯模块已卸载")
 
 
 manifest = ModuleManifest(

@@ -10,6 +10,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+from utils.timezone import get_beijing_time
 
 
 class NotesFolder(Base):
@@ -36,8 +37,8 @@ class NotesFolder(Base):
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序权重")
     
     # 时间戳
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
 
 class NotesNote(Base):
@@ -71,8 +72,8 @@ class NotesNote(Base):
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序权重")
     
     # 时间戳
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
     # 关联关系
     from sqlalchemy.orm import relationship
@@ -96,7 +97,7 @@ class NotesTag(Base):
     # 所属用户（每个用户有自己的标签体系）
     user_id: Mapped[int] = mapped_column(Integer, index=True, comment="所属用户ID")
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
 class NotesNoteTag(Base):

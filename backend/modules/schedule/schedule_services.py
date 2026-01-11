@@ -6,6 +6,7 @@
 import logging
 from typing import List, Optional, Tuple
 from datetime import datetime, date, time, timedelta
+from utils.timezone import get_beijing_time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from calendar import monthrange
@@ -314,7 +315,7 @@ class ReminderService:
     @staticmethod
     async def get_pending_reminders(db: AsyncSession) -> List[ScheduleReminder]:
         """获取待发送的提醒"""
-        now = datetime.now()
+        now = get_beijing_time()
         stmt = select(ScheduleReminder).where(
             and_(
                 ScheduleReminder.is_sent == False,
@@ -329,7 +330,7 @@ class ReminderService:
         """标记提醒已发送"""
         stmt = update(ScheduleReminder).where(
             ScheduleReminder.id == reminder_id
-        ).values(is_sent=True, sent_at=datetime.now())
+        ).values(is_sent=True, sent_at=get_beijing_time())
         result = await db.execute(stmt)
         await db.commit()
         return result.rowcount > 0

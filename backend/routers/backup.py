@@ -5,7 +5,7 @@
 
 import logging
 from typing import Optional
-from datetime import datetime, timezone
+from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -64,7 +64,7 @@ def execute_backup_task_sync(backup_id: int, backup_type: str):
         
         # 更新状态为执行中
         backup.status = BackupStatus.RUNNING.value
-        backup.started_at = datetime.now(timezone.utc)
+        backup.started_at = get_beijing_time()
         db.commit()
         
         error_messages = []
@@ -113,7 +113,7 @@ def execute_backup_task_sync(backup_id: int, backup_type: str):
         else:
             backup.status = BackupStatus.SUCCESS.value
         
-        backup.completed_at = datetime.now(timezone.utc)
+        backup.completed_at = get_beijing_time()
         db.commit()
         logger.info(f"备份任务完成: {backup_id}, 状态: {backup.status}")
         
@@ -124,7 +124,7 @@ def execute_backup_task_sync(backup_id: int, backup_type: str):
             if backup:
                 backup.status = BackupStatus.FAILED.value
                 backup.error_message = f"备份异常: {str(e)}"
-                backup.completed_at = datetime.now(timezone.utc)
+                backup.completed_at = get_beijing_time()
                 db.commit()
         except Exception as commit_error:
             logger.error(f"更新备份状态失败: {commit_error}")
