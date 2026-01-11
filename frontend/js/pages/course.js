@@ -20,6 +20,21 @@ class CoursePage extends Component {
             loading: true,
             keyword: ''
         };
+
+        // 绑定键盘事件用于退出专注模式
+        this._escHandler = (e) => {
+            if (e.key === 'Escape' && document.body.classList.contains('focus-mode-active')) {
+                this.toggleFocusMode();
+            }
+        };
+        document.addEventListener('keydown', this._escHandler);
+    }
+
+    destroy() {
+        document.removeEventListener('keydown', this._escHandler);
+        // 确保离开页面时退出专注模式
+        document.body.classList.remove('focus-mode-active');
+        super.destroy();
     }
 
     async loadData() {
@@ -65,6 +80,12 @@ class CoursePage extends Component {
         try {
             const res = await Api.get(`/course/chapters/${chapterId}`);
             this.setState({ currentChapter: res.data, view: 'learn' });
+
+            // 保存阅读记录到本地存储
+            if (this.state.currentCourse) {
+                localStorage.setItem(`lastChapter_${this.state.currentCourse.id}`, chapterId);
+                localStorage.setItem(`lastChapterTitle_${this.state.currentCourse.id}`, res.data.title);
+            }
         } catch (e) {
             Toast.error('加载章节内容失败');
         }
@@ -106,10 +127,29 @@ class CoursePage extends Component {
     }
 
     renderLoading() {
+        const { view } = this.state;
+        if (view === 'list' || view === 'manage') {
+            return `
+                <div class="content-section">
+                    <div class="skeleton-grid">
+                        ${Array(6).fill(0).map(() => `
+                            <div class="skeleton-card">
+                                <div class="skeleton-image"></div>
+                                <div class="skeleton-content">
+                                    <div class="skeleton-line title"></div>
+                                    <div class="skeleton-line text"></div>
+                                    <div class="skeleton-line short"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
         return `
             <div class="loading-container">
                 <div class="loading-spinner"></div>
-                <p>加载中...</p>
+                <p>正在努力加载内容...</p>
             </div>
         `;
     }
@@ -137,19 +177,20 @@ class CoursePage extends Component {
                         <h2>课程中心</h2>
                         <span class="subtitle">发现优质课程，开启学习之旅</span>
                     </div>
-                    <div class="header-right">
+                    <div class="header-right d-flex align-items-center gap-3">
                         <div class="search-box">
                             <i class="ri-search-line"></i>
                             <input type="text" id="course-search" placeholder="搜索课程..." value="${keyword}">
                         </div>
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
                     </div>
                 </div>
 
                 <div class="course-grid">
                     ${courses.length > 0 ? courses.map(course => this.renderCourseCard(course)).join('') : `
                         <div class="empty-state">
-                            <i class="ri-book-line"></i>
-                            <p>暂无课程</p>
+                            <div class="empty-icon glass-effect"><i class="ri-book-3-line"></i></div>
+                            <p>暂时还没有发布的课程，请稍后再来</p>
                         </div>
                     `}
                 </div>
@@ -157,30 +198,77 @@ class CoursePage extends Component {
         `;
     }
 
+    renderEnrolledCourseCard(course, lastChapterId, lastChapterTitle) {
+        const progress = Math.min(100, Math.max(0, parseInt(course.progress || 0)));
+
+        return `
+            <div class="course-card fade-up" data-course-id="${course.id}">
+                <div class="course-cover">
+                    ${course.cover_image
+                ? `<img src="${course.cover_image}" alt="${course.title}">`
+                : `<div class="cover-placeholder"><i class="ri-palette-line"></i></div>`
+            }
+                    <div class="progress-overlay">
+                        <div class="progress-text">学习进度 ${progress}%</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-info">
+                    <h3 class="course-title" title="${Utils.escapeHtml(course.title)}">${Utils.escapeHtml(course.title)}</h3>
+                    
+                    ${lastChapterId ? `
+                        <div class="continue-learning-tip">
+                            <i class="ri-history-line"></i> 
+                            <span>上次学到: ${Utils.escapeHtml(lastChapterTitle || '未知章节')}</span>
+                        </div>
+                    ` : '<p class="course-desc">开始您的学习之旅</p>'}
+
+                </div>
+                <div class="card-footer-action" ${lastChapterId ? `onclick="event.stopPropagation(); app.coursePage.continueLearning('${course.id}', '${lastChapterId}')"` : ''}>
+                    <span>${lastChapterId ? '继续学习' : '开始学习'}</span>
+                    <i class="ri-arrow-right-line"></i>
+                </div>
+            </div>
+        `;
+    }
+
+    continueLearning(courseId, chapterId) {
+        // 先加载课程详情，再加载章节
+        this.openCourseDetail(courseId).then(() => {
+            this.loadChapterContent(chapterId);
+        });
+    }
+
     renderCourseCard(course) {
         const difficultyMap = {
-            'beginner': { label: '入门', class: 'beginner' },
-            'intermediate': { label: '进阶', class: 'intermediate' },
-            'advanced': { label: '高级', class: 'advanced' }
+            'beginner': { label: '🌱 入门', class: 'beginner' },
+            'intermediate': { label: '🚀 进阶', class: 'intermediate' },
+            'advanced': { label: '🔥 高级', class: 'advanced' }
         };
         const difficulty = difficultyMap[course.difficulty] || difficultyMap.beginner;
 
         return `
-            <div class="course-card" data-course-id="${course.id}">
+            <div class="course-card fade-up" data-course-id="${course.id}">
                 <div class="course-cover">
                     ${course.cover_image
                 ? `<img src="${course.cover_image}" alt="${course.title}">`
-                : `<div class="cover-placeholder"><i class="ri-book-2-line"></i></div>`
+                : `<div class="cover-placeholder"><i class="ri-palette-line"></i></div>`
             }
                     <span class="difficulty-badge ${difficulty.class}">${difficulty.label}</span>
                 </div>
                 <div class="course-info">
-                    <h3 class="course-title">${Utils.escapeHtml(course.title)}</h3>
-                    <p class="course-desc">${Utils.escapeHtml(course.description || '暂无描述')}</p>
+                    <h3 class="course-title" title="${Utils.escapeHtml(course.title)}">${Utils.escapeHtml(course.title)}</h3>
+                    <p class="course-desc">${Utils.escapeHtml(course.description || '发现课程的无限可能，开启您的知识进化之旅。')}</p>
                     <div class="course-meta">
-                        <span><i class="ri-book-open-line"></i> ${course.chapter_count || 0} 章节</span>
-                        <span><i class="ri-time-line"></i> ${course.duration_hours || 0} 小时</span>
+                        <span class="meta-tag"><i class="ri-book-open-line"></i> ${course.chapter_count || 0} 章节</span>
+                        <span class="meta-tag"><i class="ri-time-line"></i> ${course.duration_hours || 0}h</span>
                     </div>
+                </div>
+                <div class="card-footer-action">
+                    <span>立即查看</span>
+                    <i class="ri-arrow-right-line"></i>
                 </div>
             </div>
         `;
@@ -193,6 +281,7 @@ class CoursePage extends Component {
             <div class="content-section fade-in">
                 <div class="section-header">
                     <h2>我的学习</h2>
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
                 </div>
 
                 <!-- 学习统计卡片 -->
@@ -230,29 +319,41 @@ class CoursePage extends Component {
                 <!-- 学习列表 -->
                 <div class="learning-list">
                     <h3 class="list-title">正在学习</h3>
-                    ${myLearning.length > 0 ? myLearning.map(item => `
+                    ${myLearning.length > 0 ? myLearning.map(item => {
+            // 读取本地存储的最后学习记录
+            const lastChapterId = localStorage.getItem(`lastChapter_${item.course.id}`);
+            const lastChapterTitle = localStorage.getItem(`lastChapterTitle_${item.course.id}`);
+
+            return `
                         <div class="learning-item" data-course-id="${item.course.id}">
                             <div class="learning-cover">
                                 ${item.course.cover_image
-                ? `<img src="${item.course.cover_image}" alt="">`
-                : `<div class="cover-placeholder small"><i class="ri-book-2-line"></i></div>`
-            }
+                    ? `<img src="${item.course.cover_image}" alt="">`
+                    : `<div class="cover-placeholder small"><i class="ri-book-2-line"></i></div>`
+                }
                             </div>
                             <div class="learning-info">
                                 <h4>${Utils.escapeHtml(item.course.title)}</h4>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: ${item.enrollment.progress}%"></div>
                                 </div>
-                                <span class="progress-text">${item.enrollment.progress.toFixed(1)}% 完成</span>
+                                <span class="progress-text">
+                                    ${item.enrollment.progress.toFixed(1)}% 完成
+                                    ${lastChapterTitle ? ` • 上次学到: ${Utils.escapeHtml(lastChapterTitle)}` : ''}
+                                </span>
                             </div>
-                            <button class="btn-continue" data-course-id="${item.course.id}">
-                                <i class="ri-play-circle-line"></i> 继续学习
+                            <button class="btn-continue" 
+                                    data-course-id="${item.course.id}" 
+                                    ${lastChapterId ? `data-chapter-id="${lastChapterId}"` : ''}>
+                                <i class="${lastChapterId ? 'ri-history-line' : 'ri-play-circle-line'}"></i> 
+                                ${lastChapterId ? '继续学习' : '开始学习'}
                             </button>
                         </div>
-                    `).join('') : `
-                        <div class="empty-state small">
-                            <i class="ri-folder-open-line"></i>
-                            <p>暂无学习记录，去课程中心看看吧</p>
+                    `}).join('') : `
+                        <div class="empty-state small glass-effect">
+                            <i class="ri-compass-discover-line"></i>
+                            <p>还没开始学习吗？快去课程中心挑选你的课程吧！</p>
+                            <button class="btn btn-primary btn-sm" onclick="app.coursePage.switchToView('list')">探索课程</button>
                         </div>
                     `}
                 </div>
@@ -267,9 +368,12 @@ class CoursePage extends Component {
             <div class="content-section fade-in">
                 <div class="section-header">
                     <h2>课程管理</h2>
-                    <button class="btn btn-primary" id="btn-create-course">
-                        <i class="ri-add-line"></i> 创建课程
-                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
+                        <button class="btn btn-primary" id="btn-create-course">
+                            <i class="ri-add-line"></i> 创建课程
+                        </button>
+                    </div>
                 </div>
 
                 <div class="manage-list">
@@ -326,10 +430,11 @@ class CoursePage extends Component {
 
         return `
             <div class="content-section fade-in">
-                <div class="detail-header">
+                <div class="detail-header d-flex justify-content-between align-items-center">
                     <button class="btn-back" id="btn-back-list">
                         <i class="ri-arrow-left-line"></i> 返回
                     </button>
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
                 </div>
 
                 <div class="course-detail">
@@ -403,7 +508,13 @@ class CoursePage extends Component {
 
     renderLearnChapter() {
         const { currentCourse, currentChapter } = this.state;
-        if (!currentChapter) return '';
+        if (!currentChapter || !currentCourse) return '';
+
+        // 计算当前章节在目录中的位置
+        const chapters = currentCourse.chapters || [];
+        const currentIndex = chapters.findIndex(ch => ch.id === currentChapter.id);
+        const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+        const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
         return `
             <div class="content-section fade-in learn-view">
@@ -411,7 +522,11 @@ class CoursePage extends Component {
                     <button class="btn-back" id="btn-back-detail">
                         <i class="ri-arrow-left-line"></i> 返回课程
                     </button>
-                    <h2>${Utils.escapeHtml(currentChapter.title)}</h2>
+                    <h2 class="flex-1">${Utils.escapeHtml(currentChapter.title)}</h2>
+                    <button class="btn btn-ghost" id="btn-focus-mode" title="专注模式">
+                        <i class="ri-fullscreen-line"></i> 专注
+                    </button>
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
                 </div>
 
                 <div class="learn-content">
@@ -428,7 +543,27 @@ class CoursePage extends Component {
 
                 <div class="learn-footer">
                     <button class="btn btn-primary" id="btn-complete-chapter" data-chapter-id="${currentChapter.id}">
-                        <i class="ri-checkbox-circle-line"></i> 完成本章
+                        <i class="ri-checkbox-circle-line"></i> ${currentChapter.is_completed ? '已完成' : '完成本章'}
+                    </button>
+                </div>
+
+                <!-- 章节切换导航 -->
+                <div class="learn-nav">
+                    <button class="btn-nav-chapter prev" ${!prevChapter ? 'disabled' : ''} 
+                            data-nav-chapter="${prevChapter?.id}">
+                        <i class="ri-arrow-left-s-line"></i>
+                        <div class="nav-text">
+                            <span class="nav-label">上一章</span>
+                            <span class="nav-title">${prevChapter ? Utils.escapeHtml(prevChapter.title) : '没有了'}</span>
+                        </div>
+                    </button>
+                    <button class="btn-nav-chapter next" ${!nextChapter ? 'disabled' : ''} 
+                            data-nav-chapter="${nextChapter?.id}">
+                        <i class="ri-arrow-right-s-line"></i>
+                        <div class="nav-text">
+                            <span class="nav-label">下一章</span>
+                            <span class="nav-title">${nextChapter ? Utils.escapeHtml(nextChapter.title) : '最后一章'}</span>
+                        </div>
                     </button>
                 </div>
             </div>
@@ -437,18 +572,25 @@ class CoursePage extends Component {
 
     renderMarkdown(text) {
         if (!text) return '';
-        // 简单的 Markdown 转换
+        // 增强的 Markdown 转换
         return text
-            .replace(/### (.*)/g, '<h3>$1</h3>')
-            .replace(/## (.*)/g, '<h2>$1</h2>')
             .replace(/# (.*)/g, '<h1>$1</h1>')
+            .replace(/## (.*)/g, '<h2>$1</h2>')
+            .replace(/### (.*)/g, '<h3>$1</h3>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/^- (.*)/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+            .replace(/^> (.*)/gm, '<blockquote>$1</blockquote>')
+            .replace(/```(.*?)\n([\s\S]*?)```/gs, '<pre><code>$2</code></pre>')
             .replace(/\n/g, '<br>');
     }
 
     bindEvents() {
+        if (this._eventsBinded) return;
+        this._eventsBinded = true;
+
         // 侧边栏导航
         this.delegate('click', '.nav-item', (e, el) => {
             const view = el.dataset.view;
@@ -466,7 +608,16 @@ class CoursePage extends Component {
         this.delegate('click', '.btn-continue', (e, el) => {
             e.stopPropagation();
             const courseId = el.dataset.courseId;
-            this.loadCourseDetail(courseId);
+            const chapterId = el.dataset.chapterId;
+
+            if (chapterId) {
+                // 如果有历史记录，先加载课程详情再加载章节
+                this.loadCourseDetail(courseId).then(() => {
+                    this.loadChapterContent(chapterId);
+                });
+            } else {
+                this.loadCourseDetail(courseId);
+            }
         });
 
         // 学习列表项点击
@@ -570,10 +721,47 @@ class CoursePage extends Component {
             // 防抖搜索
             clearTimeout(this._searchTimer);
             this._searchTimer = setTimeout(async () => {
-                const res = await Api.get(`/course/list?keyword=${encodeURIComponent(keyword)}`);
-                this.setState({ courses: res.data?.items || [] });
+                try {
+                    const res = await Api.get(`/course/list?keyword=${encodeURIComponent(keyword)}`);
+                    this.setState({ courses: res.data?.items || [] });
+                } catch (err) {
+                    console.error('搜索失败', err);
+                }
             }, 300);
         });
+
+        // 章节导航点击 (上一章/下一章)
+        this.delegate('click', '[data-nav-chapter]', (e, el) => {
+            const chapterId = el.dataset.navChapter;
+            if (chapterId && chapterId !== 'undefined') {
+                this.loadChapterContent(chapterId);
+            }
+        });
+
+        // 专注模式切换
+        this.delegate('click', '#btn-focus-mode', () => {
+            this.toggleFocusMode();
+        });
+    }
+
+    toggleFocusMode() {
+        const learnView = this.container.querySelector('.learn-view');
+        if (!learnView) return;
+
+        document.body.classList.toggle('focus-mode-active');
+        const isFocused = document.body.classList.contains('focus-mode-active');
+
+        const btn = this.container.querySelector('#btn-focus-mode');
+        if (btn) {
+            btn.innerHTML = isFocused
+                ? '<i class="ri-fullscreen-exit-line"></i> 退出'
+                : '<i class="ri-fullscreen-line"></i> 专注';
+            btn.classList.toggle('active', isFocused);
+        }
+
+        if (isFocused) {
+            Toast.info('已进入专注模式，按 ESC 可退出');
+        }
     }
 
     async showCreateCourseModal() {
@@ -863,6 +1051,17 @@ class CoursePage extends Component {
     }
 
     async afterMount() {
+        this.bindEvents();
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
         await this.loadData();
+    }
+
+    afterUpdate() {
+        // 绑定帮助按钮事件
+        if (window.ModuleHelp) {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 }
