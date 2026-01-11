@@ -27,6 +27,7 @@
 - **📰 博客 (Blog)**：完整 CMS 内容管理、封面上传、分类管理、状态流转
 - **💬 反馈 (Feedback)**：用户与管理员沟通桥梁、状态追踪工作流
 - **📁 文件管理 (FileManager)**：网格/列表视图、虚拟目录、无限层级、在线预览、拖拽上传
+- **📚 知识库 (Knowledge)**：AI 混合搜索、图片语义搜索、Cross-Encoder 深度重排、自动提取知识图谱可视化
 - **⚡ 快传 (Transfer)**：局域网跨设备文件传输、传输码机制、WebSocket 实时进度
 - **🤖 AI助手**：集成多种大模型引擎，支持流式对话、上下文记忆、多角色预设（编程/写作/翻译/分析）、Token统计与代码生成
 - **👁️ 数据透镜 (DataLens)**：万能数据视窗、支持多种数据源（MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API）、表格与图表双模态
@@ -224,7 +225,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.2.9 |
+| | `APP_VERSION` | 系统版本 | 2.3.0 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

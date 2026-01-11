@@ -23,14 +23,17 @@ const KnowledgeApi = {
         });
     },
 
-    search: (query, baseId) => {
-        const params = { q: query };
-        if (baseId) params.base_id = baseId;
-        return Api.get('/knowledge/search', params);
+    search(query, baseId, nodeType = null) {
+        let url = `/api/v1/knowledge/search?q=${encodeURIComponent(query)}`;
+        if (baseId) url += `&base_id=${baseId}`;
+        if (nodeType) url += `&node_type=${nodeType}`;
+        return Api.request({ url });
     },
 
     // Add getFilePreviewUrl helper
-    getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem('token')}`
+    getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem('token')}`,
+
+    getGraph: (baseId) => Api.get(`/knowledge/bases/${baseId}/graph`)
 };
 
 // 知识库列表页（仪表盘）
@@ -61,7 +64,10 @@ class KnowledgeListPage extends Component {
         return `
             <div class="page fade-in knowledge-dashboard">
                 <div class="page-header">
-                    <h1 class="page-title">知识库</h1>
+                    <div style="display:flex; align-items:center; gap:12px; flex:1">
+                        <h1 class="page-title" style="margin:0">知识库</h1>
+                        ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-ghost') : ''}
+                    </div>
                     <button class="btn btn-primary" id="btnCreateBase">➕ 新建知识库</button>
                 </div>
                 
@@ -122,6 +128,9 @@ class KnowledgeListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
+        if (typeof ModuleHelp !== 'undefined') {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 }
 
@@ -138,7 +147,11 @@ class KnowledgeViewPage extends Component {
             activeContent: null,
             searchResults: null, // null means no search active
             loading: true,
-            editorMode: false
+            editorMode: false,
+            filters: { type: '' },
+            showFilters: false,
+            viewMode: 'tree', // 'tree' or 'graph'
+            graphData: null
         };
         this.editor = null; // ToastUI Instance
     }
@@ -209,7 +222,7 @@ class KnowledgeViewPage extends Component {
         }
 
         try {
-            const res = await KnowledgeApi.search(query, this.baseId);
+            const res = await KnowledgeApi.search(query, this.baseId, this.state.filters.type);
             this.setState({ searchResults: res.data });
         } catch (e) {
             Toast.error('搜索失败');
@@ -217,7 +230,7 @@ class KnowledgeViewPage extends Component {
     }
 
     render() {
-        const { base, tree, loading, activeNode, searchResults } = this.state;
+        const { base, tree, nodes, loading, activeNode, searchResults, viewMode, showFilters, filters } = this.state;
         if (loading) return '<div class="loading"></div>';
 
         return `
@@ -225,50 +238,91 @@ class KnowledgeViewPage extends Component {
                 <!-- 左侧侧边栏 -->
                 <div class="kb-sidebar">
                     <div class="kb-sidebar-header">
-                        <div class="kb-header-title">
+                        <div class="kb-header-title" style="flex:1">
                             <span class="icon">${base.cover}</span>
                             <span class="text-truncate">${Utils.escapeHtml(base.name)}</span>
                         </div>
+                        <div class="kb-view-toggles">
+                            <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表">📁</button>
+                            <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱">🕸️</button>
+                        </div>
+                        ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-icon') : ''}
                     </div>
                     
                     <div class="kb-search-bar">
-                        <input type="text" id="searchInput" placeholder="搜索知识库..." class="form-input" style="width:100%">
+                        <input type="file" id="fileUploader" style="display:none" multiple>
+                        <div class="search-input-group">
+                            <input type="text" id="searchInput" placeholder="搜索知识库..." class="form-input" style="flex:1">
+                            <button class="btn-filter ${showFilters ? 'active' : ''}" id="btnToggleFilter" title="筛选选项">⚙️</button>
+                        </div>
+
+                        ${showFilters ? `
+                        <div class="kb-filter-panel" id="filterPanel">
+                            <div class="filter-group">
+                                <span class="filter-label">类型:</span>
+                                <div class="filter-options">
+                                    <span class="filter-chip ${!filters.type ? 'active' : ''}" data-type="">全部</span>
+                                    <span class="filter-chip ${filters.type === 'document' ? 'active' : ''}" data-type="document">文档</span>
+                                    <span class="filter-chip ${filters.type === 'file' ? 'active' : ''}" data-type="file">文件</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="kb-sidebar-actions">
+                            <button class="btn btn-primary btn-sm" style="flex:1" id="btnAddRoot">➕ 新建文档</button>
+                            <button class="btn btn-ghost btn-sm" id="btnUploadRoot" title="上传文件">⬆️ 上传</button>
+                        </div>
                     </div>
                     
                     <div class="kb-tree">
                         ${searchResults ? this.renderSearchResults(searchResults) : this.renderTree(tree)}
                     </div>
                     
-                    <div class="kb-sidebar-footer">
-                        <button class="btn btn-ghost btn-block" id="btnAddRoot">➕ 新建文档</button>
+                    <div class="kb-sidebar-footer" style="padding: 8px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-tertiary); text-align: center;">
+                        共 ${nodes.length} 个项目
                     </div>
                 </div>
                 
                 <!-- 右侧内容区 -->
                 <div class="kb-content" ondragover="event.preventDefault()" ondrop="window.handleDropFile(event)">
-                    ${activeNode ? `
-                        <div class="kb-doc-header">
-                            <div class="doc-title-row">
-                                <span class="doc-icon">${this.getNodeIcon(activeNode)}</span>
-                                <h1>${Utils.escapeHtml(activeNode.title)}</h1>
+                    ${viewMode === 'graph' ? `
+                        <div class="kb-graph-container">
+                            <div class="graph-header">
+                                <h3>知识图谱可视化</h3>
+                                <div class="graph-actions">
+                                    <button class="btn btn-ghost btn-sm" id="btnRefreshGraph">🔄 刷新</button>
+                                </div>
                             </div>
-                            <div class="kb-doc-meta">
-                                <span>${Utils.timeAgo(activeNode.updated_at)}</span>
-                                ${activeNode.node_type === 'document' ?
+                            <div id="echartsGraph" style="width: 100%; flex: 1; min-height: 400px;"></div>
+                        </div>
+                    ` : `
+                        ${this.renderBreadcrumbs()}
+                        
+                        ${activeNode ? `
+                            <div class="kb-doc-header">
+                                <div class="doc-title-row">
+                                    <span class="doc-icon">${this.getNodeIcon(activeNode)}</span>
+                                    <h1>${Utils.escapeHtml(activeNode.title)}</h1>
+                                </div>
+                                <div class="kb-doc-meta">
+                                    <span>${Utils.timeAgo(activeNode.updated_at)}</span>
+                                    ${activeNode.node_type === 'document' ?
                     `<button class="btn btn-ghost btn-sm" id="btnEditDoc">✏️ 编辑</button>` : ''
                 }
-                                <button class="btn btn-ghost btn-sm text-danger" id="btnDeleteDoc">🗑️ 删除</button>
-                                ${activeNode.node_type === 'file' ?
+                                    <button class="btn btn-ghost btn-sm text-danger" id="btnDeleteDoc">🗑️ 删除</button>
+                                    ${activeNode.node_type === 'file' ?
                     `<a href="${KnowledgeApi.getPreviewUrl(activeNode.id)}" target="_blank" class="btn btn-primary btn-sm">📥 下载</a>` : ''
                 }
+                                </div>
                             </div>
-                        </div>
-                        <div id="editorContainer" class="kb-editor-area"></div>
-                    ` : `
-                        <div class="empty-state">
-                            <div class="empty-icon">📤</div>
-                            <p>选择文档查看，或拖拽文件到此处上传</p>
-                        </div>
+                            <div id="editorContainer" class="kb-editor-area"></div>
+                        ` : `
+                            <div class="empty-state">
+                                <div class="empty-icon">📤</div>
+                                <p>选择文档查看，或拖拽文件到此处上传</p>
+                            </div>
+                        `}
                     `}
                     
                     <!-- 上传遮罩 -->
@@ -280,26 +334,80 @@ class KnowledgeViewPage extends Component {
         `;
     }
 
+    renderBreadcrumbs() {
+        if (!this.state.activeNode) return '';
+
+        const path = [];
+        let current = this.state.activeNode;
+        // Map for fast lookup
+        const nodeMap = {};
+        this.state.nodes.forEach(n => nodeMap[n.id] = n);
+
+        while (current) {
+            path.unshift(current);
+            if (current.parent_id && nodeMap[current.parent_id]) {
+                current = nodeMap[current.parent_id];
+            } else {
+                current = null;
+            }
+        }
+
+        return `
+            <div class="kb-breadcrumbs">
+                <span class="breadcrumb-item" data-id="root">🏠 根目录</span>
+                ${path.map((node, index) => `
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item ${index === path.length - 1 ? 'active' : ''}" 
+                          data-id="${node.id}">
+                          ${Utils.escapeHtml(node.title)}
+                    </span>
+                `).join('')}
+            </div>
+        `;
+    }
+
+
     renderSearchResults(results) {
         if (!results || results.length === 0) return '<div class="empty-text" style="padding:20px;text-align:center">无搜索结果</div>';
 
+        const query = this.$('#searchInput').value.trim();
+
+        const highlightText = (text, q) => {
+            if (!text) return '';
+            if (!q) return Utils.escapeHtml(text);
+            const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return Utils.escapeHtml(text).replace(regex, '<mark>$1</mark>');
+        };
+
         return `
             <div class="search-results-header">搜索结果 (${results.length})</div>
-            <ul class="tree-list">
-                ${results.map(r => `
-                    <li class="tree-item">
-                        <div class="tree-content" data-id="${r.metadata.node_id}">
-                            <span class="tree-icon">🔍</span>
-                            <div class="tree-text-col">
-                                <div class="tree-text">${Utils.escapeHtml(r.metadata.title)}</div>
-                                <div class="tree-snippet">${Utils.escapeHtml(r.content.substring(0, 50))}...</div>
+            <ul class="tree-list search-list">
+                ${results.map(r => {
+            const isImage = (r.metadata.node_type === 'image' || r.metadata.type === 'image');
+            const icon = isImage ? '🖼️' : '📄';
+            const title = r.metadata.title || '无标题';
+
+            return `
+                    <li class="tree-item search-item">
+                        <div class="tree-content search-content" data-id="${r.node_id}">
+                            <div class="search-item-top">
+                                <span class="tree-icon">${icon}</span>
+                                <div class="tree-text search-title">${highlightText(title, query)}</div>
+                                <div class="search-badges">
+                                    ${r.sources && r.sources.includes('语义') ? '<span class="badge badge-primary">语义</span>' : ''}
+                                    ${r.sources && r.sources.includes('关键词') ? '<span class="badge badge-info">关键词</span>' : ''}
+                                    ${r.sources && r.sources.includes('视觉') ? '<span class="badge badge-warning">视觉</span>' : ''}
+                                </div>
                             </div>
+                            <div class="tree-snippet">${highlightText(r.content ? r.content.substring(0, 100) : '', query)}...</div>
                         </div>
                     </li>
-                `).join('')}
+                    `;
+        }).join('')}
             </ul>
         `;
     }
+
 
     renderTree(nodes, level = 0) {
         if (!nodes || nodes.length === 0) return '';
@@ -307,7 +415,7 @@ class KnowledgeViewPage extends Component {
             <ul class="tree-list" style="padding-left: ${level * 12}px">
                 ${nodes.map(node => `
                     <li class="tree-item ${this.state.activeNode?.id === node.id ? 'active' : ''}">
-                        <div class="tree-content" data-id="${node.id}">
+                        <div class="tree-content ${node.status === 'processing' ? 'status-processing' : ''}" data-id="${node.id}">
                             <span class="tree-icon">${this.getNodeIcon(node)}</span>
                             <span class="tree-text">${Utils.escapeHtml(node.title)}</span>
                             ${node.node_type === 'folder' ? `
@@ -343,8 +451,29 @@ class KnowledgeViewPage extends Component {
         if (!container || !this.state.activeNode) return;
 
         container.innerHTML = '';
-
         const node = this.state.activeNode;
+
+        // Processing State Handling
+        if (node.status === 'processing') {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon" style="animation:spin 2s linear infinite">⚙️</div>
+                    <p>文档正在后台解析中...</p>
+                    <p class="text-secondary" style="font-size:12px">解析完成后将自动显示内容</p>
+                </div>
+            `;
+            // Start polling if not already started
+            if (!this.pollingTimer) {
+                this.pollingTimer = setInterval(() => this.checkNodeStatus(node.id), 2000);
+            }
+            return;
+        } else {
+            // Stop polling if status is done
+            if (this.pollingTimer) {
+                clearInterval(this.pollingTimer);
+                this.pollingTimer = null;
+            }
+        }
 
         if (node.node_type === 'folder') {
             container.innerHTML = `
@@ -412,7 +541,24 @@ class KnowledgeViewPage extends Component {
         }
     }
 
+    async checkNodeStatus(nodeId) {
+        try {
+            const res = await KnowledgeApi.getNode(nodeId);
+            const newNode = res.data;
+            if (newNode.status !== 'processing') {
+                clearInterval(this.pollingTimer);
+                this.pollingTimer = null;
+                this.setState({ activeNode: newNode });
+                this.updateViewer();
+                Toast.success('文档解析完成');
+            }
+        } catch (e) {
+            console.error('Polling error', e);
+        }
+    }
+
     async saveDoc() {
+
         if (!this.editor || !this.state.activeNode) return;
         const content = this.editor.getMarkdown();
 
@@ -439,13 +585,16 @@ class KnowledgeViewPage extends Component {
         } catch (e) {
             Toast.error('上传失败: ' + e.message);
         } finally {
-            loader.hide();
+            loader.close();
         }
     }
 
     afterMount() {
         this.loadData();
         this.bindEvents(); // Delegated events
+        if (typeof ModuleHelp !== 'undefined') {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
 
         // Define global drop handler for this instance
         window.handleDropFile = (e) => {
@@ -466,6 +615,12 @@ class KnowledgeViewPage extends Component {
         this.updateViewer();
         this.bindSearchEvent();
         this.bindDragEvents();
+        if (this.state.viewMode === 'graph') {
+            this.renderGraph();
+        }
+        if (typeof ModuleHelp !== 'undefined') {
+            ModuleHelp.bindHelpButtons(this.container);
+        }
     }
 
     bindSearchEvent() {
@@ -477,6 +632,23 @@ class KnowledgeViewPage extends Component {
                 timeout = setTimeout(() => this.performSearch(e.target.value), 300);
             };
         }
+
+        // 过滤器切换
+        const btnToggle = this.$('#btnToggleFilter');
+        if (btnToggle) {
+            btnToggle.onclick = () => {
+                this.setState({ showFilters: !this.state.showFilters });
+            };
+        }
+
+        // 过滤器芯片点击
+        this.container.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.onclick = (e) => {
+                const type = e.target.dataset.type;
+                this.setState({ filters: { type } });
+                this.performSearch(this.$('#searchInput').value);
+            };
+        });
     }
 
     bindDragEvents() {
@@ -536,9 +708,133 @@ class KnowledgeViewPage extends Component {
                 this.loadData();
             });
         });
+
+        // Root Upload Button
+        this.delegate('click', '#btnUploadRoot', () => {
+            this.uploadTargetId = null; // Root upload
+            const uploader = this.$('#fileUploader');
+            if (uploader) uploader.click();
+        });
+
+        // Sub Upload Button
+        this.delegate('click', '[data-action="upload-sub"]', (e, el) => {
+            e.stopPropagation();
+            this.uploadTargetId = el.dataset.id;
+            const uploader = this.$('#fileUploader');
+            if (uploader) uploader.click();
+        });
+
+        // File Input Change (Bind to container capture phase or delegate manually since input is hidden)
+        // Since we re-render sidebar, we use the container's change event bubbling
+        this.container.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'fileUploader') {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    // Upload each file
+                    Array.from(files).forEach(file => {
+                        this.handleFileUpload(file, this.uploadTargetId);
+                    });
+                    // Reset input
+                    e.target.value = '';
+                }
+            }
+        });
+
+        // Breadcrumb Navigation
+        this.delegate('click', '.breadcrumb-item', (e, el) => {
+            const id = el.dataset.id;
+            if (id === 'root') {
+                this.setState({ activeNode: null });
+                this.updateViewer();
+            } else {
+                this.selectNode(id);
+            }
+        });
+
+        // 视图切换
+        this.delegate('click', '#btnViewTree', () => this.switchView('tree'));
+        this.delegate('click', '#btnViewGraph', () => this.switchView('graph'));
+
+        // 图谱刷新
+        this.delegate('click', '#btnRefreshGraph', () => this.loadGraphData());
+    }
+
+    async switchView(mode) {
+        if (mode === this.state.viewMode) return;
+        this.setState({ viewMode: mode, searchResults: null });
+        if (mode === 'graph') {
+            await this.loadGraphData();
+        }
+    }
+
+    async loadGraphData() {
+        const loader = Toast.loading('加载图谱数据...');
+        try {
+            const res = await KnowledgeApi.getGraph(this.baseId);
+            this.setState({ graphData: res.data });
+        } catch (e) {
+            Toast.error('图谱加载失败');
+        } finally {
+            loader.close();
+        }
+    }
+
+    async renderGraph() {
+        const container = this.$('#echartsGraph');
+        if (!container || !this.state.graphData) return;
+
+        // 动态加载 ECharts
+        if (typeof echarts === 'undefined') {
+            await Utils.loadScript('https://lib.baomitu.com/echarts/5.4.3/echarts.min.js');
+        }
+
+        const chart = echarts.init(container);
+        const data = this.state.graphData;
+
+        const option = {
+            tooltip: { show: true },
+            legend: [{
+                data: ['人物', '机构', '地点', '概念', '技术', '事件', '时间'],
+                textStyle: { color: 'var(--text-secondary)' }
+            }],
+            series: [{
+                type: 'graph',
+                layout: 'force',
+                animation: true,
+                draggable: true,
+                data: data.nodes.map(node => ({
+                    id: node.id,
+                    name: node.name,
+                    symbolSize: node.type === '概念' ? 30 : 20,
+                    category: node.type,
+                    value: node.type,
+                    label: { show: true, position: 'right' }
+                })),
+                links: data.edges.map(edge => ({
+                    source: edge.source,
+                    target: edge.target,
+                    label: { show: true, formatter: edge.label, fontSize: 10 }
+                })),
+                categories: [
+                    { name: '人物' }, { name: '机构' }, { name: '地点' },
+                    { name: '概念' }, { name: '技术' }, { name: '事件' }, { name: '时间' }
+                ],
+                force: {
+                    repulsion: 300,
+                    edgeLength: 150,
+                    gravity: 0.05
+                },
+                lineStyle: { color: 'source', curveness: 0.1, opacity: 0.6 },
+                emphasis: { focus: 'adjacency', lineStyle: { width: 4 } }
+            }]
+        };
+
+        chart.setOption(option);
+        window.addEventListener('resize', () => chart.resize());
     }
 
     triggerUpload(parentId) {
+
         const input = document.createElement('input');
         input.type = 'file';
         input.onchange = (e) => {

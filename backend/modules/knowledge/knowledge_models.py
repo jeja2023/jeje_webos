@@ -62,3 +62,34 @@ class KnowledgeNode(Base):
     # 关系便于查询
     parent: Mapped[Optional["KnowledgeNode"]] = relationship("KnowledgeNode", remote_side=[id], back_populates="children")
     children: Mapped[list["KnowledgeNode"]] = relationship("KnowledgeNode", back_populates="parent", cascade="all, delete-orphan")
+
+class KnowledgeEntity(Base):
+    """知识实体 (用于知识图谱)"""
+    __tablename__ = "knowledge_entities"
+    __table_args__ = ({'comment': '知识实体表'},)
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
+    node_id: Mapped[int] = mapped_column(ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False)
+    
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 人物, 机构, 地点, 概念...
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time)
+
+class KnowledgeRelation(Base):
+    """知识关系 (用于知识图谱)"""
+    __tablename__ = "knowledge_relations"
+    __table_args__ = ({'comment': '知识关系表'},)
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
+    
+    source_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False)
+    target_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False)
+    
+    relation_type: Mapped[str] = mapped_column(String(100), nullable=False)  # 属于, 位于, 合作, 包含...
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time)

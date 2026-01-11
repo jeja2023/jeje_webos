@@ -818,7 +818,44 @@ const ModuleHelpContents = {
             <li><strong>智能导航</strong> - 底部设有“上一章/下一章”快速导航，方便连贯学习。</li>
             <li><strong>进度追踪</strong> - 统计面板实时展示您的学习时长和进度，助您更好地管理学习计划。</li>
         </ul>
-    `
+    `,
+
+    /**
+     * 知识库帮助
+     */
+    knowledge: () => `
+        <h3>知识库使用指南</h3>
+        <p>知识库模块是系统的“第二大脑”，集成了最前沿的 AI 检索与图谱分析技术。</p>
+        
+        <h4>🔍 极致搜索 (Hybrid Search)</h4>
+        <ul>
+            <li><strong>混合搜索</strong> - 系统同时进行语义向量检索、关键词检索和视觉检索。</li>
+            <li><strong>视觉检索</strong> - 支持“以文搜图”，AI 能理解图片内容。</li>
+            <li><strong>精细重排 (Rerank)</strong> - 检索结果经过 Cross-Encoder 模型深度打分，最相关的内容始终排在首位。</li>
+            <li><strong>多维过滤</strong> - 支持按文档、图片等类型进行过滤。</li>
+        </ul>
+        
+        <h4>🕸️ 知识图谱 (Knowledge Graph)</h4>
+        <ul>
+            <li><strong>自动提取</strong> - 系统在解析文档时会自动提取关键实体（人物、地点、技术、概念等）及其关联。</li>
+            <li><strong>可视化分析</strong> - 点击侧边栏顶部的🕸️图标切换到图谱模式，直观查看知识点的逻辑关联。</li>
+            <li><strong>交互探索</strong> - 图谱支持拖拽和缩放，帮助您发现隐藏的知识脉络。</li>
+        </ul>
+        
+        <h4>📄 文档管理</h4>
+        <ul>
+            <li><strong>多格式支持</strong> - 支持 PDF, Word, Excel, Markdown 及各类图片。</li>
+            <li><strong>OCR 识别</strong> - 图片中的文字会被自动识别并索引。</li>
+            <li><strong>Markdown 编辑</strong> - 文档支持在线 Markdown 编辑和实时保存。</li>
+        </ul>
+        
+        <h4>💡 使用技巧</h4>
+        <ul>
+            <li>直接<strong>拖拽文件</strong>到右侧空白区即可快速上传。</li>
+            <li>在侧边栏右键点击文件夹可以进行子文档的创建和批量上传。</li>
+            <li>使用过滤器切换功能（⚙️）可以快速定位特定类型的文件。</li>
+        </ul>
+`
 };
 
 // 暴露到全局
