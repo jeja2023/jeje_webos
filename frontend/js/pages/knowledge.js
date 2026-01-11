@@ -242,11 +242,13 @@ class KnowledgeViewPage extends Component {
                             <span class="icon">${base.cover}</span>
                             <span class="text-truncate">${Utils.escapeHtml(base.name)}</span>
                         </div>
-                        <div class="kb-view-toggles">
-                            <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表">📁</button>
-                            <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱">🕸️</button>
+                        <div class="kb-header-tools">
+                            <div class="kb-view-toggles">
+                                <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表">📁</button>
+                                <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱">🕸️</button>
+                            </div>
+                            ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-icon') : ''}
                         </div>
-                        ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-icon') : ''}
                     </div>
                     
                     <div class="kb-search-bar">

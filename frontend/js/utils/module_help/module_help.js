@@ -13,18 +13,18 @@ const ModuleHelp = {
     show(moduleId, title = null, content = null) {
         // 如果没有提供标题，使用模块ID
         const helpTitle = title || moduleId;
-        
+
         // 如果没有提供内容，从全局帮助内容中获取
         let helpContent = content;
         if (!helpContent && window.ModuleHelpContents && window.ModuleHelpContents[moduleId]) {
             helpContent = window.ModuleHelpContents[moduleId];
         }
-        
+
         if (!helpContent) {
             Toast.error('该模块暂无帮助信息');
             return;
         }
-        
+
         // 如果 content 是函数，调用它获取内容
         const finalContent = typeof helpContent === 'function' ? helpContent() : helpContent;
 
@@ -58,7 +58,7 @@ const ModuleHelp = {
                     data-help-title="${titleEscaped}"
                     title="查看帮助"
                     onclick="if(window.ModuleHelp){window.ModuleHelp.show('${moduleIdEscaped}','${titleEscaped}');}">
-                <i class="ri-question-line"></i> 帮助
+                <i class="ri-question-line"></i><span class="help-text"> 帮助</span>
             </button>
         `;
     },
@@ -69,12 +69,12 @@ const ModuleHelp = {
      */
     bindHelpButtons(container) {
         if (!container) return;
-        
+
         container.querySelectorAll('.btn-help[data-help-module]').forEach(btn => {
             // 避免重复绑定
             if (btn._helpBound) return;
             btn._helpBound = true;
-            
+
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();

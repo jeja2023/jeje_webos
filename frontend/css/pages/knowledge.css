@@ -97,31 +97,47 @@
     flex-shrink: 0;
 }
 
+
 .kb-sidebar-header {
-    padding: 20px;
+    padding: 0 16px;
     border-bottom: 1px solid var(--border-color);
-    height: 60px;
+    height: 56px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .kb-header-title {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 15px;
     overflow: hidden;
+    min-width: 0;
+}
+
+.kb-header-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Hide help text when used as icon */
+.btn-icon .help-text {
+    display: none;
 }
 
 .kb-search-bar {
-    padding: 12px;
+    padding: 12px 16px;
 }
 
 .kb-tree {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 0;
+    padding: 8px 0;
 }
 
 .kb-sidebar-footer {
@@ -132,7 +148,7 @@
 .kb-sidebar-actions {
     display: flex;
     gap: 8px;
-    margin-top: 4px;
+    margin-top: 12px;
 }
 
 .btn-sm {
@@ -145,7 +161,7 @@
 .kb-view-toggles {
     display: flex;
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 2px;
     border: 1px solid var(--border-color);
 }
@@ -156,21 +172,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 4px;
     border: none;
     background: transparent;
     cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;
+    color: var(--text-secondary);
+    padding: 0;
 }
 
 .btn-icon:hover {
     background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 .btn-icon.active {
     background: var(--bg-primary);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     color: var(--color-primary);
 }
 
@@ -180,15 +199,15 @@
     flex-direction: column;
     height: 100%;
     background: var(--bg-primary);
-    padding: 20px;
+    padding: 24px;
 }
 
 .graph-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -196,13 +215,15 @@
     margin: 0;
     font-size: 18px;
     color: var(--text-primary);
+    font-weight: 600;
 }
 
 /* 搜索过滤面板样式 */
 .search-input-group {
     display: flex;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 0;
+    position: relative;
 }
 
 .btn-filter {
