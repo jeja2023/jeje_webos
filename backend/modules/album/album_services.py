@@ -29,7 +29,7 @@ import zipfile
 def create_zip_stream(files: List[Tuple[str, str]]) -> io.BytesIO:
     """
     创建 ZIP 文件流
-    Args:
+    参数:
         files: 文件列表，每个元素为 (file_path, archive_name)
     """
     memory_file = io.BytesIO()
@@ -76,7 +76,7 @@ class AlbumService:
         """
         根据ID获取相册
         
-        Args:
+        参数:
             db: 数据库会话
             album_id: 相册ID
             user_id: 用户ID（如果指定，只返回该用户的相册）
@@ -102,7 +102,7 @@ class AlbumService:
         """
         获取用户的相册列表
         
-        Returns:
+        返回:
             (albums, total): 相册列表和总数
         """
         conditions = [Album.user_id == user_id]
@@ -179,7 +179,7 @@ class AlbumService:
         """
         上传照片到相册
         
-        Args:
+        参数:
             db: 数据库会话
             user_id: 用户ID
             album_id: 相册ID

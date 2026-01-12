@@ -3,26 +3,34 @@
  */
 
 const KnowledgeApi = {
+    // 知识库管理
     getBases: () => Api.get('/knowledge/bases'),
     createBase: (data) => Api.post('/knowledge/bases', data),
+    updateBase: (id, data) => Api.put(`/knowledge/bases/${id}`, data),
     deleteBase: (id) => Api.delete(`/knowledge/bases/${id}`),
 
+    // 节点管理
     getNodes: (baseId) => Api.get(`/knowledge/bases/${baseId}/nodes`),
     getNode: (id) => Api.get(`/knowledge/nodes/${id}`),
     createNode: (data) => Api.post('/knowledge/nodes', data),
     updateNode: (id, data) => Api.put(`/knowledge/nodes/${id}`, data),
     deleteNode: (id) => Api.delete(`/knowledge/nodes/${id}`),
 
+    // 批量更新节点排序
+    batchSortNodes: (updates) => Api.post('/knowledge/nodes/sort', updates),
+
+    // 文件上传
     uploadFile: (baseId, parentId, file) => {
         const formData = new FormData();
         formData.append('base_id', baseId);
         if (parentId) formData.append('parent_id', parentId);
         formData.append('file', file);
         return Api.post('/knowledge/upload', formData, {
-            headers: { 'Content-Type': undefined } // Let browser set boundary
+            headers: { 'Content-Type': undefined }
         });
     },
 
+    // 混合搜索
     search(query, baseId, nodeType = null) {
         let url = `/api/v1/knowledge/search?q=${encodeURIComponent(query)}`;
         if (baseId) url += `&base_id=${baseId}`;
@@ -30,9 +38,10 @@ const KnowledgeApi = {
         return Api.request({ url });
     },
 
-    // Add getFilePreviewUrl helper
+    // 获取文件预览URL
     getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem('token')}`,
 
+    // 获取知识图谱数据
     getGraph: (baseId) => Api.get(`/knowledge/bases/${baseId}/graph`)
 };
 
@@ -180,23 +189,28 @@ class KnowledgeViewPage extends Component {
     }
 
     buildTree(nodes) {
-        // Simple O(n^2) tree builder
+        /**
+         * O(n) 树构建算法
+         * 使用两次遍历：第一次建立映射表，第二次建立父子关系
+         */
         const map = {};
         const roots = [];
-        // Deep copy nodes to avoid polluting original list if needed
-        const nodesCopy = nodes.map(n => ({ ...n, children: [] }));
 
-        nodesCopy.forEach(n => {
-            map[n.id] = n;
+        // 第一次遍历：建立节点映射表
+        nodes.forEach(n => {
+            map[n.id] = { ...n, children: [] };
         });
 
-        nodesCopy.forEach(n => {
+        // 第二次遍历：建立父子关系
+        nodes.forEach(n => {
+            const node = map[n.id];
             if (n.parent_id && map[n.parent_id]) {
-                map[n.parent_id].children.push(n);
+                map[n.parent_id].children.push(node);
             } else {
-                roots.push(n);
+                roots.push(node);
             }
         });
+
         return roots;
     }
 
@@ -206,9 +220,9 @@ class KnowledgeViewPage extends Component {
             this.setState({
                 activeNode: res.data,
                 editorMode: false,
-                searchResults: null // clear search when selecting
+                searchResults: null
             });
-            // Update editor/viewer
+            // 更新查看器
             this.updateViewer();
         } catch (e) {
             Toast.error('加载文档失败');
@@ -575,7 +589,7 @@ class KnowledgeViewPage extends Component {
         }
     }
 
-    // File Upload Handler
+    // 文件上传处理
     async handleFileUpload(file, parentId = null) {
         if (!file) return;
 
@@ -583,7 +597,7 @@ class KnowledgeViewPage extends Component {
         try {
             await KnowledgeApi.uploadFile(this.baseId, parentId, file);
             Toast.success('上传成功');
-            this.loadData(); // Reload tree
+            this.loadData();
         } catch (e) {
             Toast.error('上传失败: ' + e.message);
         } finally {
@@ -593,12 +607,12 @@ class KnowledgeViewPage extends Component {
 
     afterMount() {
         this.loadData();
-        this.bindEvents(); // Delegated events
+        this.bindEvents();
         if (typeof ModuleHelp !== 'undefined') {
             ModuleHelp.bindHelpButtons(this.container);
         }
 
-        // Define global drop handler for this instance
+        // 定义全局拖放处理函数
         window.handleDropFile = (e) => {
             e.preventDefault();
             this.$('#uploadOverlay')?.classList.remove('active');

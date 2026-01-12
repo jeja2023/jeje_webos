@@ -288,10 +288,10 @@ async def get_video_file(
             raise HTTPException(status_code=401, detail="请先登录")
     
     if not os.path.exists(video.storage_path):
-        logger.error(f"Video file not found: {video.storage_path} (ID: {video_id})")
+        logger.error(f"视频文件未找到: {video.storage_path} (ID: {video_id})")
         raise HTTPException(status_code=404, detail="文件不存在")
     
-    logger.info(f"Serving video: {video.filename}, Size: {video.file_size}, Path: {video.storage_path}")
+    logger.info(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {video.storage_path}")
     
     # 确定 MIME 类型，对播放最友好的做法是强制 mp4 后缀为 video/mp4
     mime_type = "video/mp4" if video.filename.endswith(".mp4") else (video.mime_type or "video/mp4")

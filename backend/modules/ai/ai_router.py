@@ -27,10 +27,10 @@ class ChatRequest(BaseModel):
     history: List[Dict[str, str]] = []
     knowledge_base_id: Optional[int] = None
     use_analysis: bool = False
-    provider: str = "local" # local | online
+    provider: str = "local" # local: 本地模式 | online: 在线模式
     role_preset: str = "default"  # 角色预设: default/coder/writer/translator/analyst
     model_name: Optional[str] = None  # 本地模型名称，为None时使用默认模型
-    api_config: Optional[Dict[str, str]] = None # allows temporary front-end config
+    api_config: Optional[Dict[str, str]] = None # 允许前端传入临时配置
     session_id: Optional[int] = None # 会话ID，如果提供则保存消息到此会话
 
 @router.get("/status")

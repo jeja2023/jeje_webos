@@ -20,7 +20,8 @@ from .knowledge_services import KnowledgeService
 
 router = APIRouter()
 
-# ==================== Knowledge Base ====================
+
+# ==================== 知识库管理 ====================
 
 @router.post("/bases", response_model=dict)
 async def create_base(
@@ -32,6 +33,7 @@ async def create_base(
     base = await KnowledgeService.create_base(db, user.user_id, data)
     return success(data=KbBaseResponse.model_validate(base).model_dump())
 
+
 @router.get("/bases", response_model=dict)
 async def get_bases(
     db: AsyncSession = Depends(get_db),
@@ -40,6 +42,7 @@ async def get_bases(
     """获取知识库列表"""
     bases = await KnowledgeService.get_bases(db, user.user_id)
     return success(data=[KbBaseResponse.model_validate(b).model_dump() for b in bases])
+
 
 @router.get("/bases/{base_id}", response_model=dict)
 async def get_base(
@@ -54,6 +57,25 @@ async def get_base(
     if not base.is_public and base.owner_id != user.user_id:
         return error(403, "无权访问")
     return success(data=KbBaseResponse.model_validate(base).model_dump())
+
+
+@router.put("/bases/{base_id}", response_model=dict)
+async def update_base(
+    base_id: int,
+    data: KbBaseUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """更新知识库"""
+    base = await KnowledgeService.get_base(db, base_id)
+    if not base:
+        return error(404, "知识库不存在")
+    if base.owner_id != user.user_id:
+        return error(403, "只有所有者可以修改")
+        
+    updated = await KnowledgeService.update_base(db, base_id, data)
+    return success(data=KbBaseResponse.model_validate(updated).model_dump())
+
 
 @router.delete("/bases/{base_id}", response_model=dict)
 async def delete_base(
@@ -71,7 +93,7 @@ async def delete_base(
     await KnowledgeService.delete_base(db, base_id)
     return success(message="删除成功")
 
-# ==================== Knowledge Nodes ====================
+# ==================== 节点管理 ====================
 
 @router.get("/bases/{base_id}/nodes", response_model=dict)
 async def get_base_nodes(
@@ -79,7 +101,7 @@ async def get_base_nodes(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """获取知识库下的所有节点（树形）"""
+    """获取知识库下的所有节点列表"""
     base = await KnowledgeService.get_base(db, base_id)
     if not base:
         return error(404, "知识库不存在")
@@ -88,6 +110,7 @@ async def get_base_nodes(
         
     nodes = await KnowledgeService.get_tree_nodes(db, base_id)
     return success(data=[KbNodeResponse.model_validate(n).model_dump() for n in nodes])
+
 
 @router.post("/nodes", response_model=dict)
 async def create_node(
@@ -105,6 +128,18 @@ async def create_node(
     node = await KnowledgeService.create_node(db, user.user_id, data)
     return success(data=KbNodeResponse.model_validate(node).model_dump())
 
+
+@router.post("/nodes/sort", response_model=dict)
+async def batch_sort_nodes(
+    updates: List[dict],
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """批量更新节点排序"""
+    await KnowledgeService.batch_update_sort(db, updates)
+    return success(message="排序更新成功")
+
+
 @router.post("/upload", response_model=dict)
 async def upload_file(
     background_tasks: BackgroundTasks,
@@ -114,17 +149,17 @@ async def upload_file(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """文件上传接口 (异步解析)"""
+    """文件上传接口，文件解析在后台异步执行"""
     base = await KnowledgeService.get_base(db, base_id)
     if not base:
         return error(404, "知识库不存在")
     if base.owner_id != user.user_id:
         return error(403, "无权上传")
         
-    # Phase 1: Rapid upload & DB record
+    # 快速保存文件并创建数据库记录
     node = await KnowledgeService.upload_file(db, user.user_id, base_id, parent_id, file)
     
-    # Phase 2: Background processing
+    # 后台异步处理文件解析
     background_tasks.add_task(
         BackgroundTaskHelper.run_with_db,
         KnowledgeService.process_file_background,
@@ -146,12 +181,10 @@ async def preview_file(
         
     if not node.file_path or not os.path.exists(node.file_path):
         raise HTTPException(status_code=404, detail="文件实体不存在")
-        
-    # TODO: 后续增加权限细粒度校验
     
     return FileResponse(
         path=node.file_path,
-        filename=node.title, # 下载时的文件名
+        filename=node.title,
         media_type=node.file_meta.get("mime", "application/octet-stream")
     )
 
@@ -201,6 +234,8 @@ async def delete_node(
     await KnowledgeService.delete_node(db, node_id)
     return success(message="删除成功")
 
+# ==================== 搜索与图谱 ====================
+
 @router.get("/search", response_model=dict)
 async def search_knowledge(
     q: str,
@@ -209,7 +244,7 @@ async def search_knowledge(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """知识库搜索 (混合搜索 + Rerank + 过滤)"""
+    """知识库混合搜索，支持语义、关键词和视觉搜索"""
     filters = {}
     if node_type:
         filters["type"] = node_type
@@ -217,13 +252,14 @@ async def search_knowledge(
     results = await KnowledgeService.search(db, base_id, q, filters=filters)
     return success(data=results)
 
+
 @router.get("/bases/{base_id}/graph", response_model=dict)
 async def get_knowledge_graph(
     base_id: int,
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """获取知识图谱数据"""
+    """获取知识图谱可视化数据"""
     from .knowledge_graph_service import KnowledgeGraphService
     
     base = await KnowledgeService.get_base(db, base_id)

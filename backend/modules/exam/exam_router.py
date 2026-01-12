@@ -19,7 +19,8 @@ from .exam_schemas import (
     ExamStart, ExamSubmit, ExamSubmitAnswer,
     RecordResponse, RecordDetailResponse, RecordListResponse,
     GradeSubmit,
-    ExamQuestionView, ExamPaperView
+    ExamQuestionView, ExamPaperView,
+    SmartPaperCreate, QuestionImportRequest, CheatLogCreate
 )
 from .exam_services import ExamService
 
@@ -605,3 +606,157 @@ async def submit_grading(
         "score": record.score,
         "is_passed": record.is_passed
     }, message="阅卷完成")
+
+
+# ==================== 智能组卷接口 ====================
+
+@router.post("/papers/smart", summary="智能组卷")
+async def smart_create_paper(
+    data: SmartPaperCreate,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """根据规则自动从题库抽取题目组卷"""
+    paper = await ExamService.smart_create_paper(db, user.user_id, data)
+    if not paper:
+        raise HTTPException(status_code=400, detail="组卷失败")
+    await db.commit()
+    return success(data=PaperResponse.model_validate(paper).model_dump(), message="智能组卷成功")
+
+
+# ==================== 题目批量导入接口 ====================
+
+@router.post("/questions/import", summary="批量导入题目")
+async def batch_import_questions(
+    data: QuestionImportRequest,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """批量导入题目"""
+    success_count, fail_count = await ExamService.batch_import_questions(db, user.user_id, data)
+    await db.commit()
+    return success(data={
+        "success_count": success_count,
+        "fail_count": fail_count
+    }, message=f"导入完成: 成功 {success_count} 题, 失败 {fail_count} 题")
+
+
+# ==================== 错题本接口 ====================
+
+@router.get("/wrong-questions", summary="获取错题本")
+async def get_wrong_questions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    question_type: str = Query(None, description="题目类型筛选"),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """获取当前用户的错题列表"""
+    items, total = await ExamService.get_wrong_questions(
+        db, user.user_id, page, page_size, question_type
+    )
+    return success(data={
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    })
+
+
+@router.delete("/wrong-questions/{wrong_id}", summary="删除错题记录")
+async def delete_wrong_question(
+    wrong_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """从错题本中移除指定题目"""
+    deleted = await ExamService.delete_wrong_question(db, wrong_id, user.user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="错题记录不存在")
+    await db.commit()
+    return success(message="已从错题本移除")
+
+
+@router.delete("/wrong-questions", summary="清空错题本")
+async def clear_wrong_questions(
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """清空当前用户的错题本"""
+    count = await ExamService.clear_wrong_questions(db, user.user_id)
+    await db.commit()
+    return success(message=f"已清空 {count} 条错题记录")
+
+
+# ==================== 成绩排名接口 ====================
+
+@router.get("/papers/{paper_id}/ranking", summary="获取试卷排名")
+async def get_paper_ranking(
+    paper_id: int,
+    limit: int = Query(50, ge=1, le=100, description="排名数量"),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """获取试卷的成绩排名榜"""
+    ranking = await ExamService.get_paper_ranking(db, paper_id, limit)
+    if not ranking:
+        raise HTTPException(status_code=404, detail="试卷不存在")
+    return success(data=ranking)
+
+
+# ==================== 提交考试增强（自动记录错题） ====================
+
+@router.post("/take/{record_id}/submit-v2", summary="提交试卷（增强版）")
+async def submit_exam_v2(
+    record_id: int,
+    data: ExamSubmit,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """提交试卷并自动记录错题"""
+    record = await ExamService.submit_exam_with_wrong_record(db, record_id, user.user_id, data.answers)
+    if not record:
+        raise HTTPException(status_code=400, detail="提交失败")
+    await db.commit()
+    
+    return success(data={
+        "record_id": record.id,
+        "score": record.score,
+        "total_score": record.total_score,
+        "is_passed": record.is_passed,
+        "status": record.status
+    }, message="提交成功")
+
+
+# ==================== 作弊日志接口 ====================
+
+@router.post("/cheat-log", summary="记录作弊行为")
+async def add_cheat_log(
+    data: CheatLogCreate,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """记录考试中的异常行为"""
+    try:
+        await ExamService.add_cheat_log(db, user.user_id, data)
+        await db.commit()
+        return success(message="已记录")
+    except Exception as e:
+        # 静默失败，不影响考试
+        return success(message="已记录")
+
+
+@router.get("/records/{record_id}/cheat-logs", summary="获取作弊日志")
+async def get_cheat_logs(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """获取考试记录的作弊日志（仅管理员）"""
+    logs = await ExamService.get_cheat_logs_by_record(db, record_id)
+    return success(data=[{
+        "id": log.id,
+        "action": log.action,
+        "count": log.count,
+        "created_at": log.created_at
+    } for log in logs])

@@ -1,3 +1,9 @@
+"""
+文档解析器模块
+支持多种文件格式的文本提取和分块处理
+支持的格式：PDF、Word、Excel、CSV、图片OCR、文本文件等
+"""
+
 import io
 import re
 import logging
@@ -7,12 +13,13 @@ import asyncio
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 
-# Try importing dependencies
+# 可选依赖：PDF解析
 try:
     from pdfminer.high_level import extract_text as extract_pdf_text
 except ImportError:
     extract_pdf_text = None
 
+# 可选依赖：OCR图像识别
 try:
     from paddleocr import PaddleOCR
 except ImportError:
@@ -22,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class RecursiveCharacterTextSplitter:
     """
-    Recursive character text splitter (inspired by LangChain)
+    递归字符文本分割器（灵感来自 LangChain）
     """
     def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, separators: List[str] = None):
         self._chunk_size = chunk_size
@@ -33,7 +40,7 @@ class RecursiveCharacterTextSplitter:
         final_chunks = []
         separator = self._separators[-1]
         
-        # Find the best separator
+        # 寻找最佳分隔符
         for _s in self._separators:
             if _s == "":
                 separator = _s
@@ -42,13 +49,13 @@ class RecursiveCharacterTextSplitter:
                 separator = _s
                 break
                 
-        # Split
+        # 分割
         if separator:
             splits = text.split(separator)
         else:
-            splits = list(text) # Split by character
+            splits = list(text) # 按字符分割
             
-        # Merge
+        # 合并
         _good_splits = []
         _separator_len = len(separator) if separator else 0
         
@@ -62,7 +69,7 @@ class RecursiveCharacterTextSplitter:
                     doc = separator.join(current_chunk) if separator else "".join(current_chunk)
                     final_chunks.append(doc)
                     
-                    # Handle overlap logic (simplified)
+                    # 处理重叠逻辑（简化版）
                     while current_len > self._chunk_overlap:
                         if not current_chunk: break
                         pop_s = current_chunk.pop(0)
@@ -88,14 +95,14 @@ class DocumentParser:
     @classmethod
     def get_ocr(cls):
         if cls._ocr_model is None and PaddleOCR:
-            # Initialize OCR (Language: Chinese & English)
+            # 初始化 OCR（语言：中英文）
             cls._ocr_model = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
         return cls._ocr_model
 
     @staticmethod
     async def parse_file(file_content: bytes, filename: str, content_type: str) -> str:
         """
-        Asynchronously parse file content to text
+        异步解析文件内容为文本
         """
         ext = filename.lower().split('.')[-1] if '.' in filename else ''
         
@@ -123,7 +130,7 @@ class DocumentParser:
             else:
                 return ""
         except Exception as e:
-            logger.error(f"Failed to parse file type {ext}: {e}")
+            logger.error(f"解析文件类型失败 {ext}: {e}")
             return ""
 
     @staticmethod
@@ -146,7 +153,7 @@ class DocumentParser:
             dfs = pd.read_excel(f, sheet_name=None)
             text_parts = []
             for sheet_name, df in dfs.items():
-                text_parts.append(f"Sheet: {sheet_name}")
+                text_parts.append(f"工作表: {sheet_name}")
                 text_parts.append(df.to_csv(index=False))
             return "\n".join(text_parts)
 
@@ -156,13 +163,13 @@ class DocumentParser:
         
     @staticmethod
     def _parse_image(content: bytes) -> str:
-        """Parse image using PaddleOCR"""
+        """使用 PaddleOCR 解析图像"""
         ocr = DocumentParser.get_ocr()
         if not ocr:
-            return "[OCR Unavailable]"
+            return "[OCR 不可用]"
             
         result = ocr.ocr(content, cls=True)
-        # result structure: [[[[points], [text, score]], ...]]
+        # 结果结构: [[[[points], [text, score]], ...]]
         texts = []
         if result and result[0]:
             for line in result[0]:
@@ -173,7 +180,7 @@ class DocumentParser:
     @staticmethod
     def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:
         """
-        Smart text chunking using RecursiveCharacterTextSplitter
+        使用 RecursiveCharacterTextSplitter 进行智能文本分块
         """
         if not text:
             return []

@@ -304,7 +304,7 @@ class IMService:
         # 2. 如果是私聊且没有名称，则显示对方的昵称
         if conversation.type == "private":
             # 查找对方成员信息
-            # Retrieve user info from User model (already imported)
+            # 从User模型获取用户信息
             stmt = select(User).join(
                 IMConversationMember, IMConversationMember.user_id == User.id
             ).where(

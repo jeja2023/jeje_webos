@@ -37,7 +37,7 @@ class VectorStore:
             persist_path = os.path.join(base_dir, "storage", "modules", "knowledge", "chroma_db")
             os.makedirs(persist_path, exist_ok=True)
             
-            logger.info(f"Initializing ChromaDB at {persist_path}")
+            logger.info(f"初始化 ChromaDB 位置: {persist_path}")
             
             self._client = chromadb.PersistentClient(
                 path=persist_path,
@@ -45,10 +45,10 @@ class VectorStore:
             )
             
             self._collection = self._client.get_or_create_collection(name=self.COLLECTION_NAME)
-            logger.debug("ChromaDB initialized successfully")
+            logger.debug("ChromaDB 初始化成功")
             
         except Exception as e:
-            logger.error(f"Failed to verify ChromaDB: {e}")
+            logger.error(f"验证 ChromaDB 失败: {e}")
             self._client = None
 
     def add_documents(self, documents: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
@@ -67,9 +67,9 @@ class VectorStore:
                 metadatas=metadatas,
                 ids=ids
             )
-            logger.info(f"Added {len(documents)} chunks to vector store")
+            logger.info(f"已添加 {len(documents)} 个分块到向量库")
         except Exception as e:
-            logger.error(f"Vector store add error: {e}")
+            logger.error(f"向量库添加错误: {e}")
 
     def query(self, query_text: str, n_results: int = 5, where: Optional[Dict] = None) -> List[Dict]:
         """
@@ -109,7 +109,7 @@ class VectorStore:
             return parsed_results
             
         except Exception as e:
-            logger.error(f"Vector store query error: {e}")
+            logger.error(f"向量库查询错误: {e}")
             return []
 
     def delete_by_node_id(self, node_id: int):
@@ -121,9 +121,9 @@ class VectorStore:
             self._collection.delete(
                 where={"node_id": node_id}
             )
-            logger.info(f"Deleted vectors for node {node_id}")
+            logger.info(f"已删除节点 {node_id} 的向量")
         except Exception as e:
-            logger.error(f"Vector store delete error: {e}")
+            logger.error(f"向量库删除错误: {e}")
 
 # 全局变量
 _vector_store: Optional[VectorStore] = None

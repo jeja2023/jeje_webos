@@ -235,3 +235,60 @@ class ExamAnswer(Base):
     
     def __repr__(self):
         return f"<ExamAnswer(record_id={self.record_id}, question_id={self.question_id})>"
+
+
+class ExamWrongQuestion(Base):
+    """
+    错题本表
+    记录用户的错题以供复习
+    """
+    __tablename__ = "exam_wrong_questions"
+    __table_args__ = {'extend_existing': True, 'comment': '错题本表'}
+    
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    user_id = Column(Integer, nullable=False, index=True, comment="用户ID")
+    question_id = Column(Integer, ForeignKey("exam_questions.id", ondelete="CASCADE"), nullable=False, index=True, comment="题目ID")
+    paper_id = Column(Integer, nullable=True, comment="来源试卷ID")
+    
+    # 错误详情
+    user_answer = Column(Text, nullable=True, comment="用户的错误答案")
+    correct_answer = Column(Text, nullable=True, comment="正确答案")
+    
+    # 统计
+    wrong_count = Column(Integer, default=1, comment="错误次数")
+    
+    # 时间戳
+    first_wrong_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="首次错误时间")
+    last_wrong_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="最近错误时间")
+    
+    # 关联
+    question = relationship("ExamQuestion")
+    
+    def __repr__(self):
+        return f"<ExamWrongQuestion(user_id={self.user_id}, question_id={self.question_id})>"
+
+
+class ExamCheatLog(Base):
+    """
+    作弊日志表
+    记录考试中的异常行为
+    """
+    __tablename__ = "exam_cheat_logs"
+    __table_args__ = {'extend_existing': True, 'comment': '作弊日志表'}
+    
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    record_id = Column(Integer, ForeignKey("exam_records.id", ondelete="CASCADE"), nullable=False, index=True, comment="考试记录ID")
+    user_id = Column(Integer, nullable=False, index=True, comment="用户ID")
+    
+    # 行为详情
+    action = Column(String(100), nullable=False, comment="行为类型")
+    count = Column(Integer, default=1, comment="累计次数")
+    
+    # 时间
+    created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="记录时间")
+    
+    # 关联
+    record = relationship("ExamRecord")
+    
+    def __repr__(self):
+        return f"<ExamCheatLog(record_id={self.record_id}, action={self.action})>"

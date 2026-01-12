@@ -698,7 +698,7 @@ class AlbumPage extends Component {
     `;
     }
 
-    // Modal helpers
+    // 模态框辅助函数
     showCreateAlbumModal() {
         Modal.form({
             title: '新建相册',
