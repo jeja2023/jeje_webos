@@ -366,7 +366,7 @@ def init_rate_limiter():
             rate_limiter.add_whitelist("::1")  # IPv6 localhost
             logger.debug("本地IP已加入速率限制白名单")
         
-        logger.info(f"速率限制已配置: {requests} 请求/{window}秒，封禁时长: {block_duration}秒")
+        logger.info(f"✅ 速率限制已启用: {requests}次/{window}秒 (封禁: {block_duration}秒)")
     except Exception as e:
         logger.warning(f"速率限制初始化使用默认配置: {e}")
 

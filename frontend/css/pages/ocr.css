@@ -1,5 +1,6 @@
 /**
  * OCR 图文识别页面样式
+ * 包含识别框可视化、历史记录面板等优化样式
  */
 
 /* 页面容器 */
@@ -45,6 +46,52 @@
 .ocr-subtitle {
     font-size: 14px;
     color: var(--text-tertiary);
+}
+
+.ocr-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 历史按钮 */
+.ocr-history-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.ocr-history-btn:hover,
+.ocr-history-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.history-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
 }
 
 /* 状态指示器 */
@@ -188,12 +235,62 @@
     padding: 16px;
 }
 
+.ocr-preview-wrapper {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+}
+
 .ocr-preview-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* PDF 预览 */
+.ocr-preview.pdf-preview {
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ocr-preview.pdf-preview i {
+    font-size: 80px;
+    color: #ef4444;
+}
+
+.pdf-name {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 识别框覆盖层 */
+.ocr-box-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.ocr-box {
+    fill: rgba(59, 130, 246, 0.15);
+    stroke: #3b82f6;
+    stroke-width: 2;
+    transition: all 0.2s;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.ocr-box:hover {
+    fill: rgba(59, 130, 246, 0.3);
+    stroke-width: 3;
 }
 
 .ocr-clear-btn {
@@ -212,6 +309,7 @@
     justify-content: center;
     transition: all 0.2s;
     font-size: 18px;
+    z-index: 10;
 }
 
 .ocr-clear-btn:hover {
@@ -225,6 +323,7 @@
     gap: 24px;
     align-items: center;
     padding: 0 4px;
+    flex-wrap: wrap;
 }
 
 .ocr-option-group {
@@ -294,35 +393,78 @@
     transform: rotate(45deg);
 }
 
+/* 按钮组 */
+.ocr-btn-group {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-top: 10px;
+}
+
 /* 识别按钮 */
 .ocr-recognize-btn {
-    padding: 14px 28px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark, var(--accent-color)) 100%);
+    flex: 1;
+    padding: 16px 28px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
     border: none;
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    transition: all 0.3s ease;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* 停止按钮 */
+.ocr-stop-btn {
+    width: 100px;
+    border-radius: 14px;
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.ocr-stop-btn:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .ocr-recognize-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.4);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.ocr-recognize-btn:active:not(:disabled) {
+    transform: translateY(0);
 }
 
 .ocr-recognize-btn:disabled {
-    opacity: 0.5;
+    background: var(--bg-tertiary);
+    color: var(--text-quaternary);
     cursor: not-allowed;
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+    opacity: 0.6;
 }
 
 .ocr-recognize-btn i {
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .btn-spinner {
@@ -400,6 +542,12 @@
 
 .result-title i {
     color: var(--accent-color);
+}
+
+.result-pages {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-tertiary);
 }
 
 .result-actions {
@@ -526,6 +674,12 @@
     background: var(--bg-primary);
     border-radius: 6px;
     font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.detail-item:hover {
+    background: var(--bg-hover);
 }
 
 .detail-index {
@@ -555,6 +709,140 @@
     flex-shrink: 0;
 }
 
+/* 历史记录面板 */
+.ocr-history-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.history-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-title i {
+    color: var(--accent-color);
+}
+
+.history-clear-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.history-clear-btn:hover:not(:disabled) {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+.history-clear-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.history-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-tertiary);
+}
+
+.history-empty i {
+    font-size: 48px;
+    opacity: 0.3;
+}
+
+.history-item {
+    padding: 14px;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.history-item:hover {
+    border-color: var(--accent-color);
+}
+
+.history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.history-time {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.history-lang {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-color);
+    color: white;
+}
+
+.history-item-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.history-item-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-quaternary);
+}
+
 /* 响应式布局 */
 @media (max-width: 900px) {
     .ocr-main {
@@ -566,5 +854,16 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+    }
+
+    .ocr-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ocr-header-right {
+        width: 100%;
+        justify-content: space-between;
     }
 }

@@ -62,13 +62,13 @@ const Api = {
                         // 忽略JSON解析错误
                     }
                 }
-                
+
                 // 清除认证并跳转登录（只执行一次）
                 if (Store.get('isLoggedIn')) {
                     Store.clearAuth();
                     Router.push('/login');
                 }
-                
+
                 throw new Error(errorMessage);
             }
 
@@ -171,7 +171,7 @@ const Api = {
     /**
      * 上传文件
      */
-    async upload(url, fileOrFormData, fieldName = 'file') {
+    async upload(url, fileOrFormData, fieldName = 'file', options = {}) {
         const token = localStorage.getItem(Config.storageKeys.token);
 
         let body;
@@ -183,7 +183,7 @@ const Api = {
             body = formData;
         }
 
-        const headers = {};
+        const headers = { ...options.headers };
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
@@ -196,6 +196,7 @@ const Api = {
 
         const response = await fetch(`${Config.apiBase}${url}`, {
             method: 'POST',
+            ...options,
             headers,
             body
         });
@@ -267,12 +268,12 @@ const Api = {
 
         // 确保正确处理二进制数据
         const blob = await response.blob();
-        
+
         // 验证 blob 是否有效
         if (!blob || blob.size === 0) {
             throw new Error('下载的文件为空');
         }
-        
+
         return { blob, filename };
     }
 };

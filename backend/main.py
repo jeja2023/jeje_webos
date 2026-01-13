@@ -97,11 +97,8 @@ async def lifespan(app: FastAPI):
         logger.warning(f"⚠️  JWT 密钥自动生成检查失败: {e}")
     
     # 1. 初始化速率限制器
+    # 1. 初始化速率限制器
     init_rate_limiter()
-    if current_settings.rate_limit_enabled:
-        logger.info("✅ 速率限制中间件已启用")
-    else:
-        logger.info("ℹ️ 速率限制中间件已禁用")
     
     if current_settings.csrf_enabled:
         logger.info("✅ CSRF 防护中间件已启用")

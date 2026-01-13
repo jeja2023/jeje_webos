@@ -5,7 +5,7 @@ OCR 模块 API 路由
 
 import logging
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
-from typing import Optional
+from typing import Optional, List
 
 from core.security import get_current_user, TokenData
 from schemas.response import success, error
@@ -41,7 +41,7 @@ async def recognize_image(
     """
     try:
         # 验证文件类型
-        allowed_types = ["image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"]
+        allowed_types = ["image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif", "application/pdf"]
         if file.content_type not in allowed_types:
             return error(code=400, message=f"不支持的文件类型: {file.content_type}")
         
@@ -109,7 +109,7 @@ async def recognize_base64(
 
 @router.post("/recognize/batch")
 async def recognize_batch(
-    files: list[UploadFile] = File(..., description="要识别的图片文件列表"),
+    files: List[UploadFile] = File(..., description="要识别的图片文件列表"),
     detect_direction: bool = Form(False),
     language: str = Form("ch"),
     user: TokenData = Depends(get_current_user)

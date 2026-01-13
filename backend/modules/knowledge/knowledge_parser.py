@@ -12,18 +12,11 @@ import pandas as pd
 import asyncio
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
-
 # 可选依赖：PDF解析
 try:
     from pdfminer.high_level import extract_text as extract_pdf_text
 except ImportError:
     extract_pdf_text = None
-
-# 可选依赖：OCR图像识别
-try:
-    from paddleocr import PaddleOCR
-except ImportError:
-    PaddleOCR = None
 
 logger = logging.getLogger(__name__)
 
@@ -90,14 +83,6 @@ class RecursiveCharacterTextSplitter:
 class DocumentParser:
     
     _executor = ThreadPoolExecutor(max_workers=4)
-    _ocr_model = None
-    
-    @classmethod
-    def get_ocr(cls):
-        if cls._ocr_model is None and PaddleOCR:
-            # 初始化 OCR（语言：中英文）
-            cls._ocr_model = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
-        return cls._ocr_model
 
     @staticmethod
     async def parse_file(file_content: bytes, filename: str, content_type: str) -> str:
@@ -163,19 +148,21 @@ class DocumentParser:
         
     @staticmethod
     def _parse_image(content: bytes) -> str:
-        """使用 PaddleOCR 解析图像"""
-        ocr = DocumentParser.get_ocr()
-        if not ocr:
-            return "[OCR 不可用]"
+        """使用 OCR 服务解析图像"""
+        try:
+            # 动态导入以避免循环依赖
+            from modules.ocr.ocr_services import OCRService
             
-        result = ocr.ocr(content, cls=True)
-        # 结果结构: [[[[points], [text, score]], ...]]
-        texts = []
-        if result and result[0]:
-            for line in result[0]:
-                if line and len(line) > 1:
-                    texts.append(line[1][0])
-        return "\n".join(texts)
+            if not OCRService.is_available():
+                return "[OCR 服务不可用]"
+            
+            # 使用统一的 OCR 服务进行识别
+            result = OCRService.recognize_image(content)
+            return result.get("text", "")
+            
+        except Exception as e:
+            logger.error(f"图片 OCR 识别失败: {e}")
+            return f"[OCR 识别错误: {e}]"
 
     @staticmethod
     def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:

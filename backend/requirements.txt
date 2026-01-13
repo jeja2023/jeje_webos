@@ -40,6 +40,6 @@ mammoth>=1.6.0
 pdfminer.six>=20221105
 llama-cpp-python>=0.2.0
 
-# OCR 图文识别
-paddlepaddle>=2.5.0
-paddleocr>=2.7.0
+# OCR 图文识别（轻量级，支持自定义模型路径）
+rapidocr-onnxruntime>=1.3.0
+pymupdf>=1.23.0

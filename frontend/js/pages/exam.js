@@ -11,7 +11,7 @@ class ExamPage extends Component {
         this.isAdmin = user?.role === 'admin' || user?.role === 'manager';
 
         this.state = {
-            view: 'home',  // 视图: home, questions, papers, take, result, grading, grading_detail, result_detail, wrong_questions, ranking
+            view: 'home',  // 视图: home, questions, papers, take, result, grading, grading_detail, result_detail, wrong_questions, ranking, preview
             loading: false,
 
             // 题库相关
@@ -22,12 +22,14 @@ class ExamPage extends Component {
             questions: [],
             questionPage: 1,
             questionTotal: 0,
+            expandedQuestionId: null,  // 展开预览的题目ID
 
             // 试卷相关
             papers: [],
             paperPage: 1,
             paperTotal: 0,
             currentPaper: null,
+            previewPaper: null,  // 预览的试卷
 
             // 考试相关
             availableExams: [],
@@ -36,6 +38,7 @@ class ExamPage extends Component {
             examAnswers: {},
             remainingTime: 0,
             saveStatus: 'saved', // 保存状态: saved(已保存), saving(保存中), error(错误)
+            currentQuestionIndex: 0,  // 当前题目索引（用于键盘导航）
 
             // 阅卷相关
             pendingRecords: [],
@@ -51,7 +54,11 @@ class ExamPage extends Component {
 
             // 防作弊
             switchCount: 0,
-            showCheatWarning: false
+            showCheatWarning: false,
+
+            // 倒计时提醒
+            reminded5min: false,
+            reminded1min: false
         };
 
         this._examTimer = null;
@@ -68,11 +75,18 @@ class ExamPage extends Component {
 
     async afterMount() {
         this.bindEvents();
+
+        // 检查是否有未完成的考试（断点续做）
+        await this._checkInProgressExam();
+
         await this.loadHomeData();
 
         // 监听网络状态
         window.addEventListener('online', () => this.setState({ isOnline: true }));
         window.addEventListener('offline', () => this.setState({ isOnline: false }));
+
+        // 绑定全局键盘快捷键
+        this._bindKeyboardShortcuts();
     }
 
     destroy() {
@@ -84,7 +98,268 @@ class ExamPage extends Component {
         }
         // 移除防作弊监听
         this._disableAntiCheat();
+        // 移除键盘快捷键监听
+        this._unbindKeyboardShortcuts();
         super.destroy();
+    }
+
+    // ==================== 断点续做功能 ====================
+
+    /**
+     * 检查是否有未完成的考试
+     */
+    async _checkInProgressExam() {
+        try {
+            const res = await Api.get('/exam/records?status=in_progress&page_size=1');
+            const inProgress = res.data?.items || [];
+
+            if (inProgress.length > 0) {
+                const record = inProgress[0];
+                const confirmed = await Modal.confirm(
+                    '发现未完成的考试',
+                    `您有一场未完成的考试「${record.paper_title || '未知试卷'}」，是否继续作答？`,
+                    { confirmText: '继续考试', cancelText: '稍后再说' }
+                );
+
+                if (confirmed) {
+                    await this._resumeExam(record.id);
+                }
+            }
+        } catch (e) {
+            // 静默失败，不影响正常使用
+            console.warn('检查进行中考试失败:', e);
+        }
+    }
+
+    /**
+     * 恢复未完成的考试
+     */
+    async _resumeExam(recordId) {
+        try {
+            const examRes = await Api.get(`/exam/take/${recordId}`);
+            const examData = examRes.data;
+
+            this.setState({
+                view: 'take',
+                currentExam: examData,
+                examAnswers: examData.saved_answers || {},
+                remainingTime: examData.remaining_seconds || 0,
+                saveStatus: 'saved',
+                switchCount: 0,
+                showCheatWarning: false,
+                reminded5min: false,
+                reminded1min: false
+            });
+
+            // 启用防作弊检测
+            this._enableAntiCheat();
+
+            // 启动计时器
+            this._startExamTimer();
+
+            Toast.success('已恢复考试进度');
+        } catch (e) {
+            Toast.error('恢复考试失败');
+        }
+    }
+
+    // ==================== 键盘快捷键 ====================
+
+    /**
+     * 绑定键盘快捷键
+     */
+    _bindKeyboardShortcuts() {
+        this._keyboardHandler = (e) => {
+            // 只在考试界面启用快捷键
+            if (this.state.view !== 'take') return;
+
+            // 如果焦点在输入框内，不处理
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+
+            const { currentExam, currentQuestionIndex } = this.state;
+            if (!currentExam) return;
+
+            const totalQuestions = currentExam.questions?.length || 0;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'ArrowLeft':
+                    // 上一题
+                    e.preventDefault();
+                    if (currentQuestionIndex > 0) {
+                        this._navigateToQuestion(currentQuestionIndex - 1);
+                    }
+                    break;
+                case 'ArrowDown':
+                case 'ArrowRight':
+                    // 下一题
+                    e.preventDefault();
+                    if (currentQuestionIndex < totalQuestions - 1) {
+                        this._navigateToQuestion(currentQuestionIndex + 1);
+                    }
+                    break;
+                case 'Enter':
+                    // Ctrl+Enter 提交
+                    if (e.ctrlKey) {
+                        e.preventDefault();
+                        this.submitExam();
+                    }
+                    break;
+            }
+        };
+        document.addEventListener('keydown', this._keyboardHandler);
+    }
+
+    /**
+     * 移除键盘快捷键监听
+     */
+    _unbindKeyboardShortcuts() {
+        if (this._keyboardHandler) {
+            document.removeEventListener('keydown', this._keyboardHandler);
+            this._keyboardHandler = null;
+        }
+    }
+
+    /**
+     * 导航到指定题目
+     */
+    _navigateToQuestion(index) {
+        const { currentExam } = this.state;
+        if (!currentExam || !currentExam.questions) return;
+
+        const question = currentExam.questions[index];
+        if (!question) return;
+
+        this.setState({ currentQuestionIndex: index });
+
+        const target = document.getElementById(`q-${question.id}`);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 高亮效果
+            target.classList.add('question-highlight');
+            setTimeout(() => target.classList.remove('question-highlight'), 1000);
+        }
+    }
+
+    // ==================== 倒计时提醒 ====================
+
+    /**
+     * 启动考试计时器
+     */
+    _startExamTimer() {
+        this._examTimer = setInterval(() => {
+            const { remainingTime, reminded5min, reminded1min } = this.state;
+
+            if (remainingTime <= 0) {
+                this.submitExam();
+                return;
+            }
+
+            // 5分钟提醒
+            if (!reminded5min && remainingTime <= 300 && remainingTime > 60) {
+                this._showTimeReminder(5);
+                this.setState({ reminded5min: true });
+            }
+
+            // 1分钟提醒
+            if (!reminded1min && remainingTime <= 60) {
+                this._showTimeReminder(1);
+                this.setState({ reminded1min: true });
+            }
+
+            this.setState({ remainingTime: remainingTime - 1 });
+        }, 1000);
+    }
+
+    /**
+     * 显示时间提醒弹窗
+     */
+    _showTimeReminder(minutes) {
+        // 播放提示音
+        this._playReminderSound();
+
+        const isUrgent = minutes <= 1;
+        const overlay = document.createElement('div');
+        overlay.className = 'time-reminder-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = `time-reminder-modal ${isUrgent ? 'danger' : 'warning'}`;
+        modal.innerHTML = `
+            <div class="reminder-icon">
+                <i class="ri-alarm-warning-line"></i>
+            </div>
+            <h3>${isUrgent ? '⚠️ 时间紧迫！' : '⏰ 时间提醒'}</h3>
+            <p>考试还剩 <strong>${minutes}</strong> 分钟，请抓紧时间作答！</p>
+        `;
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+
+        // 3秒后自动关闭
+        setTimeout(() => {
+            overlay.remove();
+            modal.remove();
+        }, 3000);
+
+        // 点击关闭
+        overlay.onclick = () => {
+            overlay.remove();
+            modal.remove();
+        };
+    }
+
+    /**
+     * 播放提醒音效
+     */
+    _playReminderSound() {
+        try {
+            // 使用 Web Audio API 生成简单提示音
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        } catch (e) {
+            // 音频播放失败时静默处理
+        }
+    }
+
+    // ==================== 题目预览功能 ====================
+
+    /**
+     * 切换题目预览展开状态
+     */
+    toggleQuestionPreview(questionId) {
+        const { expandedQuestionId } = this.state;
+        this.setState({
+            expandedQuestionId: expandedQuestionId === questionId ? null : questionId
+        });
+    }
+
+    // ==================== 试卷预览功能 ====================
+
+    /**
+     * 预览试卷
+     */
+    async previewPaper(paperId) {
+        try {
+            const res = await Api.get(`/exam/papers/${paperId}`);
+            this.setState({
+                previewPaper: res.data,
+                view: 'preview'
+            });
+        } catch (e) {
+            Toast.error('加载试卷预览失败');
+        }
     }
 
     // ==================== 防作弊检测 ====================
@@ -310,6 +585,15 @@ class ExamPage extends Component {
         // 阅卷
         this.delegate('click', '[data-action="grade-record"]', (e, el) => this.startGrading(parseInt(el.dataset.id)));
         this.delegate('click', '[data-action="submit-grade"]', () => this.submitGrade());
+
+        // 题目预览展开
+        this.delegate('click', '[data-action="toggle-preview"]', (e, el) => {
+            this.toggleQuestionPreview(parseInt(el.dataset.id));
+        });
+
+        // 试卷预览
+        this.delegate('click', '[data-action="preview-paper"]', (e, el) => this.previewPaper(parseInt(el.dataset.id)));
+        this.delegate('click', '[data-action="exit-preview"]', () => this.navigateTo('papers'));
     }
 
     async navigateTo(view) {
@@ -318,7 +602,7 @@ class ExamPage extends Component {
             this._examTimer = null;
         }
 
-        this.setState({ view, loading: true, showCheatWarning: false });
+        this.setState({ view, loading: true, showCheatWarning: false, previewPaper: null });
 
         switch (view) {
             case 'home':
@@ -667,6 +951,8 @@ class ExamPage extends Component {
                         <i class="ri-edit-box-line"></i> 阅卷
                     </button>
                 ` : ''}
+                <div class="nav-spacer"></div>
+                ${window.ModuleHelp ? window.ModuleHelp.createHelpButton('exam', '在线考试', 'btn-ghost') : ''}
             </div>
         `;
     }
@@ -684,6 +970,7 @@ class ExamPage extends Component {
             case 'grading_detail': return this.renderGradingDetail();
             case 'wrong_questions': return this.renderWrongQuestions();
             case 'ranking': return this.renderRanking();
+            case 'preview': return this.renderPaperPreview();
             default: return this.renderHome();
         }
     }
@@ -749,7 +1036,7 @@ class ExamPage extends Component {
     }
 
     renderQuestions() {
-        const { banks, currentBankId, questions } = this.state;
+        const { banks, currentBankId, questions, expandedQuestionId } = this.state;
 
         return `
             <div class="questions-view">
@@ -778,12 +1065,17 @@ class ExamPage extends Component {
                     </div>
                     <div class="question-list">
                         ${questions.length === 0 ? '<p class="empty-text">暂无题目</p>' : questions.map((q, i) => `
-                            <div class="question-item">
+                            <div class="question-item ${expandedQuestionId === q.id ? 'expanded' : ''}">
                                 <div class="question-header">
                                     <span class="question-type type-${q.question_type}">${this.getTypeText(q.question_type)}</span>
                                     <span class="question-score">${q.score} 分</span>
+                                    <button class="question-expand-btn" data-action="toggle-preview" data-id="${q.id}">
+                                        <i class="ri-${expandedQuestionId === q.id ? 'arrow-up-s-line' : 'arrow-down-s-line'}"></i>
+                                        ${expandedQuestionId === q.id ? '收起' : '预览'}
+                                    </button>
                                 </div>
                                 <div class="question-title">${Utils.escapeHtml(q.title)}</div>
+                                ${expandedQuestionId === q.id ? this.renderQuestionPreview(q) : ''}
                                 <div class="question-actions">
                                     <button data-action="edit-question" data-id="${q.id}"><i class="ri-edit-line"></i></button>
                                     <button data-action="delete-question" data-id="${q.id}"><i class="ri-delete-bin-line"></i></button>
@@ -792,6 +1084,40 @@ class ExamPage extends Component {
                         `).join('')}
                     </div>
                 </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 渲染题目预览内容
+     */
+    renderQuestionPreview(question) {
+        const { options, answer, analysis } = question;
+
+        return `
+            <div class="question-preview">
+                ${options && options.length > 0 ? `
+                    <div class="preview-section">
+                        <div class="preview-label">选项</div>
+                        <div class="options-list">
+                            ${options.map(opt => `
+                                <div class="option-item">
+                                    <strong>${opt.key}.</strong> ${Utils.escapeHtml(opt.value)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                <div class="preview-section">
+                    <div class="preview-label">正确答案</div>
+                    <div class="preview-content correct-answer">${Utils.escapeHtml(answer || '未设置')}</div>
+                </div>
+                ${analysis ? `
+                    <div class="preview-section">
+                        <div class="preview-label">解析</div>
+                        <div class="preview-content">${Utils.escapeHtml(analysis)}</div>
+                    </div>
+                ` : ''}
             </div>
         `;
     }
@@ -828,6 +1154,7 @@ class ExamPage extends Component {
                                 ${paper.take_count > 0 ? `<span><i class="ri-user-line"></i> ${paper.take_count} 人参考</span>` : ''}
                             </div>
                             <div class="paper-actions">
+                                <button class="btn btn-sm btn-ghost" data-action="preview-paper" data-id="${paper.id}"><i class="ri-eye-line"></i> 预览</button>
                                 <button class="btn btn-sm btn-ghost" data-action="view-paper" data-id="${paper.id}">编辑</button>
                                 ${paper.status === 'published' ? `<button class="btn btn-sm btn-ghost" data-action="view-ranking" data-id="${paper.id}"><i class="ri-bar-chart-line"></i> 排名</button>` : ''}
                                 ${paper.status === 'draft' ? `<button class="btn btn-sm btn-primary" data-action="publish-paper" data-id="${paper.id}">发布</button>` : ''}
@@ -863,6 +1190,101 @@ class ExamPage extends Component {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * 渲染试卷预览（模拟考试界面）
+     */
+    renderPaperPreview() {
+        const { previewPaper } = this.state;
+        if (!previewPaper) return '<p class="empty-text">加载中...</p>';
+
+        const questions = previewPaper.questions || [];
+
+        return `
+            <div class="take-exam paper-preview-mode">
+                <div class="exam-header">
+                    <div class="header-left">
+                        <button class="btn btn-ghost" data-action="exit-preview">
+                            <i class="ri-arrow-left-line"></i> 退出预览
+                        </button>
+                        <h2>${Utils.escapeHtml(previewPaper.title)}</h2>
+                    </div>
+                    <div class="paper-stats-bar">
+                        <div class="stat-item">
+                            <i class="ri-file-list-line"></i>
+                            <span class="stat-value">${questions.length}</span>
+                            <span class="stat-label">道题</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="ri-medal-line"></i>
+                            <span class="stat-value">${previewPaper.total_score}</span>
+                            <span class="stat-label">总分</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="ri-time-line"></i>
+                            <span class="stat-value">${previewPaper.duration}</span>
+                            <span class="stat-label">分钟</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="ri-trophy-line"></i>
+                            <span class="stat-value">${previewPaper.pass_score}</span>
+                            <span class="stat-label">及格分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="exam-questions">
+                    ${questions.length === 0 ? '<p class="empty-text">该试卷暂无题目</p>' : questions.map((q, i) => `
+                        <div class="exam-question" id="preview-q-${q.id}">
+                            <div class="eq-header">
+                                <span class="eq-num">${i + 1}</span>
+                                <span class="eq-type">${this.getTypeText(q.question_type)}</span>
+                                <span class="eq-score">${q.paper_score || q.score} 分</span>
+                            </div>
+                            <div class="eq-title">${Utils.escapeHtml(q.title)}</div>
+                            <div class="exam-answer preview-only">
+                                ${this.renderPreviewAnswerInput(q)}
+                            </div>
+                            <div class="analysis-box">
+                                <div class="analysis-label"><i class="ri-key-2-line"></i> 参考答案</div>
+                                <div class="analysis-content">${Utils.escapeHtml(q.answer || '未设置')}</div>
+                            </div>
+                            ${q.analysis ? `
+                                <div class="analysis-box">
+                                    <div class="analysis-label"><i class="ri-lightbulb-line"></i> 解析</div>
+                                    <div class="analysis-content">${Utils.escapeHtml(q.analysis)}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 渲染预览模式的答题输入（只读）
+     */
+    renderPreviewAnswerInput(question) {
+        const { question_type, options } = question;
+
+        if (question_type === 'single' || question_type === 'multiple') {
+            return (options || []).map(opt => `
+                <label class="${question_type === 'single' ? 'radio' : 'checkbox'}-option" style="pointer-events: none; opacity: 0.7;">
+                    <input type="${question_type === 'single' ? 'radio' : 'checkbox'}" disabled>
+                    <span>${opt.key}. ${Utils.escapeHtml(opt.value)}</span>
+                </label>
+            `).join('');
+        }
+
+        if (question_type === 'judge') {
+            return `
+                <label class="radio-option" style="pointer-events: none; opacity: 0.7;"><input type="radio" disabled><span>正确</span></label>
+                <label class="radio-option" style="pointer-events: none; opacity: 0.7;"><input type="radio" disabled><span>错误</span></label>
+            `;
+        }
+
+        return `<textarea class="form-control" rows="3" disabled placeholder="(填空/问答题作答区域)"></textarea>`;
     }
 
     renderTakeExam() {
@@ -917,6 +1339,9 @@ class ExamPage extends Component {
                 </div>
             </div>
             ${this.renderAnswerSheet()}
+            <div class="keyboard-shortcuts-hint">
+                <kbd>↑</kbd><kbd>↓</kbd> 切换题目 | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 提交
+            </div>
             <div class="offline-indicator ${isOnline ? 'online' : 'offline'}">
                 <i class="ri-${isOnline ? 'wifi-line' : 'wifi-off-line'}"></i> 
                 ${isOnline ? '在线' : '离线（答案已缓存）'}
@@ -1415,23 +1840,19 @@ class ExamPage extends Component {
                 currentExam: examData,
                 examAnswers: examData.saved_answers || {},
                 remainingTime: examData.remaining_seconds || 0,
-                saveStatus: 'saved', // 保存状态: saved(已保存), saving(保存中), error(错误)
-                switchCount: 0,  // 重置作弊计数
-                showCheatWarning: false
+                saveStatus: 'saved',
+                switchCount: 0,
+                showCheatWarning: false,
+                currentQuestionIndex: 0,
+                reminded5min: false,
+                reminded1min: false
             });
 
             // 启用防作弊检测
             this._enableAntiCheat();
 
-            // 启动计时器
-            this._examTimer = setInterval(() => {
-                const { remainingTime } = this.state;
-                if (remainingTime <= 0) {
-                    this.submitExam();
-                } else {
-                    this.setState({ remainingTime: remainingTime - 1 });
-                }
-            }, 1000);
+            // 启动计时器（使用新的统一方法，支持倒计时提醒）
+            this._startExamTimer();
 
         } catch (e) {
             Toast.error(e.message || '开始考试失败');
