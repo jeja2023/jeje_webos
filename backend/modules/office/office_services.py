@@ -12,10 +12,11 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
 
-from .office_models import OfficeDocument, OfficeVersion, OfficeCollaborator, OfficeEditSession
+from .office_models import OfficeDocument, OfficeVersion, OfficeCollaborator, OfficeEditSession, OfficeComment
 from .office_schemas import (
     DocumentCreate, DocumentUpdate, DocumentContentUpdate,
-    DocumentShareUpdate, CollaboratorAdd, CollaboratorUpdate
+    DocumentShareUpdate, CollaboratorAdd, CollaboratorUpdate,
+    CommentCreate, CommentUpdate
 )
 
 logger = logging.getLogger(__name__)
@@ -624,6 +625,36 @@ class OfficeService:
         
         return False
     
+    @staticmethod
+    async def cleanup_inactive_sessions(
+        db: AsyncSession,
+        timeout_minutes: int = 10
+    ) -> int:
+        """清理超时的编辑会话"""
+        from datetime import timedelta
+        cutoff_time = datetime.now() - timedelta(minutes=timeout_minutes)
+        
+        result = await db.execute(
+            select(OfficeEditSession).where(
+                and_(
+                    OfficeEditSession.is_active == True,
+                    OfficeEditSession.last_activity < cutoff_time
+                )
+            )
+        )
+        sessions = result.scalars().all()
+        
+        count = 0
+        for session in sessions:
+            session.is_active = False
+            count += 1
+        
+        if count > 0:
+            await db.flush()
+            logger.info(f"已清理 {count} 个不活跃的编辑会话")
+        
+        return count
+    
     # ==================== 模板管理 ====================
     
     @staticmethod
@@ -683,3 +714,135 @@ class OfficeService:
         await db.refresh(document)
         
         return document
+    
+    # ==================== 评论批注管理 ====================
+    
+    @staticmethod
+    async def create_comment(
+        db: AsyncSession,
+        document_id: int,
+        user_id: int,
+        data: CommentCreate
+    ) -> Optional[OfficeComment]:
+        """创建评论"""
+        document = await OfficeService.get_document(db, document_id, user_id)
+        if not document:
+            return None
+        
+        comment = OfficeComment(
+            document_id=document_id,
+            user_id=user_id,
+            content=data.content,
+            selection_start=data.selection_start,
+            selection_end=data.selection_end,
+            selected_text=data.selected_text,
+            parent_id=data.parent_id
+        )
+        db.add(comment)
+        await db.flush()
+        await db.refresh(comment)
+        
+        logger.info(f"用户 {user_id} 在文档 {document_id} 添加了评论 {comment.id}")
+        return comment
+    
+    @staticmethod
+    async def get_comments(
+        db: AsyncSession,
+        document_id: int,
+        user_id: int,
+        include_resolved: bool = True
+    ) -> List[OfficeComment]:
+        """获取文档评论列表"""
+        document = await OfficeService.get_document(db, document_id, user_id)
+        if not document:
+            return []
+        
+        query = select(OfficeComment).where(
+            and_(
+                OfficeComment.document_id == document_id,
+                OfficeComment.parent_id == None  # 只获取顶级评论
+            )
+        )
+        
+        if not include_resolved:
+            query = query.where(OfficeComment.is_resolved == False)
+        
+        query = query.order_by(OfficeComment.created_at.desc())
+        
+        result = await db.execute(query)
+        return list(result.scalars().all())
+    
+    @staticmethod
+    async def get_comment_replies(
+        db: AsyncSession,
+        comment_id: int
+    ) -> List[OfficeComment]:
+        """获取评论的回复列表"""
+        result = await db.execute(
+            select(OfficeComment).where(
+                OfficeComment.parent_id == comment_id
+            ).order_by(OfficeComment.created_at)
+        )
+        return list(result.scalars().all())
+    
+    @staticmethod
+    async def update_comment(
+        db: AsyncSession,
+        comment_id: int,
+        user_id: int,
+        data: CommentUpdate
+    ) -> Optional[OfficeComment]:
+        """更新评论"""
+        result = await db.execute(
+            select(OfficeComment).where(OfficeComment.id == comment_id)
+        )
+        comment = result.scalar_one_or_none()
+        
+        if not comment:
+            return None
+        
+        # 只有评论作者可以编辑内容
+        if data.content is not None:
+            if comment.user_id != user_id:
+                return None
+            comment.content = data.content
+        
+        # 解决评论
+        if data.is_resolved is not None:
+            comment.is_resolved = data.is_resolved
+            if data.is_resolved:
+                comment.resolved_by = user_id
+                comment.resolved_at = datetime.now()
+            else:
+                comment.resolved_by = None
+                comment.resolved_at = None
+        
+        await db.flush()
+        return comment
+    
+    @staticmethod
+    async def delete_comment(
+        db: AsyncSession,
+        comment_id: int,
+        user_id: int
+    ) -> bool:
+        """删除评论"""
+        result = await db.execute(
+            select(OfficeComment).where(OfficeComment.id == comment_id)
+        )
+        comment = result.scalar_one_or_none()
+        
+        if not comment:
+            return False
+        
+        # 只有评论作者或文档所有者可以删除
+        document = await OfficeService.get_document(db, comment.document_id, user_id)
+        if not document:
+            return False
+        
+        if comment.user_id != user_id and document.user_id != user_id:
+            return False
+        
+        await db.delete(comment)
+        await db.flush()
+        return True

@@ -484,6 +484,48 @@
     padding-left: 1.5rem;
 }
 
+/* 远程协作者光标 */
+.remote-cursor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 100;
+    --cursor-color: #e91e63;
+    transition: opacity 0.3s ease;
+}
+
+.remote-cursor .cursor-line {
+    width: 2px;
+    height: 20px;
+    background: var(--cursor-color);
+    animation: cursorBlink 1s ease-in-out infinite;
+}
+
+.remote-cursor .cursor-label {
+    position: absolute;
+    top: -20px;
+    left: 0;
+    background: var(--cursor-color);
+    color: white;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes cursorBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
 
 /* ==================== 表格编辑页 ==================== */
 
@@ -560,47 +602,113 @@
     border-collapse: collapse;
     font-size: 0.875rem;
     min-width: 100%;
+    table-layout: fixed;
+    background: #fff;
+    border-right: 1px solid #d1d5db;
+    border-bottom: 1px solid #d1d5db;
 }
 
 .simple-sheet th,
 .simple-sheet td {
-    border: 1px solid #e0e0e0;
-    padding: 4px 8px;
-    min-width: 80px;
-    height: 24px;
+    border: 1px solid #d1d5db;
+    padding: 2px 6px;
+    min-width: 100px;
+    height: 30px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .simple-sheet th {
-    background: #f5f5f5;
-    font-weight: 500;
-    color: #666;
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
     text-align: center;
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 10;
+    box-shadow: inset 0 -1px 0 #d1d5db;
 }
 
 .simple-sheet .row-header {
-    background: #f5f5f5;
-    font-weight: 500;
-    color: #666;
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
     text-align: center;
     position: sticky;
     left: 0;
-    z-index: 1;
+    z-index: 11;
     min-width: 40px;
+    width: 40px;
+    box-shadow: inset -1px 0 0 #d1d5db;
 }
 
 .simple-sheet .cell {
     background: white;
     outline: none;
+    cursor: cell;
 }
 
 .simple-sheet .cell:focus {
-    background: #e3f2fd;
-    box-shadow: inset 0 0 0 2px #2196f3;
+    background: #f0f9ff;
+    box-shadow: inset 0 0 0 2px #2563eb;
+    z-index: 5;
+    position: relative;
+    overflow: visible;
+    white-space: normal;
 }
 
+.simple-sheet .cell:hover:not(:focus) {
+    background: #f1f5f9;
+}
+
+
+/* ==================== 更多操作菜单 ==================== */
+
+.more-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.more-menu-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.more-menu-item i {
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+.more-menu-item.danger {
+    color: var(--danger);
+}
+
+.more-menu-item.danger:hover {
+    background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
+}
+
+.more-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: var(--spacing-xs) 0;
+}
 
 /* ==================== 协作者管理模态框 ==================== */
 
@@ -649,8 +757,139 @@
     border-top: 1px solid var(--border-color);
 }
 
-.add-collaborator input {
+.add-collaborator .user-search-wrapper {
     flex: 1;
+    position: relative;
+}
+
+.add-collaborator .user-search-wrapper input {
+    width: 100%;
+}
+
+/* 用户搜索结果下拉 */
+.user-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.search-result-item:hover {
+    background: var(--bg-secondary);
+}
+
+.search-result-item .avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-result-item .user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.search-result-item .nickname {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.search-result-item .username {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.search-no-result,
+.search-error {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+
+.search-error {
+    color: var(--danger);
+}
+
+/* 保存状态优化 */
+.save-status {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    transition: all 0.2s ease;
+}
+
+.save-status.saving {
+    color: var(--warning);
+    background: rgba(var(--warning-rgb, 245, 158, 11), 0.1);
+}
+
+.save-status.saved {
+    color: var(--success);
+}
+
+.save-status.unsaved {
+    color: var(--warning);
+}
+
+.save-status::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: none;
+}
+
+.save-status.saving::before {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* 快捷键提示 */
+.shortcut-hint {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    margin-left: var(--spacing-xs);
 }
 
 
@@ -745,5 +984,223 @@
 
     .doc-editor {
         padding: var(--spacing-md);
+    }
+}
+
+
+/* ==================== 评论批注面板 ==================== */
+
+.doc-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.doc-main .doc-editor-container {
+    flex: 1;
+}
+
+.doc-comments-panel {
+    width: 320px;
+    min-width: 280px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.2s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.comments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comments-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+}
+
+.comment-item {
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    transition: box-shadow 0.2s ease;
+}
+
+.comment-item:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.comment-item.resolved {
+    opacity: 0.6;
+    border-left: 3px solid var(--success);
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.comment-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.comment-author {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.comment-time {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-left: auto;
+}
+
+.comment-quote {
+    background: var(--bg-tertiary);
+    border-left: 3px solid var(--primary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.comment-content {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: var(--spacing-xs);
+}
+
+.comment-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.comment-actions .btn {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+
+.comment-replies {
+    margin-top: var(--spacing-xs);
+    padding-left: var(--spacing-sm);
+    border-left: 2px solid var(--border-color);
+}
+
+.reply-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
+}
+
+.reply-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.reply-content {
+    flex: 1;
+}
+
+.reply-author {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-right: var(--spacing-xs);
+}
+
+.reply-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.comment-reply-input {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.comment-reply-input .reply-input {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+}
+
+.comment-reply-input .btn-reply {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+}
+
+.comments-add {
+    padding: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.comments-add textarea {
+    width: 100%;
+    resize: none;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs);
+}
+
+.comments-add textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.comments-add .btn {
+    align-self: flex-end;
+}
+
+/* 响应式评论面板 */
+@media (max-width: 768px) {
+    .doc-comments-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
     }
 }

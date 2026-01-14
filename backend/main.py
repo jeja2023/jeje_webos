@@ -312,9 +312,6 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
-
-# ==================== 中间件配置（顺序重要，后添加的先执行） ====================
-
 # 1. CORS 跨域配置
 app.add_middleware(
     CORSMiddleware,
@@ -593,6 +590,3 @@ if __name__ == "__main__":
         reload=True,
         reload_dirs=["backend"]
     )
- 
- 
- 

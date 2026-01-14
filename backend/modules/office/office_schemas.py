@@ -181,6 +181,47 @@ class CollabMessage(BaseModel):
     data: dict = Field(default_factory=dict, description="消息数据")
 
 
+# ==================== 评论批注相关 ====================
+
+class CommentCreate(BaseModel):
+    """创建评论"""
+    content: str = Field(..., min_length=1, max_length=2000, description="评论内容")
+    selection_start: Optional[int] = Field(None, description="选区起始位置")
+    selection_end: Optional[int] = Field(None, description="选区结束位置")
+    selected_text: Optional[str] = Field(None, max_length=500, description="被批注的文本")
+    parent_id: Optional[int] = Field(None, description="父评论ID(用于回复)")
+
+
+class CommentUpdate(BaseModel):
+    """更新评论"""
+    content: Optional[str] = Field(None, min_length=1, max_length=2000, description="评论内容")
+    is_resolved: Optional[bool] = Field(None, description="是否已解决")
+
+
+class CommentInfo(BaseModel):
+    """评论信息"""
+    id: int
+    document_id: int
+    user_id: int
+    content: str
+    selection_start: Optional[int]
+    selection_end: Optional[int]
+    selected_text: Optional[str]
+    parent_id: Optional[int]
+    is_resolved: bool
+    resolved_by: Optional[int]
+    resolved_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+    # 关联用户信息
+    user_name: Optional[str] = None
+    user_avatar: Optional[str] = None
+    # 回复列表
+    replies: list = Field(default_factory=list)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ==================== 从文件管理器打开 ====================
 
 class OpenFromFileManager(BaseModel):

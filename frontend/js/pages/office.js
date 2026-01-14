@@ -91,6 +91,43 @@ const OfficeApi = {
     // 通过分享码获取
     async getByShareCode(code) {
         return Api.get(`/office/share/${code}`);
+    },
+
+    // 搜索用户（用于添加协作者）
+    async searchUsers(query) {
+        return Api.get(`/users/search?query=${encodeURIComponent(query)}`);
+    },
+
+    // ==================== 评论批注 ====================
+
+    // 获取文档评论
+    async getComments(documentId, includeResolved = true) {
+        return Api.get(`/office/${documentId}/comments?include_resolved=${includeResolved}`);
+    },
+
+    // 添加评论
+    async addComment(documentId, data) {
+        return Api.post(`/office/${documentId}/comments`, data);
+    },
+
+    // 更新评论
+    async updateComment(commentId, data) {
+        return Api.put(`/office/comments/${commentId}`, data);
+    },
+
+    // 删除评论
+    async deleteComment(commentId) {
+        return Api.delete(`/office/comments/${commentId}`);
+    },
+
+    // 解决评论
+    async resolveComment(commentId) {
+        return Api.post(`/office/comments/${commentId}/resolve`);
+    },
+
+    // 重新打开评论
+    async reopenComment(commentId) {
+        return Api.post(`/office/comments/${commentId}/reopen`);
     }
 };
 
@@ -275,10 +312,47 @@ class OfficeListPage extends Component {
     async afterMount() {
         await this.loadData();
         this.bindEvents();
+        this.bindDelegateEvents(); // 只绑定一次委托事件
     }
 
     afterUpdate() {
+        // 每次更新后都需要重新绑定普通DOM事件，因为DOM被替换了
         this.bindEvents();
+    }
+
+    bindDelegateEvents() {
+        // 防止重复绑定委托事件
+        if (this._delegatesBound) return;
+        this._delegatesBound = true;
+
+        // 文档卡片操作
+        this.delegate('click', '.document-card', async (e) => {
+            const card = e.target.closest('.document-card');
+            if (!card) return; // 确保点击的是卡片
+
+            const action = e.target.closest('[data-action]');
+            const docId = parseInt(card.dataset.id);
+
+            if (action) {
+                const actionType = action.dataset.action;
+                await this.handleCardAction(docId, actionType);
+            } else {
+                // 点击卡片本身打开文档
+                this.openDocument(docId);
+            }
+        });
+
+        // 分页
+        this.delegate('click', '.pagination-btn', (e) => {
+            const btn = e.target.closest('.pagination-btn');
+            if (!btn) return;
+
+            const page = parseInt(btn.dataset.page);
+            if (page && page !== this.state.page) {
+                this.setState({ page });
+                this.loadData();
+            }
+        });
     }
 
     bindEvents() {
@@ -322,32 +396,14 @@ class OfficeListPage extends Component {
             }, 300));
         }
 
-        // 文档卡片操作
-        this.delegate('click', '.document-card', async (e) => {
-            const card = e.target.closest('.document-card');
-            const action = e.target.closest('[data-action]');
-            const docId = parseInt(card.dataset.id);
-
-            if (action) {
-                const actionType = action.dataset.action;
-                await this.handleCardAction(docId, actionType);
-            } else {
-                // 点击卡片本身打开文档
-                this.openDocument(docId);
-            }
-        });
-
-        // 分页
-        this.delegate('click', '.pagination-btn', (e) => {
-            const page = parseInt(e.target.closest('.pagination-btn').dataset.page);
-            if (page && page !== this.state.page) {
-                this.setState({ page });
-                this.loadData();
-            }
-        });
     }
 
     async handleCardAction(docId, action) {
+        // 简单防抖锁
+        if (this._processingAction) return;
+        this._processingAction = true;
+        setTimeout(() => this._processingAction = false, 500);
+
         switch (action) {
             case 'open':
                 this.openDocument(docId);
@@ -402,14 +458,12 @@ class OfficeListPage extends Component {
     }
 
     async deleteDocument(docId, permanent = false) {
-        const confirmed = await Modal.confirm({
-            title: permanent ? '永久删除' : '删除文档',
-            content: permanent
-                ? '此操作不可恢复，确定要永久删除该文档吗？'
-                : '文档将被移到回收站，您可以稍后恢复。',
-            confirmText: '删除',
-            confirmClass: 'btn-danger'
-        });
+        const title = permanent ? '永久删除' : '删除文档';
+        const message = permanent
+            ? '此操作不可恢复，确定要永久删除该文档吗？'
+            : '文档将被移到回收站，您可以稍后恢复。';
+
+        const confirmed = await Modal.confirm(title, message);
 
         if (!confirmed) return;
 
@@ -420,6 +474,115 @@ class OfficeListPage extends Component {
         } catch (err) {
             Toast.error('删除失败');
         }
+    }
+
+    showMoreMenu(docId) {
+        const doc = this.state.documents.find(d => d.id === docId);
+        if (!doc) return;
+
+        const content = `
+            <div class="more-menu-list">
+                <button class="more-menu-item" data-action="duplicate">
+                    <i class="ri-file-copy-line"></i> 复制
+                </button>
+                <button class="more-menu-item" data-action="rename">
+                    <i class="ri-edit-line"></i> 重命名
+                </button>
+                <button class="more-menu-item" data-action="versions">
+                    <i class="ri-history-line"></i> 版本历史
+                </button>
+                <button class="more-menu-item" data-action="collaborators">
+                    <i class="ri-team-line"></i> 协作者管理
+                </button>
+                <div class="more-menu-divider"></div>
+                <button class="more-menu-item danger" data-action="delete">
+                    <i class="ri-delete-bin-line"></i> 删除
+                </button>
+            </div>
+        `;
+
+        const { overlay, close } = Modal.show({
+            title: '更多操作',
+            content,
+            footer: false  // 不显示默认按钮
+        });
+
+        // 手动绑定菜单项点击事件
+        if (overlay) {
+            overlay.querySelectorAll('.more-menu-item').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const action = btn.dataset.action;
+                    close();  // 使用返回的close函数
+
+                    switch (action) {
+                        case 'duplicate':
+                            await this.duplicateDocument(docId);
+                            break;
+                        case 'rename':
+                            this.showRenameModal(docId);
+                            break;
+                        case 'versions':
+                            this.showVersionsModal(docId);
+                            break;
+                        case 'collaborators':
+                            this.showCollaboratorsModal(docId);
+                            break;
+                        case 'delete':
+                            await this.deleteDocument(docId);
+                            break;
+                    }
+                });
+            });
+        }
+    }
+
+    async duplicateDocument(docId) {
+        const doc = this.state.documents.find(d => d.id === docId);
+        if (!doc) return;
+
+        try {
+            const res = await OfficeApi.create({
+                title: `${doc.title} (副本)`,
+                doc_type: doc.doc_type
+            });
+
+            // 复制内容
+            if (doc.content) {
+                await OfficeApi.updateContent(res.data.id, {
+                    content: doc.content,
+                    version: 1,
+                    create_version: false
+                });
+            }
+
+            Toast.success('文档已复制');
+            await this.loadData();
+        } catch (err) {
+            Toast.error('复制失败');
+        }
+    }
+
+    showRenameModal(docId) {
+        const doc = this.state.documents.find(d => d.id === docId);
+        if (!doc) return;
+
+        Modal.form({
+            title: '重命名',
+            fields: [
+                { name: 'title', label: '新标题', type: 'text', required: true, value: doc.title }
+            ],
+            onSubmit: async (data) => {
+                try {
+                    await OfficeApi.update(docId, { title: data.title });
+                    Toast.success('重命名成功');
+                    await this.loadData();
+                    return true;
+                } catch (err) {
+                    Toast.error('重命名失败');
+                    return false;
+                }
+            }
+        });
     }
 
     showCreateModal(docType) {
@@ -466,9 +629,9 @@ class OfficeListPage extends Component {
                     type: 'select',
                     value: doc.share_type || 'private',
                     options: [
-                        { value: 'private', label: '私有 - 仅自己和协作者可见' },
-                        { value: 'link', label: '链接分享 - 知道链接的人可访问' },
-                        { value: 'public', label: '公开 - 所有人可见' }
+                        { value: 'private', text: '私有 - 仅自己和协作者可见' },
+                        { value: 'link', text: '链接分享 - 知道链接的人可访问' },
+                        { value: 'public', text: '公开 - 所有人可见' }
                     ]
                 },
                 {
@@ -477,8 +640,8 @@ class OfficeListPage extends Component {
                     type: 'select',
                     value: doc.share_permission || 'view',
                     options: [
-                        { value: 'view', label: '只读' },
-                        { value: 'edit', label: '可编辑' }
+                        { value: 'view', text: '只读' },
+                        { value: 'edit', text: '可编辑' }
                     ]
                 }
             ],
@@ -504,53 +667,6 @@ class OfficeListPage extends Component {
         });
     }
 
-    showMoreMenu(docId) {
-        const doc = this.state.documents.find(d => d.id === docId);
-        if (!doc) return;
-
-        Modal.menu({
-            items: [
-                { icon: 'ri-file-copy-line', label: '复制', action: 'copy' },
-                { icon: 'ri-team-line', label: '协作者管理', action: 'collaborators' },
-                { icon: 'ri-history-line', label: '版本历史', action: 'versions' },
-                { divider: true },
-                { icon: 'ri-delete-bin-line', label: '删除', action: 'delete', danger: true }
-            ],
-            onSelect: async (action) => {
-                switch (action) {
-                    case 'copy':
-                        await this.copyDocument(docId);
-                        break;
-                    case 'collaborators':
-                        this.showCollaboratorsModal(docId);
-                        break;
-                    case 'versions':
-                        this.showVersionsModal(docId);
-                        break;
-                    case 'delete':
-                        await this.deleteDocument(docId);
-                        break;
-                }
-            }
-        });
-    }
-
-    async copyDocument(docId) {
-        const doc = this.state.documents.find(d => d.id === docId);
-        if (!doc) return;
-
-        try {
-            await OfficeApi.create({
-                title: `${doc.title} - 副本`,
-                doc_type: doc.doc_type
-            });
-            Toast.success('已创建副本');
-            await this.loadData();
-        } catch (err) {
-            Toast.error('复制失败');
-        }
-    }
-
     async showCollaboratorsModal(docId) {
         try {
             const res = await OfficeApi.getCollaborators(docId);
@@ -572,7 +688,11 @@ class OfficeListPage extends Component {
                         `).join('')}
                 </div>
                 <div class="add-collaborator">
-                    <input type="number" id="new-collab-id" placeholder="输入用户ID" class="form-input">
+                    <div class="user-search-wrapper">
+                        <input type="text" id="user-search-input" placeholder="搜索用户名或昵称..." class="form-input" autocomplete="off">
+                        <input type="hidden" id="selected-user-id">
+                        <div class="user-search-results" id="user-search-results"></div>
+                    </div>
                     <select id="new-collab-permission" class="form-select">
                         <option value="view">只读</option>
                         <option value="edit">可编辑</option>
@@ -587,6 +707,72 @@ class OfficeListPage extends Component {
                 content,
                 buttons: [{ text: '关闭', type: 'secondary' }],
                 onMounted: (modal) => {
+                    const searchInput = modal.querySelector('#user-search-input');
+                    const searchResults = modal.querySelector('#user-search-results');
+                    const selectedUserIdInput = modal.querySelector('#selected-user-id');
+                    let searchTimeout = null;
+
+                    // 用户搜索功能
+                    searchInput.addEventListener('input', (e) => {
+                        const query = e.target.value.trim();
+                        selectedUserIdInput.value = ''; // 清除已选用户
+
+                        if (searchTimeout) clearTimeout(searchTimeout);
+
+                        if (query.length < 1) {
+                            searchResults.innerHTML = '';
+                            searchResults.style.display = 'none';
+                            return;
+                        }
+
+                        // 防抖搜索
+                        searchTimeout = setTimeout(async () => {
+                            try {
+                                const res = await OfficeApi.searchUsers(query);
+                                const users = res.data || [];
+
+                                // 过滤掉已添加的协作者
+                                const existingIds = collaborators.map(c => c.user_id);
+                                const filteredUsers = users.filter(u => !existingIds.includes(u.id));
+
+                                if (filteredUsers.length === 0) {
+                                    searchResults.innerHTML = '<div class="search-no-result">未找到用户</div>';
+                                } else {
+                                    searchResults.innerHTML = filteredUsers.map(u => `
+                                        <div class="search-result-item" data-id="${u.id}" data-name="${Utils.escapeHtml(u.nickname || u.username)}">
+                                            <img src="${u.avatar || '/static/images/default-avatar.png'}" alt="" class="avatar-sm">
+                                            <span class="user-info">
+                                                <span class="nickname">${Utils.escapeHtml(u.nickname || u.username)}</span>
+                                                <span class="username">@${Utils.escapeHtml(u.username)}</span>
+                                            </span>
+                                        </div>
+                                    `).join('');
+                                }
+                                searchResults.style.display = 'block';
+                            } catch (err) {
+                                searchResults.innerHTML = '<div class="search-error">搜索失败</div>';
+                                searchResults.style.display = 'block';
+                            }
+                        }, 300);
+                    });
+
+                    // 选择用户
+                    searchResults.addEventListener('click', (e) => {
+                        const item = e.target.closest('.search-result-item');
+                        if (item) {
+                            selectedUserIdInput.value = item.dataset.id;
+                            searchInput.value = item.dataset.name;
+                            searchResults.style.display = 'none';
+                        }
+                    });
+
+                    // 点击其他区域隐藏搜索结果
+                    document.addEventListener('click', (e) => {
+                        if (!e.target.closest('.user-search-wrapper')) {
+                            searchResults.style.display = 'none';
+                        }
+                    });
+
                     // 移除协作者
                     modal.querySelectorAll('.btn-remove').forEach(btn => {
                         btn.addEventListener('click', async (e) => {
@@ -604,11 +790,11 @@ class OfficeListPage extends Component {
 
                     // 添加协作者
                     modal.querySelector('.btn-add-collab').addEventListener('click', async () => {
-                        const userId = parseInt(modal.querySelector('#new-collab-id').value);
+                        const userId = parseInt(selectedUserIdInput.value);
                         const permission = modal.querySelector('#new-collab-permission').value;
 
                         if (!userId) {
-                            Toast.warning('请输入用户ID');
+                            Toast.warning('请选择要添加的用户');
                             return;
                         }
 
@@ -696,13 +882,45 @@ class OfficeDocPage extends Component {
             document: null,
             loading: true,
             saving: false,
+            saveStatus: 'saved', // saved, unsaved, saving
             onlineEditors: [],
             connected: false
         };
         this.editor = null;
         this.ws = null;
-        this.autoSaveTimer = null;
+        this.debounceSaveTimer = null;
         this.lastSavedContent = null;
+        this.contentChanged = false;
+
+        // 绑定离开页面提醒
+        this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
+        window.addEventListener('beforeunload', this.handleBeforeUnload);
+
+        // 绑定全局快捷键
+        this.handleKeyDown = this.handleKeyDown.bind(this);
+        document.addEventListener('keydown', this.handleKeyDown);
+    }
+
+    // 离开页面提醒
+    handleBeforeUnload(e) {
+        if (this.contentChanged) {
+            e.preventDefault();
+            e.returnValue = '您有未保存的更改，确定要离开吗？';
+            return e.returnValue;
+        }
+    }
+
+    // 快捷键处理
+    handleKeyDown(e) {
+        // Ctrl+S 保存
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (this.contentChanged && !this.state.saving) {
+                this.saveContent(true); // 强制保存并显示提示
+            } else if (!this.contentChanged) {
+                Toast.info('文档已是最新状态');
+            }
+        }
     }
 
     async loadData() {
@@ -760,8 +978,9 @@ class OfficeDocPage extends Component {
                             value="${Utils.escapeHtml(document.title)}" placeholder="无标题文档">
                     </div>
                     <div class="header-center">
-                        <span class="save-status ${saving ? 'saving' : 'saved'}">
-                            ${saving ? '保存中...' : '已保存'}
+                        <span class="save-status ${this.state.saveStatus}" title="Ctrl+S 快捷保存">
+                            ${this.state.saveStatus === 'saving' ? '保存中...' :
+                this.state.saveStatus === 'unsaved' ? '未保存' : '已保存'}
                         </span>
                     </div>
                     <div class="header-right">
@@ -775,6 +994,12 @@ class OfficeDocPage extends Component {
                         <span class="connection-status ${connected ? 'connected' : 'disconnected'}">
                             <i class="ri-${connected ? 'wifi-line' : 'wifi-off-line'}"></i>
                         </span>
+                        <button class="btn btn-icon" id="btn-export" title="导出文档">
+                            <i class="ri-download-line"></i>
+                        </button>
+                        <button class="btn btn-icon" id="btn-comment" title="评论批注">
+                            <i class="ri-chat-3-line"></i>
+                        </button>
                         <button class="btn btn-icon" id="btn-share" title="分享">
                             <i class="ri-share-line"></i>
                         </button>
@@ -788,8 +1013,25 @@ class OfficeDocPage extends Component {
                     <!-- 工具栏由Tiptap渲染 -->
                 </div>
                 
-                <div class="doc-editor-container">
-                    <div id="editor" class="doc-editor"></div>
+                <div class="doc-main">
+                    <div class="doc-editor-container">
+                        <div id="editor" class="doc-editor"></div>
+                    </div>
+                    <div class="doc-comments-panel" id="comments-panel" style="display: none;">
+                        <div class="comments-header">
+                            <h3>评论批注</h3>
+                            <button class="btn btn-icon btn-close-comments" title="关闭">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <div class="comments-list" id="comments-list">
+                            <!-- 评论列表 -->
+                        </div>
+                        <div class="comments-add">
+                            <textarea id="new-comment" placeholder="添加评论..." rows="2"></textarea>
+                            <button class="btn btn-primary btn-sm" id="btn-add-comment">发送</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -818,12 +1060,22 @@ class OfficeDocPage extends Component {
             }
         }
 
-        // 创建简易富文本编辑器（实际项目中应使用Tiptap）
+        // 创建富文本编辑器
         editorContainer.contentEditable = 'true';
         editorContainer.innerHTML = this.renderContent(content);
 
         // 渲染工具栏
         this.renderToolbar();
+
+        // 初始化协同编辑器（如果CollabEditor可用）
+        if (typeof CollabEditor !== 'undefined') {
+            this.collabEditor = new CollabEditor(editorContainer, {
+                documentId: this.documentId,
+                userId: Utils.getCurrentUserId(),
+                userName: Utils.getCurrentUserName() || '匿名用户',
+                syncDelay: 300
+            });
+        }
 
         // 监听内容变化
         editorContainer.addEventListener('input', () => {
@@ -927,18 +1179,30 @@ class OfficeDocPage extends Component {
     onContentChange() {
         // 标记为未保存
         this.contentChanged = true;
+        this.setState({ saveStatus: 'unsaved' });
+
+        // 使用防抖策略：停止输入3秒后自动保存
+        if (this.debounceSaveTimer) {
+            clearTimeout(this.debounceSaveTimer);
+        }
+        this.debounceSaveTimer = setTimeout(async () => {
+            if (this.contentChanged && !this.state.saving) {
+                await this.saveContent();
+            }
+        }, 3000);
     }
 
     startAutoSave() {
-        // 每5秒自动保存
+        // 防抖策略已在 onContentChange 中实现
+        // 这里添加一个兜底的定时检查（每30秒）
         this.autoSaveTimer = setInterval(async () => {
             if (this.contentChanged && !this.state.saving) {
                 await this.saveContent();
             }
-        }, 5000);
+        }, 30000);
     }
 
-    async saveContent() {
+    async saveContent(showToast = false) {
         const editor = this.$('#editor');
         if (!editor) return;
 
@@ -950,9 +1214,13 @@ class OfficeDocPage extends Component {
             content: [{ type: 'paragraph', content: [{ type: 'text', text: editor.innerText }] }]
         });
 
-        if (docContent === this.lastSavedContent) return;
+        if (docContent === this.lastSavedContent) {
+            this.contentChanged = false;
+            this.setState({ saveStatus: 'saved' });
+            return;
+        }
 
-        this.setState({ saving: true });
+        this.setState({ saving: true, saveStatus: 'saving' });
 
         try {
             await OfficeApi.updateContent(this.documentId, {
@@ -965,10 +1233,14 @@ class OfficeDocPage extends Component {
             this.contentChanged = false;
             this.state.document.version++;
 
-            this.setState({ saving: false });
+            this.setState({ saving: false, saveStatus: 'saved' });
+
+            if (showToast) {
+                Toast.success('保存成功');
+            }
         } catch (err) {
             console.error('保存失败:', err);
-            this.setState({ saving: false });
+            this.setState({ saving: false, saveStatus: 'unsaved' });
             Toast.error('保存失败，请重试');
         }
     }
@@ -986,6 +1258,11 @@ class OfficeDocPage extends Component {
                 console.log('协同连接已建立');
                 this.setState({ connected: true });
                 this.loadOnlineEditors();
+
+                // 启用协同编辑器
+                if (this.collabEditor) {
+                    this.collabEditor.enable(this.ws);
+                }
             };
 
             this.ws.onmessage = (event) => {
@@ -1012,17 +1289,78 @@ class OfficeDocPage extends Component {
         switch (message.type) {
             case 'join':
                 this.loadOnlineEditors();
+                Toast.info(`${message.data.user_name} 加入了编辑`);
                 break;
             case 'leave':
                 this.loadOnlineEditors();
+                this.removeCursor(message.data.user_id);
                 break;
             case 'cursor':
                 // 显示其他用户的光标位置
+                this.showRemoteCursor(message.data);
                 break;
             case 'content':
-                // 接收其他用户的内容更新
-                // 实际项目中应使用CRDT算法处理冲突
+                // 接收其他用户的内容更新 - 使用OT引擎处理
+                if (this.collabEditor && message.data.op) {
+                    this.collabEditor.receiveOp(message.data.op);
+                } else {
+                    // 后备方案：显示提示
+                    Toast.info(`${message.data.user_name} 正在编辑文档...`);
+                }
                 break;
+            case 'comment_add':
+                // 新评论通知
+                Toast.info(`${message.data.user_name} 添加了评论`);
+                // 如果评论面板已打开，刷新列表
+                if (this.$('#comments-panel')?.style.display !== 'none') {
+                    this.loadComments();
+                }
+                break;
+        }
+    }
+
+    // 显示远程用户光标
+    showRemoteCursor(data) {
+        const { user_id, user_name, position } = data;
+        let cursorEl = this.$(`#remote-cursor-${user_id}`);
+
+        if (!cursorEl) {
+            // 创建光标元素
+            cursorEl = document.createElement('div');
+            cursorEl.id = `remote-cursor-${user_id}`;
+            cursorEl.className = 'remote-cursor';
+            cursorEl.innerHTML = `
+                <div class="cursor-line"></div>
+                <div class="cursor-label">${Utils.escapeHtml(user_name)}</div>
+            `;
+            // 随机颜色
+            const colors = ['#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#009688', '#ff5722'];
+            const color = colors[user_id % colors.length];
+            cursorEl.style.setProperty('--cursor-color', color);
+
+            const editorContainer = this.$('.doc-editor-container');
+            if (editorContainer) {
+                editorContainer.appendChild(cursorEl);
+            }
+        }
+
+        // 更新位置（简化处理）
+        if (position) {
+            cursorEl.style.display = 'block';
+            // 设置定时器隐藏（用户不活跃时）
+            if (cursorEl._hideTimer) clearTimeout(cursorEl._hideTimer);
+            cursorEl._hideTimer = setTimeout(() => {
+                cursorEl.style.opacity = '0.3';
+            }, 5000);
+            cursorEl.style.opacity = '1';
+        }
+    }
+
+    // 移除远程光标
+    removeCursor(userId) {
+        const cursorEl = this.$(`#remote-cursor-${userId}`);
+        if (cursorEl) {
+            cursorEl.remove();
         }
     }
 
@@ -1066,13 +1404,394 @@ class OfficeDocPage extends Component {
 
         // 分享
         this.on('#btn-share', 'click', () => {
-            // 复用列表页的分享逻辑
+            this.showShareModal();
         });
 
         // 版本历史
         this.on('#btn-history', 'click', () => {
-            // 复用列表页的版本历史逻辑
+            this.showVersionsModal();
         });
+
+        // 导出文档
+        this.on('#btn-export', 'click', () => {
+            this.exportDocument();
+        });
+
+        // 评论批注
+        this.on('#btn-comment', 'click', () => {
+            this.toggleCommentsPanel();
+        });
+
+        // 关闭评论面板
+        this.on('.btn-close-comments', 'click', () => {
+            this.toggleCommentsPanel(false);
+        });
+
+        // 添加评论
+        this.on('#btn-add-comment', 'click', async () => {
+            await this.addComment();
+        });
+    }
+
+    // 切换评论面板
+    toggleCommentsPanel(show = null) {
+        const panel = this.$('#comments-panel');
+        if (!panel) return;
+
+        const shouldShow = show !== null ? show : panel.style.display === 'none';
+        panel.style.display = shouldShow ? 'flex' : 'none';
+
+        if (shouldShow) {
+            this.loadComments();
+        }
+    }
+
+    // 加载评论列表
+    async loadComments() {
+        try {
+            const res = await OfficeApi.getComments(this.documentId);
+            const comments = res.data || [];
+            this.renderComments(comments);
+        } catch (err) {
+            console.error('加载评论失败:', err);
+        }
+    }
+
+    // 渲染评论列表
+    renderComments(comments) {
+        const container = this.$('#comments-list');
+        if (!container) return;
+
+        if (comments.length === 0) {
+            container.innerHTML = '<p class="empty-hint">暂无评论</p>';
+            return;
+        }
+
+        container.innerHTML = comments.map(comment => `
+            <div class="comment-item ${comment.is_resolved ? 'resolved' : ''}" data-id="${comment.id}">
+                <div class="comment-header">
+                    <img src="${comment.user_avatar || '/static/images/default-avatar.png'}" alt="" class="comment-avatar">
+                    <span class="comment-author">${Utils.escapeHtml(comment.user_name)}</span>
+                    <span class="comment-time">${Utils.timeAgo(comment.created_at)}</span>
+                </div>
+                ${comment.selected_text ? `
+                    <div class="comment-quote">"${Utils.escapeHtml(comment.selected_text)}"</div>
+                ` : ''}
+                <div class="comment-content">${Utils.escapeHtml(comment.content)}</div>
+                <div class="comment-actions">
+                    ${!comment.is_resolved ? `
+                        <button class="btn btn-text btn-sm btn-resolve" title="标记为已解决">
+                            <i class="ri-check-line"></i> 解决
+                        </button>
+                    ` : `
+                        <button class="btn btn-text btn-sm btn-reopen" title="重新打开">
+                            <i class="ri-refresh-line"></i> 重开
+                        </button>
+                    `}
+                    <button class="btn btn-text btn-sm btn-delete-comment" title="删除">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+                ${comment.replies.length > 0 ? `
+                    <div class="comment-replies">
+                        ${comment.replies.map(reply => `
+                            <div class="reply-item" data-id="${reply.id}">
+                                <img src="${reply.user_avatar || '/static/images/default-avatar.png'}" alt="" class="reply-avatar">
+                                <div class="reply-content">
+                                    <span class="reply-author">${Utils.escapeHtml(reply.user_name)}</span>
+                                    <span class="reply-text">${Utils.escapeHtml(reply.content)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <div class="comment-reply-input">
+                    <input type="text" placeholder="回复..." class="form-input form-input-sm reply-input">
+                    <button class="btn btn-sm btn-primary btn-reply">回复</button>
+                </div>
+            </div>
+        `).join('');
+
+        // 绑定评论操作事件
+        this.bindCommentEvents();
+    }
+
+    // 绑定评论事件
+    bindCommentEvents() {
+        // 解决评论
+        this.$$('.btn-resolve').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const commentId = parseInt(e.target.closest('.comment-item').dataset.id);
+                try {
+                    await OfficeApi.resolveComment(commentId);
+                    Toast.success('评论已解决');
+                    this.loadComments();
+                } catch (err) {
+                    Toast.error('操作失败');
+                }
+            });
+        });
+
+        // 重新打开评论
+        this.$$('.btn-reopen').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const commentId = parseInt(e.target.closest('.comment-item').dataset.id);
+                try {
+                    await OfficeApi.reopenComment(commentId);
+                    Toast.success('评论已重新打开');
+                    this.loadComments();
+                } catch (err) {
+                    Toast.error('操作失败');
+                }
+            });
+        });
+
+        // 删除评论
+        this.$$('.btn-delete-comment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const commentId = parseInt(e.target.closest('.comment-item').dataset.id);
+                const confirmed = await Modal.confirm({
+                    title: '删除评论',
+                    content: '确定要删除这条评论吗？'
+                });
+                if (!confirmed) return;
+
+                try {
+                    await OfficeApi.deleteComment(commentId);
+                    Toast.success('评论已删除');
+                    this.loadComments();
+                } catch (err) {
+                    Toast.error('删除失败');
+                }
+            });
+        });
+
+        // 回复评论
+        this.$$('.btn-reply').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const item = e.target.closest('.comment-item');
+                const parentId = parseInt(item.dataset.id);
+                const input = item.querySelector('.reply-input');
+                const content = input.value.trim();
+
+                if (!content) {
+                    Toast.warning('请输入回复内容');
+                    return;
+                }
+
+                try {
+                    await OfficeApi.addComment(this.documentId, {
+                        content,
+                        parent_id: parentId
+                    });
+                    input.value = '';
+                    Toast.success('回复已发送');
+                    this.loadComments();
+                } catch (err) {
+                    Toast.error('回复失败');
+                }
+            });
+        });
+    }
+
+    // 添加评论
+    async addComment() {
+        const textarea = this.$('#new-comment');
+        if (!textarea) return;
+
+        const content = textarea.value.trim();
+        if (!content) {
+            Toast.warning('请输入评论内容');
+            return;
+        }
+
+        // 获取选中的文本
+        const selection = window.getSelection();
+        let selectedText = null;
+        let selectionStart = null;
+        let selectionEnd = null;
+
+        if (selection.rangeCount > 0 && !selection.isCollapsed) {
+            selectedText = selection.toString().substring(0, 500);
+        }
+
+        try {
+            await OfficeApi.addComment(this.documentId, {
+                content,
+                selected_text: selectedText,
+                selection_start: selectionStart,
+                selection_end: selectionEnd
+            });
+            textarea.value = '';
+            Toast.success('评论已添加');
+            this.loadComments();
+        } catch (err) {
+            Toast.error('添加评论失败');
+        }
+    }
+
+    // 分享模态框
+    showShareModal() {
+        const doc = this.state.document;
+        if (!doc) return;
+
+        Modal.form({
+            title: '分享设置',
+            fields: [
+                {
+                    name: 'share_type',
+                    label: '分享方式',
+                    type: 'select',
+                    value: doc.share_type || 'private',
+                    options: [
+                        { value: 'private', label: '私有 - 仅自己和协作者可见' },
+                        { value: 'link', label: '链接分享 - 知道链接的人可访问' },
+                        { value: 'public', label: '公开 - 所有人可见' }
+                    ]
+                },
+                {
+                    name: 'share_permission',
+                    label: '权限',
+                    type: 'select',
+                    value: doc.share_permission || 'view',
+                    options: [
+                        { value: 'view', label: '只读' },
+                        { value: 'edit', label: '可编辑' }
+                    ]
+                }
+            ],
+            onSubmit: async (data) => {
+                try {
+                    const res = await OfficeApi.updateShare(this.documentId, data);
+                    this.state.document.share_type = data.share_type;
+                    this.state.document.share_code = res.data.share_code;
+
+                    if (data.share_type !== 'private' && res.data.share_code) {
+                        const shareUrl = `${window.location.origin}/#/office/share/${res.data.share_code}`;
+                        await navigator.clipboard.writeText(shareUrl);
+                        Toast.success('分享链接已复制到剪贴板');
+                    } else {
+                        Toast.success('分享设置已更新');
+                    }
+                    return true;
+                } catch (err) {
+                    Toast.error('更新失败');
+                    return false;
+                }
+            }
+        });
+    }
+
+    // 版本历史模态框
+    async showVersionsModal() {
+        try {
+            const res = await OfficeApi.getVersions(this.documentId);
+            const versions = res.data.items || [];
+
+            let content = `
+                <div class="versions-list">
+                    ${versions.length === 0
+                    ? '<p class="empty-hint">暂无版本历史，保存时勾选“创建版本快照”可生成版本</p>'
+                    : versions.map(v => `
+                            <div class="version-item" data-version-id="${v.id}">
+                                <div class="version-info">
+                                    <span class="version-num">版本 ${v.version}</span>
+                                    <span class="version-time">${Utils.formatDate(v.created_at)}</span>
+                                    <span class="version-user">${Utils.escapeHtml(v.user_name || '未知用户')}</span>
+                                </div>
+                                ${v.comment ? `<p class="version-comment">${Utils.escapeHtml(v.comment)}</p>` : ''}
+                                <button class="btn btn-sm btn-text btn-restore">恢复此版本</button>
+                            </div>
+                        `).join('')}
+                </div>
+            `;
+
+            Modal.show({
+                title: '版本历史',
+                content,
+                buttons: [{ text: '关闭', type: 'secondary' }],
+                onMounted: (modal) => {
+                    modal.querySelectorAll('.btn-restore').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const item = e.target.closest('.version-item');
+                            const versionId = parseInt(item.dataset.versionId);
+
+                            const confirmed = await Modal.confirm({
+                                title: '恢复版本',
+                                content: '确定要恢复到此版本吗？当前内容将被保存为新版本。'
+                            });
+
+                            if (!confirmed) return;
+
+                            try {
+                                await OfficeApi.restoreVersion(this.documentId, versionId);
+                                Toast.success('版本已恢复，请刷新页面');
+                                Modal.close();
+                                // 重新加载文档
+                                await this.loadData();
+                                this.initEditor();
+                            } catch (err) {
+                                Toast.error('恢复失败');
+                            }
+                        });
+                    });
+                }
+            });
+        } catch (err) {
+            Toast.error('获取版本历史失败');
+        }
+    }
+
+    // 导出文档
+    exportDocument() {
+        const editor = this.$('#editor');
+        if (!editor) return;
+
+        const doc = this.state.document;
+        const content = editor.innerHTML;
+        const title = doc.title || '未命名文档';
+
+        // 生成HTML文件
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${Utils.escapeHtml(title)}</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.8;
+            color: #333;
+        }
+        h1 { font-size: 2rem; margin: 1rem 0; }
+        h2 { font-size: 1.5rem; margin: 0.8rem 0; }
+        h3 { font-size: 1.25rem; margin: 0.6rem 0; }
+        p { margin: 0.5rem 0; }
+        ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+    </style>
+</head>
+<body>
+    <h1>${Utils.escapeHtml(title)}</h1>
+    ${content}
+</body>
+</html>
+        `.trim();
+
+        // 创建下载
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        Toast.success('文档已导出');
     }
 
     destroy() {
@@ -1081,15 +1800,29 @@ class OfficeDocPage extends Component {
             this.saveContent();
         }
 
-        // 清理定时器
+        // 清理防抖定时器
+        if (this.debounceSaveTimer) {
+            clearTimeout(this.debounceSaveTimer);
+        }
+
+        // 清理兜底定时器
         if (this.autoSaveTimer) {
             clearInterval(this.autoSaveTimer);
+        }
+
+        // 禁用协同编辑器
+        if (this.collabEditor) {
+            this.collabEditor.disable();
         }
 
         // 关闭WebSocket
         if (this.ws) {
             this.ws.close();
         }
+
+        // 移除事件监听
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        document.removeEventListener('keydown', this.handleKeyDown);
 
         super.destroy();
     }
@@ -1106,13 +1839,43 @@ class OfficeSheetPage extends Component {
             document: null,
             loading: true,
             saving: false,
+            saveStatus: 'saved',
             onlineEditors: [],
             connected: false
         };
         this.spreadsheet = null;
         this.ws = null;
+        this.debounceSaveTimer = null;
         this.autoSaveTimer = null;
         this.lastSavedContent = null;
+        this.contentChanged = false;
+
+        // 绑定离开页面提醒
+        this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
+        window.addEventListener('beforeunload', this.handleBeforeUnload);
+
+        // 绑定全局快捷键
+        this.handleKeyDown = this.handleKeyDown.bind(this);
+        document.addEventListener('keydown', this.handleKeyDown);
+    }
+
+    handleBeforeUnload(e) {
+        if (this.contentChanged) {
+            e.preventDefault();
+            e.returnValue = '您有未保存的更改，确定要离开吗？';
+            return e.returnValue;
+        }
+    }
+
+    handleKeyDown(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (this.contentChanged && !this.state.saving) {
+                this.saveContent(true);
+            } else if (!this.contentChanged) {
+                Toast.info('表格已是最新状态');
+            }
+        }
     }
 
     async loadData() {
@@ -1170,8 +1933,9 @@ class OfficeSheetPage extends Component {
                             value="${Utils.escapeHtml(document.title)}" placeholder="无标题表格">
                     </div>
                     <div class="header-center">
-                        <span class="save-status ${saving ? 'saving' : 'saved'}">
-                            ${saving ? '保存中...' : '已保存'}
+                        <span class="save-status ${this.state.saveStatus}" title="Ctrl+S 快捷保存">
+                            ${this.state.saveStatus === 'saving' ? '保存中...' :
+                this.state.saveStatus === 'unsaved' ? '未保存' : '已保存'}
                         </span>
                     </div>
                     <div class="header-right">
@@ -1215,8 +1979,13 @@ class OfficeSheetPage extends Component {
     }
 
     initSpreadsheet() {
+        // 创建一个特定的 Luckysheet ID 容器，避免与 Component 的 container 冲突
+        const containerId = `luckysheet-${this.documentId}`;
         const container = this.$('#sheet-container');
         if (!container) return;
+
+        // 清空容器并添加 Luckysheet 专用 div
+        container.innerHTML = `<div id="${containerId}" style="margin:0px;padding:0px;position:absolute;width:100%;height:100%;left:0px;top:0px;"></div>`;
 
         // 解析表格内容
         let sheetData = [{
@@ -1231,16 +2000,49 @@ class OfficeSheetPage extends Component {
         if (this.state.document.content) {
             try {
                 sheetData = JSON.parse(this.state.document.content);
+                // 确保数据格式正确
+                if (!Array.isArray(sheetData)) {
+                    sheetData = [sheetData];
+                }
             } catch (e) {
                 console.warn('解析表格内容失败，使用默认内容');
             }
         }
 
-        // 渲染简易表格（实际项目中应使用Luckysheet）
-        container.innerHTML = this.renderSimpleSheet(sheetData);
+        // 初始化 Luckysheet
+        if (typeof luckysheet !== 'undefined') {
+            luckysheet.create({
+                container: containerId,
+                lang: 'zh',
+                showinfobar: false,
+                data: sheetData,
+                hook: {
+                    updated: () => {
+                        this.onContentChange();
+                    },
+                    cellUpdated: () => {
+                        this.onContentChange();
+                    }
+                }
+            });
+        } else {
+            container.innerHTML = '<div class="sheet-placeholder"><p>Luckysheet 加载失败，请检查网络</p></div>';
+        }
+    }
 
-        // 绑定单元格编辑事件
-        this.bindSheetEvents();
+    onContentChange() {
+        this.contentChanged = true;
+        this.setState({ saveStatus: 'unsaved' });
+
+        // 防抖保存
+        if (this.debounceSaveTimer) {
+            clearTimeout(this.debounceSaveTimer);
+        }
+        this.debounceSaveTimer = setTimeout(async () => {
+            if (this.contentChanged && !this.state.saving) {
+                await this.saveContent();
+            }
+        }, 3000);
     }
 
     renderSimpleSheet(sheetData) {
@@ -1283,49 +2085,33 @@ class OfficeSheetPage extends Component {
     }
 
     bindSheetEvents() {
-        const cells = this.$$('.cell');
-        cells.forEach(cell => {
-            cell.addEventListener('blur', () => {
-                this.contentChanged = true;
-            });
-        });
+        // Luckysheet 通过 hook 处理大多数事件，这里保留用于其他自定义交互
     }
 
     startAutoSave() {
+        // 兜底保存（每30秒）
         this.autoSaveTimer = setInterval(async () => {
             if (this.contentChanged && !this.state.saving) {
                 await this.saveContent();
             }
-        }, 5000);
+        }, 30000);
     }
 
-    async saveContent() {
-        const cells = this.$$('.cell');
-        const celldata = [];
+    async saveContent(showToast = false) {
+        if (typeof luckysheet === 'undefined') return;
 
-        cells.forEach(cell => {
-            const value = cell.innerText.trim();
-            if (value) {
-                celldata.push({
-                    r: parseInt(cell.dataset.row),
-                    c: parseInt(cell.dataset.col),
-                    v: { v: value }
-                });
-            }
-        });
+        // 获取所有工作表数据
+        const sheets = luckysheet.getAllSheets();
+        // 简单处理：移除由于 Luckysheet 运行产生的循环引用或非必要数据（Luckysheet内部会处理，但这里为了后端存储轻量化）
+        const content = JSON.stringify(sheets);
 
-        const content = JSON.stringify([{
-            name: 'Sheet1',
-            index: 0,
-            status: 1,
-            order: 0,
-            celldata,
-            config: {}
-        }]);
+        if (content === this.lastSavedContent) {
+            this.contentChanged = false;
+            this.setState({ saveStatus: 'saved' });
+            return;
+        }
 
-        if (content === this.lastSavedContent) return;
-
-        this.setState({ saving: true });
+        this.setState({ saving: true, saveStatus: 'saving' });
 
         try {
             await OfficeApi.updateContent(this.documentId, {
@@ -1338,10 +2124,14 @@ class OfficeSheetPage extends Component {
             this.contentChanged = false;
             this.state.document.version++;
 
-            this.setState({ saving: false });
+            this.setState({ saving: false, saveStatus: 'saved' });
+
+            if (showToast) {
+                Toast.success('保存成功');
+            }
         } catch (err) {
             console.error('保存失败:', err);
-            this.setState({ saving: false });
+            this.setState({ saving: false, saveStatus: 'unsaved' });
             Toast.error('保存失败，请重试');
         }
     }
@@ -1426,21 +2216,27 @@ class OfficeSheetPage extends Component {
     }
 
     exportSheet() {
-        const cells = this.$$('.cell');
+        if (typeof luckysheet === 'undefined') return;
+
+        // Luckysheet 本身不支持直接导出文本，需要借助插件或手动处理
+        // 这里沿用之前的导出思路，但从 Luckysheet 获取数据
+        const sheet = luckysheet.getAllSheets()[0];
+        const celldata = sheet.celldata || [];
+
         const data = [];
         let maxRow = 0;
         let maxCol = 0;
 
-        cells.forEach(cell => {
-            const row = parseInt(cell.dataset.row);
-            const col = parseInt(cell.dataset.col);
-            const value = cell.innerText.trim();
+        celldata.forEach(item => {
+            const r = item.r;
+            const c = item.c;
+            const v = item.v?.v || item.v || '';
 
-            if (value) {
-                if (!data[row]) data[row] = [];
-                data[row][col] = value;
-                if (row > maxRow) maxRow = row;
-                if (col > maxCol) maxCol = col;
+            if (v) {
+                if (!data[r]) data[r] = [];
+                data[r][c] = v;
+                if (r > maxRow) maxRow = r;
+                if (c > maxCol) maxCol = c;
             }
         });
 
@@ -1461,6 +2257,10 @@ class OfficeSheetPage extends Component {
             this.saveContent();
         }
 
+        if (this.debounceSaveTimer) {
+            clearTimeout(this.debounceSaveTimer);
+        }
+
         if (this.autoSaveTimer) {
             clearInterval(this.autoSaveTimer);
         }
@@ -1468,6 +2268,9 @@ class OfficeSheetPage extends Component {
         if (this.ws) {
             this.ws.close();
         }
+
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        document.removeEventListener('keydown', this.handleKeyDown);
 
         super.destroy();
     }

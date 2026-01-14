@@ -105,3 +105,38 @@ class OfficeEditSession(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否活跃")
     last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="最后活动时间")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="加入时间")
+
+
+class OfficeComment(Base):
+    """文档评论批注表"""
+    __tablename__ = "office_comments"
+    __table_args__ = (
+        Index("idx_office_comment_doc", "document_id"),
+        Index("idx_office_comment_user", "user_id"),
+        Index("idx_office_comment_parent", "parent_id"),
+        {"extend_existing": True, "comment": "文档评论批注表"}
+    )
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(Integer, ForeignKey("office_documents.id", ondelete="CASCADE"), comment="文档ID")
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), comment="评论用户ID")
+    
+    # 评论内容
+    content: Mapped[str] = mapped_column(Text, comment="评论内容")
+    
+    # 批注位置（用于定位到文档中的具体位置）
+    selection_start: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="选区起始位置")
+    selection_end: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="选区结束位置")
+    selected_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="被批注的文本内容")
+    
+    # 回复关系
+    parent_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("office_comments.id", ondelete="CASCADE"), nullable=True, comment="父评论ID(用于回复)")
+    
+    # 状态
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否已解决")
+    resolved_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="解决者用户ID")
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, comment="解决时间")
+    
+    # 时间戳
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")

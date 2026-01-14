@@ -427,6 +427,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
         "/api/openapi.json",
         "/favicon.ico",
         "/ws",  # WebSocket
+        "/api/v1/ws",  # System WebSocket
+        "/api/v1/office/ws",  # Office WebSocket
         "/api/v1/system/init",  # 初始化接口（频繁调用）
     ]
     

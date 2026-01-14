@@ -20,7 +20,8 @@ from .office_schemas import (
     DocumentCreate, DocumentUpdate, DocumentContentUpdate,
     DocumentShareUpdate, CollaboratorAdd, CollaboratorUpdate,
     DocumentInfo, DocumentDetail, DocumentListItem,
-    VersionInfo, VersionRestore, CollaboratorInfo, EditSessionInfo
+    VersionInfo, VersionRestore, CollaboratorInfo, EditSessionInfo,
+    CommentCreate, CommentUpdate, CommentInfo
 )
 from .office_services import OfficeService
 
@@ -496,13 +497,14 @@ async def websocket_endpoint(
     
     # 验证token并获取用户信息
     try:
-        from core.security import verify_token
-        payload = verify_token(token)
-        user_id = payload.get("user_id")
-        if not user_id:
+        from core.security import decode_token
+        token_data = decode_token(token)
+        if not token_data:
             await websocket.close(code=4001, reason="无效的认证令牌")
             return
+        user_id = token_data.user_id
     except Exception as e:
+        logger.error(f"WebSocket认证失败: {e}")
         await websocket.close(code=4001, reason="认证失败")
         return
     
@@ -580,3 +582,147 @@ async def websocket_endpoint(
             "type": "leave",
             "data": user_info
         })
+
+
+# ==================== 评论批注API ====================
+
+@router.get("/{document_id}/comments")
+async def get_comments(
+    document_id: int,
+    include_resolved: bool = Query(True, description="是否包含已解决的评论"),
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取文档评论列表"""
+    comments = await OfficeService.get_comments(db, document_id, user.user_id, include_resolved)
+    
+    # 获取用户信息和回复
+    result = []
+    for comment in comments:
+        # 获取评论作者信息
+        user_result = await db.execute(select(User).where(User.id == comment.user_id))
+        author = user_result.scalar_one_or_none()
+        
+        # 获取回复
+        replies = await OfficeService.get_comment_replies(db, comment.id)
+        replies_data = []
+        for reply in replies:
+            reply_user_result = await db.execute(select(User).where(User.id == reply.user_id))
+            reply_author = reply_user_result.scalar_one_or_none()
+            replies_data.append({
+                **CommentInfo.model_validate(reply).model_dump(),
+                "user_name": reply_author.nickname if reply_author else "未知用户",
+                "user_avatar": reply_author.avatar if reply_author else None
+            })
+        
+        result.append({
+            **CommentInfo.model_validate(comment).model_dump(),
+            "user_name": author.nickname if author else "未知用户",
+            "user_avatar": author.avatar if author else None,
+            "replies": replies_data
+        })
+    
+    return success_response(result)
+
+
+@router.post("/{document_id}/comments")
+async def create_comment(
+    document_id: int,
+    data: CommentCreate,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """创建评论"""
+    comment = await OfficeService.create_comment(db, document_id, user.user_id, data)
+    if not comment:
+        raise BusinessException("创建评论失败", ErrorCode.CREATE_FAILED)
+    
+    await db.commit()
+    
+    # 获取用户信息
+    user_result = await db.execute(select(User).where(User.id == user.user_id))
+    author = user_result.scalar_one_or_none()
+    
+    # 广播新评论到所有编辑者
+    await manager.broadcast(document_id, {
+        "type": "comment_add",
+        "data": {
+            "comment_id": comment.id,
+            "user_id": user.user_id,
+            "user_name": author.nickname if author else "未知用户",
+            "content": comment.content[:50]
+        }
+    })
+    
+    return success_response({
+        **CommentInfo.model_validate(comment).model_dump(),
+        "user_name": author.nickname if author else "未知用户",
+        "user_avatar": author.avatar if author else None
+    }, "评论已添加")
+
+
+@router.put("/comments/{comment_id}")
+async def update_comment(
+    comment_id: int,
+    data: CommentUpdate,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """更新评论"""
+    comment = await OfficeService.update_comment(db, comment_id, user.user_id, data)
+    if not comment:
+        raise BusinessException("更新评论失败", ErrorCode.UPDATE_FAILED)
+    
+    await db.commit()
+    return success_response(CommentInfo.model_validate(comment), "评论已更新")
+
+
+@router.delete("/comments/{comment_id}")
+async def delete_comment(
+    comment_id: int,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """删除评论"""
+    success = await OfficeService.delete_comment(db, comment_id, user.user_id)
+    if not success:
+        raise BusinessException("删除评论失败", ErrorCode.DELETE_FAILED)
+    
+    await db.commit()
+    return success_response(message="评论已删除")
+
+
+@router.post("/comments/{comment_id}/resolve")
+async def resolve_comment(
+    comment_id: int,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """解决评论"""
+    comment = await OfficeService.update_comment(
+        db, comment_id, user.user_id,
+        CommentUpdate(is_resolved=True)
+    )
+    if not comment:
+        raise BusinessException("解决评论失败", ErrorCode.UPDATE_FAILED)
+    
+    await db.commit()
+    return success_response(CommentInfo.model_validate(comment), "评论已解决")
+
+
+@router.post("/comments/{comment_id}/reopen")
+async def reopen_comment(
+    comment_id: int,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """重新打开评论"""
+    comment = await OfficeService.update_comment(
+        db, comment_id, user.user_id,
+        CommentUpdate(is_resolved=False)
+    )
+    if not comment:
+        raise BusinessException("重新打开评论失败", ErrorCode.UPDATE_FAILED)
+    
+    await db.commit()
+    return success_response(CommentInfo.model_validate(comment), "评论已重新打开")
