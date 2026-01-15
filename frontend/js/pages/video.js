@@ -49,7 +49,7 @@ class VideoPage extends Component {
             videoPlayer._errorBound = true;
             videoPlayer.addEventListener('error', (e) => {
                 const error = videoPlayer.error;
-                console.error('Video Error:', error);
+                console.error('视频播放错误:', error);
                 let msg = '视频播放出错';
                 if (error) {
                     switch (error.code) {
@@ -779,7 +779,7 @@ class VideoPage extends Component {
         `;
     }
 
-    // Modal Helpers
+    // 弹窗辅助方法
     showCreateCollectionModal() {
         Modal.form({
             title: '新建视频集',

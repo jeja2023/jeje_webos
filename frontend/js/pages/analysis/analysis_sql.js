@@ -646,7 +646,7 @@ const AnalysisSqlMixin = {
                 const field = f.field;
                 let val = f.val;
 
-                // Handle unary operators (no value needed)
+                // 处理一元运算符 (无需值)
                 if (op === 'is_null') {
                     sql += `${field} IS NULL`;
                 } else if (op === 'not_null') {
@@ -656,21 +656,21 @@ const AnalysisSqlMixin = {
                 } else if (op === 'not_empty') {
                     sql += `(${field} IS NOT NULL AND CAST(${field} AS VARCHAR) != '')`;
                 }
-                // Handle binary operators
+                // 处理二元运算符
                 else {
                     let sqlVal = val;
                     if (op === 'IN') {
                         // 处理 IN 列表
-                        const vals = val.split(/[,，]/).map(v => isNaN(v.trim()) ? `'${v.trim()}'` : v.trim()); // Support both en and cn comma
+                        const vals = val.split(/[,，]/).map(v => isNaN(v.trim()) ? `'${v.trim()}'` : v.trim()); // 支持中英文逗号
                         sqlVal = `(${vals.join(', ')})`;
                         sql += `${field} IN ${sqlVal}`;
                     } else {
-                        // Formatting standard values
+                        // 格式化标准值
                         if (isNaN(val)) {
                             sqlVal = `'${val}'`;
                         }
 
-                        // Specific operator mapping
+                        // 特定运算符映射
                         if (op === 'contains' || op === 'LIKE') {
                             sql += `${field} LIKE '%${val}%'`;
                         } else if (op === 'not_contains' || op === 'NOT LIKE') {
@@ -680,7 +680,7 @@ const AnalysisSqlMixin = {
                         } else if (op === 'end_with') {
                             sql += `${field} LIKE '%${val}'`;
                         } else {
-                            // Standard comparison (=, !=, >, <, >=, <=)
+                            // 标准比较 (=, !=, >, <, >=, <=)
                             sql += `${field} ${op} ${sqlVal}`;
                         }
                     }
@@ -688,19 +688,19 @@ const AnalysisSqlMixin = {
             });
         }
 
-        // GROUP BY (如果有聚合且选了多个字段)
+        // 分组 (如果有聚合且选了多个字段)
         if (aggFunc && fields.length > 1 && fields[0] !== '*') {
             sql += ` GROUP BY ${fields.slice(1).join(', ')}`;
         }
 
-        // ORDER BY
+        // 排序
         const sortField = this.state.builderSortField;
         const sortDir = this.state.builderSortDir;
         if (sortField) {
             sql += ` ORDER BY ${sortField} ${sortDir}`;
         }
 
-        // LIMIT
+        // 限制条数
         const limit = this.state.builderLimit || 1000;
         sql += ` LIMIT ${limit}`;
 

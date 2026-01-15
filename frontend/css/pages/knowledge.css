@@ -6,7 +6,7 @@
     margin: 0 auto;
 }
 
-/* Base Card */
+/* 基础卡片 */
 .kb-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -80,7 +80,7 @@
     color: var(--text-tertiary);
 }
 
-/* Knowledge View Layout */
+/* 知识库视图布局 */
 .kb-layout {
     display: flex;
     height: 100vh;
@@ -125,7 +125,7 @@
     flex-shrink: 0;
 }
 
-/* Hide help text when used as icon */
+/* 当作为图标使用时隐藏帮助文本 */
 .btn-icon .help-text {
     display: none;
 }
@@ -311,7 +311,7 @@
     }
 }
 
-/* Tree Styling */
+/* 树形结构样式 */
 .tree-list {
     list-style: none;
     margin: 0;
@@ -380,7 +380,7 @@
     color: var(--text-primary);
 }
 
-/* Content Area */
+/* 内容区域 */
 .kb-content {
     flex: 1;
     display: flex;
@@ -446,7 +446,7 @@
     z-index: 50;
 }
 
-/* Upload Overlay */
+/* 上传覆盖层 */
 .upload-overlay {
     position: absolute;
     top: 0;
@@ -480,14 +480,14 @@
     box-shadow: var(--shadow-lg);
 }
 
-/* Extracted text view */
+/* 提取文本视图 */
 .extracted-text-view {
     padding: 40px;
     max-width: 900px;
     margin: 0 auto;
 }
 
-/* Search Results Styling */
+/* 搜索结果样式 */
 .search-results-header {
     padding: 8px 16px;
     font-size: 12px;
@@ -569,7 +569,7 @@
     color: var(--text-tertiary);
 }
 
-/* Dictionary/Search Styling Enhancements */
+/* 字典/搜索样式增强 */
 .search-item {
     border-bottom: 1px solid var(--border-color);
 }
@@ -580,7 +580,7 @@
     padding: 8px 12px;
     gap: 4px;
     height: auto !important;
-    /* Override default tree item height */
+    /* 覆盖默认树节点高度 */
     align-items: flex-start !important;
 }
 
@@ -625,7 +625,7 @@ mark {
     padding: 0;
 }
 
-/* Processing Animation */
+/* 处理中动画 */
 @keyframes spin {
     100% {
         transform: rotate(360deg);

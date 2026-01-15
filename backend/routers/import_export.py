@@ -27,11 +27,11 @@ def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
     用于文件下载等需要在新窗口打开的场景
     """
     if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="未登录")
     
     token_data = decode_token(token)
     if token_data is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="令牌无效")
     
     if token_data.role != "admin":
         raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")

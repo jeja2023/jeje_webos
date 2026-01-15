@@ -25,7 +25,7 @@ class IMPage extends Component {
             onlineUsers: new Set(),
             searchQuery: '',
             typingUsers: new Set(),
-            connectionStatus: 'connecting' // connecting, connected, disconnected
+            connectionStatus: 'connecting' // 连接状态: connecting, connected, disconnected
         };
 
         this.messageInput = null;
@@ -505,12 +505,10 @@ class IMPage extends Component {
     async loadConversations() {
         try {
             this.setState({ loading: true });
-            console.log('[IM] 正在加载会话列表...');
             const res = await Api.get('/im/conversations', {
                 page: 1,
                 page_size: 50
             });
-            console.log('[IM] 会话列表响应:', res);
 
             // 兼容分页响应 code=0 和普通响应 code=200
             if (res.code === 200 || res.code === 0) {
@@ -519,7 +517,6 @@ class IMPage extends Component {
                     conversations: items,
                     loading: false
                 });
-                console.log('[IM] 加载了', items.length, '个会话');
 
                 // 如果有会话，默认打开第一个
                 if (items.length > 0 && !this.state.currentConversation) {
@@ -672,8 +669,7 @@ class IMPage extends Component {
             // 检查是否已存在该消息
             const exists = this.state.messages.some(m => m.id === message.id);
             if (!exists) {
-                // 更新状态但不触发重绘 (Direct state mutation for performance/UX)
-                // 注意：这违反了 React 式的不可变性，但在 Vanilla JS 组件中为了性能和保留焦点是必要的
+                // 直接修改状态以提升性能（避免全量重绘导致输入框失焦）
                 this.state.messages.push(message);
 
                 // 手动将消息追加到 DOM，避免全量重绘导致输入框失焦
@@ -1038,7 +1034,7 @@ class IMPage extends Component {
     handleContextMenu(e, msg) {
         e.preventDefault();
 
-        // Remove existing context menus
+        // 移除已有的上下文菜单
         this.removeContextMenu();
 
         const isOwn = msg.sender_id === Store.get('user')?.id;
@@ -1055,7 +1051,7 @@ class IMPage extends Component {
         `;
 
         if (isOwn && !msg.is_recalled) {
-            // Check if message is within 2 minutes (recallable)
+            // 检查消息是否在2分钟内（可撤回）
             const isRecallable = (new Date() - new Date(msg.created_at)) < 120000;
             if (isRecallable) {
                 menuHtml += `
@@ -1069,7 +1065,7 @@ class IMPage extends Component {
         menu.innerHTML = menuHtml;
         document.body.appendChild(menu);
 
-        // Position menu
+        // 定位菜单
         const rect = menu.getBoundingClientRect();
         let x = e.clientX;
         let y = e.clientY;
@@ -1080,7 +1076,7 @@ class IMPage extends Component {
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
 
-        // Close menu on click elsewhere
+        // 点击其他地方关闭菜单
         const closeHandler = () => {
             this.removeContextMenu();
             document.removeEventListener('click', closeHandler);
@@ -1123,12 +1119,10 @@ class IMPage extends Component {
     }
 
     playNotificationSound() {
-        // Simple notification sound
+        // 播放通知提示音
         try {
-            const audio = new Audio('/static/assets/notification.mp3'); // Need to ensure file exists or use base64
-            // Fallback to nothing if file missing, or implement a beep
-            // Since we don't have the file, we can skip or adding a placeholder log
-            console.log('Playing notification sound...');
+            const audio = new Audio('/static/assets/notification.mp3');
+            audio.play().catch(() => { });
         } catch (e) { }
     }
 
@@ -1196,18 +1190,10 @@ class IMPage extends Component {
             contentHtml = this.escapeHtml(msg.content);
         }
 
-        // Render Reply Quote if exists
+        // 渲染引用回复（如果存在）
         let replyHtml = '';
-        /* Currently backend doesn't return reply_to details fully, we can only support if we have that data. 
-           We will simulate it or support it fully later. For now, we only support sending reply_to_id.
-           Visual rendering of reply requires the original message content which might not be here.
-           Optimization: If we have msg.reply_to_id, we can display "Replying to message..." or fetch it.
-           For this iteration, we focus on the Context Menu and Grouping first as requested.
-        */
 
-        // Check if message is within 2 minutes (recallable)
-        // Adjust for potential clock skew by adding a small buffer or relying on backend, 
-        // but here strictly 2 mins for UI hiding.
+        // 检查消息是否在2分钟内（可撤回）
         const isRecallable = (new Date() - new Date(msg.created_at)) < 120000;
 
         const actionHtml = `
@@ -1221,7 +1207,7 @@ class IMPage extends Component {
             </div>
         `;
 
-        // Context menu trigger area
+        // 右键菜单触发区域
         const contextMenuAttr = `oncontextmenu="window.imPageInstance?.handleContextMenu(event, {id:${msg.id}, sender_id:${msg.sender_id}, content:'${this.escapeHtml(msg.content || '').replace(/'/g, "\\'")}', sender_nickname:'${this.escapeHtml(msg.sender_nickname || msg.sender_username).replace(/'/g, "\\'")}', is_recalled:${msg.is_recalled}, created_at:'${msg.created_at}'})"`
 
         return `

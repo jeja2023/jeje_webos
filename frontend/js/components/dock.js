@@ -244,7 +244,7 @@ class DockComponent extends Component {
             'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
             'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
             'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
-            'office': { ri: 'ri-file-text-line', gradient: 'gradient-blue' },
+
             'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
             'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
             'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
@@ -300,11 +300,7 @@ class DockComponent extends Component {
                 singleEntry: true,
                 path: '/announcement/list'
             },
-            // 协同办公：单一入口
-            'office': {
-                singleEntry: true,
-                path: '/office/list'
-            }
+
         };
 
         const config = menuConfig[module.id];

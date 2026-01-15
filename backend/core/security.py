@@ -136,7 +136,7 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[To
     def _decode(secret: str):
         payload = jwt.decode(token, secret, algorithms=[settings.jwt_algorithm])
         if expected_type and payload.get("type") != expected_type:
-            raise JWTError("token type mismatch")
+            raise JWTError("令牌类型不匹配")
         return TokenData(**payload)
     
     # 先尝试新密钥

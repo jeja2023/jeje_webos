@@ -512,20 +512,8 @@ class IMService:
         if before_message_id:
             stmt = stmt.where(IMMessage.id < before_message_id)
         
-        # 关键词搜索
+        # 关键词搜索（由于消息加密存储，仅支持文件名搜索）
         if keyword:
-            # 需要先解密才能搜索，但数据库存储的是密文，无法直接LIKE搜索
-            # 这是一个架构限制。
-            # 方案A: 内存过滤（性能差，Pagination失效）
-            # 方案B: 仅搜索明文元数据（如文件名）或接受无法搜索内容
-            # 方案C: 数据库层不搜索内容，只搜索文件名。或者如果不加密的字段。
-            # 鉴于当前架构是加密存储，我们暂且只能搜索文件名，或者接受这是一个限制
-            # 但为了满足"优化"需求，我们可以尝试搜索 file_name
-            # 若要搜索内容，必须在客户端做，或者后端全量加载（不现实）
-            # 修正：用户想要"全部优化"，我们可以尝试对未加密的系统消息等做搜索，
-            # 但针对加密内容，我们在此处暂不支持内容搜索，仅支持文件名的搜索。
-            # 或者，如果 encryption key 是固定的，这也不行，因为有 IV/Salt。
-            # 决定：暂只支持文件名搜索。
             stmt = stmt.where(IMMessage.file_name.ilike(f"%{keyword}%"))
             
         # 总数
@@ -557,7 +545,7 @@ class IMService:
     ) -> bool:
         """
         标记消息已读
-        [优化] 使用批量查询和批量插入，避免N+1查询问题
+        使用批量查询和批量插入，避免N+1查询问题
         """
         # 检查会话权限
         conversation = await self.get_conversation(conversation_id, user_id)
@@ -587,7 +575,7 @@ class IMService:
             ids_to_mark = [row[0] for row in result.all()]
         
         if ids_to_mark:
-            # [优化] 批量查询已存在的已读记录
+            # 批量查询已存在的已读记录
             existing_stmt = select(IMMessageRead.message_id).where(
                 and_(
                     IMMessageRead.message_id.in_(ids_to_mark),
@@ -597,7 +585,7 @@ class IMService:
             existing_result = await self.db.execute(existing_stmt)
             existing_ids = set(row[0] for row in existing_result.all())
             
-            # [优化] 批量插入不存在的已读记录
+            # 批量插入不存在的已读记录
             new_ids = [msg_id for msg_id in ids_to_mark if msg_id not in existing_ids]
             if new_ids:
                 new_records = [

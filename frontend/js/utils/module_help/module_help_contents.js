@@ -78,7 +78,7 @@ const ModuleHelpContents = {
             <li>创建各种图表（柱状图、折线图、饼图等）</li>
             <li>BI 仪表盘设计</li>
             <li>智能表格</li>
-            <li>智能报告生成</li>
+
         </ul>
         
         <h4>💡 使用技巧</h4>

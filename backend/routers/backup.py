@@ -278,18 +278,15 @@ async def restore_backup(
         if backup_type == BackupType.DATABASE.value or backup_type == BackupType.FULL.value:
             # 恢复数据库
             db_path = file_paths[0] if file_paths else file_path
-            print(f"DEBUG: 开始恢复数据库: {db_path}")
             logger.info(f"开始恢复数据库: {db_path}")
             
-            # 暂时改回同步调用以排查问题
             try:
                 restore_ok, error = backup_manager.restore_database(db_path)
             except Exception as e:
-                print(f"DEBUG: restore_database 内部异常: {e}")
+                logger.error(f"restore_database 内部异常: {e}")
                 raise
 
             if not restore_ok:
-                print(f"DEBUG: 数据库恢复失败: {error}")
                 logger.error(f"数据库恢复失败: {error}")
                 raise HTTPException(status_code=500, detail=f"数据库恢复失败: {error}")
             logger.info("数据库恢复完成")
@@ -298,11 +295,9 @@ async def restore_backup(
             # 恢复文件
             files_path = file_paths[-1] if len(file_paths) > 1 else (file_paths[0] if backup_type == BackupType.FILES.value else None)
             if files_path:
-                print(f"DEBUG: 开始恢复文件: {files_path}")
                 logger.info(f"开始恢复文件: {files_path}")
                 restore_ok, error = backup_manager.restore_files(files_path)
                 if not restore_ok:
-                    print(f"DEBUG: 文件恢复失败: {error}")
                     logger.error(f"文件恢复失败: {error}")
                     raise HTTPException(status_code=500, detail=f"文件恢复失败: {error}")
                 logger.info("文件恢复完成")
@@ -346,7 +341,6 @@ async def restore_backup(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"DEBUG: 恢复过程发生未捕获异常: {e}")
         logger.error(f"恢复过程发生未捕获异常: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"恢复过程出错: {str(e)}")
 

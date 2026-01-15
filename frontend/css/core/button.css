@@ -48,6 +48,24 @@
     background: var(--color-primary-dark);
 }
 
+/* 成功按钮 - 渐变与强调 */
+.btn-success {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #ffffff !important;
+    border: 1px solid #059669;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    border-color: #10b981;
+}
+
+.btn-success:active:not(:disabled) {
+    background: #059669;
+}
+
 /* 次要按钮 */
 .btn-secondary {
     background: rgba(255, 255, 255, 0.05);

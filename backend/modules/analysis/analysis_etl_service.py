@@ -628,7 +628,7 @@ class ETLExecutionService:
         """计算单个过滤条件的 mask"""
         if field not in df.columns:
             # 字段不存在时，为了不报错且起到过滤作用，返回全 False (或者报错，这里选择宽容处理但记录日志)
-            logger.warning(f"Filter field not found: {field}")
+            logger.warning(f"筛选字段不存在: {field}")
             return pd.Series([False] * len(df), index=df.index)
 
         # 尝试将 value 转换为数字
@@ -727,7 +727,7 @@ class ETLExecutionService:
                     
         if final_mask is not None:
             result = df[final_mask].copy()
-            logger.info(f"Filter 节点 ({len(conditions)} conditions), 结果: {len(result)}")
+            logger.info(f"过滤节点 ({len(conditions)} 个条件), 结果: {len(result)}")
             return result
             
         return df

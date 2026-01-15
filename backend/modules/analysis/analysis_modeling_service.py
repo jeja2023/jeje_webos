@@ -169,7 +169,7 @@ class ModelingService:
         result = await db.execute(select(AnalysisModel).where(AnalysisModel.id == model_id))
         model = result.scalar_one_or_none()
         if not model:
-            raise ValueError("Model not found")
+            raise ValueError("模型不存在")
         return model
 
     @staticmethod

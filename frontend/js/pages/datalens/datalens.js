@@ -221,7 +221,7 @@ class DataLensPage extends Component {
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
-        
+
         // Hub 侧边栏分类点击
         this.delegate('click', '.lens-sidebar-item', (e, el) => {
             const category = el.dataset.category;
@@ -260,7 +260,7 @@ class DataLensPage extends Component {
             const view = this.state.views.find(v => v.id === viewId);
 
             if (view) {
-                // 不再在当前窗口开标签页，而是打开新窗口
+                // 在新窗口打开
                 if (typeof WindowManager !== 'undefined') {
                     WindowManager.open(DataLensPage, [view.id], {
                         id: `/lens/view/${view.id}`,
@@ -268,7 +268,7 @@ class DataLensPage extends Component {
                         url: `/lens/view/${view.id}`
                     });
                 } else {
-                    // 降级使用标签页（如果 WindowManager 未定义，虽然理论上不应该）
+                    // 降级使用标签页（如果 WindowManager 未定义）
                     this._openViewTab(view);
                 }
             }

@@ -95,7 +95,7 @@ class AIPage extends Component {
                                 };
                             }
                         } catch (e) {
-                            console.error(`加载会话 ${s.id} 失败:`, e);
+                            Config.error(`加载会话 ${s.id} 失败:`, e);
                         }
                         return {
                             id: s.id,
@@ -112,7 +112,7 @@ class AIPage extends Component {
                 });
             }
         } catch (e) {
-            console.error('加载会话失败:', e);
+            Config.error('加载会话失败:', e);
             // 如果后端加载失败，尝试从LocalStorage恢复（降级方案）
             const savedSessions = localStorage.getItem('jeje_ai_sessions');
             if (savedSessions) {
@@ -125,7 +125,7 @@ class AIPage extends Component {
                         });
                     }
                 } catch (e2) {
-                    console.error('从LocalStorage恢复失败:', e2);
+                    Config.error('从LocalStorage恢复失败:', e2);
                 }
             }
         }
@@ -193,10 +193,10 @@ class AIPage extends Component {
                 }));
             } catch (e) {
                 // LocalStorage失败不影响主流程
-                console.warn('LocalStorage备份失败:', e);
+                Config.warn('LocalStorage备份失败:', e);
             }
         } catch (e) {
-            console.error('保存会话到后端失败:', e);
+            Config.error('保存会话到后端失败:', e);
             // 降级到LocalStorage
             try {
                 localStorage.setItem('jeje_ai_sessions', JSON.stringify({
@@ -205,7 +205,7 @@ class AIPage extends Component {
                     timestamp: Date.now()
                 }));
             } catch (e2) {
-                console.error('LocalStorage保存也失败:', e2);
+                Config.error('LocalStorage保存也失败:', e2);
             }
         } finally {
             this.state._saving = false;
@@ -232,7 +232,7 @@ class AIPage extends Component {
                         parsed.apiKey = AIPage.decryptKey(parsed.apiKey);
                     }
                     apiConfig = { ...apiConfig, ...parsed };
-                } catch (e) { console.error('Parsed config error', e); }
+                } catch (e) { Config.error('解析配置失败', e); }
             }
 
             // 从 LocalStorage 加载选中的模型
@@ -252,7 +252,7 @@ class AIPage extends Component {
                 selectedModel: selectedModel
             });
         } catch (e) {
-            console.error('加载数据失败', e);
+            Config.error('加载数据失败', e);
         }
     }
 
@@ -703,7 +703,7 @@ class AIPage extends Component {
                         try {
                             await Api.delete(`/ai/sessions/${sessionId}`);
                         } catch (e) {
-                            console.warn('后端删除失败，仅本地删除:', e);
+                            Config.warn('后端删除失败，仅本地删除:', e);
                         }
                     }
 
@@ -948,17 +948,17 @@ class AIPage extends Component {
                     this.setState({ activeSessionId: updatedSession.id });
                 } else {
                     // 如果找不到，可能是保存失败，使用原临时ID
-                    console.warn('无法找到更新后的会话ID，消息可能不会保存到数据库');
+                    Config.warn('无法找到更新后的会话ID，消息可能不会保存到数据库');
                 }
             } catch (e) {
-                console.warn('创建会话失败，将不保存消息到数据库:', e);
+                Config.warn('创建会话失败，将不保存消息到数据库:', e);
             }
         } else if (typeof session.id === 'number') {
             // 如果是真实ID，更新标题
             try {
                 await Api.put(`/ai/sessions/${session.id}`, { title: session.title });
             } catch (e) {
-                console.warn('更新会话标题失败:', e);
+                Config.warn('更新会话标题失败:', e);
             }
         }
 
@@ -1088,7 +1088,7 @@ class AIPage extends Component {
                                 }
                             }
                         } catch (e) {
-                            if (dataStr !== '[DONE]') console.error('Parse SSE error', e);
+                            if (dataStr !== '[DONE]') Config.error('解析 SSE 数据失败', e);
                         }
                     }
                 }
@@ -1102,7 +1102,6 @@ class AIPage extends Component {
             this.saveSessions();
         } catch (e) {
             if (e.name === 'AbortError') {
-                console.log('生成已中止');
                 return;
             }
             // 增强的错误处理和用户提示

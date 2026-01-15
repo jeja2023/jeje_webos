@@ -284,7 +284,7 @@ class MapPage extends Component {
                 </div >
             `;
         } catch (e) {
-            console.error('Map Render Error', e);
+            console.error('地图渲染错误', e);
             return `<div style="padding:20px;color:red;">地图渲染错误: ${e.message}</div>`;
         }
     }
@@ -804,7 +804,7 @@ class MapPage extends Component {
                     datasets.push(newDs);
                     loadedCount++;
                 }
-            } catch (e) { console.error(`Load ${file.id} failed`, e); }
+            } catch (e) { console.error(`加载 ${file.id} 失败`, e); }
         }
 
         if (loadedCount > 0) {
@@ -895,7 +895,7 @@ class MapPage extends Component {
             try {
                 await Api.post(`/map/gps/update_style?trail_id=${id}&color=${encodeURIComponent(color)}`);
             } catch (e) {
-                console.error('Persistence failed', e);
+                console.error('样式持久化失败', e);
             }
         }
     }
@@ -923,7 +923,7 @@ class MapPage extends Component {
                 Toast.success('轨迹已从库中删除');
                 this.fetchTrailFiles(); // 刷新列表
             } catch (e) {
-                console.error('Delete backend record failed', e);
+                console.error('删除后端记录失败', e);
             }
         }
     }
@@ -1044,7 +1044,7 @@ class MapPage extends Component {
             // 隐藏普通图层以便观看热力图
             if (this.layers[ds.id]) this.map.removeLayer(this.layers[ds.id]);
             ds.points.forEach(p => {
-                if (p.lat && p.lng) points.push([p.lat, p.lng, 0.5]); // lat, lng, intensity
+                if (p.lat && p.lng) points.push([p.lat, p.lng, 0.5]); // 纬度, 经度, 强度
             });
         });
 

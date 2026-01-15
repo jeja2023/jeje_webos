@@ -4,6 +4,7 @@
 """
 
 from core.loader import ModuleManifest, ModuleAssets
+from .exam_router import router
 
 manifest = ModuleManifest(
     id="exam",
@@ -14,6 +15,7 @@ manifest = ModuleManifest(
     author="JeJe WebOS",
     
     router_prefix="/api/v1/exam",
+    router=router,
     
     menu={
         "title": "考试",

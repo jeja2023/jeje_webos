@@ -31,10 +31,10 @@
 - **⚡ 快传 (Transfer)**：局域网跨设备文件传输、传输码机制、WebSocket 实时进度
 - **🤖 AI助手**：集成多种大模型引擎，支持流式对话、上下文记忆、多角色预设（编程/写作/翻译/分析）、Token统计与代码生成
 - **👁️ 数据透镜 (DataLens)**：万能数据视窗、支持多种数据源（MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API）、表格与图表双模态
-- **📊 数据分析 (Analysis)**：ETL 数据建模、BI 数据大屏、智能报告、图表分析
+- **📊 数据分析 (Analysis)**：ETL 数据建模、BI 数据大屏、图表分析
 - **🗺️ 智能地图 (Smart Map)**：支持离线/在线双模式、GPS 轨迹回放、热力图分析、多图层叠加与路径测距
 - **💬 即时通讯 (IM)**：端到端加密聊天、群组管理、文件/图片发送、消息聚合显示、引用回复、撤回功能
-- **📄 协同办公 (Office)**：多人实时在线编辑 Word 文档和 Excel 表格，集成 OT 协同引擎，支持版本控制、评论批注与导出功能
+
 
 
 ### ⚙️ 系统管理
@@ -226,7 +226,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.3.4 |
+| | `APP_VERSION` | 系统版本 | 2.3.7 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

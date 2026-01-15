@@ -66,9 +66,7 @@ const WindowManager = {
         // 绑定窗口特定事件（拖拽、调整大小、控件）
         this.bindWindowEvents(id, winEl);
 
-        // 如果支持，设置标题绑定
-        // 某些组件可能需要动态更改标题
-        // 如果需要，我们可以暴露一个方法或钩子。
+
 
         // 更新桌面状态（如果有窗口打开，模糊背景小部件）
         this.updateDesktopState();
@@ -110,7 +108,7 @@ const WindowManager = {
         this.updateDesktopState();
         this.checkMaximizedState();
 
-        // 移除旧的路由逻辑注释，现在由 focusLastActive 处理
+
     },
 
     focus(id) {
@@ -167,7 +165,7 @@ const WindowManager = {
         win.minimized = true;
         win.element.classList.remove('active');
         win.element.classList.add('minimized'); // CSS 应该将其隐藏或动画到 Dock
-        // 理想情况下，我们会动画到 Dock 图标位置。
+
 
         // 如果最小化的窗口是当前激活的窗口，清除 activeWindowId 并聚焦另一个窗口
         if (this.activeWindowId === id) {
@@ -430,7 +428,7 @@ const WindowManager = {
         const MIN_W = 300;
         const MIN_H = 200;
 
-        // Bring to front
+        // 置顶显示
         this.focus(el.id);
 
         const onMouseMove = (ev) => {

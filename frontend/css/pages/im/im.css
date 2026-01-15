@@ -862,21 +862,24 @@
 .im-input {
     transition: height 0.1s;
 }
-/* Grouping Messages */
+
+/* 消息分组 */
 .im-message.same-sender {
     margin-top: 2px !important;
 }
 
 .im-message.same-sender .im-message-avatar {
-    visibility: hidden; /* Hide avatar but keep space */
+    visibility: hidden;
+    /* 隐藏头像但保留空间 */
 }
 
 .im-message.same-sender .im-message-sender,
 .im-message.same-sender .im-message-time {
-    display: none; /* Hide name/time for subsequent messages */
+    display: none;
+    /* 隐藏后续消息的名称/时间 */
 }
 
-/* Reply Bar */
+/* 回复栏 */
 .im-reply-bar {
     display: flex;
     align-items: center;
@@ -908,7 +911,7 @@
     color: var(--color-error);
 }
 
-/* Reply Quote in Message */
+/* 消息中的引用回复 */
 .im-message-reply-quote {
     background: var(--color-bg-tertiary);
     border-left: 3px solid var(--color-border);
@@ -927,13 +930,15 @@
 }
 
 .im-message.own .im-message-reply-quote {
-    background: rgba(0, 0, 0, 0.05); /* Slightly darker for own messages */
+    background: rgba(0, 0, 0, 0.05);
+    /* 自己发送的消息颜色稍深 */
     border-left-color: rgba(0, 0, 0, 0.1);
     color: inherit;
-    text-align: left; /* Keep quote left-aligned even if message is right-aligned */
+    text-align: left;
+    /* 即使消息右对齐，引用也保持左对齐 */
 }
 
-/* Context Menu */
+/* 上下文菜单 */
 .im-context-menu {
     position: fixed;
     background: var(--color-bg-primary);
@@ -975,4 +980,3 @@
 .im-context-menu-item.danger i {
     color: var(--color-error);
 }
-

@@ -71,16 +71,26 @@ class Component {
     afterUpdate() { }
 
     /**
-     * 销毁组件
+     * 清理所有已绑定的事件监听器
      */
-    destroy() {
-        // 移除所有绑定的事件监听器
+    clearListeners() {
         if (this._listeners) {
             this._listeners.forEach(({ element, event, handler }) => {
-                element?.removeEventListener(event, handler);
+                try {
+                    element?.removeEventListener(event, handler);
+                } catch (e) {
+                    console.warn('移除事件监听器失败:', e);
+                }
             });
             this._listeners = [];
         }
+    }
+
+    /**
+     * 销毁组件
+     */
+    destroy() {
+        this.clearListeners();
 
         if (this.container) {
             this.container.innerHTML = '';
@@ -341,6 +351,24 @@ const Utils = {
         return Store.get('token')
             || localStorage.getItem(Config.storageKeys.token)
             || null;
+    },
+
+    /**
+     * 获取当前登录用户的 ID
+     * @returns {number|null} 用户 ID 或 null
+     */
+    getCurrentUserId() {
+        const user = Store.get('user');
+        return user?.id || null;
+    },
+
+    /**
+     * 获取当前登录用户的名称
+     * @returns {string|null} 用户名称（昵称优先，其次用户名）或 null
+     */
+    getCurrentUserName() {
+        const user = Store.get('user');
+        return user?.nickname || user?.username || null;
     },
 
     /**

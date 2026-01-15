@@ -126,7 +126,7 @@ class KnowledgeListPage extends Component {
             ],
             onSubmit: async (data) => {
                 data.cover = data.icon || '📘';
-                delete data.icon; // mapping
+                delete data.icon; // 字段映射
                 await KnowledgeApi.createBase(data);
                 Toast.success('创建成功');
                 this.loadData();
@@ -150,19 +150,19 @@ class KnowledgeViewPage extends Component {
         this.baseId = baseId;
         this.state = {
             base: null,
-            nodes: [],       // flat list
-            tree: [],        // nested
-            activeNode: null, // current viewing node
+            nodes: [],       // 平铺列表
+            tree: [],        // 嵌套结构
+            activeNode: null, // 当前查看的节点
             activeContent: null,
-            searchResults: null, // null means no search active
+            searchResults: null, // null 表示没有激活的搜索
             loading: true,
             editorMode: false,
             filters: { type: '' },
             showFilters: false,
-            viewMode: 'tree', // 'tree' or 'graph'
+            viewMode: 'tree', // 'tree' (树状) 或 'graph' (图谱)
             graphData: null
         };
-        this.editor = null; // ToastUI Instance
+        this.editor = null; // ToastUI 编辑器实例
     }
 
     async loadData() {
@@ -355,7 +355,7 @@ class KnowledgeViewPage extends Component {
 
         const path = [];
         let current = this.state.activeNode;
-        // Map for fast lookup
+        // 用于快速查找的映射表
         const nodeMap = {};
         this.state.nodes.forEach(n => nodeMap[n.id] = n);
 
@@ -469,7 +469,7 @@ class KnowledgeViewPage extends Component {
         container.innerHTML = '';
         const node = this.state.activeNode;
 
-        // Processing State Handling
+        // 处理中状态
         if (node.status === 'processing') {
             container.innerHTML = `
                 <div class="empty-state">
@@ -478,13 +478,13 @@ class KnowledgeViewPage extends Component {
                     <p class="text-secondary" style="font-size:12px">解析完成后将自动显示内容</p>
                 </div>
             `;
-            // Start polling if not already started
+            // 如果还没有启动轮询，则启动
             if (!this.pollingTimer) {
                 this.pollingTimer = setInterval(() => this.checkNodeStatus(node.id), 2000);
             }
             return;
         } else {
-            // Stop polling if status is done
+            // 状态完成时停止轮询
             if (this.pollingTimer) {
                 clearInterval(this.pollingTimer);
                 this.pollingTimer = null;
@@ -503,7 +503,7 @@ class KnowledgeViewPage extends Component {
         }
 
         if (this.state.editorMode) {
-            // Editor Mode (Only for documents)
+            // 编辑模式（仅适用于文档）
             this.editor = new toastui.Editor({
                 el: container,
                 height: '100%',
@@ -512,7 +512,7 @@ class KnowledgeViewPage extends Component {
                 initialValue: node.content || ''
             });
 
-            // Add Save Button
+            // 添加保存按钮
             const btnSave = document.createElement('button');
             btnSave.className = 'btn btn-primary floating-save';
             btnSave.textContent = '保存';
@@ -520,7 +520,7 @@ class KnowledgeViewPage extends Component {
             container.appendChild(btnSave);
 
         } else {
-            // Viewer Mode
+            // 查看模式
             if (node.node_type === 'file') {
                 const ext = node.file_meta?.ext?.toLowerCase();
                 const previewUrl = KnowledgeApi.getPreviewUrl(node.id);
@@ -530,7 +530,7 @@ class KnowledgeViewPage extends Component {
                 } else if (['jpg', 'png', 'jpeg', 'gif', 'svg'].includes(ext)) {
                     container.innerHTML = `<div style="display:flex;justify-content:center;padding:20px"><img src="${previewUrl}" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:var(--shadow-md)"></div>`;
                 } else {
-                    // For Word/Excel, we display extracted text if available, or just download link
+                    // 对于 Word/Excel，显示提取的文本内容或下载链接
                     const extractedView = node.content ? `
                          <div class="extracted-text-view">
                              <div class="alert alert-info" style="margin-bottom:20px">这是从文件中提取的文本预览。部分格式可能丢失。</div>
@@ -569,7 +569,7 @@ class KnowledgeViewPage extends Component {
                 Toast.success('文档解析完成');
             }
         } catch (e) {
-            console.error('Polling error', e);
+            console.error('轮询检查错误', e);
         }
     }
 
@@ -685,36 +685,36 @@ class KnowledgeViewPage extends Component {
     }
 
     bindEvents() {
-        // Tree Click
+        // 点击树节点
         this.delegate('click', '.tree-content', (e, el) => {
             if (e.target.tagName === 'BUTTON') return;
             const id = el.dataset.id;
             this.selectNode(id);
         });
 
-        // Add Sub Node
+        // 添加子节点
         this.delegate('click', '[data-action="add-sub"]', (e, el) => {
             e.stopPropagation();
             const parentId = el.dataset.id;
             this.showCreateNodeModal(parentId);
         });
 
-        // Upload Sub File
+        // 上传子文件
         this.delegate('click', '[data-action="upload-sub"]', (e, el) => {
             e.stopPropagation();
             const parentId = el.dataset.id;
             this.triggerUpload(parentId);
         });
 
-        // Add Root Node
+        // 添加根节点
         this.delegate('click', '#btnAddRoot', () => this.showCreateNodeModal(null));
 
-        // Edit Doc
+        // 编辑文档
         this.delegate('click', '#btnEditDoc', () => {
             this.setState({ editorMode: true });
         });
 
-        // Delete Doc
+        // 删除文档
         this.delegate('click', '#btnDeleteDoc', () => {
             const id = this.state.activeNode.id;
             Modal.confirm('删除文档', '确定删除吗？', async () => {
@@ -725,14 +725,14 @@ class KnowledgeViewPage extends Component {
             });
         });
 
-        // Root Upload Button
+        // 根目录上传按钮
         this.delegate('click', '#btnUploadRoot', () => {
             this.uploadTargetId = null; // Root upload
             const uploader = this.$('#fileUploader');
             if (uploader) uploader.click();
         });
 
-        // Sub Upload Button
+        // 子目录上传按钮
         this.delegate('click', '[data-action="upload-sub"]', (e, el) => {
             e.stopPropagation();
             this.uploadTargetId = el.dataset.id;
@@ -740,8 +740,8 @@ class KnowledgeViewPage extends Component {
             if (uploader) uploader.click();
         });
 
-        // File Input Change (Bind to container capture phase or delegate manually since input is hidden)
-        // Since we re-render sidebar, we use the container's change event bubbling
+        // 文件输入变更 (因为输入框是隐藏的，可能需要手动委托)
+        // 由于侧边栏会重绘，使用容器的事件冒泡
         this.container.addEventListener('change', (e) => {
             if (e.target && e.target.id === 'fileUploader') {
                 const files = e.target.files;
@@ -756,7 +756,7 @@ class KnowledgeViewPage extends Component {
             }
         });
 
-        // Breadcrumb Navigation
+        // 面包屑导航
         this.delegate('click', '.breadcrumb-item', (e, el) => {
             const id = el.dataset.id;
             if (id === 'root') {

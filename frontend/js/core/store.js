@@ -86,12 +86,12 @@ const Store = {
     applyTheme(mode) {
         const root = document.documentElement;
         root.classList.remove('theme-sunrise', 'theme-neon');
-        root.style = ''; // Reset inline styles
+        root.style = ''; // 重置内联样式
 
         if (mode === 'sunrise' || mode === 'neon') {
             root.classList.add(`theme-${mode}`);
         } else {
-            // Default fallback to neon
+            // 默认回退到 neon 主题
             root.classList.add('theme-neon');
             this.state.theme = 'neon';
         }

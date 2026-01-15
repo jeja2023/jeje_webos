@@ -221,7 +221,7 @@ class ChartFactory {
                 option = this._getGaugeOption(data, yField, options);
                 break;
             default:
-                console.warn('Unknown chart type:', type);
+                console.warn('未知图表类型:', type);
         }
 
         return option;

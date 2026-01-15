@@ -1,5 +1,5 @@
 /**
- * Top Bar Component
+ * 顶部条组件
  */
 class TopBarComponent extends Component {
     constructor(container) {
@@ -11,7 +11,7 @@ class TopBarComponent extends Component {
             showTime: false, // 默认为 false，只在有窗口时显示
 
             // 消息中心状态
-            msgActiveTab: 'message', // message, announcement, pending
+            msgActiveTab: 'message', // 消息类型: message (消息), announcement (公告), pending (待审核)
             msgList: [],
             msgLoading: false,
             pendingCount: 0  // 待审核用户数
@@ -50,7 +50,7 @@ class TopBarComponent extends Component {
                 const count = Array.isArray(res.data) ? res.data.length : 0;
                 this.setState({ pendingCount: count });
             } catch (e) {
-                // ignore
+                // 忽略异常
             }
         }
     }
@@ -121,7 +121,7 @@ class TopBarComponent extends Component {
         return `
             <div class="top-bar ${this.state.showTime ? 'show-time' : ''}">
                 <div class="top-bar-left">
-                     <!-- Brand Title -->
+                     <!-- 品牌标题 -->
                     <div id="brandPill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <img src="/images/logo.jpg" class="brand-icon" style="height: 28px; width: auto; border-radius: 6px;">
                         <span class="brand-title">${displayAppName}</span>
@@ -179,7 +179,7 @@ class TopBarComponent extends Component {
                         </div>
                         <span class="user-name-text">${Utils.escapeHtml(user.nickname || user.username)}</span>
 
-                        <!-- Dropdown Menu -->
+                        <!-- 下拉菜单 -->
                         <div class="user-menu-dropdown" id="userMenuDropdown">
                             <div class="menu-header">
                                 <div class="menu-user-name">${Utils.escapeHtml(user.nickname || user.username)}</div>
@@ -297,14 +297,10 @@ class TopBarComponent extends Component {
                     }
                 };
 
-                // Tab 切换
-                // ... (Keep existing logic which I manually put in my previous file view)
-                // Wait, I see I should copy the existing logic or the improved logic.
-                // The previous file content had separate event binding block for Tabs.
+                // Tab 切换逻辑在下方统一处理
             }
-            // ... (I need to ensure I don't lose the Tab logic I read earlier)
 
-            // Re-implementing Tab logic based on previous read:
+            // Tab 切换逻辑
             if (messageBtn && messageDropdown) {
                 const tabs = messageDropdown.querySelectorAll('.msg-tab');
                 const contentList = messageDropdown.querySelector('.msg-content-list');
@@ -331,7 +327,7 @@ class TopBarComponent extends Component {
                             } else if (tabName === 'announcement') {
                                 const res = await AnnouncementApi.getPublished(5);
                                 list = res.data || [];
-                                // Check admin perms again? this.state.user...
+                                // 检查管理员权限
                                 const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
                                 if (viewAllBtn) {
                                     viewAllBtn.onclick = isAdmin ? () => Router.push('/announcement/list') : null;
@@ -363,7 +359,7 @@ class TopBarComponent extends Component {
                 if (viewBtn) {
                     viewBtn.onclick = () => {
                         const tab = this.state.msgActiveTab;
-                        // ... logic
+                        // 根据当前 Tab 跳转到对应页面
                         if (tab === 'message') Router.push('/notifications');
                         else if (tab === 'announcement') {
                             const isAdmin = this.state.user.role === 'admin' || this.state.user.role === 'manager';
@@ -382,7 +378,7 @@ class TopBarComponent extends Component {
             if (userPill && userDropdown) {
                 userPill.onclick = (e) => {
                     e.stopPropagation();
-                    // Close others
+                    // 关闭其他下拉菜单
                     this.container.querySelectorAll('.user-menu-dropdown.show').forEach(el => {
                         if (el !== userDropdown) el.classList.remove('show');
                     });
@@ -405,7 +401,7 @@ class TopBarComponent extends Component {
             };
             document.addEventListener('click', this._docClickHandler);
 
-            // Logout
+            // 退出登录
             const btnLogout = this.container.querySelector('#btnLogout');
             if (btnLogout) {
                 btnLogout.onclick = (e) => {

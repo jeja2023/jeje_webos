@@ -108,7 +108,7 @@
     pointer-events: none;
 }
 
-/* Active indicator dot */
+/* 激活指示圆点 */
 .dock-item.active::after,
 .dock-folder.active::after {
     content: '';
@@ -123,7 +123,7 @@
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
 }
 
-/* Tooltip */
+/* 提示框 */
 .dock-tooltip {
     position: absolute;
     top: -40px;
@@ -148,7 +148,7 @@
     transform: translateX(-50%) translateY(-4px);
 }
 
-/* Separator */
+/* 分隔符 */
 .dock-separator {
     width: 1px;
     height: 42px;
@@ -318,7 +318,7 @@
     gap: 2px;
 }
 
-/* Light Theme Dock Overrides */
+/* 浅色主题 Dock 覆盖 */
 :root.theme-sunrise .dock {
     /* 增加不透明度，使用混合模式 */
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 240, 245, 0.5) 100%);
@@ -343,14 +343,14 @@
     background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.15), transparent);
 }
 
-/* Light Mode Active Dot */
+/* 浅色模式激活圆点 */
 :root.theme-sunrise .dock-item.active::after,
 :root.theme-sunrise .dock-folder.active::after {
     background: rgba(0, 0, 0, 0.5);
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Light Mode Folders Popups */
+/* 浅色模式文件夹弹出层 */
 :root.theme-sunrise .dock-folder-popup {
     background: rgba(255, 255, 255, 0.85);
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -416,9 +416,9 @@
         /* 核心修复：将背景和滤镜移至伪元素，防止父级 transform/filter 锁住 fixed 子元素 */
         transform: none !important;
         perspective: none !important;
-        /* Keep this if it was there before and not explicitly removed */
+        /* 如果之前存在且未明确移除，则保留 */
         filter: none !important;
-        /* Keep this if it was there before and not explicitly removed */
+        /* 如果之前存在且未明确移除，则保留 */
         background: transparent !important;
         backdrop-filter: none !important;
         border: none !important;

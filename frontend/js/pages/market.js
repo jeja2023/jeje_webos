@@ -296,7 +296,7 @@ class AppCenterMarketPage extends Component {
             'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
             'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
             'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
-            'office': { ri: 'ri-file-text-line', gradient: 'gradient-blue' },
+
             'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
             'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
             'exam': { ri: 'ri-file-list-3-line', gradient: 'gradient-orange' },
@@ -983,7 +983,7 @@ class AppCenterMarketPage extends Component {
             });
 
 
-            // Click outside to close
+            // 点击外部关闭弹窗
             document.addEventListener('click', (e) => {
                 if (this.activePopup && !e.target.closest('.app-card-wrapper')) {
                     this.closePopup();

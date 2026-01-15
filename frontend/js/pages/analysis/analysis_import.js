@@ -660,7 +660,7 @@ const AnalysisImportMixin = {
             host: document.getElementById('db-host')?.closest('.form-group'),
             port: document.getElementById('db-port')?.closest('.form-group'),
             user: document.getElementById('db-user')?.closest('.form-group'),
-            pass: document.getElementById('db-pass')?.closest('.form-group'), // user/pass 可能在一行
+            pass: document.getElementById('db-pass')?.closest('.form-group'), // 用户名/密码 可能在一行
             name: document.getElementById('db-name')?.closest('.form-group')
         };
 

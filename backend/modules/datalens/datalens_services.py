@@ -719,13 +719,10 @@ class QueryExecutor:
         例如: t1.id = t2.uid
         """
         import re
-        # 允许的模式: 标识符 操作符 标识符
-        # 操作符支持: =
-        # 暂时只支持等号连接，这是最常见的情况
+        # 验证 JOIN ON 条件格式（仅支持 a.b = c.d 形式）
         if not join_on:
             return True
-        # 简单宽松的正则，防止明显的分号截断或子查询
-        # 允许 a.b = c.d 格式
+        # 简单正则匹配，防止 SQL 注入
         pattern = r"^[a-zA-Z0-9_.]+\s*=\s*[a-zA-Z0-9_.]+$"
         return bool(re.match(pattern, join_on.strip()))
 

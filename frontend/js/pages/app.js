@@ -257,35 +257,7 @@ const App = {
             '/lens': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
             '/lens/view/:id': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
 
-            // 协同办公
-            '/office': { auth: true, handler: wrap(OfficeListPage, '协同办公') },
-            '/office/list': { auth: true, handler: wrap(OfficeListPage, '协同办公') },
-            '/office/doc/new': {
-                auth: true,
-                handler: async () => {
-                    this.ensureDesktopEnvironment();
-                    try {
-                        const res = await OfficeApi.create({ title: '无标题文档', doc_type: 'doc' });
-                        Router.replace(`/office/doc/${res.data.id}`);
-                    } catch (err) {
-                        Toast.error('创建文档失败');
-                    }
-                }
-            },
-            '/office/sheet/new': {
-                auth: true,
-                handler: async () => {
-                    this.ensureDesktopEnvironment();
-                    try {
-                        const res = await OfficeApi.create({ title: '无标题表格', doc_type: 'sheet' });
-                        Router.replace(`/office/sheet/${res.data.id}`);
-                    } catch (err) {
-                        Toast.error('创建表格失败');
-                    }
-                }
-            },
-            '/office/doc/:id': { auth: true, handler: wrap(OfficeDocPage, '文档编辑') },
-            '/office/sheet/:id': { auth: true, handler: wrap(OfficeSheetPage, '表格编辑') },
+
 
             // 相册
             '/album': { auth: true, handler: wrap(AlbumPage, '我的相册') },

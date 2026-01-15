@@ -147,7 +147,7 @@ class SystemSettingsPage extends Component {
 
         const form = document.getElementById('systemSettingsForm');
         if (!form) {
-            console.error('Form not found');
+            console.error('表单未找到');
             return;
         }
 

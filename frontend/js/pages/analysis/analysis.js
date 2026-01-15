@@ -66,15 +66,7 @@ const AnalysisApi = {
     deleteSmartTableRow: (rowId) => Api.delete(`/analysis/smart-tables/data/${rowId}`),
     syncSmartTable: (id) => Api.post(`/analysis/smart-tables/${id}/sync`),
 
-    // 智能报告
-    getSmartReports: () => Api.get('/analysis/smart-reports'),
-    createSmartReport: (data) => Api.post('/analysis/smart-reports', data),
-    updateSmartReport: (id, data) => Api.put(`/analysis/smart-reports/${id}`, data),
-    deleteSmartReport: (id) => Api.delete(`/analysis/smart-reports/${id}`),
-    generateSmartReport: (id) => Api.get(`/analysis/smart-reports/${id}/generate`),
-    getSmartReportRecords: (reportId) => Api.get(`/analysis/smart-reports/${reportId}/records`),
-    saveSmartReportRecord: (reportId, data) => Api.post(`/analysis/smart-reports/${reportId}/records`, data),
-    deleteSmartReportRecord: (recordId) => Api.delete(`/analysis/smart-reports/records/${recordId}`)
+
 
 };
 
@@ -253,7 +245,7 @@ class AnalysisPage extends Component {
             }
         }
         if (this.state.activeTab === 'compare') {
-            // Compare events are bound once in bindEvents
+            // 比对事件在 bindEvents 中绑定一次
         }
         if (this.state.activeTab === 'charts') {
             // 绑定图表事件（如果还未绑定）
@@ -314,13 +306,7 @@ class AnalysisPage extends Component {
         if (this.state.activeTab === 'smart-table') {
             if (!this.state.smartTables) this.fetchSmartTables();
         }
-        if (this.state.activeTab === 'smart-report') {
-            if (!this.state.smartReports) this.fetchSmartReports();
-            // 如果处于编辑状态，确保编辑器被恢复（处理 DOM 重绘导致编辑器丢失的问题）
-            if (this.state.editingReportId && this._restoreSmartReportEditor) {
-                this._restoreSmartReportEditor();
-            }
-        }
+
     }
 
     async fetchDatasets() {
@@ -646,7 +632,7 @@ class AnalysisPage extends Component {
         if (this.bindSqlEvents) this.bindSqlEvents();
         if (this.bindCompareEvents) this.bindCompareEvents();
         if (this.bindSmartTableEvents) this.bindSmartTableEvents();
-        if (this.bindSmartReportEvents) this.bindSmartReportEvents();
+
 
         // ==================== 建模事件 (部分补充) ====================
         this.delegate('dragstart', '.etl-operator', (e, el) => {
@@ -658,8 +644,8 @@ class AnalysisPage extends Component {
 
 
     render() {
-        // Ensure datasets are loaded for reports and charts
-        if (['smart-report', 'charts', 'modeling'].includes(this.state.activeTab) && this.state.datasets.length === 0 && !this.state.loadingDatasets) {
+        // 确保为图表和建模加载数据集
+        if (['charts', 'modeling'].includes(this.state.activeTab) && this.state.datasets.length === 0 && !this.state.loadingDatasets) {
             this.fetchDatasets();
         }
         return `
@@ -698,9 +684,7 @@ class AnalysisPage extends Component {
                         <div class="analysis-menu-item ${this.state.activeTab === 'modeling' ? 'active' : ''}" data-tab="modeling">
                             <span>📈</span> 数据建模
                         </div>
-                        <div class="analysis-menu-item ${this.state.activeTab === 'smart-report' ? 'active' : ''}" data-tab="smart-report">
-                            <span>📝</span> 智能报告
-                        </div>
+
                     </div>
                 </div>
                 <div class="analysis-content">
@@ -722,7 +706,7 @@ class AnalysisPage extends Component {
             case 'sql': return this.renderSqlQuery();
             case 'bi': return this.renderBI();
             case 'smart-table': return this.renderSmartTable();
-            case 'smart-report': return this.renderSmartReport();
+
             default: return `<div class="p-20">功能开发中...</div>`;
         }
     }

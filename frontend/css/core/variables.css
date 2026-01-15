@@ -289,13 +289,13 @@
     --color-btn-text: #1a1a2e;
     /* 夏日主题按钮用深色字 */
 
-    --color-border: rgba(124, 77, 255, 0.3);
-    --color-border-light: rgba(124, 77, 255, 0.18);
+--color-border: rgba(124, 77, 255, 0.3);
+--color-border-light: rgba(124, 77, 255, 0.18);
 
-    --shadow-sm: 0 2px 8px rgba(100, 50, 180, 0.25);
-    --shadow-md: 0 8px 24px rgba(100, 50, 180, 0.35);
-    --shadow-lg: 0 16px 48px rgba(100, 50, 180, 0.45);
-    --shadow-glow: 0 0 30px rgba(124, 77, 255, 0.4);
+--shadow-sm: 0 2px 8px rgba(100, 50, 180, 0.25);
+--shadow-md: 0 8px 24px rgba(100, 50, 180, 0.35);
+--shadow-lg: 0 16px 48px rgba(100, 50, 180, 0.45);
+--shadow-glow: 0 0 30px rgba(124, 77, 255, 0.4);
 }
 
 

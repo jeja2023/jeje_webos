@@ -133,12 +133,12 @@ class KnowledgeVectorStore:
         """删除指定节点的各种向量片段"""
         try:
             self.collection.delete(where={"node_id": node_id})
-            self.clip_collection.delete(where={"node_id": node_id}) # Also clear CLIP
+            self.clip_collection.delete(where={"node_id": node_id})  # 同时清除 CLIP 向量
             logger.info(f"已删除节点 {node_id} 的文本与多模态向量")
         except Exception as e:
             logger.error(f"删除向量失败: {e}")
 
-    # ---------------- Multi-modal (CLIP) Support ----------------
+    # ---------------- 多模态 (CLIP) 支持 ----------------
     
     def _get_clip_fn(self):
         """懒加载 CLIP Embedding Function"""
@@ -209,7 +209,7 @@ class KnowledgeVectorStore:
             logger.error(f"多模态查询失败: {e}")
             return []
 
-    # ---------------- Reranking (Cross-Encoder) ----------------
+    # ---------------- 重排序 (Cross-Encoder) ----------------
 
     def _get_reranker(self):
         """懒加载 Reranker 模型"""

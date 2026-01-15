@@ -156,7 +156,7 @@ body {
     }
 }
 
-/* Resize Handles */
+/* 调整大小手柄 */
 .resize-handle {
     position: absolute;
     z-index: 100;
@@ -390,7 +390,7 @@ body {
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-/* Maximized button reset (redundant block cleanup) */
+/* 最大化按钮重置 (清理多余代码块) */
 .window-btn.maximize {
     background-color: #27c93f;
     border: 1px solid rgba(0, 0, 0, 0.1);

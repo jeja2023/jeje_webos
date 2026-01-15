@@ -1521,7 +1521,7 @@ const AnalysisModelingMixin = {
                     </template>
                 `, '设置多个过滤条件，按顺序执行筛选');
 
-                // 延迟绑定添加按钮事件 (Inline implementation via setTimeout to assume render completion)
+                // 延迟绑定添加按钮事件（通过 setTimeout 确保渲染完成后的内联实现）
                 setTimeout(() => {
                     const btn = document.getElementById('btn-add-filter-row');
                     if (btn) {

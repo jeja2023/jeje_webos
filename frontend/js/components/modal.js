@@ -305,7 +305,7 @@ class Modal {
             <form id="${formId}">
                 ${fields.map(field => {
             const id = Utils.uniqueId('field-');
-            const label = field.label || field.name;
+            const label = field.label || field.text || field.name;
             const type = field.type || 'text';
             const required = field.required ? 'required' : '';
             const placeholder = field.placeholder || '';
@@ -334,7 +334,7 @@ class Modal {
 
             if (type === 'select') {
                 const optionsHtml = (field.options || []).map(opt => `
-                    <option value="${opt.value}" ${opt.value == value ? 'selected' : ''}>${opt.text || opt.value}</option>
+                    <option value="${opt.value}" ${opt.value == value ? 'selected' : ''}>${opt.text || opt.label || opt.value}</option>
                 `).join('');
                 return `
                     <div class="form-group">

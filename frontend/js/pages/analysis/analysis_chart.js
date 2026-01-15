@@ -385,7 +385,7 @@ const AnalysisChartMixin = {
         }
     },
 
-    // Old helper functions removed
+
 
     /**
      * 保存当前图表配置

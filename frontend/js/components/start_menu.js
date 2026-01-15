@@ -167,7 +167,7 @@ class StartMenuComponent extends Component {
             'ai': { ri: 'ri-brain-line' },
             'map': { ri: 'ri-map-2-line' },
             'im': { ri: 'ri-message-3-line' },
-            'office': { ri: 'ri-file-text-line' },
+
             'album': { ri: 'ri-image-2-line' },
             'video': { ri: 'ri-video-line' },
             'exam': { ri: 'ri-file-list-3-line' },

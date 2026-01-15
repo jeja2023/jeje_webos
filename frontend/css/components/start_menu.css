@@ -1,4 +1,4 @@
-/* Start Menu Styles */
+/* 开始菜单样式 */
 
 /* 1. Base Definitions (Light Mode Default) */
 :root {
@@ -87,7 +87,7 @@
 
 /* 以下主题已移除：summer, winter, spring, autumn */
 
-/* System Dark Mode Preference (Only applies if not overridden by explicit themes) */
+/* 系统深色模式偏好 (仅在未被显式主题覆盖时应用) */
 @media (prefers-color-scheme: dark) {
     :root:not([class*="theme-"]) {
         --sm-bg: rgba(30, 30, 40, 0.85);
@@ -208,7 +208,7 @@
     padding: 0 12px 12px;
 }
 
-/* Menu Item Styles */
+/* 菜单项样式 */
 .menu-item-wrapper {
     margin-bottom: 2px;
 }
@@ -233,21 +233,21 @@
     color: var(--sm-item-hover-text);
 }
 
-/* Active State */
+/* 激活状态 */
 .menu-item.expanded,
 .menu-item.active {
     background: var(--color-primary);
     color: var(--color-text-inverse) !important;
-    /* Force white text on accent background */
+    /* 强调背景上强制白色文字 */
     box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
 }
 
-/* Fix active state in dark mode to be subtle if needed, or keep blue */
+/* 修复深色模式下的激活状态，使其微妙，或保持蓝色 */
 /* Currently keeping blue accent for consistency, but removing shadow in dark mode via override */
 :root.theme-neon .menu-item.expanded {
     box-shadow: none;
     background: rgba(255, 255, 255, 0.12);
-    /* Use subtle glass in dark mode instead of harsh blue */
+    /* 深色模式下使用微妙的玻璃效果代替刺眼的蓝色 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -304,7 +304,7 @@
     }
 }
 
-/* Footer */
+/* 页脚 */
 .start-menu-footer {
     padding: 12px 20px;
     background: var(--sm-footer-bg);
@@ -334,7 +334,7 @@
     color: var(--sm-btn-hover-text);
 }
 
-/* Custom Scrollbar */
+/* 自定义滚动条 */
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }
@@ -344,7 +344,7 @@
     border-radius: 3px;
 }
 
-/* Shortcuts & Separators */
+/* 快捷方式与分隔符 */
 .menu-separator {
     height: 1px;
     background-color: var(--color-border);

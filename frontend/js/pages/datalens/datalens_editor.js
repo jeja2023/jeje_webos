@@ -52,7 +52,7 @@ const DataLensEditorMixin = {
                     columns = Object.keys(dataRes.data.data[0]).filter(k => k !== '__lens_id__');
                 }
             } catch (e) {
-                console.warn('无法获取视图列信息', e);
+                Config.warn('无法获取视图列信息', e);
             }
 
             const chartConfig = view.chart_config || {};
@@ -279,7 +279,6 @@ const DataLensEditorMixin = {
                             tab.display_config = display_config;
                             tab.status_config = status_config;
                             tab.chart_config = chart_config;
-                            console.log('[DataLens] 保存配置成功 - status_config:', JSON.stringify(status_config));
                             this.setState({ openTabs: [...openTabs] });
                         }
                         // 刷新当前视图（图表或表格）
@@ -288,7 +287,7 @@ const DataLensEditorMixin = {
                         }
                         return true;
                     } catch (e) {
-                        console.error('Save config error:', e);
+                        Config.error('保存配置失败:', e);
                         if (e.message && e.message.includes('401')) {
                             Toast.error('登录已过期，请刷新页面重新登录');
                         } else {
@@ -346,7 +345,7 @@ const DataLensEditorMixin = {
                 });
             }
         } catch (e) {
-            console.error(e);
+            Config.error(e);
             Toast.error('获取视图信息失败');
         }
     },
@@ -508,6 +507,13 @@ const DataLensEditorMixin = {
                                            placeholder="例如: D:\Project\images (当数据库存储相对路径时使用)" value="${Utils.escapeHtml(view?.display_config?.image_base_path || '')}">
                                     <small class="form-hint">如果数据库中的图片字段存储的是相对路径，必须在此配置对应的本地根目录，否则无法显示。</small>
                                 </div>
+                                <div class="form-group mt-10">
+                                    <div class="checkbox-custom">
+                                        <input type="checkbox" id="lens-view-public" ${view?.is_public ? 'checked' : ''}>
+                                        <label for="lens-view-public" style="white-space: nowrap;">设为公开视图（所有用户可见）</label>
+                                    </div>
+                                    <small class="form-hint ml-25" style="margin-left: 24px;">勾选后，该视图将对系统中所有用户可见，否则仅自己可见。</small>
+                                </div>
                             </div>
                         </div>
                         
@@ -541,12 +547,7 @@ const DataLensEditorMixin = {
                             </table>
                         </div>
                         
-                            <div class="form-group mt-10">
-                                 <div class="checkbox-custom">
-                                    <input type="checkbox" id="lens-view-public" ${view?.is_public ? 'checked' : ''}>
-                                    <label for="lens-view-public">设为公开视图（所有用户可见）</label>
-                                </div>
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -582,7 +583,7 @@ const DataLensEditorMixin = {
             if (advToggle && advContent) {
                 if (view?.display_config?.image_base_path) {
                     advToggle.classList.add('expanded');
-                    advContent.style.maxHeight = '200px';
+                    advContent.style.maxHeight = '500px';
                     advContent.style.opacity = '1';
                 }
 
@@ -594,7 +595,7 @@ const DataLensEditorMixin = {
                         advContent.style.opacity = '0';
                     } else {
                         advToggle.classList.add('expanded');
-                        advContent.style.maxHeight = '200px';
+                        advContent.style.maxHeight = '500px';
                         advContent.style.opacity = '1';
                     }
                 });
@@ -750,7 +751,7 @@ const DataLensEditorMixin = {
 
                         this._refreshFieldList(overlay);
                     } catch (err) {
-                        console.error('加载关联表字段失败:', err);
+                        Config.error('加载关联表字段失败:', err);
                         Toast.error('获取关联表字段失败');
                     }
                 };
@@ -792,7 +793,7 @@ const DataLensEditorMixin = {
                     allFields = (mainRes.data || []).map(c => ({ ...c, origin: mainTable, fullName: `${mainTable}.${c.name}` }));
 
                     const joinPromises = joins.map(jt => LensApi.getSourceColumns(sourceId, jt).catch(err => {
-                        console.error(`加载关联表 ${jt} 字段失败:`, err);
+                        Config.error(`加载关联表 ${jt} 字段失败:`, err);
                     }));
 
                     const joinResults = await Promise.all(joinPromises);
@@ -863,7 +864,7 @@ const DataLensEditorMixin = {
                     overlay.querySelector('#lens-filters-section').style.display = 'block';
                     overlay.querySelector('#lens-sort-section').style.display = 'block';
                 } catch (e) {
-                    console.error(e);
+                    Config.error(e);
                 }
             };
 
@@ -1161,7 +1162,7 @@ const DataLensEditorMixin = {
 
         let queryType, queryConfig;
 
-        if (queryMode === 'simple') { // Changed from isSimpleMode to queryMode
+        if (queryMode === 'simple') {
             // 简单模式：从可视化配置构建查询
             const tableName = tableEl?.value;
             if (!tableName) {
@@ -1278,7 +1279,6 @@ const DataLensEditorMixin = {
             return false;
         }
 
-        // 构造提交数据
         // 构造提交数据
         const data = {
             name: name,

@@ -85,40 +85,7 @@ class AnalysisSmartTableData(Base):
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能表格数据表', 'extend_existing': True},
     )
 
-class AnalysisSmartReport(Base):
-    """智能报告模版表"""
-    __tablename__ = "analysis_smart_reports"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
-    name: Mapped[str] = mapped_column(String(255), comment="模板名称")
-    template_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="Word模板路径")
-    content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="HTML内容")
-    content_md: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="Markdown内容")
-    template_vars: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, comment="模板变量")
-    dataset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="关联数据集ID")
-    data_row: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="数据行模式")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
-    
-    __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能报告模版表', 'extend_existing': True},
-    )
 
-class AnalysisSmartReportRecord(Base):
-    """智能报告已生成记录表"""
-    __tablename__ = "analysis_smart_report_records"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
-    report_id: Mapped[int] = mapped_column(Integer, comment="报告模板ID")
-    name: Mapped[str] = mapped_column(String(255), comment="记录名称")
-    docx_file_path: Mapped[str] = mapped_column(String(500), comment="Word文件路径")
-    pdf_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="PDF文件路径")
-    full_content: Mapped[Optional[str]] = mapped_column(Text(length=16777215), nullable=True, comment="报告全文")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
-    
-    __table_args__ = (
-        {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能报告生成记录表', 'extend_existing': True},
-    )
 
 class AnalysisChart(Base):
     """保存的图表配置"""

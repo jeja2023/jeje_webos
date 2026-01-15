@@ -395,7 +395,7 @@ class TestETLDataTransformation:
         df = pd.DataFrame({'id': [1, 2, 3], 'value': [10, 20, 30]})
         node_data = {'query': 'SELECT id, value * 2 AS doubled FROM input WHERE id > 1'}
         
-        # Mock duckdb_instance
+        # 模拟 duckdb_instance
         with patch('modules.analysis.analysis_etl_service.duckdb_instance') as mock_duckdb:
             mock_conn = MagicMock()
             mock_duckdb.conn = mock_conn

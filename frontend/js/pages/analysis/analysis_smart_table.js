@@ -17,12 +17,12 @@ function safeEvalMath(expression) {
     try {
         // 移除所有空白字符
         expression = expression.replace(/\s/g, '');
-        
+
         // 验证表达式只包含允许的字符：数字、小数点、运算符、括号
         if (!/^[0-9+\-*/().%]+$/.test(expression)) {
             throw new Error('表达式包含不允许的字符');
         }
-        
+
         // 验证括号匹配
         let parenCount = 0;
         for (let i = 0; i < expression.length; i++) {
@@ -31,16 +31,16 @@ function safeEvalMath(expression) {
             if (parenCount < 0) throw new Error('括号不匹配');
         }
         if (parenCount !== 0) throw new Error('括号不匹配');
-        
+
         // 使用 Function 构造函数（比 eval 稍安全，但仍需限制）
         // 只允许数学运算，不允许访问全局对象
         const result = new Function('return ' + expression)();
-        
+
         // 验证结果是数字
         if (typeof result !== 'number' || !isFinite(result)) {
             throw new Error('计算结果不是有效数字');
         }
-        
+
         return result;
     } catch (e) {
         throw e;
@@ -1143,7 +1143,7 @@ const AnalysisSmartTableMixin = {
 };
 
 // 混入到 AnalysisPage（延迟执行，确保 AnalysisPage 已定义）
-(function() {
+(function () {
     function tryMixin() {
         if (typeof AnalysisPage !== 'undefined' && AnalysisPage.prototype) {
             Object.assign(AnalysisPage.prototype, AnalysisSmartTableMixin);

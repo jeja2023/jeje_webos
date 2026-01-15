@@ -192,62 +192,7 @@ class SmartTableDataRow(BaseModel):
 class SmartTableDataUpdate(BaseModel):
     row_data: Dict[str, Any]
 
-# --- 智能报告 ---
-class SmartReportBase(BaseModel):
-    name: str
 
-class SmartReportCreate(SmartReportBase):
-    pass
-    # template_path 会在后端处理上传时生成，或通过单独接口上传
-
-class SmartReportUpdate(BaseModel):
-    name: Optional[str] = None
-    # template_path 通常不直接更新，而是通过上传新模板
-
-class SmartReportResponse(SmartReportBase):
-    id: int
-    template_path: Optional[str] = None
-    content_html: Optional[str] = None
-    content_md: Optional[str] = None
-    template_vars: Optional[List[str]] = None
-    dataset_id: Optional[int] = None
-    data_row: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class SmartReportUpdateContentRequest(BaseModel):
-    content_md: str
-    content_html: Optional[str] = None
-    template_vars: List[str]
-    dataset_id: Optional[int] = None
-    data_row: Optional[str] = None
-
-class SmartReportRecordCreate(BaseModel):
-    report_id: int
-    name: str
-    # docx_file_path 由后端生成
-    # pdf_file_path 可选
-
-class GenerateReportRequest(BaseModel):
-    data: Dict[str, Any] # 注入模板的数据
-    save_record: bool = False # 是否保存为记录
-    record_name: Optional[str] = None
-    content_md: Optional[str] = None  # 可选：处理后的 Markdown 内容（包含图表图片），如果提供则使用此内容而不是模板内容
-
-class SmartReportRecordResponse(BaseModel):
-    id: int
-    report_id: int
-    name: str
-    docx_file_path: Optional[str] = None
-    pdf_file_path: Optional[str] = None
-    full_content: Optional[str] = None
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 # --- 图表管理 ---
 class AnalysisChartBase(BaseModel):

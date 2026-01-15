@@ -5,6 +5,7 @@ AI助手模块业务逻辑 Service
 """
 
 import os
+import re
 import json
 import logging
 import asyncio
