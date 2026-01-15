@@ -36,7 +36,7 @@ class MapPage extends Component {
         // [动态加载] 热力图库
         if (typeof L.heatLayer === 'undefined') {
             const script = document.createElement('script');
-            script.src = '/static/map/leaflet-heat.js';
+            script.src = '/static/libs/leaflet/leaflet-heat.js';
             document.head.appendChild(script);
         }
 

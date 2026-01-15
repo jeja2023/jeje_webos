@@ -45,9 +45,6 @@ from core.middleware import (
     AuditMiddleware, 
     StreamingPathMiddleware
 )
-if get_settings().csrf_enabled:
-    from core.csrf import CSRFMiddleware
-    
 from core.errors import register_exception_handlers
 from core.health_checker import router as health_router
 
@@ -59,25 +56,33 @@ from routers import (
 )
 from utils.jwt_rotate import get_jwt_rotator
 
-# ==================== 日志与配置初始化 ====================
-# 配置基础日志格式
+# CSRF 中间件按需导入
+if get_settings().csrf_enabled:
+    from core.csrf import CSRFMiddleware
+
+# ==================== 全局配置与初始化 ====================
+
+# 1. 配置基础日志格式
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# 调整第三方库日志级别，减少干扰
+# 2. 调整第三方库日志级别
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 logging.getLogger("watchfiles.main").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-# 忽略 SQLAlchemy 的特定警告
+# 3. 忽略 SQLAlchemy 的特定警告
 warnings.filterwarnings("ignore", category=SAWarning)
 
-# 获取应用配置
+# 4. 获取应用配置
 settings = get_settings()
+
+# 5. 定义常量
+FRONTEND_PATH = os.environ.get("FRONTEND_PATH", os.path.join(os.path.dirname(__file__), "..", "frontend"))
 
 # ==================== 生命周期管理 ====================
 @asynccontextmanager
@@ -378,8 +383,6 @@ app.include_router(health_router)
 
 
 # ==================== 静态资源服务 ====================
-FRONTEND_PATH = os.environ.get("FRONTEND_PATH", os.path.join(os.path.dirname(__file__), "..", "frontend"))
-
 def _mount_static_resources(app: FastAPI):
     """配置并挂载静态资源目录"""
     if os.path.exists(FRONTEND_PATH):
@@ -444,7 +447,6 @@ async def map_tile_proxy(url: str):
     地图瓦片反向代理
     解决前端跨域或 HTTP/HTTPS 混合加载限制
     """
-    # 这里的 httpx 导入在此处是为了按需加载
     async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             # 模拟浏览器 UA
