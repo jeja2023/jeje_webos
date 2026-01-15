@@ -364,7 +364,8 @@ class AnalysisBIPage extends Component {
             this.chartInstances[widget.id] = chart;
 
             // 1. 数据筛选与聚合
-            const { chartType, xField, yField, y2Field, stacked, showLabel, aggregationType, colorScheme = 'blue' } = widget.config || {};
+            const { chartType, xField, yField, y2Field, stacked, showLabel, aggregationType, colorScheme = 'blue',
+                sourceField, targetField, valueField } = widget.config || {};
 
             // 使用 ChartFactory 进行数据预处理（筛选/排除）
             const filteredData = ChartFactory.filterData(data, widget.config || {});
@@ -385,7 +386,10 @@ class AnalysisBIPage extends Component {
 
             // 3. 使用 ChartFactory 生成 Option
             // 无论是否聚合，Utils.aggregateData 都返回 {name, value} 格式
-            const option = ChartFactory.generateOption(chartType, aggregated, {
+            // 特殊处理: Sankey 图需要原始数据行，而非聚合后的 KV 对
+            const dataForChart = chartType === 'sankey' ? filteredData : aggregated;
+
+            const option = ChartFactory.generateOption(chartType, dataForChart, {
                 xField: 'name',  // 数据字段名
                 yField: 'value', // 数据字段名
                 xLabel: xField,  // 原始X轴字段名用于标签显示
@@ -395,7 +399,10 @@ class AnalysisBIPage extends Component {
                 stacked: stacked, // 是否堆叠
                 showLabel: showLabel, // 是否显示标签
                 colorScheme: colors, // 传入颜色数组
-                customTitle: ' ' // 隐藏 ChartFactory 的内部标题，因为 Widget 外部有标题
+                customTitle: ' ', // 隐藏 ChartFactory 的内部标题，因为 Widget 外部有标题
+
+                // Sankey 专用配置
+                sourceField, targetField, valueField
             }, filteredData); // 关键：传入筛选后的 filteredData 作为 rawData
 
             // 4. 应用 Option

@@ -132,6 +132,9 @@ const AnalysisModelingMixin = {
             <div class="opt-group-label text-xs text-secondary mb-5 mt-10">高级分析</div>
             <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="window" data-label="窗口函数"><span class="op-icon">🪟</span><span>窗口</span></div>
             <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="sql" data-label="SQL脚本"><span class="op-icon">💻</span><span>SQL</span></div>
+
+            <div class="opt-group-label text-xs text-secondary mb-5 mt-10">机器学习</div>
+            <div class="etl-operator btn btn-outline-secondary mb-5 flex align-center justify-start gap-5" draggable="true" data-type="ml_regression" data-label="线性回归"><span class="op-icon">📈</span><span>回归</span></div>
         `;
     },
 
@@ -1101,6 +1104,11 @@ const AnalysisModelingMixin = {
                 updates.orderBy = getValue('cfg-window-order');
                 updates.newCol = getValue('cfg-window-new-name');
                 break;
+            case 'ml_regression':
+                updates.features = getValue('cfg-ml-features');
+                updates.target = getValue('cfg-ml-target');
+                updates.predictionCol = getValue('cfg-ml-pred-col');
+                break;
         }
 
         // 通用：更新节点标签
@@ -1158,7 +1166,8 @@ const AnalysisModelingMixin = {
             source: '📥', sink: '📤', filter: '🔍', select: '📝', group: 'Σ',
             join: '🔗', sort: '⚡', clean: '🧹', distinct: '🎯', sample: '🎲',
             limit: '📏', calculate: '🧮', rename: '✏️', pivot: '📊', union: '➕',
-            fillna: '🔧', typecast: '🔄', split: '✂️', sql: '💾'
+            fillna: '🔧', typecast: '🔄', split: '✂️', sql: '💾', text_ops: '📝', math_ops: '➗', window: '🪟',
+            ml_regression: '📈'
         };
         // 按类别定义颜色
         const colors = {
@@ -1173,7 +1182,9 @@ const AnalysisModelingMixin = {
             // 清理增强 - 青色系
             clean: '#06b6d4', fillna: '#22d3ee', typecast: '#67e8f9', split: '#0891b2',
             // 高级脚本 - 灰色系
-            sql: '#64748b'
+            sql: '#64748b', text_ops: '#94a3b8', math_ops: '#a855f7', window: '#6366f1',
+            // 机器学习 - 红色/紫色系
+            ml_regression: '#e11d48'
         };
         const nodeColor = colors[node.type] || '#6b7280';
         const isExecuted = node.status === 'success' || node.status === 'executed';
@@ -1924,6 +1935,19 @@ const AnalysisModelingMixin = {
                 ) + renderGroup('目标新字段名', `
                     <input type="text" class="form-control w-100" id="cfg-window-new-name" 
                            placeholder="例如: rank_idx" value="${node.data?.newCol || ''}">
+                `);
+                break;
+
+            case 'ml_regression':
+                fields = renderGroup('特征字段 (Features, X)',
+                    this._renderFieldChips(availableFields, node.data?.features, 'cfg-ml-features', false),
+                    '选择用于预测的自变量字段 (多选)'
+                ) + renderGroup('目标字段 (Target, y)',
+                    this._renderFieldChips(availableFields, node.data?.target, 'cfg-ml-target', true),
+                    '选择需要预测的因变量字段'
+                ) + renderGroup('预测结果列名', `
+                    <input type="text" class="form-control w-100" id="cfg-ml-pred-col" 
+                           placeholder="例如: prediction" value="${node.data?.predictionCol || 'prediction'}">
                 `);
                 break;
 

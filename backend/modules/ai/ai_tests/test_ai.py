@@ -189,7 +189,7 @@ class TestSessionManagement:
         from modules.ai.ai_session_service import AISessionService
         
         assert hasattr(AISessionService, 'create_session')
-        assert hasattr(AISessionService, 'get_sessions')
+        assert hasattr(AISessionService, 'list_sessions')  # 实际方法名是 list_sessions
         assert hasattr(AISessionService, 'delete_session')
 
 

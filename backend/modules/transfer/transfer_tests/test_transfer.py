@@ -68,13 +68,12 @@ class TestTransferService:
     async def test_create_session(self, db_session):
         """测试创建传输会话"""
         from modules.transfer.transfer_services import TransferService
-        service = TransferService(db_session)
         data = SessionCreate(
             file_name="test.txt",
             file_size=1024,
             file_type="text/plain"
         )
-        session = await service.create_session(data, sender_id=1)
+        session = await TransferService.create_session(db_session, user_id=1, data=data)
         assert session.id is not None
         assert session.file_name == "test.txt"
         assert session.status == TransferStatus.PENDING.value
@@ -83,16 +82,15 @@ class TestTransferService:
     async def test_get_session_by_code(self, db_session):
         """测试通过会话码获取会话"""
         from modules.transfer.transfer_services import TransferService
-        service = TransferService(db_session)
         # 先创建会话
         data = SessionCreate(
             file_name="test.txt",
             file_size=1024
         )
-        created = await service.create_session(data, sender_id=1)
+        created = await TransferService.create_session(db_session, user_id=1, data=data)
         
         # 通过会话码获取
-        session = await service.get_session_by_code(created.session_code)
+        session = await TransferService.get_session(db_session, created.session_code)
         assert session is not None
         assert session.id == created.id
     

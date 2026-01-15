@@ -7,7 +7,7 @@ class ChartFactory {
     /**
      * 支持的图表类型
      */
-    static CHART_TYPES = ['bar', 'line', 'pie', 'scatter', 'histogram', 'boxplot', 'heatmap', 'forecast', 'gauge'];
+    static CHART_TYPES = ['bar', 'line', 'pie', 'scatter', 'histogram', 'boxplot', 'heatmap', 'forecast', 'gauge', 'sankey'];
 
     /**
      * 支持的聚合类型
@@ -220,6 +220,9 @@ class ChartFactory {
             case 'gauge':
                 option = this._getGaugeOption(data, yField, options);
                 break;
+            case 'sankey':
+                option = this._getSankeyOption(data, config, options);
+                break;
             default:
                 console.warn('未知图表类型:', type);
         }
@@ -232,10 +235,91 @@ class ChartFactory {
     static _generateDefaultTitle(chartType, xLabel, yLabel) {
         const typeNames = {
             'bar': '柱状图', 'line': '趋势图', 'pie': '饼图', 'scatter': '散点图',
-            'histogram': '分布直方图', 'boxplot': '箱线图', 'heatmap': '热力图', 'forecast': '预测图'
+            'histogram': '分布直方图', 'boxplot': '箱线图', 'heatmap': '热力图', 'forecast': '预测图',
+            'sankey': '桑基图'
         };
         const typeName = typeNames[chartType] || '图表';
         return `${xLabel || ''} ${typeName}分析`;
+    }
+
+    static _getSankeyOption(data, config, options) {
+        const { customTitle, colors } = options;
+        const { sourceField, targetField, valueField } = config; // Sankey 需要源、目标和值字段
+
+        if (!sourceField || !targetField || !valueField) return {};
+
+        // 构造节点和连线数据
+        const nodes = new Set();
+        const links = [];
+
+        data.forEach(row => {
+            const source = String(row[sourceField]);
+            const target = String(row[targetField]);
+            const value = parseFloat(row[valueField]) || 0;
+
+            if (source && target && value > 0) {
+                nodes.add(source);
+                nodes.add(target);
+                links.push({ source, target, value });
+            }
+        });
+
+        const dataNodes = Array.from(nodes).map(name => ({ name }));
+        const title = customTitle || '桑基流向图';
+
+        return {
+            backgroundColor: 'transparent',
+            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            tooltip: {
+                trigger: 'item',
+                triggerOn: 'mousemove'
+            },
+            series: [
+                {
+                    type: 'sankey',
+                    data: dataNodes,
+                    links: links,
+                    emphasis: {
+                        focus: 'adjacency'
+                    },
+                    lineStyle: {
+                        color: 'gradient',
+                        curveness: 0.5
+                    },
+                    label: {
+                        color: '#fff',
+                        fontFamily: 'Arial',
+                        fontSize: 10
+                    },
+                    itemStyle: {
+                        borderColor: '#1a1a2e',
+                        borderWidth: 1
+                    },
+                    levels: [
+                        {
+                            depth: 0,
+                            itemStyle: { color: colors ? colors[0] : '#fbb4ae' },
+                            lineStyle: { color: 'source', opacity: 0.6 }
+                        },
+                        {
+                            depth: 1,
+                            itemStyle: { color: colors ? colors[1] : '#b3cde3' },
+                            lineStyle: { color: 'source', opacity: 0.6 }
+                        },
+                        {
+                            depth: 2,
+                            itemStyle: { color: colors ? colors[2] : '#ccebc5' },
+                            lineStyle: { color: 'source', opacity: 0.6 }
+                        },
+                        {
+                            depth: 3,
+                            itemStyle: { color: colors ? colors[3] : '#decbe4' },
+                            lineStyle: { color: 'source', opacity: 0.6 }
+                        }
+                    ]
+                }
+            ]
+        };
     }
 
     static _getBasicChartOption(chartType, aggregatedData, rawData, xLabel, yLabel, options) {

@@ -498,6 +498,8 @@ class ETLExecutionService:
             result = cls._execute_window(upstream_df, node_data)
         elif node_type == 'sql':
             result = cls._execute_sql(upstream_df, node_data)
+        elif node_type == 'ml_regression':
+            result = cls._execute_ml_regression(df, node_data) if upstream_df is None else cls._execute_ml_regression(upstream_df, node_data)
         else:
             logger.warning(f"未知的节点类型: {node_type}, 透传数据")
             result = upstream_df
@@ -1252,9 +1254,97 @@ class ETLExecutionService:
             result[new_col] = col_a / col_b.replace(0, np.nan) # 防止除零
         elif op == '%':
             result[new_col] = col_a % col_b.replace(0, np.nan)
+        elif op == 'LOG': # 自然对数
+            result[new_col] = np.log(col_a.replace(0, np.nan))
+        elif op == 'EXP': # 指数
+            result[new_col] = np.exp(col_a)
+        elif op == 'SQRT': # 平方根 (负数返回 NaN)
+            result[new_col] = np.where(col_a >= 0, np.sqrt(col_a), np.nan)
+        elif op == 'POWER': # 幂运算 (col_a ^ col_b)
+            result[new_col] = np.power(col_a, col_b)
+        elif op == 'ABS': # 绝对值
+            result[new_col] = np.abs(col_a)
+        elif op == 'ROUND': # 四舍五入
+            result[new_col] = np.round(col_a, decimals=int(col_b) if isinstance(col_b, (int, float)) else 0)
+        elif op == 'CEIL': # 向上取整
+            result[new_col] = np.ceil(col_a)
+        elif op == 'FLOOR': # 向下取整
+            result[new_col] = np.floor(col_a)
             
         logger.info(f"MathOps 节点: {new_col} = {field_a} {op} {value}")
         return result
+
+    @classmethod
+    def _execute_ml_regression(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
+        """执行机器学习回归节点 (线性回归)"""
+        features = node_data.get('features', '')
+        target = node_data.get('target', '')
+        prediction_col = node_data.get('predictionCol', 'prediction')
+        
+        if not features or not target:
+            raise ValueError("回归节点需配置特征字段和目标字段")
+            
+        if isinstance(features, str):
+            feature_cols = [c.strip() for c in features.split(',') if c.strip()]
+        else:
+            feature_cols = features
+            
+        valid_features = [c for c in feature_cols if c in df.columns]
+        if not valid_features:
+            raise ValueError("有效的特征字段为空")
+        if target not in df.columns:
+            raise ValueError(f"目标字段不存在: {target}")
+            
+        # 准备数据
+        # 删除特征或目标中含有 NaN 的行用于训练，但我们希望对所有行进行预测
+        # 分离训练集：目标字段非空的行
+        train_df = df.dropna(subset=[target] + valid_features)
+        
+        if len(train_df) < 2:
+           logger.warning("ML Regression: 训练数据不足 (少于2行)，跳过执行")
+           return df
+           
+        try:
+            # 准备 X 和 y
+            # 自动添加截距项 (const)
+            X_train = train_df[valid_features].values
+            y_train = train_df[target].values
+            
+            # 由于没有 sklearn，使用 numpy.linalg.lstsq
+            # 需要手动添加一列 1 作为截距
+            X_train_bias = np.c_[np.ones(X_train.shape[0]), X_train]
+            
+            # solve: w = (X^T X)^-1 X^T y
+            # rcond=None ensures compatibility
+            theta, residuals, rank, s = np.linalg.lstsq(X_train_bias, y_train, rcond=None)
+            
+            logger.info(f"ML Regression 训练完成. Coef: {theta[1:]}, Intercept: {theta[0]}")
+            
+            # 预测所有数据
+            # 填充特征中的 NaN 以便进行预测 (或者预测结果为 NaN)
+            X_all = df[valid_features].values
+            # 处理 NaN: 如果特征有 NaN，预测结果设为 NaN
+            # 简单方法：先填0计算，然后还原；或者只计算非 NaN 行
+            # 这里选择只计算完整行，不完整的设为 NaN
+            
+            result = df.copy()
+            
+            # 为了计算方便，找出特征完整的行索引
+            valid_rows_mask = df[valid_features].notna().all(axis=1)
+            
+            if valid_rows_mask.any():
+                X_pred = X_all[valid_rows_mask]
+                X_pred_bias = np.c_[np.ones(X_pred.shape[0]), X_pred]
+                y_pred = X_pred_bias.dot(theta)
+                
+                result.loc[valid_rows_mask, prediction_col] = y_pred
+            
+            logger.info(f"ML Regression 预测完成，新字段: {prediction_col}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"ML Regression 执行失败: {e}")
+            raise ValueError(f"回归模型训练失败: {str(e)}")
 
     @classmethod
     def _execute_window(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:

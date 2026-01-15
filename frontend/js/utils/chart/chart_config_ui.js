@@ -113,6 +113,7 @@ class ChartConfigUI {
                         <option value="boxplot" ${sel('boxplot', chartType)}>📦 箱线图</option>
                         <option value="heatmap" ${sel('heatmap', chartType)}>🔥 热力图</option>
                         <option value="forecast" ${sel('forecast', chartType)}>🔮 预测图</option>
+                        <option value="sankey" ${sel('sankey', chartType)}>🔄 桑基图</option>
                     </select>
                 </div>
                 <div style="flex: 1">
@@ -145,6 +146,28 @@ class ChartConfigUI {
                 <select id="cfg-w-single" class="form-control" ${needsMultiValue ? 'multiple size="3"' : ''}>
                     ${renderFieldOptions(values.xField || values.xFields)}
                 </select>
+            </div>
+
+            <!-- 桑基图专用配置区域 -->
+            <div id="group-sankey-fields" class="flex gap-10 mb-10" style="${chartType === 'sankey' ? '' : 'display:none'}">
+                <div style="flex: 1">
+                    <label class="text-xs">源节点 (Source)</label>
+                    <select id="cfg-w-sankey-source" class="form-control">
+                         ${renderFieldOptions(values.sourceField)}
+                    </select>
+                </div>
+                <div style="flex: 1">
+                    <label class="text-xs">目标节点 (Target)</label>
+                    <select id="cfg-w-sankey-target" class="form-control">
+                         ${renderFieldOptions(values.targetField)}
+                    </select>
+                </div>
+                <div style="flex: 1">
+                     <label class="text-xs">数值 (Value)</label>
+                     <select id="cfg-w-sankey-value" class="form-control">
+                          ${renderFieldOptions(values.valueField)}
+                     </select>
+                </div>
             </div>
             
             <div class="form-group mb-10" id="group-agg" style="${needsAggregation ? '' : 'display:none'}">
@@ -306,17 +329,19 @@ class ChartConfigUI {
         const stackedGroup = container.querySelector('#group-stacked');
         const dualGroup = container.querySelector('#group-dual');
         const seriesGroup = container.querySelector('#group-series');
+        const sankeyGroup = container.querySelector('#group-sankey-fields');
         const aggGroup = container.querySelector('#group-agg');
 
         const isForecast = type === 'forecast';
         const isMulti = ['bar', 'line'].includes(type);
+        const isSankey = type === 'sankey';
 
         // 根据图表类型判断需要显示的配置
         const needsXYAxis = ['bar', 'line', 'scatter', 'forecast'].includes(type);
         const needsCategoryValue = type === 'pie';
         const needsOnlyValue = ['gauge', 'histogram', 'boxplot'].includes(type);
         const needsMultiValue = type === 'heatmap';
-        const needsAggregation = !needsMultiValue && !needsOnlyValue;
+        const needsAggregation = !needsMultiValue && !needsOnlyValue && !isSankey;
 
         // 1. 控制 XY 字段组的显示
         if (xyFieldsGroup) {
@@ -328,7 +353,7 @@ class ChartConfigUI {
             yFieldGroup.style.display = (needsXYAxis || needsCategoryValue) ? 'block' : 'none';
         }
 
-        // 3. 控制单字段组的显示（仪表盘、直方图、箱线图、热力图）
+        // 3. 控制单字段组的显示
         if (singleFieldGroup) {
             singleFieldGroup.style.display = (needsOnlyValue || needsMultiValue) ? 'block' : 'none';
 
@@ -342,6 +367,11 @@ class ChartConfigUI {
                     singleSelect.removeAttribute('size');
                 }
             }
+        }
+
+        // 3.5 控制桑基图字段组显示
+        if (sankeyGroup) {
+            sankeyGroup.style.display = isSankey ? 'flex' : 'none';
         }
 
         // 4. 更新标签文本
@@ -417,6 +447,12 @@ class ChartConfigUI {
             xField: Array.isArray(xVal) ? xVal[0] : xVal,
             xFields: Array.isArray(xVal) ? xVal : undefined,
             yField: getVal('cfg-w-y'),
+
+            // Sankey Fields
+            sourceField: getVal('cfg-w-sankey-source'),
+            targetField: getVal('cfg-w-sankey-target'),
+            valueField: getVal('cfg-w-sankey-value'),
+
             aggregationType: getVal('cfg-w-agg'),
             colorScheme: getVal('cfg-w-theme'),
             size: getVal('cfg-w-size'),
@@ -439,7 +475,8 @@ class ChartConfigUI {
     }
 
     static updateFieldOptions(optionsHtml) {
-        const ids = ['cfg-w-x', 'cfg-w-y', 'cfg-w-single', 'cfg-w-y2', 'cfg-w-y3', 'cfg-w-filter-field', 'cfg-w-sort-field'];
+        const ids = ['cfg-w-x', 'cfg-w-y', 'cfg-w-single', 'cfg-w-y2', 'cfg-w-y3', 'cfg-w-filter-field', 'cfg-w-sort-field',
+            'cfg-w-sankey-source', 'cfg-w-sankey-target', 'cfg-w-sankey-value'];
         ids.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -452,7 +489,7 @@ class ChartConfigUI {
                     prefix = '(不排序)';
                 } else if (['cfg-w-y2', 'cfg-w-y3'].includes(id)) {
                     prefix = '请选择...';
-                } else if (['cfg-w-x', 'cfg-w-y', 'cfg-w-single'].includes(id)) {
+                } else if (['cfg-w-x', 'cfg-w-y', 'cfg-w-single', 'cfg-w-sankey-source', 'cfg-w-sankey-target', 'cfg-w-sankey-value'].includes(id)) {
                     prefix = '选择字段...';
                 }
                 el.innerHTML = (prefix ? `<option value="">${prefix}</option>` : '') + optionsHtml;
