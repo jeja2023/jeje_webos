@@ -435,7 +435,7 @@ async def favicon():
     if os.path.exists(favicon_path):
         return FileResponse(favicon_path)
     
-    logo_path = os.path.join(FRONTEND_PATH, "images/logo.jpg")
+    logo_path = os.path.join(FRONTEND_PATH, "images/logo.ico")
     if os.path.exists(logo_path):
         return FileResponse(logo_path)
     return HTTPException(status_code=404)
@@ -461,6 +461,24 @@ async def map_tile_proxy(url: str):
         except Exception as e:
             logger.error(f"❌ 地图代理连接失败: {str(e)}, URL: {url}")
             return Response(status_code=502, content=f"Proxy Error: {str(e)}")
+
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest():
+    """PWA Manifest"""
+    path = os.path.join(FRONTEND_PATH, "manifest.json")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="application/json")
+    return HTTPException(status_code=404)
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    """PWA Service Worker"""
+    path = os.path.join(FRONTEND_PATH, "sw.js")
+    if os.path.exists(path):
+        # Service Worker header needs to be set properly for scope if needed, 
+        # but serving from root usually handles scope automatically.
+        return FileResponse(path, media_type="application/javascript")
+    return HTTPException(status_code=404)
 
 @app.get("/", include_in_schema=False)
 async def root():

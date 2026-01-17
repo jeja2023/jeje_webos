@@ -43,16 +43,16 @@
 .login-logo {
     font-size: 56px;
     margin-bottom: 16px;
-    filter: drop-shadow(0 0 20px var(--color-primary-glow));
+    /* filter: drop-shadow(0 0 20px var(--color-primary-glow)); */
     animation: float 6s ease-in-out infinite;
 }
 
 .login-logo-img {
     width: 80px;
     height: 80px;
-    object-fit: cover;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4);
+    object-fit: contain;
+    /* border-radius: 20px; */
+    /* box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4); */
 }
 
 @keyframes float {

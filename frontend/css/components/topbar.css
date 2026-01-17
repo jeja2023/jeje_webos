@@ -68,7 +68,7 @@
 .brand-icon {
     font-size: 22px;
     margin-right: 8px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    /* filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)); */
 }
 
 /* 品牌标题 Tooltip (自定义下方显示) */

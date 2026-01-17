@@ -127,7 +127,7 @@ class LoginPage extends Component {
 
                 // 确保 start_menu_shortcuts 从后端正确加载
                 // 如果后端有数据，使用后端数据；如果没有，保持空数组
-                if (!currentUser.settings?.start_menu_shortcuts || 
+                if (!currentUser.settings?.start_menu_shortcuts ||
                     !Array.isArray(currentUser.settings.start_menu_shortcuts)) {
                     const newSettings = {
                         ...(currentUser.settings || {}),
@@ -167,7 +167,7 @@ class LoginPage extends Component {
             <div class="login-page">
                 <div class="login-box">
                     <div class="login-header">
-                        <div class="login-logo"><img src="/static/images/logo.jpg" alt="Logo" class="login-logo-img"></div>
+                        <div class="login-logo"><img src="/static/images/logo.png" alt="Logo" class="login-logo-img"></div>
                         <h1 class="login-title gradient-text">${Store.get('appName')}</h1>
                         <p class="login-subtitle">${isLogin ? '欢迎回来' : '创建新账户'}</p>
                     </div>

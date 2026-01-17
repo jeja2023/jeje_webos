@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="/static/images/logo.png">
+    <link rel="shortcut icon" href="/favicon.ico">
     <title>JeJe WebOS</title>
+    <link rel="manifest" href="/manifest.json">
 
     <!-- 核心样式 -->
     <link rel="stylesheet" href="/static/css/core/variables.css">
@@ -202,6 +205,21 @@
     <script src="/static/js/pages/vault.js"></script>
 
     <script src="/static/js/pages/app.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker 注册成功，作用域: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker 注册失败: ', err);
+                    });
+            });
+        }
+    </script>
 
 </body>
 

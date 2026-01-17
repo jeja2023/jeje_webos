@@ -123,7 +123,7 @@ class TopBarComponent extends Component {
                 <div class="top-bar-left">
                      <!-- 品牌标题 -->
                     <div id="brandPill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <img src="/images/logo.jpg" class="brand-icon" style="height: 28px; width: auto; border-radius: 6px;">
+                        <img src="/static/images/logo.png" class="brand-icon" style="height: 28px; width: auto; border-radius: 6px;">
                         <span class="brand-title">${displayAppName}</span>
                     </div>
                 </div>
@@ -440,7 +440,9 @@ class TopBarComponent extends Component {
             width: '400px',
             content: `
                 <div style="text-align: center; padding: 10px 0;">
-                    <div style="font-size: 40px; margin-bottom: 12px; animation: floatIcon 3s ease-in-out infinite;">🖥️</div>
+                    <div style="margin-bottom: 12px; animation: floatIcon 3s ease-in-out infinite;">
+                        <img src="/static/images/logo.png" style="width: 48px; height: 48px; object-fit: contain;">
+                    </div>
                     <h2 style="margin: 0; font-size: 22px; font-weight: 600; color:var(--color-text-primary);">${displayAppName}</h2>
                     <p style="color: var(--color-text-secondary); margin: 4px 0 16px; font-size: 14px;">Version ${displayVersion}</p>
                     
