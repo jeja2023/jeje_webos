@@ -20,7 +20,7 @@
 APP_NAME=JeJe WebOS
 
 # 应用版本
-APP_VERSION=2.2.9
+APP_VERSION=2.4.0
 
 # 调试模式（生产环境请设为 false）
 DEBUG=false
@@ -74,6 +74,16 @@ JWT_SECRET=change_this_secret_key_in_production_min_32_chars
 # 默认 10080 = 7 天
 JWT_EXPIRE_MINUTES=10080
 
+# --- JWT 密钥自动轮换 ---
+# 是否启用自动轮换 (true/false)
+JWT_AUTO_ROTATE=true
+# 轮换间隔最小值（天）
+JWT_ROTATE_INTERVAL_MIN=25
+# 轮换间隔最大值（天）
+JWT_ROTATE_INTERVAL_MAX=35
+# 每日检查时间（小时，0-23）
+JWT_ROTATE_CHECK_HOUR=2
+
 
 # ==================== 默认管理员账户 ====================
 # ⚠️ 首次启动后请立即登录并修改密码！
@@ -92,6 +102,16 @@ ADMIN_PHONE=13800138000
 ADMIN_NICKNAME=系统管理员
 
 
+# ==================== 其它安全配置 ====================
+
+# 是否启用 CSRF 校验
+CSRF_ENABLED=false
+
+# 即时通讯消息加密密钥（生产环境请修改）
+# ⚠️ 必须是 32 位随机字符串并进行 base64 编码
+IM_ENCRYPTION_KEY=Mre_8JUhRwDDvA18jDXlYKMNGSrX5azMVv02fE-2T08=
+
+
 # ==================== 文件上传配置 ====================
 
 # 最大上传文件大小（字节）
@@ -105,3 +125,18 @@ MAX_UPLOAD_SIZE=104857600
 # true  = 记录所有操作（安全性高，但日志量大）
 # false = 仅记录修改操作（增删改）
 AUDIT_ALL_OPERATIONS=true
+
+
+# ==================== 速率限制配置 ====================
+
+# 是否启用速率限制 (true/false)
+RATE_LIMIT_ENABLED=true
+
+# 全局请求限制（次/分钟），Docker环境建议适当调大以防误封网关IP
+RATE_LIMIT_REQUESTS=2000
+
+# 速率限制封禁时长 (秒)
+RATE_LIMIT_BLOCK_DURATION=30
+
+# 是否信任本地访问 (true/false)
+RATE_LIMIT_ENABLE_WHITELIST_LOCALHOST=true

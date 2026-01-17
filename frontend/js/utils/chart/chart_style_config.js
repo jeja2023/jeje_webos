@@ -23,7 +23,7 @@ class ChartStyleConfig {
         const schemes = {
             // 默认主题 - ECharts 经典配色
             default: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#4992ff'],
-            
+
             // BI 仪表盘主题色系
             blue: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#eff6ff'],
             green: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#ecfdf5'],
@@ -31,14 +31,14 @@ class ChartStyleConfig {
             purple: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe', '#f5f3ff'],
             red: ['#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2', '#fef2f2'],
             multi: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'],
-            
+
             // 通用主题色系
             warm: ['#ff7c43', '#ffa600', '#d45087', '#f95d6a', '#ff6b6b', '#fab005', '#fcc419', '#ffe066', '#ffec99', '#fff3bf'],
             cool: ['#4e79a7', '#59a14f', '#76b7b2', '#86bcb6', '#499894', '#4a8fbf', '#69b3a2', '#8dc6bf', '#a5d5cf', '#c7e9e5'],
             rainbow: ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6', '#fabebe', '#bfef45'],
             business: ['#1565c0', '#1976d2', '#1e88e5', '#2196f3', '#42a5f5', '#64b5f6', '#90caf9', '#bbdefb', '#e3f2fd', '#0d47a1']
         };
-        
+
         return schemes[theme] || schemes.default;
     }
 
@@ -69,17 +69,52 @@ class ChartStyleConfig {
      * @returns {Object} 样式配置对象
      */
     static getDefaultStyle() {
-        return {
-            backgroundColor: 'transparent',
-            textColor: '#fff',
-            textColorSecondary: '#aaa',
-            axisLineColor: '#444',
-            splitLineColor: '#333',
-            tooltipBackground: 'rgba(30, 30, 35, 0.9)',
-            tooltipBorder: '#444',
-            titleFontSize: 16,
-            labelFontSize: 11
-        };
+        // 判断是否为深色模式
+        // 1. 检查 body 或 html 是否有 dark 类或 theme-neon 类（深色系）
+        // 2. 检查是否有 theme-sunrise 类（浅色系）
+        // 3. 检查 Store 中的主题设置
+        const hasDarkClass = document.documentElement.classList.contains('dark') ||
+            document.body.classList.contains('dark') ||
+            document.documentElement.classList.contains('theme-neon') ||
+            document.body.classList.contains('theme-neon');
+
+        const hasSunriseClass = document.documentElement.classList.contains('theme-sunrise') ||
+            document.body.classList.contains('theme-sunrise');
+
+        const storeTheme = typeof Store !== 'undefined' ? Store.get('theme') : null;
+
+        // 综合判断：如果有明确的深色类，或者 Store 设置为 dark 且没有明确的浅色类
+        const isDark = hasDarkClass || (storeTheme === 'dark' && !hasSunriseClass);
+
+        if (isDark) {
+            // 深色模式配置 - 进一步提高文字亮度以适应深色背景
+            return {
+                isDark: true,
+                backgroundColor: 'transparent',
+                textColor: '#ffffff',          // 纯白标题
+                textColorSecondary: '#cccccc', // 银灰色轴标签（提高亮度）
+                axisLineColor: '#555555',      // 轴线稍亮
+                splitLineColor: '#333333',
+                tooltipBackground: 'rgba(30, 30, 35, 0.9)',
+                tooltipBorder: '#444444',
+                titleFontSize: 16,
+                labelFontSize: 11
+            };
+        } else {
+            // 浅色模式配置 - 显著提高标题和轴标签的对比度
+            return {
+                isDark: false,
+                backgroundColor: 'transparent',
+                textColor: '#1a1a1a',          // 深色文字
+                textColorSecondary: '#4b5563', // 次要文字（X/Y轴标签）
+                axisLineColor: '#e5e7eb',      // 轴线颜色
+                splitLineColor: '#f3f4f6',      // 分隔线颜色
+                tooltipBackground: 'rgba(255, 255, 255, 0.95)',
+                tooltipBorder: '#e5e7eb',
+                titleFontSize: 16,
+                labelFontSize: 11
+            };
+        }
     }
 
     /**
@@ -206,7 +241,7 @@ class ChartStyleConfig {
      */
     static applyStyle(option, config = {}) {
         const style = this.getDefaultStyle();
-        
+
         // 确保背景透明
         if (!option.backgroundColor) {
             option.backgroundColor = style.backgroundColor;
@@ -215,9 +250,9 @@ class ChartStyleConfig {
         // 应用标题样式
         if (option.title && typeof option.title === 'object') {
             option.title = {
-                ...this.getTitleStyle(option.title.text || '', { 
+                ...this.getTitleStyle(option.title.text || '', {
                     left: option.title.left,
-                    top: option.title.top 
+                    top: option.title.top
                 }),
                 ...option.title
             };

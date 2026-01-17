@@ -14,8 +14,8 @@
 # 运行:
 #   docker-compose -f docker/docker-compose.yml up -d
 #
-# 版本: v2.1.4
-# 更新时间: 2026-01-02
+# 版本: v2.4.0
+# 更新时间: 2026-01-17
 # ============================================================
 
 FROM python:3.12-slim
@@ -30,10 +30,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # 安装系统依赖
+# 增加 libgomp1, libgl1-mesa-glx, libglib2.0-0 以支持 OCR 和模型推理
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
     libffi-dev \
     default-mysql-client \
+    libgomp1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制并安装 Python 依赖（利用 Docker 缓存层）
@@ -67,10 +72,15 @@ USER appuser
 # 暴露应用端口
 EXPOSE 8000
 
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 # 启动应用
+# 使用 WEB_CONCURRENCY 环境变量控制进程数，默认为 1
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"]

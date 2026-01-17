@@ -267,9 +267,10 @@ class ChartFactory {
         const dataNodes = Array.from(nodes).map(name => ({ name }));
         const title = customTitle || '桑基流向图';
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: {
                 trigger: 'item',
                 triggerOn: 'mousemove'
@@ -287,12 +288,12 @@ class ChartFactory {
                         curveness: 0.5
                     },
                     label: {
-                        color: '#fff',
+                        color: style.textColor,
                         fontFamily: 'Arial',
                         fontSize: 10
                     },
                     itemStyle: {
-                        borderColor: '#1a1a2e',
+                        borderColor: style.axisLineColor,
                         borderWidth: 1
                     },
                     levels: [
@@ -330,17 +331,18 @@ class ChartFactory {
 
         const title = customTitle || this._generateDefaultTitle(chartType, xLabel, yLabel);
 
+        const style = ChartStyleConfig.getDefaultStyle();
         let option = {
             backgroundColor: 'transparent',
             color: colors,
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: {
                 trigger: chartType === 'pie' ? 'item' : 'axis',
-                backgroundColor: 'rgba(30, 30, 35, 0.9)',
-                borderColor: '#444',
-                textStyle: { color: '#fff' }
+                backgroundColor: style.tooltipBackground,
+                borderColor: style.tooltipBorder,
+                textStyle: { color: style.textColor }
             },
-            legend: { top: 35, textStyle: { color: '#aaa' } },
+            legend: { top: 35, textStyle: { color: style.textColorSecondary } },
             // 增加左边距以容纳 Y 轴标签
             grid: { left: '8%', right: dualAxis ? '10%' : '5%', bottom: '15%', top: 80, containLabel: true }
         };
@@ -359,7 +361,7 @@ class ChartFactory {
                 label: {
                     show: showLabel,
                     formatter: showLabel ? '{b}: {c} ({d}%)' : '{b}: {d}%',
-                    color: '#fff'
+                    color: style.textColor
                 },
                 emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
                 data: aggregatedData.map((d, i) => ({
@@ -368,7 +370,7 @@ class ChartFactory {
                     itemStyle: { color: colors[i % colors.length] }
                 }))
             });
-            option.legend = { orient: 'vertical', left: 'left', textStyle: { color: '#aaa' } };
+            option.legend = { orient: 'vertical', left: 'left', textStyle: { color: style.textColorSecondary } };
         } else {
             // 根据数据量和标签长度动态计算间距
             const needsRotation = names.length > 8;
@@ -384,19 +386,19 @@ class ChartFactory {
                 nameLocation: 'center',
                 nameGap: xAxisNameGap,
                 nameTextStyle: {
-                    color: '#ddd', // 使用更亮的颜色
+                    color: style.textColorSecondary, // 使用动态颜色
                     fontSize: 13,
                     fontWeight: 500
                 },
                 data: names,
                 axisLabel: {
                     rotate: needsRotation ? 45 : 0,
-                    color: '#bbb', // 轴标签颜色稍亮
+                    color: style.textColorSecondary, // 轴标签颜色
                     show: true
                 },
                 axisLine: {
                     show: true,
-                    lineStyle: { color: '#555' }
+                    lineStyle: { color: style.axisLineColor }
                 },
                 axisTick: {
                     show: true
@@ -408,24 +410,24 @@ class ChartFactory {
                 name: yLabel || '数值',
                 nameLocation: 'end', // 顶部显示
                 nameTextStyle: {
-                    color: '#ddd', // 使用更亮的颜色
+                    color: style.textColorSecondary, // 使用动态颜色
                     fontSize: 13,
                     fontWeight: 500,
                     padding: [0, 0, 0, 40] // 增加左侧 padding
                 },
                 position: 'left',
                 axisLabel: {
-                    color: '#bbb', // 轴标签颜色稍亮
+                    color: style.textColorSecondary, // 轴标签颜色
                     show: true,
                     formatter: '{value}'
                 },
                 splitLine: {
                     show: true,
-                    lineStyle: { color: '#333' }
+                    lineStyle: { color: style.splitLineColor }
                 },
                 axisLine: {
                     show: true,
-                    lineStyle: { color: '#444' }
+                    lineStyle: { color: style.axisLineColor }
                 },
                 axisTick: {
                     show: true
@@ -442,7 +444,7 @@ class ChartFactory {
                 }),
                 smooth: chartType === 'line',
                 stack: stacked ? 'total' : undefined,
-                label: { show: showLabel, position: 'top', color: '#fff', fontSize: 11 },
+                label: { show: showLabel, position: 'top', color: style.textColor, fontSize: 11 },
                 itemStyle: {
                     borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0,
                     color: (chartType === 'line' && !hasMultiSeries) ? colors[0] : undefined
@@ -475,7 +477,7 @@ class ChartFactory {
                     data: vals.map((v, i) => ({ value: v, itemStyle: { color: colors[colorIndex] } })),
                     smooth: chartType === 'line',
                     stack: stacked ? 'total' : undefined,
-                    label: { show: showLabel, position: 'top', color: '#fff', fontSize: 11 },
+                    label: { show: showLabel, position: 'top', color: style.textColor, fontSize: 11 },
                     itemStyle: {
                         borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0,
                         color: chartType === 'line' ? colors[colorIndex] : undefined
@@ -530,9 +532,10 @@ class ChartFactory {
 
         const title = customTitle || `${field} 分布直方图`;
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
             grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
             xAxis: {
@@ -540,15 +543,22 @@ class ChartFactory {
                 name: field,
                 nameLocation: 'center',
                 nameGap: 35,
+                nameTextStyle: { color: style.textColorSecondary, fontSize: 13 },
                 data: binLabels,
-                axisLabel: { rotate: 45, color: '#aaa', fontSize: 10 }
+                axisLabel: { rotate: 45, color: style.textColorSecondary, fontSize: 10 }
             },
-            yAxis: { type: 'value', name: '频数', axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333' } } },
+            yAxis: {
+                type: 'value',
+                name: '频数',
+                nameTextStyle: { color: style.textColorSecondary, fontSize: 13 },
+                axisLabel: { color: style.textColorSecondary },
+                splitLine: { lineStyle: { color: style.splitLineColor } }
+            },
             series: [{
                 name: '频数',
                 type: 'bar',
                 data: bins,
-                label: { show: showLabel, position: 'top', color: '#fff', fontSize: 10 },
+                label: { show: showLabel, position: 'top', color: style.textColor, fontSize: 10 },
                 itemStyle: {
                     color: colors ? colors[0] : new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                         { offset: 0, color: '#667eea' },
@@ -582,9 +592,10 @@ class ChartFactory {
 
         const title = customTitle || `${field} 箱线图分析`;
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: {
                 trigger: 'item',
                 formatter: (params) => {
@@ -602,8 +613,8 @@ class ChartFactory {
                 }
             },
             grid: { left: '10%', right: '10%', bottom: '15%', top: '15%', containLabel: true },
-            xAxis: { type: 'category', data: [field], axisLabel: { color: '#aaa' } },
-            yAxis: { type: 'value', name: '数值', axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333' } } },
+            xAxis: { type: 'category', data: [field], axisLabel: { color: style.textColorSecondary } },
+            yAxis: { type: 'value', name: '数值', axisLabel: { color: style.textColorSecondary }, splitLine: { lineStyle: { color: style.splitLineColor } } },
             series: [
                 {
                     name: '箱线图',
@@ -614,7 +625,7 @@ class ChartFactory {
                         borderColor: colors ? colors[1] : '#5470c6',
                         borderWidth: 2
                     },
-                    label: { show: showLabel, position: 'top', color: '#fff' }
+                    label: { show: showLabel, position: 'top', color: style.textColor }
                 },
                 {
                     name: '异常值',
@@ -622,7 +633,7 @@ class ChartFactory {
                     data: outliers.map(v => [field, v]),
                     itemStyle: { color: colors ? colors[2] || '#ee6666' : '#ee6666' },
                     symbolSize: 8,
-                    label: { show: showLabel, position: 'right', color: '#fff', fontSize: 10 }
+                    label: { show: showLabel, position: 'right', color: style.textColor, fontSize: 10 }
                 }
             ]
         };
@@ -659,24 +670,31 @@ class ChartFactory {
 
         const title = customTitle || '相关性热力图';
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: {
                 position: 'top',
                 formatter: (p) => `${fields[p.data[0]]} ↔ ${fields[p.data[1]]}<br/>相关系数: ${p.data[2]}`
             },
             grid: { left: '10%', right: '10%', bottom: '15%', top: '10%', containLabel: true },
-            xAxis: { type: 'category', data: fields, axisLabel: { rotate: 45, color: '#aaa', fontSize: 11 } },
-            yAxis: { type: 'category', data: fields, axisLabel: { color: '#aaa', fontSize: 11 } },
+            xAxis: { type: 'category', data: fields, axisLabel: { rotate: 45, color: style.textColorSecondary, fontSize: 11 } },
+            yAxis: { type: 'category', data: fields, axisLabel: { color: style.textColorSecondary, fontSize: 11 } },
             visualMap: {
                 min: -1, max: 1, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
-                inRange: { color: ['#3b82f6', '#1e293b', '#ef4444'] },
-                textStyle: { color: '#aaa' }
+                inRange: {
+                    color: [
+                        '#3b82f6',
+                        style.isDark ? '#1e293b' : '#f9fafb',
+                        '#ef4444'
+                    ]
+                },
+                textStyle: { color: style.textColorSecondary }
             },
             series: [{
                 name: '相关系数', type: 'heatmap', data: matrix,
-                label: { show: showLabel, formatter: (p) => p.data[2].toFixed(2), color: '#fff', fontSize: 11 }
+                label: { show: showLabel, formatter: (p) => p.data[2].toFixed(2), color: style.textColor, fontSize: 11 }
             }]
         };
     }
@@ -704,26 +722,34 @@ class ChartFactory {
 
         const title = customTitle || `${yField} 趋势预测`;
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             tooltip: { trigger: 'axis' },
             grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
-            legend: { data: ['历史数据', '预测数据'], bottom: 0, textStyle: { color: '#aaa' } },
+            legend: { data: ['历史数据', '预测数据'], bottom: 0, textStyle: { color: style.textColorSecondary } },
             xAxis: {
                 type: 'category',
                 name: xField,
                 nameLocation: 'center',
                 nameGap: 35,
+                nameTextStyle: { color: style.textColorSecondary, fontSize: 13 },
                 data: [...xValues, ...forecastX],
-                axisLabel: { rotate: 45, color: '#aaa' }
+                axisLabel: { rotate: 45, color: style.textColorSecondary }
             },
-            yAxis: { type: 'value', name: yField, axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333' } } },
+            yAxis: {
+                type: 'value',
+                name: yField,
+                nameTextStyle: { color: style.textColorSecondary, fontSize: 13 },
+                axisLabel: { color: style.textColorSecondary },
+                splitLine: { lineStyle: { color: style.splitLineColor } }
+            },
             series: [
                 {
                     name: '历史数据', type: 'line', data: [...yValues, ...Array(forecastSteps).fill(null)],
                     smooth: true, itemStyle: { color: colors ? colors[0] : '#5470c6' },
-                    label: { show: showLabel, position: 'top', color: '#fff' }
+                    label: { show: showLabel, position: 'top', color: style.textColor }
                 },
                 {
                     name: '预测数据', type: 'line', data: [...Array(yValues.length - 1).fill(null), yValues[yValues.length - 1], ...forecastY],
@@ -745,24 +771,25 @@ class ChartFactory {
 
         const title = customTitle || '仪表盘';
 
+        const style = ChartStyleConfig.getDefaultStyle();
         return {
             backgroundColor: 'transparent',
-            title: { text: title, left: 'center', top: 'bottom', textStyle: { color: '#fff', fontSize: 16 } },
+            title: { text: title, left: 'center', top: 'bottom', textStyle: { color: style.textColor, fontSize: style.titleFontSize } },
             series: [{
                 type: 'gauge',
                 center: ['50%', '55%'],
                 radius: '80%',
                 progress: { show: true, width: 12, itemStyle: { color: mainColor } },
-                axisLine: { lineStyle: { width: 12, color: [[1, '#333']] } },
+                axisLine: { lineStyle: { width: 12, color: [[1, style.splitLineColor]] } },
                 axisTick: { show: false },
-                splitLine: { length: 8, lineStyle: { width: 2, color: '#666' } },
-                axisLabel: { distance: 16, color: '#999', fontSize: 10 },
+                splitLine: { length: 8, lineStyle: { width: 2, color: style.textColorSecondary } },
+                axisLabel: { distance: 16, color: style.textColorSecondary, fontSize: 10 },
                 pointer: { show: true, length: '60%', itemStyle: { color: 'auto' } },
                 detail: {
                     valueAnimation: true,
                     fontSize: 24,
                     offsetCenter: [0, '70%'],
-                    color: '#fff',
+                    color: style.textColor,
                     formatter: '{value}'
                 },
                 data: [{ value: val }]
