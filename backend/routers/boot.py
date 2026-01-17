@@ -15,7 +15,7 @@ from core.loader import get_module_loader, CORE_MODULES
 from core.rate_limit import get_rate_limiter
 from core.csrf import generate_csrf_token
 from core.changelog import get_changelog, get_latest_version, get_version_changes
-from models import User, ModuleConfig, SystemLog
+from models import User, ModuleConfig, SystemLog, UserModule
 from schemas import ModuleToggle, success
 from utils.jwt_rotate import get_jwt_rotator
 
@@ -57,6 +57,19 @@ async def system_init(
     module_assets = []  # 模块前端资源
     loader = get_module_loader()
     
+    # 获取用户的模块配置（普通用户使用）
+    user_modules = {}
+    if user_info and user_info.get("role") != "admin":
+        user_id = user_info.get("id")
+        if user_id:
+            result = await db.execute(
+                select(UserModule).where(
+                    UserModule.user_id == user_id,
+                    UserModule.installed == True
+                )
+            )
+            user_modules = {um.module_id: um for um in result.scalars().all()}
+    
     if loader:
         perms = user_info.get("permissions") if user_info else []
         is_admin = bool(user_info and user_info.get("role") == "admin")
@@ -69,8 +82,17 @@ async def system_init(
             has_perm = is_admin or ("*" in (perms or [])) or any(
                 p.startswith(manifest.id + ".") for p in (perms or [])
             )
-            # 模块列表：普通用户只返回有权限且启用的模块；管理员返回全部
-            if is_admin or (has_perm and is_enabled):
+            
+            # 用户级模块过滤（普通用户）
+            # 如果用户有模块配置记录，则只显示用户已安装且启用的模块
+            # 如果用户没有任何配置记录（新用户），则显示所有系统启用的模块
+            user_module_ok = True
+            if not is_admin and user_modules:
+                user_mod = user_modules.get(manifest.id)
+                user_module_ok = user_mod is not None and user_mod.installed and user_mod.enabled
+            
+            # 模块列表：普通用户只返回有权限且启用且用户已安装的模块；管理员返回全部
+            if is_admin or (has_perm and is_enabled and user_module_ok):
                 modules.append({
                     "id": manifest.id,
                     "name": manifest.name,
@@ -114,10 +136,8 @@ async def system_init(
                     })
                 # 非管理员且无权限 -> 完全不返回
             
-            # 菜单：仅启用且有权限
-            if is_enabled and manifest.menu:
-                if not has_perm:
-                    continue
+            # 菜单：仅启用且有权限且用户已安装
+            if is_enabled and manifest.menu and has_perm and user_module_ok:
                 menus.append({
                     "module": manifest.id,
                     **manifest.menu

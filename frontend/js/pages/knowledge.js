@@ -546,7 +546,7 @@ class KnowledgeViewPage extends Component {
                     container.innerHTML = extractedView;
                 }
             } else {
-                // Normal Document
+                // 普通文档
                 this.viewer = toastui.Editor.factory({
                     el: container,
                     viewer: true,
@@ -727,7 +727,7 @@ class KnowledgeViewPage extends Component {
 
         // 根目录上传按钮
         this.delegate('click', '#btnUploadRoot', () => {
-            this.uploadTargetId = null; // Root upload
+            this.uploadTargetId = null; // 上传到根目录
             const uploader = this.$('#fileUploader');
             if (uploader) uploader.click();
         });
@@ -746,11 +746,11 @@ class KnowledgeViewPage extends Component {
             if (e.target && e.target.id === 'fileUploader') {
                 const files = e.target.files;
                 if (files.length > 0) {
-                    // Upload each file
+                    // 逐个上传文件
                     Array.from(files).forEach(file => {
                         this.handleFileUpload(file, this.uploadTargetId);
                     });
-                    // Reset input
+                    // 重置文件输入框
                     e.target.value = '';
                 }
             }

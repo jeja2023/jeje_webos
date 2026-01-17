@@ -176,7 +176,7 @@ class VaultPage extends Component {
                     });
                 }
             } catch (e) {
-                console.error('Check status failed:', e);
+                console.error('检查状态失败:', e);
             }
         }
     }

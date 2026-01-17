@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Analysis ETL Service Extended Test
-Focus on boundary conditions and new features
+Analysis ETL 服务扩展测试
+侧重边界条件和新功能测试
 """
 
 import pytest
@@ -10,7 +10,7 @@ import numpy as np
 import sys
 import os
 
-# Ensure modules can be imported
+# 确保模块可被导入
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from modules.analysis.analysis_etl_service import ETLExecutionService

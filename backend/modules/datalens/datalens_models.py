@@ -87,9 +87,9 @@ class LensView(Base):
     datasource_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="关联数据源ID")
     query_type: Mapped[str] = mapped_column(String(20), default="sql", comment="查询类型")
     query_config: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="查询配置")
-    # SQL: {"sql": "SELECT * FROM users WHERE status = 1", "params": []}
-    # Table: {"table": "users", "columns": ["id", "name"], "where": "status = 1", "order_by": "id DESC"}
-    # API: {"endpoint": "/data", "params": {"page": 1}}
+    # SQL类型示例: {"sql": "SELECT * FROM users WHERE status = 1", "params": []}
+    # 表类型示例: {"table": "users", "columns": ["id", "name"], "where": "status = 1", "order_by": "id DESC"}
+    # API类型示例: {"endpoint": "/data", "params": {"page": 1}}
 
     # 显示配置
     display_config: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="显示配置")

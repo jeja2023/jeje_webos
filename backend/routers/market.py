@@ -18,7 +18,9 @@ from core.database import get_db
 from core.security import TokenData, require_admin, get_current_user
 from core.loader import get_module_loader, CORE_MODULES
 from core.config import get_settings
+from models import UserModule
 from schemas import success
+from sqlalchemy import select, delete
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -27,12 +29,31 @@ router = APIRouter(prefix="/api/v1/system/market", tags=["应用市场"])
 
 @router.get("/list")
 async def list_market_modules(
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    """获取所有模块列表（及安装状态）"""
+    """
+    获取所有模块列表（及安装状态）
+    
+    返回字段说明：
+    - installed: 系统是否安装（管理员操作）
+    - enabled: 系统是否启用（管理员操作）
+    - user_installed: 用户是否安装（个人偏好）
+    - user_enabled: 用户是否启用（个人偏好）
+    """
     loader = get_module_loader()
     if not loader:
         return success([])
+    
+    is_admin = current_user.role == 'admin'
+    user_id = current_user.user_id
+    user_perms = current_user.permissions or []
+    
+    # 获取用户的模块配置
+    user_modules_result = await db.execute(
+        select(UserModule).where(UserModule.user_id == user_id)
+    )
+    user_modules = {um.module_id: um for um in user_modules_result.scalars().all()}
     
     market_list = []
     # 扫描磁盘上的所有模块
@@ -54,7 +75,25 @@ async def list_market_modules(
             continue
             
         state = loader.get_module_state(mid)
-        is_installed = state is not None
+        sys_installed = state is not None
+        sys_enabled = state.enabled if state else False
+        
+        # 获取用户级别状态
+        user_module = user_modules.get(mid)
+        user_installed = user_module.installed if user_module else False
+        user_enabled = user_module.enabled if user_module else False
+        
+        # 用户组权限检查：管理员全量；普通用户需模块权限
+        has_perm = is_admin or ("*" in user_perms) or any(
+            p.startswith(mid + ".") for p in user_perms
+        )
+        
+        # 对于普通用户：只显示系统已启用且有权限的模块
+        if not is_admin:
+            if not sys_enabled:
+                continue
+            if not has_perm:
+                continue
         
         market_list.append({
             "id": mid,
@@ -63,11 +102,16 @@ async def list_market_modules(
             "icon": manifest.icon,
             "version": manifest.version,
             "author": manifest.author,
-            "installed": is_installed,
-            "enabled": state.enabled if state else False
+            # 系统级状态（管理员控制）
+            "installed": sys_installed,
+            "enabled": sys_enabled,
+            # 用户级状态（个人偏好）
+            "user_installed": user_installed,
+            "user_enabled": user_enabled
         })
         
     return success(market_list)
+
 
 @router.post("/install/{module_id}")
 async def install_module(
@@ -245,3 +289,148 @@ async def upload_package(
         # 清理临时文件
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
+
+
+# ==================== 用户级模块管理 ====================
+
+@router.post("/user/install/{module_id}")
+async def user_install_module(
+    module_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    用户安装模块（个人偏好）
+    只能安装管理员已启用且用户有权限的模块
+    """
+    loader = get_module_loader()
+    if not loader:
+        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+    
+    # 检查系统是否已启用该模块
+    state = loader.get_module_state(module_id)
+    if not state or not state.enabled:
+        raise HTTPException(status_code=400, detail="该模块未被系统启用，无法安装")
+    
+    # 检查用户组权限
+    user_perms = current_user.permissions or []
+    has_perm = current_user.role == 'admin' or ("*" in user_perms) or any(
+        p.startswith(module_id + ".") for p in user_perms
+    )
+    if not has_perm:
+        raise HTTPException(status_code=403, detail="您没有权限安装此模块")
+    
+    user_id = current_user.user_id
+    
+    # 检查是否已存在记录
+    result = await db.execute(
+        select(UserModule).where(
+            UserModule.user_id == user_id,
+            UserModule.module_id == module_id
+        )
+    )
+    user_module = result.scalar_one_or_none()
+    
+    from datetime import datetime
+    if user_module:
+        user_module.installed = True
+        user_module.enabled = True
+        user_module.updated_at = datetime.now()
+    else:
+        user_module = UserModule(
+            user_id=user_id,
+            module_id=module_id,
+            installed=True,
+            enabled=True,
+            installed_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        db.add(user_module)
+    
+    await db.commit()
+    logger.info(f"用户 {user_id} 安装模块 {module_id}")
+    return success(None, f"模块安装成功")
+
+
+@router.post("/user/uninstall/{module_id}")
+async def user_uninstall_module(
+    module_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """用户卸载模块（个人偏好）"""
+    user_id = current_user.user_id
+    
+    result = await db.execute(
+        select(UserModule).where(
+            UserModule.user_id == user_id,
+            UserModule.module_id == module_id
+        )
+    )
+    user_module = result.scalar_one_or_none()
+    
+    if user_module:
+        user_module.installed = False
+        user_module.enabled = False
+        await db.commit()
+        logger.info(f"用户 {user_id} 卸载模块 {module_id}")
+    
+    return success(None, "模块卸载成功")
+
+
+@router.post("/user/toggle/{module_id}")
+async def user_toggle_module(
+    module_id: str,
+    enabled: bool,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    用户启用/禁用模块（个人偏好）
+    只能操作已安装的模块
+    """
+    user_id = current_user.user_id
+    
+    result = await db.execute(
+        select(UserModule).where(
+            UserModule.user_id == user_id,
+            UserModule.module_id == module_id
+        )
+    )
+    user_module = result.scalar_one_or_none()
+    
+    if not user_module or not user_module.installed:
+        raise HTTPException(status_code=400, detail="请先安装该模块")
+    
+    from datetime import datetime
+    user_module.enabled = enabled
+    user_module.updated_at = datetime.now()
+    await db.commit()
+    
+    action = "启用" if enabled else "禁用"
+    logger.info(f"用户 {user_id} {action}模块 {module_id}")
+    return success(None, f"模块{action}成功")
+
+
+@router.get("/user/list")
+async def list_user_modules(
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取用户已安装的模块列表"""
+    user_id = current_user.user_id
+    
+    result = await db.execute(
+        select(UserModule).where(
+            UserModule.user_id == user_id,
+            UserModule.installed == True
+        )
+    )
+    user_modules = result.scalars().all()
+    
+    return success([{
+        "module_id": um.module_id,
+        "enabled": um.enabled,
+        "installed_at": um.installed_at.isoformat() if um.installed_at else None
+    } for um in user_modules])
+

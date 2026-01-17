@@ -5,7 +5,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, Boolean, DateTime, JSON, Text
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -64,6 +64,23 @@ class UserGroup(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True, comment="组名称")
     permissions: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True, default=list, comment="权限列表")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+
+
+class UserModule(Base):
+    """用户模块配置表"""
+    __tablename__ = "sys_user_modules"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'module_id', name='uq_user_module'),
+        {"comment": "用户个人模块安装与启用状态表"}
+    )
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    user_id: Mapped[int] = mapped_column(Integer, index=True, comment="用户ID")
+    module_id: Mapped[str] = mapped_column(String(50), index=True, comment="模块ID")
+    installed: Mapped[bool] = mapped_column(Boolean, default=True, comment="用户是否安装")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, comment="用户是否启用")
+    installed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=datetime.now, comment="安装时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
 

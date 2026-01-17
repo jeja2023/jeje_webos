@@ -92,6 +92,51 @@ class AppCenterMarketPage extends Component {
         }
     }
 
+    // ==================== 用户级模块管理 ====================
+
+    async handleUserInstall(moduleId) {
+        const module = this.state.marketModules?.find(m => m.id === moduleId);
+        const appName = module ? module.name : '应用';
+
+        try {
+            await Api.post(`/system/market/user/install/${moduleId}`);
+            Toast.success(`${appName} 安装成功！`);
+            await this.loadMarketData();
+            await this.loadData();
+        } catch (error) {
+            Toast.error('安装失败: ' + (error.message || '未知错误'));
+        }
+    }
+
+    async handleUserUninstall(moduleId) {
+        const module = this.state.marketModules?.find(m => m.id === moduleId);
+        const appName = module ? module.name : '应用';
+
+        const confirmed = await Modal.confirm('确认卸载', `确定要从个人应用列表移除 "${appName}" 吗？`);
+        if (!confirmed) return;
+
+        try {
+            await Api.post(`/system/market/user/uninstall/${moduleId}`);
+            Toast.success('已从个人应用列表移除');
+            await this.loadMarketData();
+            await this.loadData();
+        } catch (error) {
+            Toast.error('卸载失败: ' + (error.message || '未知错误'));
+        }
+    }
+
+    async handleUserToggle(moduleId, enabled) {
+        try {
+            await Api.post(`/system/market/user/toggle/${moduleId}?enabled=${enabled}`);
+            Toast.success(enabled ? '应用已启用' : '应用已禁用');
+            await this.loadMarketData();
+            await this.loadData();
+        } catch (error) {
+            Toast.error('操作失败: ' + (error.message || '未知错误'));
+        }
+    }
+
+
     // 固定应用相关方法
     getPinnedApps() {
         // 初始默认固定应用（仅作为兜底）
@@ -425,12 +470,26 @@ class AppCenterMarketPage extends Component {
             `;
         }
 
+        // 管理员视角：显示系统级安装/卸载
+        if (this.isAdmin) {
+            return this.renderAdminMarket(marketModules);
+        }
+
+        // 用户视角：显示个人级安装/卸载
+        return this.renderUserMarket(marketModules);
+    }
+
+    // 管理员应用市场视图
+    renderAdminMarket(marketModules) {
         const availableModules = marketModules.filter(m => !m.installed);
         const installedModules = marketModules.filter(m => m.installed);
 
         return `
             <div class="view-content fade-in">
-                ${this.renderHeader('应用市场')}
+                ${this.renderHeader('应用市场 - 系统管理')}
+                <div class="info-box" style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px;">
+                    💡 作为管理员，您可以在此安装/卸载/启用系统级应用。启用的应用将对所有用户可见。
+                </div>
                 
                 ${availableModules.length > 0 ? `
                     <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">📦 可安装的应用</h3>
@@ -455,7 +514,7 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                     <div class="module-footer">
                                         <button class="btn btn-primary btn-block" data-install="${app.id}">
-                                            ➕ 安装
+                                            ➕ 系统安装
                                         </button>
                                     </div>
                                 </div>
@@ -485,12 +544,12 @@ class AppCenterMarketPage extends Component {
                                     <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
                                         <span>版本: ${app.version || '1.0.0'}</span>
                                         <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)'};">
-                                            ${app.enabled ? '● 已启用' : '○ 未启用'}
+                                            ${app.enabled ? '● 系统已启用' : '○ 系统未启用'}
                                         </span>
                                     </div>
                                     <div class="module-footer" style="display: flex; gap: 8px;">
                                         <button class="btn btn-ghost" data-uninstall="${app.id}" style="flex: 1;">
-                                            🗑️ 卸载
+                                            🗑️ 系统卸载
                                         </button>
                                         <button class="btn btn-secondary" data-view-target="manage" style="flex: 1;">
                                             ⚙️ 管理
@@ -503,7 +562,7 @@ class AppCenterMarketPage extends Component {
                     </div>
                 ` : ''}
 
-                ${marketModules.length === 0 && !marketLoading ? `
+                ${marketModules.length === 0 ? `
                     <div class="empty-state">
                         <i class="ri-store-2-line"></i>
                         <p>市场记录为空</p>
@@ -512,6 +571,101 @@ class AppCenterMarketPage extends Component {
             </div>
         `;
     }
+
+    // 用户应用市场视图
+    renderUserMarket(marketModules) {
+        // 用户看到的是系统已启用的应用（API 已过滤）
+        // 区分用户已安装和未安装的
+        const availableModules = marketModules.filter(m => m.enabled && !m.user_installed);
+        const installedModules = marketModules.filter(m => m.enabled && m.user_installed);
+
+        return `
+            <div class="view-content fade-in">
+                ${this.renderHeader('应用市场')}
+                <div class="info-box" style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px;">
+                    💡 在这里您可以安装/卸载个人应用，选择适合自己的工具。
+                </div>
+                
+                ${availableModules.length > 0 ? `
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">📦 可添加的应用</h3>
+                    <div class="card-grid" style="margin-bottom: 40px;">
+                        ${availableModules.map(app => {
+            const iconSpec = this._getIconSpec(app);
+            return `
+                            <div class="card module-card">
+                                <div class="card-body">
+                                    <div class="module-header">
+                                        <div class="module-icon-box ${iconSpec.gradient}">
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        </div>
+                                        <div class="module-info">
+                                            <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
+                                            <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
+                                        </div>
+                                    </div>
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
+                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                    </div>
+                                    <div class="module-footer">
+                                        <button class="btn btn-primary btn-block" data-user-install="${app.id}">
+                                            ➕ 添加到我的应用
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                    </div>
+                ` : ''}
+
+                ${installedModules.length > 0 ? `
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">✅ 我的应用</h3>
+                    <div class="card-grid">
+                        ${installedModules.map(app => {
+            const iconSpec = this._getIconSpec(app);
+            return `
+                            <div class="card module-card">
+                                <div class="card-body">
+                                    <div class="module-header">
+                                        <div class="module-icon-box ${iconSpec.gradient}">
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        </div>
+                                        <div class="module-info">
+                                            <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
+                                            <p class="module-desc">${Utils.escapeHtml(app.description || '暂无描述')}</p>
+                                        </div>
+                                    </div>
+                                    <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
+                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                        <span style="margin-left: 12px; color: ${app.user_enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)'};">
+                                            ${app.user_enabled ? '● 已启用' : '○ 已禁用'}
+                                        </span>
+                                    </div>
+                                    <div class="module-footer" style="display: flex; gap: 8px;">
+                                        <button class="btn btn-ghost" data-user-uninstall="${app.id}" style="flex: 1;">
+                                            🗑️ 移除
+                                        </button>
+                                        <button class="btn btn-secondary" data-user-toggle="${app.id}" data-enabled="${!app.user_enabled}" style="flex: 1;">
+                                            ${app.user_enabled ? '⏸️ 禁用' : '▶️ 启用'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                    </div>
+                ` : ''}
+
+                ${marketModules.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="ri-store-2-line"></i>
+                        <p>暂无可用的应用</p>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
 
     renderDev() {
         return `
@@ -928,6 +1082,35 @@ class AppCenterMarketPage extends Component {
                 const moduleId = t.dataset.uninstall;
                 if (moduleId) {
                     await this.handleUninstall(moduleId);
+                }
+            });
+
+            // ==================== 用户级模块操作 ====================
+
+            // 用户安装模块
+            this.delegate('click', '[data-user-install]', async (e, t) => {
+                const moduleId = t.dataset.userInstall;
+                if (moduleId) {
+                    t.disabled = true;
+                    t.textContent = '添加中...';
+                    await this.handleUserInstall(moduleId);
+                }
+            });
+
+            // 用户卸载模块
+            this.delegate('click', '[data-user-uninstall]', async (e, t) => {
+                const moduleId = t.dataset.userUninstall;
+                if (moduleId) {
+                    await this.handleUserUninstall(moduleId);
+                }
+            });
+
+            // 用户启用/禁用模块
+            this.delegate('click', '[data-user-toggle]', async (e, t) => {
+                const moduleId = t.dataset.userToggle;
+                const enabled = t.dataset.enabled === 'true';
+                if (moduleId) {
+                    await this.handleUserToggle(moduleId, enabled);
                 }
             });
 

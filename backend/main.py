@@ -343,7 +343,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             logger.debug(log_msg)
         else:
             logger.info(log_msg)
-        return Response(status_code=499) # Client Closed Request
+        return Response(status_code=499)  # 客户端已关闭请求
     
     logger.error(f"未处理异常: {exc}\n路径: {request.url.path}\n方法: {request.method}\n{traceback.format_exc()}")
     return JSONResponse(
@@ -475,8 +475,7 @@ async def service_worker():
     """PWA Service Worker"""
     path = os.path.join(FRONTEND_PATH, "sw.js")
     if os.path.exists(path):
-        # Service Worker header needs to be set properly for scope if needed, 
-        # but serving from root usually handles scope automatically.
+        # 从根目录提供 Service Worker 时，作用域自动为根路径
         return FileResponse(path, media_type="application/javascript")
     return HTTPException(status_code=404)
 

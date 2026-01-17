@@ -54,7 +54,7 @@ async def backup_db_tables(module_id: str):
     try:
         async with engine.connect() as conn:
             # 查找相关表
-            # MySQL syntax
+            # MySQL 语法
             result = await conn.execute(
                 text(f"SHOW TABLES LIKE '{table_pattern}'")
             )

@@ -394,7 +394,7 @@ class VaultService:
         master_key_record.encrypted_data_key = new_encrypted_data_key
         master_key_record.is_locked = False
         master_key_record.failed_attempts = 0
-        master_key_record.updated_at = get_beijing_time() # Assuming get_beijing_time() is available
+        master_key_record.updated_at = get_beijing_time()
         
         await self.db.commit()
         
