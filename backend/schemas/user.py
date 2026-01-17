@@ -41,7 +41,7 @@ class UserListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserUpdate(BaseModel):
+class UserUpdateAdmin(BaseModel):
     """更新用户信息（管理员）"""
     nickname: Optional[str] = Field(None, max_length=50, description="昵称")
     phone: Optional[str] = Field(None, max_length=11, description="手机号")

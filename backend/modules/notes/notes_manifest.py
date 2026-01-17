@@ -34,7 +34,5 @@ manifest = ModuleManifest(
         "notes.delete"
     ],
     
-    enabled=True
+    enabled=False,
 )
-
-

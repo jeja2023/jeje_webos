@@ -37,5 +37,5 @@ manifest = ModuleManifest(
         "course.learn"
     ],
     
-    enabled=True
+    enabled=False
 )

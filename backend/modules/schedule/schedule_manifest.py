@@ -36,5 +36,5 @@ manifest = ModuleManifest(
         "schedule.delete"
     ],
     
-    enabled=True
+    enabled=False,
 )

@@ -17,11 +17,11 @@ class BlogCategory(Base):
     __tablename__ = "blog_categories"
     __table_args__ = {"extend_existing": True, "comment": "博客分类表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True)
-    slug: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    order: Mapped[int] = mapped_column(Integer, default=0)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    name: Mapped[str] = mapped_column(String(50), unique=True, comment="分类名称")
+    slug: Mapped[str] = mapped_column(String(50), unique=True, index=True, comment="别名/路径")
+    description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, comment="描述")
+    order: Mapped[int] = mapped_column(Integer, default=0, comment="排序权重")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
@@ -30,33 +30,34 @@ class BlogPost(Base):
     __tablename__ = "blog_posts"
     __table_args__ = {"extend_existing": True, "comment": "博客文章表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(200))
-    slug: Mapped[str] = mapped_column(String(200), unique=True, index=True)
-    summary: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    content: Mapped[str] = mapped_column(Text)
-    cover: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    title: Mapped[str] = mapped_column(String(200), comment="文章标题")
+    slug: Mapped[str] = mapped_column(String(200), unique=True, index=True, comment="文章别名/路径")
+    summary: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="摘要")
+    content: Mapped[str] = mapped_column(Text, comment="文章内容")
+    cover: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="封面图")
     
     # 分类
     category_id: Mapped[Optional[int]] = mapped_column(
         Integer, 
         ForeignKey("blog_categories.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        comment="分类ID"
     )
     
     # 作者
-    author_id: Mapped[int] = mapped_column(Integer, index=True)
+    author_id: Mapped[int] = mapped_column(Integer, index=True, comment="作者用户ID")
     
     # 状态
-    status: Mapped[str] = mapped_column(String(20), default="draft")  # 状态：draft草稿, published已发布, archived已归档
-    is_top: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="draft", comment="状态：draft草稿, published已发布, archived已归档")
+    is_top: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否置顶")
     
     # 统计
-    views: Mapped[int] = mapped_column(Integer, default=0)
-    likes: Mapped[int] = mapped_column(Integer, default=0)
+    views: Mapped[int] = mapped_column(Integer, default=0, comment="阅读量")
+    likes: Mapped[int] = mapped_column(Integer, default=0, comment="点赞量")
     
     # 时间
-    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="发布时间")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
 
@@ -75,9 +76,9 @@ class BlogTag(Base):
     __tablename__ = "blog_tags"
     __table_args__ = {"extend_existing": True, "comment": "博客标签表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(30), unique=True)
-    slug: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    name: Mapped[str] = mapped_column(String(30), unique=True, comment="标签名称")
+    slug: Mapped[str] = mapped_column(String(30), unique=True, index=True, comment="标签别名")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 
@@ -86,7 +87,7 @@ class BlogPostTag(Base):
     __tablename__ = "blog_post_tags"
     __table_args__ = {"extend_existing": True, "comment": "文章与标签关联表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_posts.id", ondelete="CASCADE"))
-    tag_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_tags.id", ondelete="CASCADE"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_posts.id", ondelete="CASCADE"), comment="文章ID")
+    tag_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_tags.id", ondelete="CASCADE"), comment="标签ID")
 

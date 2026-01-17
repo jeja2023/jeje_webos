@@ -155,7 +155,7 @@ async def get_current_user(
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> TokenData:
-    """获取当前用户（依赖注入用）"""
+    """获取当前用户（实时从数据库同步最新权限和角色）"""
     jwt_token = None
     if credentials:
         jwt_token = credentials.credentials
@@ -170,13 +170,45 @@ async def get_current_user(
         )
 
     token_data = decode_token(jwt_token)
-    
     if token_data is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的认证凭据",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    
+    # --- 实时权限同步逻辑 ---
+    # 为了避免循环导入，在函数内部导入相关模型和数据库方法
+    try:
+        from core.database import async_session
+        from models import User, UserGroup
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            result = await db.execute(select(User).where(User.id == token_data.user_id))
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                # 动态汇总权限：直接权限 + 角色权限（实现即时同步）
+                all_perms = list(user.permissions or [])
+                if user.role_ids:
+                    role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
+                    roles = role_result.scalars().all()
+                    for r in roles:
+                        if r.permissions:
+                            all_perms.extend(r.permissions)
+                
+                # 更新 token_data 中的权限和角色（内存中更新，不修改原始 JWT）
+                token_data.permissions = list(set(all_perms))
+                token_data.role = user.role
+            elif user and not user.is_active:
+                raise HTTPException(status_code=401, detail="账户已被禁用")
+    except ImportError:
+        # 如果导入失败（通常只会发生在复杂的循环引用场景），回退到 JWT 自带的静态权限
+        pass
+    except Exception as e:
+        # 其他数据库异常也回退，确保系统可用性，但打印日志
+        import logging
+        logging.getLogger(__name__).warning(f"获取实时权限失败，回退到令牌权限: {e}")
     
     return token_data
 
@@ -185,7 +217,7 @@ async def get_optional_user(
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[TokenData]:
-    """获取当前用户（可选，无token时返回None而非抛出异常）"""
+    """获取当前用户（可选，实时同步最新权限）"""
     jwt_token = None
     if credentials:
         jwt_token = credentials.credentials
@@ -196,6 +228,30 @@ async def get_optional_user(
         return None
 
     token_data = decode_token(jwt_token)
+    if not token_data:
+        return None
+        
+    # 同步最新权限逻辑（复用 get_current_user 思路，但不抛出 401/403）
+    try:
+        from core.database import async_session
+        from models import User, UserGroup
+        from sqlalchemy import select
+        async with async_session() as db:
+            result = await db.execute(select(User).where(User.id == token_data.user_id))
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                all_perms = list(user.permissions or [])
+                if user.role_ids:
+                    role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
+                    roles = role_result.scalars().all()
+                    for r in roles:
+                        if r.permissions:
+                            all_perms.extend(r.permissions)
+                token_data.permissions = list(set(all_perms))
+                token_data.role = user.role
+    except:
+        pass
+        
     return token_data
 
 

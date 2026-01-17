@@ -31,5 +31,5 @@ manifest = ModuleManifest(
         "map.upload"
     ],
     
-    enabled=True
+    enabled=False
 )

@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, and_
+from sqlalchemy import select, or_, func, and_, update, delete
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin, require_manager
@@ -395,6 +395,73 @@ async def delete_user(
     if user.role in ("admin", "manager"):
         raise HTTPException(status_code=400, detail="不能删除管理员账户")
     
+    # 处理关联数据的删除 (IM模块)
+    # 由于IM模块表可能没有设置级联删除，如果不手动清理会报错 IntegrityError
+    try:
+        # 尝试导入IM模型，如果模块不存在则跳过
+        from modules.im.im_models import IMConversation, IMConversationMember, IMMessage, IMMessageRead, IMContact
+        
+        logger.info(f"Cleaning up IM data for user {user_id}")
+        
+        # 1. 更新群主归属: 将该用户创建的群组owner置空
+        # 注意: 这里不删除群组，只移除群主身份
+        await db.execute(
+            update(IMConversation)
+            .where(IMConversation.owner_id == user_id)
+            .values(owner_id=None)
+        )
+        
+        # 2. 删除联系人记录 (双向)
+        await db.execute(
+            delete(IMContact)
+            .where(or_(IMContact.user_id == user_id, IMContact.contact_id == user_id))
+        )
+        
+        # 3. 删除消息已读记录
+        await db.execute(
+            delete(IMMessageRead)
+            .where(IMMessageRead.user_id == user_id)
+        )
+        
+        # 4. 处理用户发送的消息
+        # 4.1 先将所有回复该用户消息的记录 reply_to_id 置空，防止删除消息时报错
+        # MySQL 不支持 update table where field in (select from same_table)
+        # 所以先查询出该用户的所有消息ID
+        user_msgs_result = await db.execute(select(IMMessage.id).where(IMMessage.sender_id == user_id))
+        user_msg_ids = user_msgs_result.scalars().all()
+        
+        if user_msg_ids:
+            # 批量更新引用了这些消息的记录
+            await db.execute(
+                update(IMMessage)
+                .where(IMMessage.reply_to_id.in_(user_msg_ids))
+                .values(reply_to_id=None)
+            )
+        
+        # 4.2 删除用户发送的消息
+        await db.execute(
+            delete(IMMessage)
+            .where(IMMessage.sender_id == user_id)
+        )
+        
+        # 5. 删除会话成员记录 (这是最报 IntegrityError 的地方)
+        await db.execute(
+            delete(IMConversationMember)
+            .where(IMConversationMember.user_id == user_id)
+        )
+        
+        # 提交一次更改，确保IM数据清理完成
+        await db.flush()
+        
+    except ImportError:
+        # IM模块未安装或未启用
+        pass
+    except Exception as e:
+        logger.error(f"Error cleaning up IM data for user {user_id}: {e}")
+        # 如果清理IM数据失败，记录日志，但继续尝试删除用户(可能会再次失败抛出异常)
+        # 或者可以选择抛出异常终止
+        raise HTTPException(status_code=500, detail=f"删除关联数据失败: {str(e)}")
+
     await db.delete(user)
     await db.commit()
     
@@ -571,6 +638,11 @@ async def update_permissions(
     # 去重
     perms = list(dict.fromkeys(perms))
 
+    # 智能判定：如果当前权限集与所属角色的默认权限集完全一致，则清空个人直接权限
+    # 这样该用户将处于“跟随角色同步”状态，角色的权限变动会自动体现在用户身上
+    if group and set(perms) == set(group.permissions or []):
+        perms = []
+
     # 根据用户组和权限同步 role 字段，确保一致性
     # 规则：
     # 1. admin 组 -> role="admin", permissions=["*"]（不可收紧）
@@ -615,11 +687,12 @@ async def update_permissions(
         "role_ids": user.role_ids
     }, "权限已更新")
 
+from schemas.user import UserUpdateAdmin
 
 @router.put("/{user_id}")
 async def update_user(
     user_id: int,
-    data: UserUpdate,
+    data: UserUpdateAdmin,
     current_user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -641,25 +714,33 @@ async def update_user(
     if current_user.role == "manager" and user.role in ("manager", "admin"):
         raise HTTPException(status_code=403, detail="业务管理员不能操作其他管理员账户")
     
-    # 更新字段
-    if data.nickname is not None:
-        user.nickname = data.nickname
+    # data 是 Pydantic 模型，直接访问属性
+    # 注意：如果客户端发送了未定义的字段，Pydantic 默认会忽略，但如果是旧版本的 Pydantic 或者模型定义没更新，可能会有问题
+    # 这里我们使用 dict() 或 model_dump() 来安全访问
+    update_data = data.model_dump(exclude_unset=True)
+    logger.debug(f"User {user_id} update payload: {update_data}")
     
-    if data.phone is not None:
+    if "nickname" in update_data:
+        user.nickname = update_data["nickname"]
+    
+    if "phone" in update_data:
         # 检查手机号是否被其他用户占用
-        if data.phone:
+        phone = update_data["phone"]
+        if phone:
             existing = await db.execute(
-                select(User).where(User.phone == data.phone, User.id != user.id)
+                select(User).where(User.phone == phone, User.id != user.id)
             )
             if existing.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
-        user.phone = data.phone
+        user.phone = phone
     
-    if data.avatar is not None:
-        user.avatar = data.avatar
+    if "avatar" in update_data:
+        user.avatar = update_data["avatar"]
     
-    if data.storage_quota is not None:
-        user.storage_quota = data.storage_quota
+    if "storage_quota" in update_data:
+        new_quota = update_data["storage_quota"]
+        logger.debug(f"Updating storage_quota for user {user.id} to {new_quota}")
+        user.storage_quota = new_quota
     
     await db.commit()
     await db.refresh(user)

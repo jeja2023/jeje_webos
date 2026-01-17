@@ -50,5 +50,5 @@ manifest = ModuleManifest(
     kernel_version=">=1.0.0",
     
     # 是否启用
-    enabled=True,
+    enabled=False,
 )

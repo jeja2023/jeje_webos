@@ -9,22 +9,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 
 from core.database import get_db
-from core.security import get_current_user, TokenData, require_admin, require_manager, decode_token
+from core.security import get_current_user, get_optional_user, TokenData, require_admin, require_manager, decode_token
 from core.config import get_settings, reload_settings
 from core.loader import get_module_loader, CORE_MODULES
 from core.rate_limit import get_rate_limiter
 from core.csrf import generate_csrf_token
 from core.changelog import get_changelog, get_latest_version, get_version_changes
-from models import User, ModuleConfig, SystemLog, UserModule
+from models import User, ModuleConfig, SystemLog, UserModule, UserGroup
 from schemas import ModuleToggle, success
 from utils.jwt_rotate import get_jwt_rotator
+import logging
 
 router = APIRouter(prefix="/api/v1/system", tags=["系统"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/init")
 async def system_init(
-    token: Optional[str] = None,
+    current_user: Optional[TokenData] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -34,22 +36,30 @@ async def system_init(
     """
     # 尝试解析用户
     user_info = None
-    if token:
-        token_data = decode_token(token)
-        if token_data:
-            result = await db.execute(select(User).where(User.id == token_data.user_id))
-            user = result.scalar_one_or_none()
-            if user and user.is_active:
-                user_info = {
-                    "id": user.id,
-                    "username": user.username,
-                    "nickname": user.nickname,
-                    "avatar": user.avatar,
-                    "role": user.role,
-                    "permissions": user.permissions or [],
-                    "role_ids": user.role_ids or [],
-                    "settings": user.settings or {}
-                }
+    if current_user:
+        result = await db.execute(select(User).where(User.id == current_user.user_id))
+        user = result.scalar_one_or_none()
+        if user and user.is_active:
+            # 汇总权限：直接权限 + 角色权限（并集，实现自动增减同步）
+            all_perms = list(user.permissions or [])
+            if user.role_ids:
+                role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
+                roles = role_result.scalars().all()
+                for r in roles:
+                    if r.permissions:
+                        all_perms.extend(r.permissions)
+            all_perms = list(set(all_perms))
+
+            user_info = {
+                "id": user.id,
+                "username": user.username,
+                "nickname": user.nickname,
+                "avatar": user.avatar,
+                "role": user.role,
+                "permissions": all_perms,  # 返回最终确定的全量权限
+                "role_ids": user.role_ids or [],
+                "settings": user.settings or {}
+            }
     
     # 获取已加载模块
     modules = []
@@ -61,6 +71,8 @@ async def system_init(
     user_modules = {}
     if user_info and user_info.get("role") != "admin":
         user_id = user_info.get("id")
+        
+        # 1. 获取个性化模块安装状态
         if user_id:
             result = await db.execute(
                 select(UserModule).where(
@@ -71,6 +83,7 @@ async def system_init(
             user_modules = {um.module_id: um for um in result.scalars().all()}
     
     if loader:
+        # perms 已经在 user_info["permissions"] 中汇总过一次，由于 system_init 内部 fetch 了 DB，这里直接用最新的
         perms = user_info.get("permissions") if user_info else []
         is_admin = bool(user_info and user_info.get("role") == "admin")
         for manifest in loader.get_loaded_modules():
@@ -79,27 +92,49 @@ async def system_init(
             is_enabled = state.enabled if state else manifest.enabled
             
             # 权限判定：管理员全量；普通用户需模块权限且模块启用
+            # 兼容性修复：确保权限列表中包含精确匹配的 module_id (例如 "im")
             has_perm = is_admin or ("*" in (perms or [])) or any(
-                p.startswith(manifest.id + ".") for p in (perms or [])
+                p == manifest.id or p.startswith(manifest.id + ".") for p in (perms or [])
             )
             
             # 用户级模块过滤（普通用户）
-            # 如果用户有模块配置记录，则只显示用户已安装且启用的模块
-            # 如果用户没有任何配置记录（新用户），则显示所有系统启用的模块
+            # 逻辑：
+            # 1. 如果是核心模块，始终可见
+            # 2. 如果用户没有任何配置记录（新用户），则显示所有系统启用的模块
+            # 3. 如果用户有配置记录，则遵从用户个人的安装/启用状态
             user_module_ok = True
+            user_installed = True  # 默认为 True (针对新用户)
+            user_enabled = True    # 默认为 True (针对新用户)
+            
+            is_core = manifest.id in CORE_MODULES or manifest.id in ['market', 'apps']
+            
             if not is_admin and user_modules:
                 user_mod = user_modules.get(manifest.id)
-                user_module_ok = user_mod is not None and user_mod.installed and user_mod.enabled
+                if user_mod:
+                    user_module_ok = user_mod.installed and user_mod.enabled
+                    user_installed = user_mod.installed
+                    user_enabled = user_mod.enabled
+                else:
+                    # 如果不是核心模块且用户未安装，则不显示
+                    if not is_core:
+                        user_module_ok = False
+                        user_installed = False
+                        user_enabled = False
+            
+            # 实际可见性判定条件
+            visible_condition = is_admin or (has_perm and is_enabled and (user_module_ok or is_core))
             
             # 模块列表：普通用户只返回有权限且启用且用户已安装的模块；管理员返回全部
-            if is_admin or (has_perm and is_enabled and user_module_ok):
+            if is_admin or (has_perm and is_enabled and (user_module_ok or is_core)):
                 modules.append({
                     "id": manifest.id,
                     "name": manifest.name,
                     "version": manifest.version,
                     "description": manifest.description,
                     "icon": manifest.icon,
-                    "enabled": is_enabled,
+                    "enabled": is_enabled,       # 系统启用状态
+                    "user_installed": user_installed, # 用户安装状态
+                    "user_enabled": user_enabled,     # 用户启用状态
                     "router_prefix": manifest.router_prefix,
                     "menu": manifest.menu,
                     "visible": True,  # 标记可见
@@ -126,6 +161,8 @@ async def system_init(
                         "description": manifest.description,
                         "icon": manifest.icon,
                         "enabled": is_enabled,
+                        "user_installed": user_installed,
+                        "user_enabled": user_enabled,
                         "router_prefix": manifest.router_prefix,
                         "menu": manifest.menu,
                         "visible": False,
@@ -282,30 +319,48 @@ async def toggle_module(
         db.add(config)
     
     # 同步更新 loader 状态
+    # 同步更新 loader 状态
     loader = get_module_loader()
     if loader:
-        # 更新 _states 中的状态
-        if module_id in loader._states:
-            loader._states[module_id].enabled = data.enabled
-            loader._save_states()
-        
-        # 同步更新当前加载的 manifest 状态（前端立即生效）
-        manifest = next((m for m in loader.get_loaded_modules() if m.id == module_id), None)
-        if manifest:
-            manifest.enabled = data.enabled
+        if data.enabled:
+            # 启用流程
+            # 1. 先更新状态为启用 (否则 load_module 会因为 state.enabled=False 而拒绝加载)
+            loader.set_module_enabled(module_id, True)
+            
+            # 2. 如果尚未加载到内存，先尝试加载
+            if module_id not in loader.modules:
+                if not loader.load_module(module_id):
+                    # 如果加载失败，需要回滚状态
+                    loader.set_module_enabled(module_id, False)
+                    raise HTTPException(status_code=500, detail="加载模块代码失败")
+            
+            # 3. 更新已加载的 manifest 状态
+            loaded = loader.modules.get(module_id)
+            if loaded:
+                loaded.manifest.enabled = True
+                # 4. 调用 on_enable 钩子
+                if loaded.manifest.on_enable:
+                    try:
+                        await loaded.manifest.on_enable()
+                    except Exception as e:
+                        logger.error(f"模块 {module_id} 启用钩子执行失败: {e}")
+        else:
+            # 禁用流程 (直接调用 loader 的 disable_module，它会处理钩子和状态)
+            await loader.disable_module(module_id)
 
     # 记录审计日志
     log = SystemLog(
         level="INFO",
         module="system",
         action="module.toggle",
-        message=f"模块 {module_id} -> {'enabled' if data.enabled else 'disabled'}",
+        message=f"模块 {module_id} -> {'已启用' if data.enabled else '已禁用'}",
         user_id=current_user.user_id,
     )
     db.add(log)
 
     await db.commit()
     
+    logger.info(f"管理员 {current_user.username} {'启用' if data.enabled else '禁用'}系统模块 {module_id}")
     return success({
         "module_id": module_id,
         "enabled": data.enabled,

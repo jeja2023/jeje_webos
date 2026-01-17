@@ -8,7 +8,7 @@ class MapTrail(Base):
     __tablename__ = "map_trails"
     __table_args__ = {"comment": "地图轨迹元数据及样式持久化表"}
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="主键ID")
     user_id = Column(Integer, index=True, comment="所属用户ID")
     filename = Column(String(255), nullable=False, comment="显示文件名")
     file_path = Column(String(500), nullable=False, comment="物理存储相对路径")
@@ -31,7 +31,7 @@ class MapConfig(Base):
     __tablename__ = "map_configs"
     __table_args__ = {"comment": "用户地图个性化配置表"}
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="主键ID")
     user_id = Column(Integer, ForeignKey("sys_users.id"), unique=True, index=True, comment="所属用户ID")
     
     # 地图状态
@@ -50,7 +50,7 @@ class MapMarker(Base):
     __tablename__ = "map_markers"
     __table_args__ = {"comment": "用户自定义地理标记点表"}
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="主键ID")
     user_id = Column(Integer, index=True, comment="用户ID")
     name = Column(String(100), nullable=False, comment="标记点名称")
     lat = Column(Float, nullable=False, comment="纬度")
@@ -68,7 +68,7 @@ class MapTileSource(Base):
     __tablename__ = "map_tile_sources"
     __table_args__ = {"comment": "离线瓦片资源元数据表"}
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="主键ID")
     name = Column(String(100), unique=True, nullable=False, comment="源标识名称")
     display_name = Column(String(100), comment="显示名称")
     storage_path = Column(String(500), nullable=False, comment="瓦片物理路径")

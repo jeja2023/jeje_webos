@@ -377,8 +377,13 @@ class ModuleLoader:
         if is_new_install and not install and module_id not in CORE_MODULES:
             return False
 
-        if not manifest.enabled:
-            logger.info(f"模块已禁用: {module_id}")
+        # 优先使用持久化状态中的启用配置
+        is_enabled = manifest.enabled
+        if state:
+            is_enabled = state.enabled
+            
+        if not is_enabled and not install:
+            logger.debug(f"模块已禁用: {module_id}")
             return False
         
         # 2. 检查依赖

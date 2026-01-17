@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 async def on_enable():
     """模块启用时执行"""
-    logger.info("密码箱模块已启用")
+    logger.debug("密码箱模块已启用")
 
 
 manifest = ModuleManifest(
@@ -44,5 +44,5 @@ manifest = ModuleManifest(
     ],
     
     on_enable=on_enable,
-    enabled=True
+    enabled=False
 )

@@ -40,5 +40,5 @@ manifest = ModuleManifest(
     
     dependencies=[],
     
-    enabled=True,
+    enabled=False,
 )

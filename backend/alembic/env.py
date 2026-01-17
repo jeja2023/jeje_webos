@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -94,6 +94,10 @@ def run_migrations_offline() -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+        # 为 alembic_version 添加注释（仅限 MySQL）
+        if context.get_bind().dialect.name == 'mysql':
+            context.execute(text("ALTER TABLE alembic_version COMMENT '数据库迁移版本表'"))
+            context.execute(text("ALTER TABLE alembic_version MODIFY COLUMN version_num VARCHAR(32) NOT NULL COMMENT '版本号'"))
 
 
 def do_run_migrations(connection: Connection) -> None:
@@ -107,6 +111,10 @@ def do_run_migrations(connection: Connection) -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+        # 为 alembic_version 添加注释（仅限 MySQL）
+        if connection.dialect.name == 'mysql':
+            connection.execute(text("ALTER TABLE alembic_version COMMENT '数据库迁移版本表'"))
+            connection.execute(text("ALTER TABLE alembic_version MODIFY COLUMN version_num VARCHAR(32) NOT NULL COMMENT '版本号'"))
 
 
 async def run_async_migrations() -> None:
@@ -134,7 +142,15 @@ def run_migrations_online() -> None:
     
     实际连接数据库并执行迁移
     """
-    asyncio.run(run_async_migrations())
+    # 强制使用临时 SQLite 以生成完整初始镜像（如果检测到特定标志或手动操作）
+    import os
+    if os.environ.get("ALEMBIC_FORCE_SQLITE") == "true":
+        from sqlalchemy import create_engine
+        connectable = create_engine("sqlite:///temp_schema_gen.db")
+        with connectable.connect() as connection:
+            do_run_migrations(connection)
+    else:
+        asyncio.run(run_async_migrations())
 
 
 # 根据环境选择迁移模式
@@ -142,10 +158,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-
-
-
-
-
-
-

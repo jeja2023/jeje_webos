@@ -36,7 +36,7 @@ class TransferSession(Base):
         'comment': '快传会话表'
     }
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     
     # 会话码（6位数字）
     session_code = Column(String(16), unique=True, nullable=False, index=True, comment="传输码")
@@ -84,7 +84,7 @@ class TransferHistory(Base):
         'comment': '快传历史记录表'
     }
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     
     # 用户信息
     user_id = Column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), nullable=False, comment="用户ID")
@@ -126,7 +126,7 @@ class TransferChunk(Base):
         'comment': '快传分块表'
     }
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     
     # 关联会话
     session_id = Column(Integer, ForeignKey(TransferSession.id, ondelete="CASCADE"), nullable=False, comment="会话ID")

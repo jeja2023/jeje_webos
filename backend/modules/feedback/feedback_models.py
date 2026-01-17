@@ -44,7 +44,7 @@ class Feedback(Base):
     __tablename__ = "feedback_feedbacks"
     __table_args__ = {"extend_existing": True, "comment": "反馈表"}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     
     # 基本信息
     title: Mapped[str] = mapped_column(String(200), comment="反馈标题")

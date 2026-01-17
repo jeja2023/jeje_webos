@@ -68,28 +68,28 @@ class KnowledgeEntity(Base):
     __tablename__ = "knowledge_entities"
     __table_args__ = ({'comment': '知识实体表'},)
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
-    node_id: Mapped[int] = mapped_column(ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, comment="主键ID")
+    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, comment="所属知识库ID")
+    node_id: Mapped[int] = mapped_column(ForeignKey("knowledge_nodes.id", ondelete="CASCADE"), nullable=False, comment="关联节点ID")
     
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 人物, 机构, 地点, 概念...
-    description: Mapped[str] = mapped_column(Text, nullable=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, comment="实体名称")
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="实体类型")  # 人物, 机构, 地点, 概念...
+    description: Mapped[str] = mapped_column(Text, nullable=True, comment="详细描述")
     
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
 
 class KnowledgeRelation(Base):
     """知识关系 (用于知识图谱)"""
     __tablename__ = "knowledge_relations"
     __table_args__ = ({'comment': '知识关系表'},)
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, comment="主键ID")
+    base_id: Mapped[int] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, comment="所属知识库ID")
     
-    source_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False)
-    target_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False)
+    source_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False, comment="源实体ID")
+    target_id: Mapped[int] = mapped_column(ForeignKey("knowledge_entities.id", ondelete="CASCADE"), nullable=False, comment="目标实体ID")
     
-    relation_type: Mapped[str] = mapped_column(String(100), nullable=False)  # 属于, 位于, 合作, 包含...
-    description: Mapped[str] = mapped_column(Text, nullable=True)
+    relation_type: Mapped[str] = mapped_column(String(100), nullable=False, comment="关系类型")  # 属于, 位于, 合作, 包含...
+    description: Mapped[str] = mapped_column(Text, nullable=True, comment="关系描述")
     
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")

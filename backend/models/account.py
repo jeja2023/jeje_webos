@@ -5,7 +5,7 @@
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, Boolean, DateTime, JSON
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -27,7 +27,7 @@ class User(Base):
     permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="权限列表")
     role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="角色ID列表")
     settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict, comment="个性化设置")
-    storage_quota: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="存储配额(字节)")
+    storage_quota: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, comment="存储配额(字节)")
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否激活")
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="最后登录时间")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")

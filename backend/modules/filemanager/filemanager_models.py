@@ -20,7 +20,7 @@ class VirtualFolder(Base):
         {"extend_existing": True, "comment": "文件管理虚拟文件夹表"}
     )
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     name = Column(String(255), nullable=False, comment="文件夹名称")
     parent_id = Column(Integer, ForeignKey("fm_folders.id", ondelete="CASCADE"), nullable=True, comment="父文件夹ID")
     user_id = Column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), nullable=False, comment="所属用户ID")
@@ -42,7 +42,7 @@ class VirtualFile(Base):
         {"extend_existing": True, "comment": "文件管理虚拟文件表"}
     )
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     name = Column(String(255), nullable=False, comment="文件名")
     folder_id = Column(Integer, ForeignKey("fm_folders.id", ondelete="CASCADE"), nullable=True, comment="所属文件夹ID")
     user_id = Column(Integer, ForeignKey("sys_users.id", ondelete="CASCADE"), nullable=False, comment="所属用户ID")

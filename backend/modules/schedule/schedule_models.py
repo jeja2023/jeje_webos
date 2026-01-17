@@ -38,7 +38,7 @@ class ScheduleEvent(Base):
     __tablename__ = "schedule_events"
     __table_args__ = {'extend_existing': True, 'comment': '日程事件表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id), comment="用户ID")
     title: Mapped[str] = mapped_column(String(200), nullable=False, comment="日程标题")
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="详细描述")
@@ -75,7 +75,7 @@ class ScheduleReminder(Base):
     __tablename__ = "schedule_reminders"
     __table_args__ = {'extend_existing': True, 'comment': '日程提醒表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     event_id: Mapped[int] = mapped_column(ForeignKey("schedule_events.id", ondelete="CASCADE"), comment="关联日程ID")
     remind_before_minutes: Mapped[int] = mapped_column(Integer, default=15, comment="提前提醒分钟数")
     remind_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="提醒时间")
@@ -91,7 +91,7 @@ class ScheduleCategory(Base):
     __tablename__ = "schedule_categories"
     __table_args__ = {'extend_existing': True, 'comment': '日程分类表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id), comment="用户ID")
     name: Mapped[str] = mapped_column(String(50), nullable=False, comment="分类名称")
     color: Mapped[str] = mapped_column(String(20), default="#3b82f6", comment="分类颜色")

@@ -302,7 +302,7 @@ const Store = {
             if (isAdmin) return true;
             if (!m.enabled) return false;
             if (perms.includes('*')) return true;
-            return perms.some(p => p.startsWith(`${m.id}.`));
+            return perms.some(p => p === m.id || p.startsWith(`${m.id}.`));
         }).map(m => ({ ...m, visible: true }));
     },
 
@@ -318,7 +318,7 @@ const Store = {
         const hasModulePerm = (moduleId) => {
             if (isAdmin) return true;
             if (perms.includes('*')) return true;
-            return perms.some(p => p.startsWith(`${moduleId}.`));
+            return perms.some(p => p === moduleId || p.startsWith(`${moduleId}.`));
         };
         return (menus || []).filter(menu => {
             if (!menu.module) return true;

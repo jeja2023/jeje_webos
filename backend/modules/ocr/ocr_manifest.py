@@ -32,5 +32,5 @@ manifest = ModuleManifest(
         "ocr.admin"
     ],
     
-    enabled=True
+    enabled=False,
 )

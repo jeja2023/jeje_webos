@@ -18,7 +18,7 @@ class Course(Base):
     __tablename__ = "course_courses"
     __table_args__ = {'extend_existing': True, 'comment': '课程表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     title: Mapped[str] = mapped_column(String(200), nullable=False, comment="课程标题")
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="课程描述")
     cover_image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="封面图片")
@@ -39,7 +39,7 @@ class CourseChapter(Base):
     __tablename__ = "course_chapters"
     __table_args__ = {'extend_existing': True, 'comment': '课程章节表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     course_id: Mapped[int] = mapped_column(ForeignKey("course_courses.id", ondelete="CASCADE"), comment="所属课程ID")
     title: Mapped[str] = mapped_column(String(200), nullable=False, comment="章节标题")
     content: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="章节内容（Markdown）")
@@ -58,7 +58,7 @@ class CourseEnrollment(Base):
     __tablename__ = "course_enrollments"
     __table_args__ = {'extend_existing': True, 'comment': '课程报名记录表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id), comment="用户ID")
     course_id: Mapped[int] = mapped_column(ForeignKey("course_courses.id", ondelete="CASCADE"), comment="课程ID")
     progress: Mapped[float] = mapped_column(Float, default=0, comment="学习进度 0-100")
@@ -72,7 +72,7 @@ class CourseChapterProgress(Base):
     __tablename__ = "course_chapter_progress"
     __table_args__ = {'extend_existing': True, 'comment': '章节学习进度表'}
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id), comment="用户ID")
     chapter_id: Mapped[int] = mapped_column(ForeignKey("course_chapters.id", ondelete="CASCADE"), comment="章节ID")
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否完成")

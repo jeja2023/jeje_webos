@@ -35,5 +35,5 @@ manifest = ModuleManifest(
         "ai.admin" 
     ],
     
-    enabled=True
+    enabled=False
 )

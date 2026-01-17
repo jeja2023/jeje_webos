@@ -34,7 +34,5 @@ manifest = ModuleManifest(
         "blog.delete"
     ],
     
-    enabled=True
+    enabled=False,
 )
-
-

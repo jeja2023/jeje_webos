@@ -146,7 +146,8 @@ async def lifespan(app: FastAPI):
     
     # 5. 初始化缓存
     if not await init_cache():
-        logger.warning("⚠️ Redis 缓存未启用")
+        # init_cache 内部已有详细日志，此处不再重复警告
+        pass
     
     # 6. 初始化默认数据（管理员与角色）
     try:

@@ -85,7 +85,7 @@ async def list_market_modules(
         
         # 用户组权限检查：管理员全量；普通用户需模块权限
         has_perm = is_admin or ("*" in user_perms) or any(
-            p.startswith(mid + ".") for p in user_perms
+            p == mid or p.startswith(mid + ".") for p in user_perms
         )
         
         # 对于普通用户：只显示系统已启用且有权限的模块
@@ -315,7 +315,7 @@ async def user_install_module(
     # 检查用户组权限
     user_perms = current_user.permissions or []
     has_perm = current_user.role == 'admin' or ("*" in user_perms) or any(
-        p.startswith(module_id + ".") for p in user_perms
+        p == module_id or p.startswith(module_id + ".") for p in user_perms
     )
     if not has_perm:
         raise HTTPException(status_code=403, detail="您没有权限安装此模块")
@@ -348,7 +348,7 @@ async def user_install_module(
         db.add(user_module)
     
     await db.commit()
-    logger.info(f"用户 {user_id} 安装模块 {module_id}")
+    logger.info(f"用户 {current_user.username} 安装模块 {module_id}")
     return success(None, f"模块安装成功")
 
 
@@ -373,7 +373,7 @@ async def user_uninstall_module(
         user_module.installed = False
         user_module.enabled = False
         await db.commit()
-        logger.info(f"用户 {user_id} 卸载模块 {module_id}")
+        logger.info(f"用户 {current_user.username} 卸载模块 {module_id}")
     
     return success(None, "模块卸载成功")
 
@@ -408,7 +408,7 @@ async def user_toggle_module(
     await db.commit()
     
     action = "启用" if enabled else "禁用"
-    logger.info(f"用户 {user_id} {action}模块 {module_id}")
+    logger.info(f"用户 {current_user.username} {action}模块 {module_id}")
     return success(None, f"模块{action}成功")
 
 

@@ -76,7 +76,7 @@ manifest = ModuleManifest(
     kernel_version=">=1.0.0",
 
     # 是否启用
-    enabled=True,
+    enabled=False,
 
     # 生命周期钩子
     on_install=on_install,

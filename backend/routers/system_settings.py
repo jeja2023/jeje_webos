@@ -153,7 +153,7 @@ async def load_settings_on_startup():
                 window=settings.rate_limit_window,
                 block_duration=settings.rate_limit_block_duration
             )
-            logger.info(f"✅ 已应用动态速率限制: {settings.rate_limit_requests}次/{settings.rate_limit_window}秒")
+            logger.debug(f"✅ 已应用动态速率限制: {settings.rate_limit_requests}次/{settings.rate_limit_window}秒")
             
     except Exception as e:
         logger.warning(f"⚠️  加载动态系统设置失败: {e}")

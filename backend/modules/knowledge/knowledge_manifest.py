@@ -33,5 +33,5 @@ manifest = ModuleManifest(
         "knowledge.admin" 
     ],
     
-    enabled=True
+    enabled=False,
 )

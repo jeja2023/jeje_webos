@@ -41,6 +41,24 @@ rate_limiter.configure_route("/api/v1/auth/register", requests=10, window=60, bl
 rate_limiter.configure_route("/api/v1/auth/password", requests=10, window=60, block_duration=300)  # 10次/分钟
 
 
+async def resolve_user_permissions(user: User, db: AsyncSession) -> list[str]:
+    """获取用户最终权限：汇总直接权限与所属角色的全部权限（实现自动增减同步）。"""
+    # 汇总直接权限
+    perms = list(user.permissions or [])
+    
+    # 汇总角色关联的权限
+    role_ids = user.role_ids or []
+    if role_ids:
+        role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(role_ids)))
+        roles = role_result.scalars().all()
+        for r in roles:
+            if r.permissions:
+                perms.extend(r.permissions)
+    
+    # 去重
+    return list(set(perms))
+
+
 @router.post("/register")
 async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     """用户注册"""
@@ -125,8 +143,10 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     user.last_login = get_beijing_time()
     await db.commit()
     
+    # 获取全量权限（直接权限 + 角色权限）
+    permissions = await resolve_user_permissions(user, db)
+    
     # 生成令牌对（访问令牌 + 刷新令牌）
-    permissions = user.permissions if isinstance(user.permissions, list) else []
     token_data = TokenData(
         user_id=user.id,
         username=user.username,
@@ -277,7 +297,7 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="用户不存在或已被禁用")
     
     # 生成新的令牌对
-    permissions = user.permissions if isinstance(user.permissions, list) else []
+    permissions = await resolve_user_permissions(user, db)
     new_token_data = TokenData(
         user_id=user.id,
         username=user.username,

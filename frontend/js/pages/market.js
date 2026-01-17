@@ -28,7 +28,10 @@ class AppCenterMarketPage extends Component {
                 modules = Array.isArray(res) ? res : (res.data || []);
                 Store.set('modules', modules);
             } else {
-                modules = Store.get('modules') || [];
+                // 普通用户需要刷新"我的应用"列表（基于最新的 user_modules 状态）
+                const res = await Api.get('/system/init');
+                modules = res.data?.modules || [];
+                Store.set('modules', modules);
             }
 
             this.setState({
@@ -235,7 +238,8 @@ class AppCenterMarketPage extends Component {
         if (this.state.processingId) return;
 
         const action = module.enabled ? '禁用' : '启用';
-        if (['blog', 'notes', 'feedback'].includes(module.id) && module.enabled) {
+        // 核心模块警告：不再包含 blog, notes, feedback
+        if (['system', 'auth', 'user', 'boot'].includes(module.id) && module.enabled) {
             const confirm = await Modal.confirm(`禁用 ${module.name}`, `警告：禁用核心模块可能会导致相关功能不可用。确定要继续吗？`);
             if (!confirm) return;
         }
