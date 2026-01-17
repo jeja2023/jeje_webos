@@ -303,6 +303,7 @@ class AppCenterMarketPage extends Component {
             'ocr': { ri: 'ri-scan-2-line', gradient: 'gradient-cyan' },
             'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
             'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
+            'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
         };
 
         return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || '📦' };

@@ -101,14 +101,22 @@ const Api = {
                         } else {
                             errorMessage = data.detail;
                         }
+                    } else if (data.message) {
+                        errorMessage = data.message;
                     }
 
-                    throw new Error(errorMessage);
+                    const err = new Error(errorMessage);
+                    err.status = response.status;
+                    err.isBusinessError = response.status < 500; // 500以下通常视为业务或客户端错误
+                    throw err;
                 }
 
                 // 业务错误（自定义响应格式）
                 if (data.code && data.code !== 200) {
-                    throw new Error(data.message || '请求失败');
+                    const err = new Error(data.message || '请求失败');
+                    err.code = data.code;
+                    err.isBusinessError = true;
+                    throw err;
                 }
 
                 return data;
@@ -117,12 +125,20 @@ const Api = {
             // 非 JSON 响应（如文件流）
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(errorText || '请求失败');
+                const err = new Error(errorText || '请求失败');
+                err.status = response.status;
+                err.isBusinessError = response.status < 500;
+                throw err;
             }
 
             return await response.blob();
         } catch (error) {
-            Config.error('请求失败:', error);
+            // 只有非业务类错误（如网络断开、服务器500崩溃）才输出严重的 Error 日志
+            if (!error.isBusinessError) {
+                Config.error('请求失败:', error);
+            } else {
+                Config.log(`[API Business Error] ${error.message}`);
+            }
             throw error;
         }
     },
@@ -130,7 +146,7 @@ const Api = {
     /**
      * GET请求
      */
-    async get(url, params = {}) {
+    async get(url, params = {}, options = {}) {
         const qs = new URLSearchParams();
         Object.entries(params || {}).forEach(([k, v]) => {
             if (v === undefined || v === null || v === '') return;
@@ -138,34 +154,54 @@ const Api = {
         });
         const queryString = qs.toString();
         const fullUrl = queryString ? `${url}?${queryString}` : url;
-        return this.request(fullUrl, { method: 'GET' });
+        return this.request(fullUrl, {
+            method: 'GET',
+            ...options,
+            headers: {
+                ...options.headers
+            }
+        });
     },
 
     /**
      * POST请求
      */
-    async post(url, data = {}) {
+    async post(url, data = {}, options = {}) {
         return this.request(url, {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            ...options,
+            headers: {
+                ...options.headers
+            }
         });
     },
 
     /**
      * PUT请求
      */
-    async put(url, data = {}) {
+    async put(url, data = {}, options = {}) {
         return this.request(url, {
             method: 'PUT',
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            ...options,
+            headers: {
+                ...options.headers
+            }
         });
     },
 
     /**
      * DELETE请求
      */
-    async delete(url) {
-        return this.request(url, { method: 'DELETE' });
+    async delete(url, options = {}) {
+        return this.request(url, {
+            method: 'DELETE',
+            ...options,
+            headers: {
+                ...options.headers
+            }
+        });
     },
 
     /**

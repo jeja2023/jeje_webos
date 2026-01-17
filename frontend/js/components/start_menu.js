@@ -173,7 +173,8 @@ class StartMenuComponent extends Component {
             'exam': { ri: 'ri-file-list-3-line' },
             'ocr': { ri: 'ri-scan-2-line' },
             'course': { ri: 'ri-book-open-line' },
-            'schedule': { ri: 'ri-calendar-schedule-line' }
+            'schedule': { ri: 'ri-calendar-schedule-line' },
+            'vault': { ri: 'ri-shield-keyhole-line' }
         };
 
         return iconMap[id] || { ri: null, emoji: defaultIcon };

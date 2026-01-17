@@ -15,7 +15,6 @@ import logging
 import traceback
 import warnings
 from contextlib import asynccontextmanager
-
 import uvicorn
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Response

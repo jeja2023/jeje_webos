@@ -2,7 +2,7 @@
 
 > 🖥️ **基于 FastAPI + 微内核架构的现代 Web 桌面操作系统**
 
-[![Python 3.12+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
 
@@ -34,7 +34,7 @@
 - **📊 数据分析 (Analysis)**：ETL 数据建模（含机器学习回归、高级数学运算）、BI 数据大屏、图表分析（柱状/折线/饼图/散点/桑基图等）
 - **🗺️ 智能地图 (Smart Map)**：支持离线/在线双模式、GPS 轨迹回放、热力图分析、多图层叠加与路径测距
 - **💬 即时通讯 (IM)**：端到端加密聊天、群组管理、文件/图片发送、消息聚合显示、引用回复、撤回功能
-
+- **🔐 密码保险箱 (Vault)**：AES-256 加密存储、主密码保护（PBKDF2）、恢复码重置机制、密码强度检测、随机密码生成、自动锁定、剪贴板安全自动清除、隐私自动隐藏
 
 
 ### ⚙️ 系统管理

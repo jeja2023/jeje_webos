@@ -285,6 +285,11 @@ const App = {
             '/schedule/calendar': { auth: true, handler: wrap(SchedulePage, '日历视图') },
             '/schedule/list': { auth: true, handler: wrap(SchedulePage, '我的日程') },
             '/schedule/reminders': { auth: true, handler: wrap(SchedulePage, '提醒中心') },
+
+            // 密码保险箱
+            '/vault': { auth: true, handler: wrap(VaultPage, '密码箱') },
+            '/vault/list': { auth: true, handler: wrap(VaultPage, '我的密码') },
+            '/vault/categories': { auth: true, handler: wrap(VaultPage, '分类管理') },
         });
 
     },
