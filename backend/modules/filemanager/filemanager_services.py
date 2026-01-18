@@ -210,6 +210,7 @@ class FileManagerService:
         
         # 删除文件夹记录
         await self.db.delete(folder)
+        await self.db.flush()
         await self.db.commit()
         
         logger.info(f"用户 {self.user_id} 删除文件夹: {folder.path}")
@@ -422,6 +423,7 @@ class FileManagerService:
             
             # 删除记录（即使物理文件不存在也删除记录，保持数据一致性）
             await self.db.delete(file)
+            await self.db.flush()
             await self.db.commit()
             
             logger.info(f"用户 {self.user_id} 删除文件: {file.name}")

@@ -496,6 +496,7 @@ async def delete_history(
         raise HTTPException(status_code=404, detail="记录不存在或无权删除")
     
     await db.delete(history)
+    await db.flush()
     await db.commit()
     
     return {

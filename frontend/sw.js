@@ -12,11 +12,11 @@ const PRECACHE_ASSETS = [
 
 // 安装阶段：预缓存核心资源
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] 正在安装...');
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('[Service Worker] 正在缓存应用核心资源');
+
                 // 尝试缓存核心资源，即使某些失败也不阻断安装
                 return cache.addAll(PRECACHE_ASSETS).catch(err => {
                     console.warn('[Service Worker] 预缓存失败，继续执行:', err);
@@ -28,12 +28,12 @@ self.addEventListener('install', (event) => {
 
 // 激活阶段：清理旧缓存
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] 正在激活...');
+
     event.waitUntil(
         caches.keys().then((keyList) => {
             return Promise.all(keyList.map((key) => {
                 if (key !== CACHE_NAME) {
-                    console.log('[Service Worker] 移除旧缓存', key);
+
                     return caches.delete(key);
                 }
             }));

@@ -273,6 +273,7 @@ class ImportService:
             logger.warning(f"从 DuckDB 删除表失败: {e}")
 
         await db.delete(dataset)
+        await db.flush()
         await db.commit()
         return True
 

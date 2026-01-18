@@ -127,6 +127,7 @@ async def delete_role(
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
     await db.execute(delete(UserGroup).where(UserGroup.id == role_id))
+    await db.flush()
     await db.commit()
     return success(message="删除成功")
 

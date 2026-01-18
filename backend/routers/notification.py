@@ -310,6 +310,7 @@ async def delete_notification(
         raise HTTPException(status_code=404, detail="通知不存在")
     
     await db.delete(notification)
+    await db.flush()
     await db.commit()
     
     return success(message="通知已删除")
@@ -336,6 +337,7 @@ async def delete_all_notifications(
         await db.delete(notification)
     
     await db.commit()
+    await db.flush()
     
     return success({"count": len(notifications)}, f"已删除 {len(notifications)} 条通知")
 

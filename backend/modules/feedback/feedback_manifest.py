@@ -35,5 +35,5 @@ manifest = ModuleManifest(
         "feedback.admin"      # 管理所有反馈（管理员）
     ],
     
-    enabled=False,
+    enabled=True,
 )

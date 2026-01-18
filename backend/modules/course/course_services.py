@@ -109,6 +109,7 @@ class CourseService:
             return False
             
         await db.delete(course)
+        await db.flush()
         await db.commit()
         logger.info(f"课程已删除: {course_id}")
         return True
@@ -206,6 +207,7 @@ class ChapterService:
             return False
             
         await db.delete(chapter)
+        await db.flush()
         await db.commit()
         return True
 

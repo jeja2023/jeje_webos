@@ -128,6 +128,7 @@ class SmartTableService:
         if table:
             await db.execute(delete(AnalysisSmartTableData).where(AnalysisSmartTableData.table_id == table_id))
             await db.delete(table)
+            await db.flush()
             await db.commit()
 
     # --- 数据行操作 ---
@@ -183,6 +184,7 @@ class SmartTableService:
         if row:
             table_id = row.table_id
             await db.delete(row)
+            await db.flush()
             await db.commit()
             
             # 自动同步

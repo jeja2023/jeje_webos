@@ -1,5 +1,5 @@
 """
-博客模块测试配置
+相册模块测试配置
 使用pytest_plugins导入共享的测试fixtures
 """
 import sys
@@ -11,7 +11,6 @@ backend_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 # 使用pytest_plugins导入共享的fixtures
-
 
 # Added by restore script
 

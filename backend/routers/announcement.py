@@ -200,6 +200,7 @@ async def delete_announcement(
         raise HTTPException(status_code=404, detail="公告不存在")
     
     await db.delete(announcement)
+    await db.flush()
     await db.commit()
     return success(None)
 

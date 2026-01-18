@@ -194,6 +194,7 @@ class VideoService:
             VideoService._delete_video_files(video)
         
         await db.delete(collection)
+        await db.flush()
         logger.info(f"删除视频集: id={collection_id}")
         return True
     
@@ -435,7 +436,10 @@ class VideoService:
             # 删除物理文件
             VideoService._delete_video_files(video)
             await db.delete(video)
-            deleted_count += 1
+        
+        # 刷新数据库以应用删除
+        await db.flush()
+        deleted_count = len(videos)
             
         # 更新相关视频集的视频数量和封面
         if collection_ids:

@@ -11,5 +11,8 @@ backend_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 # 使用pytest_plugins导入共享的fixtures
-pytest_plugins = ["tests.conftest"]
 
+
+# Added by restore script
+
+from tests.test_conftest import *

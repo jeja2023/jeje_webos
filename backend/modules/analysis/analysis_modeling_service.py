@@ -202,5 +202,6 @@ class ModelingService:
         """删除模型"""
         model = await ModelingService.get_model(db, model_id)
         await db.delete(model)
+        await db.flush()
         await db.commit()
         return True

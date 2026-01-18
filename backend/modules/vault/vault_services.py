@@ -327,6 +327,7 @@ class VaultService:
         await self.db.execute(delete(VaultCategory).where(VaultCategory.user_id == self.user_id))
         # 删除主密码
         await self.db.execute(delete(VaultMasterKey).where(VaultMasterKey.user_id == self.user_id))
+        await self.db.flush()
         
         await self.db.commit()
         return True
@@ -468,6 +469,7 @@ class VaultService:
             return False
         
         await self.db.delete(category)
+        await self.db.flush()
         await self.db.commit()
         return True
     
@@ -599,6 +601,7 @@ class VaultService:
             return False
         
         await self.db.delete(item)
+        await self.db.flush()
         await self.db.commit()
         return True
     

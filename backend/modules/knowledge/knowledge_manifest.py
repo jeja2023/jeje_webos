@@ -2,18 +2,21 @@
 知识库模块清单
 """
 
-from core.loader import ModuleManifest
+from core.loader import ModuleManifest, ModuleAssets
 
 manifest = ModuleManifest(
+    # 基本信息
     id="knowledge",
     name="知识库",
     version="1.0.0",
     description="企业级知识管理与文档协作平台",
     icon="📚",
-    author="JeJe",
+    author="JeJe WebOS",
     
+    # 路由配置
     router_prefix="/api/v1/knowledge",
     
+    # 菜单配置
     menu={
         "title": "知识库",
         "icon": "📚",
@@ -25,13 +28,27 @@ manifest = ModuleManifest(
         ]
     },
     
+    # 前端资源
+    assets=ModuleAssets(
+        css=[],
+        js=[]
+    ),
+    
+    # 权限声明
     permissions=[
         "knowledge.read",
         "knowledge.create",
         "knowledge.update",
         "knowledge.delete",
-        "knowledge.admin" 
+        "knowledge.admin"
     ],
     
+    # 模块依赖
+    dependencies=[],
+    
+    # 内核版本要求
+    kernel_version=">=1.0.0",
+    
+    # 是否启用
     enabled=False,
 )

@@ -440,6 +440,7 @@ class IMService:
         target_member = result.scalar_one_or_none()
         if target_member:
             await self.db.delete(target_member)
+            await self.db.flush()
             await self.db.commit()
             return True
         
@@ -747,6 +748,7 @@ class IMService:
             return False
         
         await self.db.delete(contact)
+        await self.db.flush()
         await self.db.commit()
         return True
 

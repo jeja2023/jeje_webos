@@ -55,3 +55,7 @@ def sample_user_id() -> int:
 
 
 # 在此添加更多模块特定的测试夹具...
+
+# Added by restore script
+
+from tests.test_conftest import *

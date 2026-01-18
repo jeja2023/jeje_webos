@@ -103,6 +103,7 @@ class AISessionService:
             return False
         
         await db.delete(session)
+        await db.flush()
         await db.commit()
         return True
     
@@ -174,6 +175,7 @@ class AISessionService:
         
         # 删除旧消息
         await db.execute(delete(AIChatMessage).where(AIChatMessage.session_id == session.id))
+        await db.flush()
         
         # 添加新消息
         for msg_data in messages:

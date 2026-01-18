@@ -1155,6 +1155,7 @@ class DataSourceService:
     async def delete(db: AsyncSession, source: LensDataSource) -> None:
         """删除数据源"""
         await db.delete(source)
+        await db.flush()
 
     @staticmethod
     async def test_connection(source_type: str, config: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1327,6 +1328,7 @@ class CategoryService:
             .values(category_id=None)
         )
         await db.delete(category)
+        await db.flush()
 
 
 # ==================== 视图服务 ====================
@@ -1485,6 +1487,7 @@ class ViewService:
         # 删除相关的收藏和最近访问记录
         await db.execute(delete(LensFavorite).where(LensFavorite.view_id == view_id))
         await db.execute(delete(LensRecentView).where(LensRecentView.view_id == view_id))
+        await db.flush()
         
         # 同步清理所有用户设置中的快捷方式
         # 这种操作在大规模用户下可能性能较差，但在目前系统规模下是安全的
@@ -1510,6 +1513,7 @@ class ViewService:
                     flag_modified(u, "settings")
         
         await db.delete(view)
+        await db.flush()
 
     @staticmethod
     async def increment_view_count(db: AsyncSession, view: LensView) -> None:

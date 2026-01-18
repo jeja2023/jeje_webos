@@ -463,6 +463,7 @@ async def delete_user(
         raise HTTPException(status_code=500, detail=f"删除关联数据失败: {str(e)}")
 
     await db.delete(user)
+    await db.flush()
     await db.commit()
     
     return success(message="用户已删除")

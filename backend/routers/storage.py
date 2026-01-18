@@ -362,6 +362,7 @@ async def delete_file(
     
     # 删除数据库记录
     await db.delete(file_record)
+    await db.flush()
     await db.commit()
     
     return success(message="文件已删除")

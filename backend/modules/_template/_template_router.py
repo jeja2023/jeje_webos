@@ -1,10 +1,9 @@
 """
-{模块名称}模块API路由
-定义 RESTful API 接口
+模块API路由模板定义
 
 使用说明：
-1. 将此文件重命名为 {module_id}_router.py
-2. 替换所有占位符
+1. 将此文件重命名为 xxx_router.py
+2. 替换所有 Template、xxx 等占位符
 """
 
 import logging
@@ -18,13 +17,9 @@ from core.security import get_current_user, require_permission, TokenData
 from core.errors import NotFoundException, success_response, ErrorCode
 from core.pagination import create_page_response
 
-# 模块内部导入
-from .{module_id}_schemas import (
-    {ModuleName}Create,
-    {ModuleName}Update,
-    {ModuleName}Response,
-)
-from .{module_id}_services import {ModuleName}Service
+# 模块内部导入（在具体实现中取消注释并修改名称）
+# from .xxx_schemas import TemplateCreate, TemplateUpdate, TemplateResponse
+# from .xxx_services import TemplateService
 
 logger = logging.getLogger(__name__)
 
@@ -43,30 +38,11 @@ async def get_list(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """
-    获取{模块名称}列表
-    
-    - 支持分页
-    - 支持关键词搜索
-    - 支持状态筛选
-    - 数据按用户隔离
-    """
-    items, total = await {ModuleName}Service.get_list(
-        db,
-        user_id=user.user_id,
-        page=page,
-        page_size=page_size,
-        keyword=keyword,
-        is_active=is_active
-    )
-    
-    return create_page_response(
-        items=[{ModuleName}Response.model_validate(item) for item in items],
-        total=total,
-        page=page,
-        page_size=page_size,
-        message="获取成功"
-    )
+    """获取列表"""
+    # 示例实现
+    # items, total = await TemplateService.get_list(db, ...)
+    # return create_page_response(items=..., total=total, ...)
+    return success_response(data={"items": [], "total": 0})
 
 
 # ==================== 详情查询 ====================
@@ -77,37 +53,21 @@ async def get_detail(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
-    """获取{模块名称}详情"""
-    item = await {ModuleName}Service.get_by_id(db, item_id, user.user_id)
-    if not item:
-        raise NotFoundException("{模块名称}", item_id)
-    
-    return success_response(
-        data={ModuleName}Response.model_validate(item),
-        message="获取成功"
-    )
+    """获取详情"""
+    return success_response(data={})
 
 
 # ==================== 创建 ====================
 
 @router.post("", response_model=dict, summary="创建")
 async def create(
-    data: {ModuleName}Create,
+    data: any, # TemplateCreate
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("{module_id}.create"))
+    user: TokenData = Depends(require_permission("xxx.create"))
 ):
-    """
-    创建{模块名称}
-    
-    需要权限：{module_id}.create
-    """
-    item = await {ModuleName}Service.create(db, user.user_id, data)
+    """创建项目"""
     await db.commit()
-    
-    return success_response(
-        data={ModuleName}Response.model_validate(item),
-        message="创建成功"
-    )
+    return success_response(data={})
 
 
 # ==================== 更新 ====================
@@ -115,25 +75,13 @@ async def create(
 @router.put("/{item_id}", response_model=dict, summary="更新")
 async def update(
     item_id: int,
-    data: {ModuleName}Update,
+    data: any, # TemplateUpdate
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("{module_id}.update"))
+    user: TokenData = Depends(require_permission("xxx.update"))
 ):
-    """
-    更新{模块名称}
-    
-    需要权限：{module_id}.update
-    """
-    item = await {ModuleName}Service.update(db, item_id, data, user.user_id)
-    if not item:
-        raise NotFoundException("{模块名称}", item_id)
-    
+    """更新项目"""
     await db.commit()
-    
-    return success_response(
-        data={ModuleName}Response.model_validate(item),
-        message="更新成功"
-    )
+    return success_response(data={})
 
 
 # ==================== 删除 ====================
@@ -142,46 +90,9 @@ async def update(
 async def delete(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("{module_id}.delete"))
+    user: TokenData = Depends(require_permission("xxx.delete"))
 ):
-    """
-    删除{模块名称}
-    
-    需要权限：{module_id}.delete
-    """
-    success = await {ModuleName}Service.delete(db, item_id, user.user_id)
-    if not success:
-        raise NotFoundException("{模块名称}", item_id)
-    
+    """删除项目"""
+    # await TemplateService.delete(db, item_id, user.user_id)
     await db.commit()
-    
     return success_response(message="删除成功")
-
-
-# ==================== 批量操作示例 ====================
-
-@router.post("/batch-delete", response_model=dict, summary="批量删除")
-async def batch_delete(
-    ids: list[int],
-    db: AsyncSession = Depends(get_db),
-    user: TokenData = Depends(require_permission("{module_id}.delete"))
-):
-    """批量删除{模块名称}"""
-    deleted_count = 0
-    for item_id in ids:
-        if await {ModuleName}Service.delete(db, item_id, user.user_id):
-            deleted_count += 1
-    
-    await db.commit()
-    
-    return success_response(
-        data={"deleted": deleted_count},
-        message=f"成功删除 {deleted_count} 条记录"
-    )
-
-
-
-
-
-
-

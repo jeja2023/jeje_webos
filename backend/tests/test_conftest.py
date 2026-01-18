@@ -15,10 +15,12 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 # 确保可以导入项目模块
+# 当前文件在 backend/tests/test_conftest.py，dirname即为 tests 目录，parent 为 backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.database import Base, engine as global_engine
 from core.config import get_settings, reload_settings
+import models # Force load core models for Base.metadata registration
 from main import app
 
 # Mock 审计日志，防止测试中尝试连接 MySQL
@@ -88,6 +90,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     # 清理所有表
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture
+def db(db_session):
+    """Alias for db_session fixture"""
+    return db_session
 
 
 @pytest_asyncio.fixture(scope="function")

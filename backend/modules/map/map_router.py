@@ -117,6 +117,7 @@ async def delete_marker(
 ):
     """删除标记点"""
     await db.execute(delete(MapMarker).where(MapMarker.id == marker_id, MapMarker.user_id == user.user_id))
+    await db.flush()
     await db.commit()
     return success(message="标记点已移除")
 
@@ -397,6 +398,7 @@ async def delete_gps_trail(
         
     # 删除数据库记录
     await db.delete(trail)
+    await db.flush()
     await db.commit()
     
     return success(message="轨迹已成功删除")

@@ -113,6 +113,7 @@ class ExamService:
         if not bank:
             return False
         await db.delete(bank)
+        await db.flush()
         logger.info(f"删除题库: id={bank_id}")
         return True
     
@@ -240,6 +241,7 @@ class ExamService:
         
         bank_id = question.bank_id
         await db.delete(question)
+        await db.flush()
         
         # 更新题库计数
         if bank_id:
@@ -372,6 +374,7 @@ class ExamService:
         if not paper:
             return False
         await db.delete(paper)
+        await db.flush()
         logger.info(f"删除试卷: id={paper_id}")
         return True
     
@@ -449,6 +452,7 @@ class ExamService:
         
         await db.delete(pq)
         paper.question_count = max(0, paper.question_count - 1)
+        await db.flush()
         return True
     
     @staticmethod
@@ -1077,6 +1081,7 @@ class ExamService:
         if not wrong:
             return False
         await db.delete(wrong)
+        await db.flush()
         return True
     
     @staticmethod

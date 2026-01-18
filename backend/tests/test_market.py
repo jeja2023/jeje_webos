@@ -83,11 +83,11 @@ manifest = ModuleManifest(
         
         data = response.json()
         if response.status_code != 409:
-            print(f"Unexpected status {response.status_code}: {data}")
+            pytest.fail(f"预期状态码 409, 实际 {response.status_code}: {data}")
         
         # 验证错误详情（现在结构为 code/message/data）
         assert response.status_code == 409
-        assert "message" in data, f"Response missing 'message': {data}"
+        assert "message" in data, f"响应缺少 'message' 字段: {data}"
         assert "已存在" in data["message"]
         assert data["data"]["module_id"] == mod_id
 

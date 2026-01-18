@@ -370,6 +370,7 @@ async def delete_backup(
     
     # 删除数据库记录
     await db.delete(backup)
+    await db.flush()
     await db.commit()
     
     return success(message="备份已删除")

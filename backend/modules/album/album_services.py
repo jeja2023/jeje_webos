@@ -161,6 +161,7 @@ class AlbumService:
             AlbumService._delete_photo_files(photo)
         
         await db.delete(album)
+        await db.flush()
         logger.info(f"删除相册: id={album_id}")
         return True
     
@@ -348,6 +349,9 @@ class AlbumService:
             await db.delete(photo)
             deleted_count += 1
             
+        # 刷新数据库以应用删除
+        await db.flush()
+            
         # 更新相关相册的照片数量和封面
         if album_ids:
             for album_id in album_ids:
@@ -363,6 +367,8 @@ class AlbumService:
                     if album.cover_photo_id in photo_ids:
                         album.cover_photo_id = None
 
+        # 刷新数据库以应用删除
+        await db.flush()
         logger.info(f"批量删除照片: count={deleted_count}, user_id={user_id}")
         return deleted_count
 
@@ -427,3 +433,4 @@ class AlbumService:
                  )
                  .values(sort_order=index)
              )
+        await db.flush()

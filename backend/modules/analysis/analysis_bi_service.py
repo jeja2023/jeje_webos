@@ -55,5 +55,6 @@ class BIService:
         """删除仪表盘"""
         dashboard = await BIService.get_dashboard(db, dashboard_id)
         await db.delete(dashboard)
+        await db.flush()
         await db.commit()
         return True

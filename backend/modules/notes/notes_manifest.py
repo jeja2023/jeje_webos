@@ -3,18 +3,21 @@
 定义模块元信息、路由入口、权限声明等
 """
 
-from core.loader import ModuleManifest
+from core.loader import ModuleManifest, ModuleAssets
 
 manifest = ModuleManifest(
+    # 基本信息
     id="notes",
     name="笔记",
     version="1.0.0",
     description="支持无限层级目录的个人笔记管理",
     icon="📒",
-    author="JeJe",
+    author="JeJe WebOS",
     
+    # 路由配置
     router_prefix="/api/v1/notes",
     
+    # 菜单配置
     menu={
         "title": "笔记",
         "icon": "📒",
@@ -27,6 +30,13 @@ manifest = ModuleManifest(
         ]
     },
     
+    # 前端资源
+    assets=ModuleAssets(
+        css=[],
+        js=[]
+    ),
+    
+    # 权限声明
     permissions=[
         "notes.read",
         "notes.create",
@@ -34,5 +44,12 @@ manifest = ModuleManifest(
         "notes.delete"
     ],
     
-    enabled=False,
+    # 模块依赖
+    dependencies=[],
+    
+    # 内核版本要求
+    kernel_version=">=1.0.0",
+    
+    # 是否启用
+    enabled=True,
 )

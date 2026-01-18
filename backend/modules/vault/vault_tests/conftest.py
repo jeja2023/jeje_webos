@@ -41,3 +41,7 @@ def sample_user_id():
 def another_user_id():
     """另一个测试用用户ID"""
     return 2
+
+# Added by restore script
+
+from tests.test_conftest import *

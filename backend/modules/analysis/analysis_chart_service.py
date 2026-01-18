@@ -55,4 +55,5 @@ class AnalysisChartService:
     async def delete_chart(db: AsyncSession, chart_id: int):
         chart = await AnalysisChartService.get_chart(db, chart_id)
         await db.delete(chart)
+        await db.flush()
         await db.commit()

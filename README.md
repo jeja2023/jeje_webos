@@ -18,32 +18,43 @@
 - **Dock 栏**：底部应用栏，支持应用固定、悬停放大动画、智能折叠
 - **Top Bar**：顶部状态栏，集成系统时间、通知中心、个人状态管理
 - **桌面小部件**：支持动态时钟、日历、问候语等个性化组件
+- **全局搜索**：Spotlight 风格的快速搜索，支持快捷键唤起
 
 ### 🧩 模块化生态系统
 系统采用微内核架构，所有业务功能以模块形式存在，支持热插拔：
 
-- **📝 笔记 (Notes)**：Markdown 实时预览、无限层级文件夹、标签管理、收藏置顶
-- **📚 课程 (Course)**：沉浸式学习体验、智能记忆续学、专注模式、交互式 Markdown、原生视频支持
-- **📰 博客 (Blog)**：完整 CMS 内容管理、封面上传、分类管理、状态流转
-- **💬 反馈 (Feedback)**：用户与管理员沟通桥梁、状态追踪工作流
-- **📁 文件管理 (FileManager)**：网格/列表视图、虚拟目录、无限层级、在线预览、拖拽上传
-- **📚 知识库 (Knowledge)**：AI 混合搜索、图片语义搜索、Cross-Encoder 深度重排、自动提取知识图谱可视化
-- **⚡ 快传 (Transfer)**：局域网跨设备文件传输、传输码机制、WebSocket 实时进度
-- **🤖 AI助手**：集成多种大模型引擎，支持流式对话、上下文记忆、多角色预设（编程/写作/翻译/分析）、Token统计与代码生成
-- **👁️ 数据透镜 (DataLens)**：万能数据视窗、支持多种数据源（MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API）、表格与图表双模态
-- **📊 数据分析 (Analysis)**：ETL 数据建模（含机器学习回归、高级数学运算）、BI 数据大屏、图表分析（柱状/折线/饼图/散点/桑基图等）
-- **🗺️ 智能地图 (Smart Map)**：支持离线/在线双模式、GPS 轨迹回放、热力图分析、多图层叠加与路径测距
-- **💬 即时通讯 (IM)**：端到端加密聊天、群组管理、文件/图片发送、消息聚合显示、引用回复、撤回功能
-- **🔐 密码保险箱 (Vault)**：AES-256 加密存储、主密码保护（PBKDF2）、恢复码重置机制、密码强度检测、随机密码生成、自动锁定、剪贴板安全自动清除、隐私自动隐藏
-- **🪐 品牌视觉与 PWA**：全新的 3D 高科技风格品牌图标，极简玻璃态设计，全方位 PWA 支持（离线缓存、独立窗口运行）
+#### 默认启用模块
+| 模块 | 功能描述 |
+|------|---------|
+| **� 博客 (Blog)** | 完整 CMS 内容管理、封面上传、分类管理、状态流转 |
+| **� 笔记 (Notes)** | Markdown 实时预览、无限层级文件夹、标签管理、收藏置顶 |
+| **�💬 反馈 (Feedback)** | 用户与管理员沟通桥梁、状态追踪工作流 |
+| **📁 文件管理 (FileManager)** | 网格/列表视图、虚拟目录、无限层级、在线预览、拖拽上传 |
+| **⚡ 快传 (Transfer)** | 局域网跨设备文件传输、传输码机制、WebSocket 实时进度 |
+| **� 数据透镜 (DataLens)** | 万能数据视窗，支持 MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API 等数据源 |
 
+#### 按需启用模块（通过应用市场启用）
+| 模块 | 功能描述 |
+|------|---------|
+| **🤖 AI 助手** | 集成多种大模型引擎，支持流式对话、上下文记忆、多角色预设 |
+| **📊 数据分析 (Analysis)** | 基于 DuckDB 的 ETL 数据建模、BI 数据大屏、图表分析 |
+| **� 知识库 (Knowledge)** | AI 混合搜索、图片语义搜索、知识图谱可视化 |
+| **💬 即时通讯 (IM)** | 端到端加密聊天、群组管理、文件传输、消息撤回 |
+| **🔐 密码箱 (Vault)** | AES-256 加密存储、主密码保护、恢复码机制、安全自动清除 |
+| **📅 日程管理 (Schedule)** | 日历视图、事件分类、提醒通知推送 |
+| **📚 课程学习 (Course)** | 沉浸式学习体验、智能记忆续学、专注模式 |
+| **📝 在线考试 (Exam)** | 题库管理、智能组卷、在线考试与自动阅卷 |
+| **📷 相册 (Album)** | 个人相册管理，支持相册分类和照片上传预览 |
+| **🎬 视频 (Video)** | 个人视频管理，支持视频集分类和视频上传播放 |
+| **🗺️ 智能地图 (Map)** | 离线/在线双模式、GPS 轨迹回放、热力图分析 |
+| **📷 图文识别 (OCR)** | 基于 RapidOCR 的离线图文识别，支持图片和 PDF |
 
 ### ⚙️ 系统管理
 - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）
 - **系统监控**：CPU、内存、磁盘实时仪表盘
 - **审计日志**：全量操作行为记录
 - **数据备份**：数据库自动备份与恢复
-- **主题系统**：8 套预设主题，完全自定义模式
+- **主题系统**：跟随系统浅色/深色 + 2 套可选特色主题（日出印象、星夜霓虹）
 
 ---
 
@@ -103,7 +114,7 @@ docker-compose down
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-repo/jeje-webos.git
+git clone https://github.com/jeja2023/jeje_webos.git
 cd jeje_webos/backend
 
 # 2. 创建虚拟环境
@@ -121,7 +132,7 @@ pip install -r requirements.txt
 # 主要配置项：
 # - DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
 # - REDIS_HOST, REDIS_PORT
-# - JWT_SECRET
+# - JWT_SECRET（首次启动会自动生成）
 
 # 5. 初始化数据库
 # 确保 MySQL 和 Redis 已启动
@@ -152,16 +163,29 @@ jeje_webos/
 │   │   ├── loader.py             # 模块动态加载器
 │   │   ├── middleware.py         # 全局中间件
 │   │   ├── events.py             # 事件总线
-│   │   └── ...
+│   │   └── ...                   # 其他核心组件
+│   │
 │   ├── modules/                  # 业务模块 (可插拔)
 │   │   ├── _template/            # 模块生成模板
-│   │   ├── notes/                # 笔记模块
 │   │   ├── blog/                 # 博客模块
+│   │   ├── notes/                # 笔记模块
 │   │   ├── feedback/             # 反馈模块
 │   │   ├── filemanager/          # 文件管理模块
 │   │   ├── transfer/             # 快传模块
 │   │   ├── datalens/             # 数据透镜模块
-│   │   └── analysis/             # 数据分析模块
+│   │   ├── ai/                   # AI 助手模块
+│   │   ├── analysis/             # 数据分析模块
+│   │   ├── knowledge/            # 知识库模块
+│   │   ├── im/                   # 即时通讯模块
+│   │   ├── vault/                # 密码箱模块
+│   │   ├── schedule/             # 日程管理模块
+│   │   ├── course/               # 课程学习模块
+│   │   ├── exam/                 # 在线考试模块
+│   │   ├── album/                # 相册模块
+│   │   ├── video/                # 视频模块
+│   │   ├── map/                  # 智能地图模块
+│   │   └── ocr/                  # 图文识别模块
+│   │
 │   ├── routers/                  # 系统级路由
 │   ├── models/                   # 系统级数据模型
 │   ├── schemas/                  # Pydantic 验证模型
@@ -169,30 +193,42 @@ jeje_webos/
 │   ├── utils/                    # 工具函数库
 │   ├── tests/                    # 单元测试
 │   ├── alembic/                  # 数据库迁移
+│   ├── state/                    # 模块状态存储
 │   ├── main.py                   # 应用启动入口
 │   └── requirements.txt          # Python 依赖
 │
 ├── frontend/                     # 前端桌面环境
 │   ├── css/                      # 样式层
-│   │   ├── core/                 # 基础样式
-│   │   ├── components/           # 组件样式
-│   │   └── pages/                # 页面样式
+│   │   ├── core/                 # 核心样式 (变量、重置、按钮等)
+│   │   ├── components/           # UI 组件样式
+│   │   └── pages/                # 业务页面样式
+│   │
 │   ├── js/                       # 逻辑层
-│   │   ├── core/                 # 核心库 (Router, Store, Api)
-│   │   ├── components/           # UI 组件 (Window, Dock, TopBar)
+│   │   ├── core/                 # 核心库 (Router, Store, Api, Component)
+│   │   ├── components/           # UI 组件 (Modal, Toast, Dock, TopBar)
+│   │   ├── utils/                # 工具函数 (图表、快捷键、帮助)
 │   │   └── pages/                # 业务页面
-│   └── index.html                # 单页应用入口
+│   │
+│   ├── libs/                     # 第三方库
+│   ├── images/                   # 图片资源
+│   ├── index.html                # 单页应用入口
+│   ├── manifest.json             # PWA 配置
+│   └── sw.js                     # Service Worker
 │
 ├── docker/                       # 容器化配置
 │   ├── docker-compose.yml        # 服务编排
 │   ├── Dockerfile                # 后端镜像构建
+│   ├── docker-entrypoint.sh      # 启动脚本
 │   └── env_docker.example        # 环境配置示例
 │
-└── storage/                      # 数据持久化
-    ├── public/                   # 公共文件
-    ├── users/                    # 用户私有文件
-    ├── modules/                  # 模块专属文件
-    └── system/                   # 系统文件（备份、日志）
+├── storage/                      # 数据持久化
+│   ├── public/                   # 公共文件
+│   ├── users/                    # 用户私有文件
+│   ├── modules/                  # 模块专属文件
+│   └── system/                   # 系统文件（备份、日志）
+│
+├── 开发规范.md                    # 完整开发指南
+└── 更新日志.md                    # 版本更新历史
 ```
 
 ---
@@ -256,6 +292,17 @@ python scripts/create_module.py todo_list 待办事项
 - **敏感数据脱敏**：日志记录自动脱敏（手机号、Token 等）
 - **速率限制**：基于 Redis 的滑动窗口限流，防止暴力破解
 - **JWT 自动轮换**：每 25-35 天自动更换签名密钥，旧密钥平滑过渡
+
+---
+
+## 🎨 主题系统
+
+系统默认跟随操作系统的浅色/深色模式自动切换，同时提供 2 套特色主题供手动选择：
+
+| 主题 | 风格描述 |
+|------|---------|
+| **日出印象** | 温暖晨曦风格，珊瑚橙主色调，适合白天使用 |
+| **星夜霓虹** | 赛博朋克风格，霓虹蓝主色调，酷炫夜间体验 |
 
 ---
 
