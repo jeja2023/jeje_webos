@@ -41,4 +41,7 @@ llama-cpp-python>=0.2.0
 
 # OCR 图文识别（轻量级，支持自定义模型路径）
 rapidocr-onnxruntime>=1.3.0
-pymupdf>=1.23.0
+pymupdf>=1.26.0
+
+# 其它功能依赖
+gpxpy>=1.6.2

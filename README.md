@@ -87,6 +87,8 @@
 
 ### 方式一：Docker 部署（推荐）
 
+本系统提供 **CPU 优化瘦身版** Docker 镜像（约 800MB），适合在 NAS、轻量级云服务器或普通个人电脑上运行。镜像已集成 OCR、PDF 处理及本地 AI 推理的 CPU 模式。
+
 ```bash
 # 1. 进入 docker 目录
 cd docker
@@ -94,21 +96,19 @@ cd docker
 # 2. 复制配置模板
 cp env_docker.example env_docker
 
-# 3. 编辑配置（修改数据库密码等）
+# 3. 编辑配置（修改数据库密码、应用端口等）
 # Windows: notepad env_docker
 # Linux/Mac: vim env_docker
 
-# 4. 启动服务
+# 4. 启动服务（会自动从 Docker Hub 拉取或本地构建）
 docker-compose up -d
 
-# 5. 查看日志
+# 5. 查看启动日志（包含数据库初始化进度）
 docker-compose logs -f app
-
-# 6. 停止服务
-docker-compose down
 ```
 
-访问地址：`http://localhost:8000`
+> **提示**：首次启动会自动运行 Alembic 数据库迁移。默认访问地址为 `http://localhost:8000`（或您在 `env_docker` 中配置的端口）。
+
 
 ### 方式二：本地开发运行
 

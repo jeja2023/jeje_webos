@@ -23,7 +23,7 @@ until python -c "import pymysql, os; pymysql.connect(host='${DB_HOST:-mysql}', p
     echo "MySQL 未就绪，等待 2 秒... ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 2
 done
-echo "✓ MySQL 已就绪！"
+echo " MySQL 已就绪！"
 
 # 等待 Redis 就绪
 echo "等待 Redis 就绪..."
@@ -46,15 +46,15 @@ until python -c "$REDIS_CMD" 2>/dev/null; do
     echo "Redis 未就绪，等待 2 秒... ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 2
 done
-echo "✓ Redis 已就绪！"
+echo " Redis 已就绪！"
 
 # 运行数据库迁移
 echo "运行数据库迁移..."
 cd /app
 if alembic upgrade head; then
-    echo "✓ 数据库迁移完成！"
+    echo " 数据库迁移完成！"
 else
-    echo "⚠ 迁移失败或无需迁移"
+    echo " 迁移失败或无需迁移"
 fi
 
 # 启动应用

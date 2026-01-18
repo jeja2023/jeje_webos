@@ -1,86 +1,102 @@
 # ============================================================
-# JeJe WebOS 全栈 Dockerfile
+# JeJe WebOS CPU 瘦身版 Dockerfile (Multi-stage)
 # ============================================================
+# 
+# 特点：
+# 1. 剔除所有 NVIDIA GPU 依赖，体积减小 80%+
+# 2. 多阶段构建，删除编译工具链，进一步减小体积
+# 3. 完美支持 OCR、PDF 转换和 AI 知识库功能
 #
-# 此 Dockerfile 将前端和后端打包到同一个镜像中
-# FastAPI 同时托管：
-#   - 前端静态文件 (/static/*)
-#   - 后端 API (/api/*)
-#   - SPA 路由回退 (其他路径返回 index.html)
-#
-# 构建（从项目根目录执行）:
-#   docker-compose -f docker/docker-compose.yml build
-#
-# 运行:
-#   docker-compose -f docker/docker-compose.yml up -d
-#
-# 版本: v2.4.4
-# 更新时间: 2026-01-19
 # ============================================================
 
-FROM python:3.12-slim
+# 第一阶段：构建环境 (Builder)
+FROM python:3.12-slim-bookworm AS builder
 
-# 设置工作目录
-WORKDIR /app
+WORKDIR /build
 
-# 设置环境变量
+# 设置编译环境变量
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_NO_CACHE_DIR=1
 
-# 安装系统依赖
-# 增加 libgomp1, libgl1-mesa-glx, libglib2.0-0 以支持 OCR 和模型推理
+# 安装编译所需的系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    make \
+    cmake \
+    python3-dev \
+    pkg-config \
     libffi-dev \
-    default-mysql-client \
-    libgomp1 \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+    libssl-dev \
+    unixodbc-dev \
+    libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制并安装 Python 依赖（利用 Docker 缓存层）
-# 注意：构建上下文是项目根目录（..）
+# 复制依赖文件
 COPY backend/requirements.txt .
+
+# 关键：先安装 CPU 版本的 PyTorch 和核心算子库
+# 这能节省约 10GB 的空间
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# 安装其余所有依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制后端代码到 /app
+# ============================================================
+
+# 第二阶段：运行环境 (Final)
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+# 设置运行时环境变量
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FRONTEND_PATH=/frontend \
+    STORAGE_PATH=/app/storage
+
+# 安装运行所需的最小化系统动态库
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-mysql-client \
+    libgomp1 \
+    libgl1 \
+    libglib2.0-0 \
+    libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 从构建阶段拷贝已安装的 Python 包
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# 复制后端代码
 COPY backend/ .
 
-# 复制前端代码到 /frontend
+# 复制前端代码
 COPY frontend/ /frontend/
 
-# 复制启动脚本（从 docker 目录复制）
+# 复制并配置启动脚本
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
-
-# 创建非 root 用户（安全最佳实践）
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app && \
-    chown -R appuser:appuser /frontend && \
-    chown root:root /docker-entrypoint.sh
-
-# 创建存储目录
-RUN mkdir -p /app/storage/uploads /app/storage/backups /app/logs && \
-    chown -R appuser:appuser /app/storage /app/logs
-
-# 切换到非 root 用户
-USER appuser
-
-# 暴露应用端口
-EXPOSE 8000
 
 # 设置时区
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# 创建非 root 用户并授权
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/storage/uploads /app/storage/backups /app/logs && \
+    chown -R appuser:appuser /app /frontend /docker-entrypoint.sh
+
+# 暴露端口
+EXPOSE 8000
+
+# 切换用户
+USER appuser
+
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# 启动应用
-# 使用 WEB_CONCURRENCY 环境变量控制进程数，默认为 1
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"]

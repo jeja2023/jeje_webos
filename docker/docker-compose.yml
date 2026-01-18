@@ -74,8 +74,8 @@ services:
     restart: unless-stopped
     env_file:
       - env_docker
-    ports:
-      - "${MYSQL_PORT:-3306}:3306"
+    #    ports:
+    #      - "${MYSQL_PORT:-3306}:3306"
     environment:
       - TZ=Asia/Shanghai
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root_123456}
@@ -100,8 +100,8 @@ services:
     image: redis:7-alpine
     container_name: jeje-webos-redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    #    ports:
+    #      - "${REDIS_PORT:-6379}:6379"
     environment:
       - TZ=Asia/Shanghai
     command: >
