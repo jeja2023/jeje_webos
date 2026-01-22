@@ -50,25 +50,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. 对于静态资源 (CSS, JS, Images, Fonts) 使用缓存优先 (Cache First, falling back to network)
+    // 2. 对于静态资源 (CSS, JS, Images, Fonts) 
+    // 改为：网络优先 (Network First) - 适合开发和频繁更新
+    // 逻辑：优先获取最新文件并更新缓存，网络断开时才用旧缓存
     if (url.pathname.startsWith('/static/')) {
         event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                return fetch(event.request).then((networkResponse) => {
-                    // 只缓存有效的响应
-                    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-                        return networkResponse;
+            fetch(event.request)
+                .then((networkResponse) => {
+                    // 如果网络请求成功，克隆一份存入缓存，然后返回最新内容
+                    if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                        const responseToCache = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
                     }
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
-                    });
                     return networkResponse;
-                });
-            })
+                })
+                .catch(() => {
+                    // 如果断网，则回退到缓存
+                    return caches.match(event.request);
+                })
         );
         return;
     }

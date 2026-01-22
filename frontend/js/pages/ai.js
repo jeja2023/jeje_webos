@@ -68,6 +68,9 @@ class AIPage extends Component {
         this._inputHistory = [];
         this._historyIndex = -1;
         this._maxHistorySize = 50;
+
+        // 标志位：是否需要强制置底（用于解决初始加载和会话切换时的跳动问题）
+        this._shouldForceScroll = false;
     }
 
     // 从后端加载会话
@@ -87,6 +90,7 @@ class AIPage extends Component {
                                     messages: detailRes.data.messages.map(m => ({
                                         role: m.role,
                                         content: m.content,
+                                        timestamp: m.timestamp || Date.now(),
                                         isError: m.isError || false
                                     })),
                                     provider: detailRes.data.provider || 'local',
@@ -110,6 +114,9 @@ class AIPage extends Component {
                     sessions: sessionsWithMessages,
                     activeSessionId: sessionsWithMessages[0].id
                 });
+
+                // 首次加载完成，标记需要强制置底
+                this._shouldForceScroll = true;
             }
         } catch (e) {
             Config.error('加载会话失败:', e);
@@ -147,6 +154,7 @@ class AIPage extends Component {
                 messages: s.messages.map(m => ({
                     role: m.role,
                     content: m.content,
+                    timestamp: m.timestamp || Date.now(),
                     isError: m.isError || false
                 }))
             }));
@@ -178,10 +186,10 @@ class AIPage extends Component {
                     updatedActiveId = res.data.sessions[activeIdx].id;
                 }
 
-                this.setState({
-                    sessions: updatedSessions,
-                    activeSessionId: updatedActiveId
-                });
+                // 直接修改 state，不触发 update()
+                // 这只是 ID 的静默更新，不需要重新渲染 UI，避免滚动位置丢失
+                this.state.sessions = updatedSessions;
+                this.state.activeSessionId = updatedActiveId;
             }
 
             // 同时备份到LocalStorage（降级方案）
@@ -369,7 +377,12 @@ class AIPage extends Component {
                             </div>
                         ` : `
                             <div class="message-list">
-                                ${activeSession.messages.map((msg, idx) => `
+                                ${activeSession.messages.map((msg, idx) => {
+                // 跳过正在生成中的空 AI 消息，由下面的点点点占位符代替显示
+                if (isGenerating && msg.role === 'assistant' && !msg.content && idx === activeSession.messages.length - 1) {
+                    return '';
+                }
+                return `
                                     <div class="message-wrapper ${msg.role === 'user' ? 'user' : msg.role === 'system' ? 'system' : 'ai'}" data-message-idx="${idx}">
                                         <div class="avatar">${msg.role === 'user' ? '👤' : msg.role === 'system' ? '⚠️' : '🧠'}</div>
                                         <div class="message-content-wrapper">
@@ -398,8 +411,8 @@ class AIPage extends Component {
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
-                                ${isGenerating ? `
+                                `}).join('')}
+                                ${isGenerating && (activeSession.messages.length === 0 || activeSession.messages[activeSession.messages.length - 1].role !== 'assistant' || !activeSession.messages[activeSession.messages.length - 1].content) ? `
                                     <div class="message-wrapper ai">
                                         <div class="avatar">🧠</div>
                                         <div class="message-content generating">
@@ -684,6 +697,8 @@ class AIPage extends Component {
             if (e.target.closest('.session-delete-btn')) {
                 return;
             }
+            // 切换会话需要强制滚动到新会话的底部
+            this._shouldForceScroll = true;
             this.setState({ activeSessionId: parseInt(el.dataset.id) || el.dataset.id }, () => {
                 this.saveSessions(); // 保存会话
             });
@@ -720,6 +735,8 @@ class AIPage extends Component {
                     if (newSessions.length === 0) {
                         await this.createNewSession();
                     } else {
+                        // 删除会话后切换需要强制滚动
+                        this._shouldForceScroll = true;
                         this.setState({
                             sessions: newSessions,
                             activeSessionId: newActiveId
@@ -814,6 +831,10 @@ class AIPage extends Component {
                 const session = this.state.sessions.find(s => s.id === this.state.activeSessionId);
                 if (session && session.messages[idx]) {
                     session.messages.splice(idx, 1);
+
+                    // 删除后需要保持滚动位置，设置强制滚动标志
+                    this._shouldForceScroll = true;
+
                     this.setState({ sessions: [...this.state.sessions] }, () => {
                         this.saveSessions();
                     });
@@ -834,6 +855,8 @@ class AIPage extends Component {
                         session.messages[idx].content = newText.trim();
                         // 删除该消息之后的所有AI回复
                         session.messages = session.messages.slice(0, idx + 1);
+                        // 编辑后保持滚动位置
+                        this._shouldForceScroll = true;
                         this.setState({ sessions: [...this.state.sessions] }, () => {
                             this.saveSessions();
                         });
@@ -854,21 +877,15 @@ class AIPage extends Component {
                     userMsgIdx--;
                 }
                 if (userMsgIdx >= 0) {
-                    // 删除当前AI回复及之后的所有消息
-                    session.messages = session.messages.slice(0, idx);
-                    this.setState({ sessions: [...this.state.sessions] }, () => {
-                        this.saveSessions();
-                        // 重新发送用户消息
-                        const userMsg = session.messages[userMsgIdx];
-                        const inputEl = this.$('#aiInput');
-                        if (inputEl) {
-                            inputEl.value = userMsg.content;
-                            this.state.inputMessage = userMsg.content;
-                        }
-                        const btnSend = this.$('#btnSend');
-                        if (btnSend) btnSend.disabled = false;
-                        setTimeout(() => this.handleSendMessage(), 100);
-                    });
+                    // 重新生成逻辑：删除旧的用户消息和 AI 回复，然后重新发送
+                    const contentToRegenerate = session.messages[userMsgIdx].content;
+
+                    // 删除从用户消息开始的所有内容（包括用户消息本身和 AI 回复）
+                    session.messages = session.messages.slice(0, userMsgIdx);
+
+                    // 直接修改 state 不触发 update，避免滚动跳动
+                    // handleSendMessage 会自动触发 update
+                    this.handleSendMessage(contentToRegenerate);
                 }
             }
         });
@@ -895,12 +912,22 @@ class AIPage extends Component {
         }
     }
 
-    async handleSendMessage() {
-        // 直接从 DOM 获取最新值，确保万无一失
+    async handleSendMessage(overrideText = null) {
         const inputEl = this.$('#aiInput');
-        const currentInput = inputEl ? inputEl.value.trim() : this.state.inputMessage.trim();
+        const session = this.state.sessions.find(s => s.id === this.state.activeSessionId);
+
+        let currentInput;
+        // 如果传入了 overrideText（重新生成时），直接使用
+        if (typeof overrideText === 'string' && overrideText) {
+            currentInput = overrideText;
+        } else {
+            // 否则从输入框获取
+            currentInput = inputEl ? inputEl.value.trim() : this.state.inputMessage.trim();
+        }
 
         const { isGenerating, activeSessionId, selectedKb, useAnalysis, provider, sessions, apiConfig } = this.state;
+
+        // 校验：如果在生成中，或者输入为空，则返回
         if (isGenerating || !currentInput) return;
 
         // 如果是在线模式但没有配置
@@ -910,23 +937,25 @@ class AIPage extends Component {
             return;
         }
 
-        const session = sessions.find(s => s.id === activeSessionId);
-        const userMsg = { role: 'user', content: currentInput, timestamp: Date.now() };
-
-        // 保存到输入历史
+        // 保存到输入历史（仅限手动输入的情况，或者是重新生成的内容不保存？保存吧，方便）
         if (this._inputHistory[this._inputHistory.length - 1] !== currentInput) {
             this._inputHistory.push(currentInput);
             if (this._inputHistory.length > this._maxHistorySize) {
-                this._inputHistory.shift(); // 超过最大长度时移除最早的
+                this._inputHistory.shift();
             }
         }
-        this._historyIndex = -1; // 重置历史索引
 
+        // 发送新消息：总是追加到列表末尾（不仅是普通发送，重新生成现在也是追加）
+        this._historyIndex = -1; // 重置历史索引
+        const userMsg = { role: 'user', content: currentInput, timestamp: Date.now() };
         session.messages.push(userMsg);
-        session.updated_at = Date.now(); // 更新会话时间
+        session.updated_at = Date.now();
         if (session.messages.length === 1) {
             session.title = Utils.truncate(currentInput, 15);
         }
+        // 准备发送，此时清空输入框
+        if (inputEl) inputEl.value = '';
+        this.state.inputMessage = '';
 
         // 如果是临时会话ID，先创建会话并获取真实ID
         let realSessionId = session.id;
@@ -953,7 +982,6 @@ class AIPage extends Component {
             } catch (e) {
                 Config.warn('创建会话失败，将不保存消息到数据库:', e);
             }
-        } else if (typeof session.id === 'number') {
             // 如果是真实ID，更新标题
             try {
                 await Api.put(`/ai/sessions/${session.id}`, { title: session.title });
@@ -962,21 +990,31 @@ class AIPage extends Component {
             }
         }
 
-        // 准备发送，此时清空输入框
-        if (inputEl) inputEl.value = '';
-
         // 初始化Token统计
         this._generationStartTime = Date.now();
         this._tokenCount = 0;
 
-        this.setState({
-            inputMessage: '',
-            isGenerating: true,
-            tokenStats: { prompt: 0, completion: 0, total: 0 },
-            generationSpeed: 0
-        });
+        // 绕过 setState 的自动更新机制，直接修改 state 对象
+        // 这样可以避免触发完整的 DOM 重建，防止滚动位置丢失
+        this.state.isGenerating = true;
+        this.state.tokenStats = { prompt: 0, completion: 0, total: 0 };
+        this.state.generationSpeed = 0;
 
-        this.scrollToBottom();
+        // 手动触发一次更新，显示用户消息和加载状态
+        this.update();
+        this.scrollToBottom(true); // 强制置底！确保不跳到顶部
+
+        // 关键修复：强制等待浏览器完成 DOM 渲染
+        // 确保后续的增量更新能找到 DOM 元素，而不是触发完整重建
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+        // 终极暴力置底：启动一个定时器，在生成期间持续强制置底
+        // 这解决了各种因 DOM 高度变化、图片加载或浏览器机制导致的滚动失效问题
+        this._scrollInterval = setInterval(() => {
+            if (this.state.isGenerating) {
+                this.scrollToBottom(true);
+            }
+        }, 100);
 
         // 创建中止控制器
         this._abortController = new AbortController();
@@ -1017,24 +1055,68 @@ class AIPage extends Component {
             let aiMsg = { role: 'assistant', content: '', timestamp: Date.now() };
             session.messages.push(aiMsg);
 
+            // 先执行一次完整更新，确保 AI 消息的 DOM 元素已经存在
+            this.update();
+            this.scrollToBottom(true);
+
             // 使用节流优化更新频率
             let lastUpdateTime = 0;
-            const updateThrottle = 100; // 每100ms最多更新一次
+            const updateThrottle = 150; // 稍微增加节流时间，降低重排频率
             let pendingUpdate = false;
+
+            // 增量更新：只更新最后一条 AI 消息的内容，不重建整个 DOM
+            const incrementalUpdate = () => {
+                const container = this.$('#chatContainer');
+                if (!container) return;
+
+                // 找到最后一条 AI 消息的内容元素
+                const messageWrappers = container.querySelectorAll('.message-wrapper.ai');
+                const lastWrapper = messageWrappers[messageWrappers.length - 1];
+                if (!lastWrapper) {
+                    // 如果找不到（可能是第一次），执行完整更新
+                    this.update();
+                    return;
+                }
+
+                const contentEl = lastWrapper.querySelector('.message-content');
+                if (!contentEl) {
+                    this.update();
+                    return;
+                }
+
+                // 只更新内容，不重新渲染整个组件
+                contentEl.innerHTML = this.renderMarkdown(aiMsg.content);
+
+                // 更新 token 统计显示
+                const footerInfo = this.$('.ai-footer-info');
+                if (footerInfo && this.state.generationSpeed > 0) {
+                    const tokenStats = footerInfo.querySelector('.token-stats');
+                    if (tokenStats) {
+                        tokenStats.textContent = `| Tokens: ${this._tokenCount} | ${this.state.generationSpeed.toFixed(1)} tokens/s`;
+                    }
+                }
+
+                // 强制确保列表可见
+                const list = container.querySelector('.message-list');
+                if (list && !list.classList.contains('visible')) {
+                    list.classList.add('visible');
+                }
+
+                // 滚动到底部
+                this.scrollToBottom();
+            };
 
             const throttledUpdate = () => {
                 const now = Date.now();
                 if (now - lastUpdateTime >= updateThrottle) {
-                    this.update();
-                    this.scrollToBottom();
+                    incrementalUpdate(); // 使用增量更新
                     lastUpdateTime = now;
                     pendingUpdate = false;
                 } else if (!pendingUpdate) {
                     pendingUpdate = true;
                     setTimeout(() => {
                         if (pendingUpdate) {
-                            this.update();
-                            this.scrollToBottom();
+                            incrementalUpdate(); // 使用增量更新
                             pendingUpdate = false;
                             lastUpdateTime = Date.now();
                         }
@@ -1096,7 +1178,6 @@ class AIPage extends Component {
 
             // 确保最后更新一次
             this.update();
-            this.scrollToBottom();
 
             // 流式接收完成后保存会话
             this.saveSessions();
@@ -1139,19 +1220,37 @@ class AIPage extends Component {
             // 保存会话状态
             this.saveSessions();
         } finally {
+            if (this._scrollInterval) {
+                clearInterval(this._scrollInterval);
+                this._scrollInterval = null;
+            }
+
             this._abortController = null;
-            this.setState({ isGenerating: false }, () => {
-                // 延迟保存，避免频繁请求
-                setTimeout(() => this.saveSessions(), 1000);
-            });
+            // 绕过 setState，直接修改状态并手动更新
+            this.state.isGenerating = false;
+
+            // 生成结束后的最后一次更新，必须强制置底，防止浏览器滚动复位
+            this._shouldForceScroll = true;
+
+            this.update();
+            // 延迟保存，避免频繁请求
+            setTimeout(() => this.saveSessions(), 1000);
         }
     }
 
     stopGeneration() {
+        if (this._scrollInterval) {
+            clearInterval(this._scrollInterval);
+            this._scrollInterval = null;
+        }
+
         if (this._abortController) {
             this._abortController.abort();
             this._abortController = null;
-            this.setState({ isGenerating: false });
+            // 绕过 setState，直接修改状态并手动更新
+            this.state.isGenerating = false;
+            this._shouldForceScroll = true; // 停止时也要置底
+            this.update();
             Toast.info('已停止生成');
         }
     }
@@ -1176,13 +1275,43 @@ class AIPage extends Component {
             // 异步保存，不阻塞UI
             setTimeout(() => this.saveSessions(), 500);
         });
+
+        // 新建会话也需要强制置底（虽然内容为空，但为了逻辑统一）
+        this._shouldForceScroll = true;
     }
 
-    scrollToBottom() {
+    scrollToBottom(force = false) {
         const container = this.$('#chatContainer');
-        if (container) {
-            container.scrollTop = container.scrollHeight;
+        if (!container) return;
+
+        // 核心：处理列表的显示状态
+        const list = container.querySelector('.message-list');
+        const showList = () => {
+            if (list && !list.classList.contains('visible')) {
+                // 使用 requestAnimationFrame 确保在设置scrollTop后再显示
+                requestAnimationFrame(() => list.classList.add('visible'));
+            }
+        };
+
+        // 如果是强制模式，直接无条件置底
+        if (force) {
+            container.scrollTop = container.scrollHeight + 10000;
+            showList();
+            return;
         }
+
+        // 常规检测：获取当前是否已经在底部附近
+        const IS_AT_BOTTOM_THRESHOLD = 500; // 放宽阈值，提高自动滚动的容错率
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < IS_AT_BOTTOM_THRESHOLD;
+
+        // 如果已经在底部，或者正在生成（只要在生成就尽量保持底部），则执行置底
+        if (isAtBottom || this.state.isGenerating) {
+            container.scrollTop = container.scrollHeight + 10000;
+        }
+
+        // 无论是否滚动，只要调用了这个方法，就尝试显示列表
+        // 这是为了防止列表永远不显示
+        showList();
     }
 
     afterMount() {
@@ -1193,8 +1322,22 @@ class AIPage extends Component {
     afterUpdate() {
         this.bindDomEvents(); // 仅重新绑定非委托事件
         this.bindInputHistoryEvents(); // 绑定输入历史事件
-        this.adjustMessageButtonPosition(); // 调整按钮位置
-        this.scrollToBottom();
+
+        // 移除 adjustMessageButtonPosition 调用，避免抖动
+
+        // 使用明确的标志位控制强制滚动，比依赖 DOM 状态更可靠
+        if (this._shouldForceScroll || this.state.isGenerating) {
+            this.scrollToBottom(true);
+            // 增加延迟滚动，确保 DOM 布局完成后再次置底，防止“回到顶部”
+            requestAnimationFrame(() => this.scrollToBottom(true));
+            setTimeout(() => this.scrollToBottom(true), 100);
+            setTimeout(() => this.scrollToBottom(true), 300);
+            setTimeout(() => this.scrollToBottom(true), 600);
+
+            this._shouldForceScroll = false; // 重置标志位
+        } else {
+            this.scrollToBottom();
+        }
     }
 
     /**
@@ -1233,22 +1376,12 @@ class AIPage extends Component {
      * 短消息：按钮显示在消息气泡外部
      * 长消息：按钮显示在消息气泡内部
      */
+    /**
+     * 根据内容高度调整按钮位置（已移除以优化性能）
+     */
     adjustMessageButtonPosition() {
-        const messageWrappers = this.container.querySelectorAll('.message-content-wrapper');
-        messageWrappers.forEach(wrapper => {
-            const content = wrapper.querySelector('.message-content');
-            if (!content) return;
-
-            // 获取消息内容的高度
-            const height = content.offsetHeight;
-            const threshold = 60; // 阈值：60px，超过此高度视为长消息
-
-            if (height > threshold) {
-                wrapper.classList.add('message-long');
-            } else {
-                wrapper.classList.remove('message-long');
-            }
-        });
+        // 这是一个空方法，保留是为了兼容性，避免报错
+        // 原逻辑导致了严重的 Layout Thrashing 和滚动跳动
     }
 
     /**

@@ -277,7 +277,21 @@
     flex: 1;
     overflow-y: auto;
     padding: 30px;
-    scroll-behavior: smooth;
+    /* 移除 scroll-behavior: smooth，因为它在频繁滚动置底时会导致抖动 */
+}
+
+/* 消息列表容器 */
+.message-list {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+    opacity: 0;
+    /* 初始隐藏，等待JS置底 */
+    transition: opacity 0.2s ease-in;
+}
+
+.message-list.visible {
+    opacity: 1;
 }
 
 .ai-welcome {
