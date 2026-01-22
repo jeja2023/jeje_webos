@@ -1,0 +1,12 @@
+请将 OCR 模型文件（.onnx 格式）放入此文件夹。
+
+需要的文件：
+- ch_PP-OCRv4_det_infer.onnx
+- ch_PP-OCRv4_rec_infer.onnx  
+- ppocr_keys_v1.txt
+
+下载地址：
+- 请参考 ocr_models/README.txt 中的说明
+
+文件放入后，重启容器即可生效：
+sudo docker compose restart app

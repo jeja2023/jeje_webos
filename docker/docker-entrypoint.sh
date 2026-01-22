@@ -10,6 +10,12 @@ echo "=========================================="
 echo "  JeJe WebOS 容器启动中..."
 echo "=========================================="
 
+# 检查存储目录挂载情况（帮助诊断挂载问题）
+echo "检查存储目录挂载情况..."
+echo "  - AI 模型目录: $(ls /app/storage/modules/ai/ai_models/ 2>/dev/null | head -3 || echo '(空或不存在)')"
+echo "  - OCR 模型目录: $(ls /app/storage/modules/ocr/ocr_models/ 2>/dev/null | head -3 || echo '(空或不存在)')"
+echo "  - 地图瓦片目录: $(ls /app/storage/modules/map/map_tiles/ 2>/dev/null | head -3 || echo '(空或不存在)')"
+
 # 等待 MySQL 就绪
 echo "等待 MySQL 就绪..."
 RETRY_COUNT=0
