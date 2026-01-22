@@ -78,6 +78,8 @@ package-lock.json
 yarn.lock
 
 # Docker
+*.tar
+docker-compose.override.yml
 
 
 # 状态文件

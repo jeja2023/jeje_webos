@@ -41,8 +41,9 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 # 安装其余所有依赖
-# 增加 CMAKE_ARGS 确保 llama-cpp-python 在 CPU 环境下正确编译 (适配常见 AVX2 指令集)
-RUN CMAKE_ARGS="-DLLAMA_AVX2=ON -DLLAMA_FMA=ON -DLLAMA_AVX=ON" pip install --no-cache-dir -r requirements.txt
+# 关键修复：禁用所有 SIMD 指令（AVX/AVX2/FMA）以确保在旧 CPU 或 NAS 设备上运行
+# 性能会略有下降，但兼容性最佳
+RUN CMAKE_ARGS="-DLLAMA_NATIVE=OFF -DLLAMA_AVX=OFF -DLLAMA_AVX2=OFF -DLLAMA_FMA=OFF -DLLAMA_F16C=OFF" pip install --no-cache-dir -r requirements.txt
 
 # ============================================================
 
