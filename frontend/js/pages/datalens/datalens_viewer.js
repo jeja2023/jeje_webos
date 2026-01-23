@@ -152,7 +152,7 @@ const DataLensViewerMixin = {
         const sortCount = activeTab.sorts ? activeTab.sorts.length : (activeTab.sortField ? 1 : 0);
 
         return `
-            <div class="lens-viewer animate-fade-in">
+            <div class="lens-viewer">
                 <div class="lens-viewer-header">
                     ${this.state.isSingleView ? '' : `<div class="lens-viewer-title-group">
                         <div class="lens-breadcrumb">

@@ -223,33 +223,47 @@ class DataLensPage extends Component {
         }
 
         // Hub 侧边栏分类点击
-        this.delegate('click', '.lens-sidebar-item', (e, el) => {
+        this.delegate('click', '.lens-sidebar-item', async (e, el) => {
             const category = el.dataset.category;
             if (!category) return; // 忽略没有分类标识的项（如管理按钮）
 
+            let res;
+            let newState = {
+                currentCategory: null,
+                showFavorites: false,
+                showRecent: false
+            };
+
             if (category === 'all') {
-                this.setState({ currentCategory: null, showFavorites: false, showRecent: false });
-                this._loadViews();
+                res = await LensApi.getViews();
             } else if (category === 'favorites') {
-                this.setState({ currentCategory: null, showFavorites: true, showRecent: false });
-                LensApi.getFavorites().then(res => this.setState({ views: res.data || [] }));
+                newState.showFavorites = true;
+                res = await LensApi.getFavorites();
             } else if (category === 'recent') {
-                this.setState({ currentCategory: null, showFavorites: false, showRecent: true });
-                LensApi.getRecent().then(res => this.setState({ views: res.data || [] }));
+                newState.showRecent = true;
+                res = await LensApi.getRecent();
             } else {
                 const catId = parseInt(category);
-                this.setState({ currentCategory: catId, showFavorites: false, showRecent: false });
-                this._loadViews(catId);
+                newState.currentCategory = catId;
+                res = await LensApi.getViews({ category_id: catId });
             }
+
+            this.setState({ ...newState, views: res.data || [] });
         });
 
         // Hub 搜索
         this.delegate('input', '#lens-hub-search', (e, el) => {
             const val = el.value.trim();
-            this.setState({ searchQuery: val });
+            // 仅更新内存中的 searchQuery，不触发全量重绘
+            this.state.searchQuery = val;
+
             if (this._hubSearchTimer) clearTimeout(this._hubSearchTimer);
-            this._hubSearchTimer = setTimeout(() => {
-                this._loadViews(this.state.currentCategory, val);
+            this._hubSearchTimer = setTimeout(async () => {
+                const res = await LensApi.getViews({
+                    category_id: this.state.currentCategory,
+                    search: val
+                });
+                this.setState({ views: res.data || [] });
             }, 300);
         });
 

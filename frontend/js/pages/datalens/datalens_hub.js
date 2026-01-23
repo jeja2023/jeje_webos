@@ -144,7 +144,7 @@ const DataLensHubMixin = {
         const { categories, views, currentCategory, searchQuery, overview } = this.state;
 
         return `
-            <div class="lens-hub animate-fade-in">
+            <div class="lens-hub">
                 <div class="lens-sidebar">
                     <div class="lens-sidebar-section">
                         <div class="lens-sidebar-label">常用</div>
