@@ -40,11 +40,13 @@ COPY backend/requirements.txt .
 # 这能节省约 10GB 的空间
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# 安装其余所有依赖
-# 强制从源码编译 llama-cpp-python，并显式禁用所有高性能指令集 (AVX/AVX2/FMA/F16C/AVX512)
+# 关键修复：强制从源码编译 llama-cpp-python，并显式禁用所有高性能指令集 (AVX/AVX2/FMA/F16C/AVX512)
 # 这将解决在旧 CPU (如 Celeron J 系列, Apollo Lake 等) 或部分 NAS 设备上的 Illegal instruction 错误
 RUN CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF -DGGML_AVX512=OFF -DLLAMA_NATIVE=OFF -DLLAMA_AVX=OFF -DLLAMA_AVX2=OFF -DLLAMA_FMA=OFF -DLLAMA_F16C=OFF" \
-    pip install --no-cache-dir --no-binary llama-cpp-python -r requirements.txt
+    pip install --no-cache-dir --no-binary llama-cpp-python llama-cpp-python
+
+# 安装其余依赖
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================
 
