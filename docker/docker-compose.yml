@@ -29,7 +29,7 @@ services:
     env_file:
       - env_docker
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "${APP_PORT:-9000}:8000"
     environment:
       # 时区设置
       - TZ=Asia/Shanghai
@@ -37,10 +37,10 @@ services:
       - FRONTEND_PATH=/frontend
       # 存储根目录
       - STORAGE_PATH=/app/storage
-      # 文件存储目录（兼容旧配置）
-      - UPLOAD_DIR=/app/storage/uploads
-      # 默认工作进程数 (并发能力)
-      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-2}
+      # 文件存储目录（必须指向 /app/storage）
+      - UPLOAD_DIR=/app/storage
+      # 默认工作进程数 (降低为1以避免数据库锁冲突)
+      - WEB_CONCURRENCY=1
       # 覆盖数据库连接（使用 Docker 内部服务名）
       - DB_HOST=mysql
       - DB_PORT=3306

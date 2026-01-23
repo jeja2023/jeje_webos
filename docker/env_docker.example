@@ -22,14 +22,12 @@ APP_NAME=JeJe WebOS
 # 应用版本
 APP_VERSION=2.4.6
 
-# 调试模式（生产环境请设为 false）
+# 是否开启调试模式 (true/false)
+# 生产环境请务必设置为 false
 DEBUG=false
 
-
-# ==================== 端口配置 ====================
-
-# 应用访问端口（浏览器访问 http://localhost:APP_PORT）
-APP_PORT=8000
+# 应用访问端口 (浏览器访问端口)
+APP_PORT=9000
 
 # MySQL 外部访问端口
 # 如果本地已有 MySQL 占用 3306，请改为 3307 或其他端口
