@@ -82,7 +82,8 @@ COPY frontend/ /frontend/
 
 # 复制并配置启动脚本
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# 关键：修复 Windows 环境下可能产生的 CRLF 换行符问题，并赋予执行权限
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # 设置时区
 ENV TZ=Asia/Shanghai
