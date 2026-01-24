@@ -99,9 +99,11 @@ class StorageManager:
             # 知识库模块
             "knowledge": ["embedding_models", "vector_db"],
             # 数据分析模块
-            "analysis": ["temp"],
-            # 智能报告模块
-            "report": ["temp", "archive"],
+            "analysis": ["uploads", "outputs"],
+            # IM 模块
+            "im": ["uploads"],
+            # PDF 模块
+            "pdf": ["uploads", "outputs"],
             # 相册模块
             "album": ["photos", "thumbnails"],
             # 视频模块

@@ -615,3 +615,36 @@ async def _load_contact_user_info(db: AsyncSession, contact):
         contact.contact_nickname = contact_user.nickname
         contact.contact_avatar = contact_user.avatar
 
+@router.get("/files", response_model=dict, summary="获取聊天附件列表")
+async def get_im_files(
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """获取用户在聊天中发送或接收的所有附件列表"""
+    # 查询所有包含文件的消息
+    from .im_models import IMMessage
+    stmt = select(IMMessage).where(
+        and_(
+            IMMessage.type.in_(["image", "file"]),
+            IMMessage.file_path.isnot(None)
+        )
+    ).order_by(IMMessage.created_at.desc())
+    
+    result = await db.execute(stmt)
+    messages = result.scalars().all()
+    
+    # 过滤掉物理文件不存在的
+    storage = get_storage_manager()
+    files = []
+    for msg in messages:
+        # 权限简单检查：发送者或会话成员（此处简化为发送者）
+        if msg.sender_id == user.user_id:
+             files.append({
+                "name": msg.file_name,
+                "path": msg.file_path,
+                "size": msg.file_size,
+                "type": msg.type,
+                "created_at": msg.created_at
+            })
+            
+    return success_response(data=files, message="获取成功")

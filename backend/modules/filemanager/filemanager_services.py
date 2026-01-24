@@ -32,6 +32,17 @@ class FileManagerService:
         self.db = db
         self.user_id = user_id
         self.storage = get_storage_manager()
+        
+        # 定义业务模块挂载点 (虚拟目录)
+        # name: 显示名称, module: 模块ID, sub_type: 子目录, icon: 图标
+        self.SYSTEM_MOUNTS = [
+            {"name": "我的图片", "module": "album", "sub_type": "photos", "icon": "🖼️", "id_prefix": 10001},
+            {"name": "我的视频", "module": "video", "sub_type": "videos", "icon": "🎬", "id_prefix": 10002},
+            {"name": "PDF文件", "module": "pdf", "sub_type": "uploads", "icon": "📕", "id_prefix": 10003},
+            {"name": "PDF生成", "module": "pdf", "sub_type": "outputs", "icon": "📑", "id_prefix": 10004},
+            {"name": "聊天附件", "module": "im", "sub_type": "uploads", "icon": "💬", "id_prefix": 10005},
+            {"name": "数据分析", "module": "analysis", "sub_type": "uploads", "icon": "📊", "id_prefix": 10006},
+        ]
     
     # ============ 文件夹操作 ============
     
@@ -523,7 +534,14 @@ class FileManagerService:
         folder_id: Optional[int] = None,
         keyword: Optional[str] = None
     ) -> DirectoryContents:
-        """浏览目录内容"""
+        """
+        浏览目录内容 (支持系统虚拟挂载点)
+        folder_id < 0 表示访问的是虚拟挂载点
+        """
+        # --- 处理虚拟目录访问 ---
+        if folder_id is not None and folder_id <= -10000:
+            return await self._browse_virtual_mount(folder_id, keyword)
+
         current_folder = None
         if folder_id:
             current_folder = await self.get_folder(folder_id)
@@ -545,8 +563,23 @@ class FileManagerService:
         result = await self.db.execute(folder_query)
         folders = result.scalars().all()
         
-        # 获取文件夹统计
         folder_infos = []
+        # 如果是根目录，注入系统挂载点
+        if folder_id is None and not keyword:
+            for mount in self.SYSTEM_MOUNTS:
+                folder_infos.append(FolderInfo(
+                    id=-mount["id_prefix"], # 使用负值 ID 标识虚拟目录
+                    name=mount["name"],
+                    parent_id=None,
+                    path=f"/virtual/{mount['module']}/{mount['sub_type']}",
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    file_count=0, # 动态统计太耗时，显示为 0
+                    folder_count=0,
+                    icon=mount["icon"],
+                    is_virtual=True
+                ))
+
         for f in folders:
             info = FolderInfo(
                 id=f.id,
@@ -587,6 +620,67 @@ class FileManagerService:
             folders=folder_infos,
             files=file_infos,
             total_folders=len(folder_infos),
+            total_files=len(file_infos)
+        )
+
+    async def _browse_virtual_mount(self, mount_id: int, keyword: Optional[str] = None) -> DirectoryContents:
+        """浏览虚拟挂载点的物理内容"""
+        mount_prefix = abs(mount_id)
+        mount = next((m for m in self.SYSTEM_MOUNTS if m["id_prefix"] == mount_prefix), None)
+        if not mount:
+            raise ValueError("挂载点不存在")
+            
+        # 获取物理目录
+        physical_dir = self.storage.get_module_dir(mount["module"], mount["sub_type"], self.user_id)
+        
+        file_infos = []
+        if physical_dir.exists():
+            for f in physical_dir.iterdir():
+                if f.is_file():
+                    if keyword and keyword.lower() not in f.name.lower():
+                        continue
+                        
+                    stat = f.stat()
+                    rel_path = str(f.relative_to(self.storage.root_dir)).replace('\\', '/')
+                    
+                    # 构造虚拟文件列表项
+                    file_infos.append(FileInfo(
+                        id=None, # 物理文件在虚拟索引表中可能没记录
+                        name=f.name,
+                        folder_id=mount_id,
+                        storage_path=rel_path,
+                        file_size=stat.st_size,
+                        mime_type=None, # 需要时再探测
+                        description=None,
+                        is_starred=False,
+                        created_at=datetime.fromtimestamp(stat.st_ctime),
+                        updated_at=datetime.fromtimestamp(stat.st_mtime),
+                        download_url=f"/api/v1/pdf/files/{f.name}?category={mount['sub_type']}" if mount['module'] == 'pdf' else f"/api/v1/filemanager/view?path={rel_path}",
+                        preview_url="",
+                        icon=self._get_file_icon(None, f.name),
+                        is_readonly=True # 虚拟挂载点文件暂不支持通过文件管理器修改
+                    ))
+        
+        # 面包屑
+        breadcrumbs = [
+            BreadcrumbItem(id=None, name="根目录", path="/"),
+            BreadcrumbItem(id=mount_id, name=mount["name"], path=f"/virtual/{mount['module']}")
+        ]
+        
+        return DirectoryContents(
+            current_folder=FolderInfo(
+                id=mount_id,
+                name=mount["name"],
+                parent_id=None,
+                path=f"/virtual/{mount['module']}",
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                is_virtual=True
+            ),
+            breadcrumbs=breadcrumbs,
+            folders=[],
+            files=file_infos,
+            total_folders=0,
             total_files=len(file_infos)
         )
     

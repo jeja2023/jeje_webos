@@ -22,7 +22,8 @@ const Spotlight = {
         { title: '应用中心', desc: '安装、管理应用模块', icon: 'qy', path: '/apps' },
         { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/apps' },
         { title: '待审核用户', desc: '查看等待审核的新注册用户', icon: '⏳', path: '/users/pending', permission: 'admin' },
-        { title: '系统监控', desc: '查看系统运行状态', icon: '📊', path: '/system/monitor' },
+        { title: '管理面板', desc: '查看系统统计、运行状态', icon: '📊', path: '/system/monitor' },
+        { title: 'PDF 工具', desc: '处理 PDF 合并、拆分、提取文本', icon: '📄', path: '/pdf' },
         { title: '关于系统', desc: '查看版本信息', icon: 'ℹ️', action: 'about' }
     ],
 

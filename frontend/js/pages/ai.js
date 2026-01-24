@@ -90,7 +90,7 @@ class AIPage extends Component {
                                     messages: detailRes.data.messages.map(m => ({
                                         role: m.role,
                                         content: m.content,
-                                        timestamp: m.timestamp || Date.now(),
+                                        timestamp: m.created_at || m.timestamp || Date.now(),
                                         isError: m.isError || false
                                     })),
                                     provider: detailRes.data.provider || 'local',
@@ -154,7 +154,8 @@ class AIPage extends Component {
                 messages: s.messages.map(m => ({
                     role: m.role,
                     content: m.content,
-                    timestamp: m.timestamp || Date.now(),
+                    timestamp: m.timestamp,
+                    created_at: m.created_at,
                     isError: m.isError || false
                 }))
             }));

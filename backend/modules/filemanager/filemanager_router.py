@@ -4,6 +4,7 @@ RESTful 风格，提供完整的文件管理功能
 """
 
 from typing import Optional, List
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,22 @@ from .filemanager_schemas import (
 )
 from .filemanager_services import FileManagerService
 from utils.storage import get_storage_manager
+
+
+def encode_filename_for_header(filename: str) -> str:
+    """
+    对文件名进行编码以适应 HTTP 响应头
+    使用 RFC 5987 规范处理非 ASCII 字符
+    """
+    # 尝试 ASCII 编码，如果失败则使用 RFC 5987 格式
+    try:
+        filename.encode('ascii')
+        # 纯 ASCII 字符，直接使用
+        return f'"{filename}"'
+    except UnicodeEncodeError:
+        # 包含非 ASCII 字符，使用 RFC 5987 格式
+        encoded = quote(filename, safe='')
+        return f"UTF-8''{encoded}"
 
 router = APIRouter()
 
@@ -56,6 +73,11 @@ async def browse_directory(
         return success(contents.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"浏览目录失败: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"浏览失败: {str(e)}")
 
 
 @router.get("/search")
@@ -511,10 +533,19 @@ async def download_file(
     if not file_path:
         raise HTTPException(status_code=404, detail="文件已丢失")
     
+    # 处理文件名编码（支持中文等非 ASCII 字符）
+    encoded_filename = encode_filename_for_header(file.name)
+    if encoded_filename.startswith('"'):
+        # ASCII 文件名
+        content_disposition = f'attachment; filename={encoded_filename}'
+    else:
+        # 非 ASCII 文件名，使用 filename* 参数
+        content_disposition = f'attachment; filename*={encoded_filename}'
+    
     return FileResponse(
         path=str(file_path),
-        filename=file.name,
-        media_type=file.mime_type or "application/octet-stream"
+        media_type=file.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": content_disposition}
     )
 
 
@@ -539,8 +570,17 @@ async def preview_file(
         raise HTTPException(status_code=404, detail="文件已丢失")
     
     # 设置 Content-Disposition 为 inline 以便在线预览
+    # 处理文件名编码（支持中文等非 ASCII 字符）
+    encoded_filename = encode_filename_for_header(file.name)
+    if encoded_filename.startswith('"'):
+        # ASCII 文件名
+        content_disposition = f'inline; filename={encoded_filename}'
+    else:
+        # 非 ASCII 文件名，使用 filename* 参数
+        content_disposition = f'inline; filename*={encoded_filename}'
+    
     return FileResponse(
         path=str(file_path),
         media_type=file.mime_type or "application/octet-stream",
-        headers={"Content-Disposition": f"inline; filename=\"{file.name}\""}
+        headers={"Content-Disposition": content_disposition}
     )

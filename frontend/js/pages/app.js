@@ -157,6 +157,7 @@ const App = {
                     this.setWindowTitle('相册');
                 }
             },
+
         });
 
         // 多窗口包装器
@@ -290,6 +291,11 @@ const App = {
             '/vault': { auth: true, handler: wrap(VaultPage, '密码箱') },
             '/vault/list': { auth: true, handler: wrap(VaultPage, '我的密码') },
             '/vault/categories': { auth: true, handler: wrap(VaultPage, '分类管理') },
+
+            // PDF 工具
+            '/pdf': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
+            '/pdf/list': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
+            '/pdf/reader': { auth: true, handler: wrap(PdfPage, 'PDF 阅读器') },
         });
 
     },

@@ -162,6 +162,67 @@ async def list_datasets(
         } for d in datasets
     ])
 
+@router.post("/upload", response_model=dict, summary="上传分析文件")
+async def upload_analysis_file(
+    file: UploadFile = File(...),
+    user: TokenData = Depends(get_current_user)
+):
+    """上传文件到分析模块的私有存储目录"""
+    from utils.storage import get_storage_manager
+    storage = get_storage_manager()
+    
+    # 验证后缀
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.csv', '.xlsx', '.xls']:
+        return error("只支持 .csv, .xlsx, .xls 格式的文件")
+
+    # 获取私有上传目录
+    uploads_dir = storage.get_module_dir("analysis", "uploads", user.user_id)
+    
+    # 保存文件
+    save_path = uploads_dir / file.filename
+    # 处理同名覆盖问题
+    counter = 1
+    while save_path.exists():
+        name, extension = os.path.splitext(file.filename)
+        save_path = uploads_dir / f"{name}_{counter}{extension}"
+        counter += 1
+        
+    content = await file.read()
+    with open(save_path, "wb") as f:
+        f.write(content)
+        
+    return success({
+        "name": save_path.name,
+        "path": str(save_path.relative_to(storage.root_dir)),
+        "size": len(content)
+    }, "上传成功")
+
+@router.get("/files", response_model=dict, summary="获取分析模块文件列表")
+async def list_analysis_files(
+    user: TokenData = Depends(get_current_user)
+):
+    """获取分析模块私有目录下的文件列表"""
+    from utils.storage import get_storage_manager
+    storage = get_storage_manager()
+    uploads_dir = storage.get_module_dir("analysis", "uploads", user.user_id)
+    
+    files = []
+    if uploads_dir.exists():
+        for f in uploads_dir.iterdir():
+            if f.is_file():
+                stat = f.stat()
+                files.append({
+                    "name": f.name,
+                    "size": stat.st_size,
+                    "updated_at": stat.st_mtime * 1000,
+                    "path": str(f.relative_to(storage.root_dir))
+                })
+    
+    # 按时间倒序
+    files.sort(key=lambda x: x["updated_at"], reverse=True)
+    return success(files)
+
 @router.post("/import/file")
 async def import_file(
     req: ImportFileRequest,

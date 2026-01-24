@@ -283,10 +283,11 @@ class FileManagerPage extends Component {
         return `
             <div class="fm-grid">
                 ${folders.map(folder => `
-                    <div class="fm-item ${selectedItems.includes('folder-' + folder.id) ? 'selected' : ''}" 
+                    <div class="fm-item ${selectedItems.includes('folder-' + folder.id) ? 'selected' : ''} ${folder.is_virtual ? 'virtual-item' : ''}" 
                          data-type="folder" 
+                         data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <div class="fm-item-icon">📁</div>
+                        <div class="fm-item-icon">${folder.icon || '📁'}</div>
                         <div class="fm-item-name">${Utils.escapeHtml(folder.name)}</div>
                     </div>
                 `).join('')}
@@ -318,14 +319,17 @@ class FileManagerPage extends Component {
                 ${folders.map(folder => `
                     <div class="fm-list-item ${selectedItems.includes('folder-' + folder.id) ? 'selected' : ''}" 
                          data-type="folder" 
+                         data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <span>📁</span>
-                        <span>${Utils.escapeHtml(folder.name)}</span>
+                        <span>${folder.icon || '📁'}</span>
+                        <span style="${folder.is_virtual ? 'color: var(--color-primary); font-weight: 500;' : ''}">${Utils.escapeHtml(folder.name)}</span>
                         <span>--</span>
                         <span>${Utils.formatDate(folder.updated_at)}</span>
                         <span>
+                            ${!folder.is_virtual ? `
                             <button class="btn btn-ghost btn-sm" data-action="rename" data-type="folder" data-id="${folder.id}">✏️</button>
                             <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="folder" data-id="${folder.id}">🗑️</button>
+                            ` : '<span style="color: var(--color-text-tertiary); font-size: 11px;">系统挂载</span>'}
                         </span>
                     </div>
                 `).join('')}
@@ -517,9 +521,15 @@ class FileManagerPage extends Component {
                 const id = parseInt(t.dataset.id);
 
                 if (type === 'folder') {
+                    // 支持字符串/负数 ID (虚拟目录)
                     this.loadDirectory(id);
                 } else if (type === 'file') {
-                    this.previewFile(id);
+                    if (id) {
+                        this.previewFile(id);
+                    } else {
+                        // 虚拟文件暂不支持预览，仅支持下载
+                        Toast.info('虚拟文件暂不支持直接预览');
+                    }
                 }
             });
 
@@ -713,13 +723,18 @@ class FileManagerPage extends Component {
             Toast.error('删除失败');
         }
     }
-
     async renameItem(type, id) {
+
         const item = type === 'folder'
-            ? this.state.folders.find(f => f.id === id)
-            : this.state.files.find(f => f.id === id);
+            ? this.state.folders.find(f => String(f.id) === String(id))
+            : this.state.files.find(f => String(f.id) === String(id));
 
         if (!item) return;
+
+        if (item.is_virtual || item.is_readonly) {
+            Toast.warning('系统挂载项不支持重命名');
+            return;
+        }
 
         const newName = await Modal.prompt('重命名', '请输入新名称', item.name);
         if (!newName || newName === item.name) return;

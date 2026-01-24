@@ -244,8 +244,7 @@ body {
     right: 0 !important;
     bottom: 0 !important;
     margin: 0 !important;
-    z-index: 9000;
-    /* 位于Modal(10000)下方 */
+    /* 移除硬编码 z-index，由 JS WindowManager 统一管理 */
     box-shadow: none !important;
     border: none !important;
 }

@@ -31,6 +31,7 @@
 | **💬 反馈 (Feedback)** | 用户与管理员沟通桥梁、状态追踪工作流 |
 | **📁 文件管理 (FileManager)** | 网格/列表视图、虚拟目录、无限层级、在线预览、拖拽上传 |
 | **⚡ 快传 (Transfer)** | 局域网跨设备文件传输、传输码机制、WebSocket 实时进度 |
+| **📄 PDF 工具 (PDF)** | 在线预览、格式转换 (Word/Excel/图像)、页面编辑 (合并/拆分/水印/加密) |
 | **🔬 数据透镜 (DataLens)** | 万能数据视窗，支持 MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API 等数据源 |
 
 #### 按需启用模块（通过应用市场启用）
@@ -266,7 +267,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.4.6 |
+| | `APP_VERSION` | 系统版本 | 2.4.9 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

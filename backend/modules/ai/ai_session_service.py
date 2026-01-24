@@ -3,12 +3,15 @@ AI 会话管理服务
 """
 
 import logging
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
+from dateutil import parser
 
 from .ai_models import AIChatSession, AIChatMessage
+from utils.timezone import BEIJING_TZ
 
 logger = logging.getLogger(__name__)
 
@@ -179,12 +182,46 @@ class AISessionService:
         
         # 添加新消息
         for msg_data in messages:
-            if msg_data.get('role') and msg_data.get('content'):
+            role = msg_data.get('role')
+            content = msg_data.get('content')
+            if role and content:
+                # 尝试从数据中恢复时间戳
+                created_at = None
+                
+                # 优先检查 timestamp
+                ts = msg_data.get('timestamp')
+                if ts:
+                    try:
+                        if isinstance(ts, (int, float)):
+                            created_at = datetime.fromtimestamp(ts / 1000, BEIJING_TZ)
+                        elif isinstance(ts, str):
+                            if ts.isdigit():
+                                created_at = datetime.fromtimestamp(int(ts) / 1000, BEIJING_TZ)
+                            else:
+                                # 尝试解析 ISO 字符串
+                                created_at = parser.parse(ts)
+                                if created_at.tzinfo is None:
+                                    created_at = created_at.replace(tzinfo=BEIJING_TZ)
+                    except Exception:
+                        pass
+                
+                # 其次检查 created_at
+                if not created_at:
+                    ca = msg_data.get('created_at')
+                    if ca:
+                        try:
+                            created_at = parser.parse(ca)
+                            if created_at.tzinfo is None:
+                                created_at = created_at.replace(tzinfo=BEIJING_TZ)
+                        except Exception:
+                            pass
+                
                 message = AIChatMessage(
                     session_id=session.id,
-                    role=msg_data['role'],
-                    content=msg_data['content'],
-                    is_error=msg_data.get('isError', False) or msg_data.get('is_error', False)
+                    role=role,
+                    content=content,
+                    is_error=msg_data.get('isError', False) or msg_data.get('is_error', False),
+                    created_at=created_at or None # 如果为 None 则使用数据库默认值
                 )
                 db.add(message)
         

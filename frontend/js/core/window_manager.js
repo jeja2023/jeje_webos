@@ -116,15 +116,35 @@ const WindowManager = {
 
         const win = this.windows.get(id);
 
-        // 置顶逻辑
+        // --- 核心置顶逻辑修复 ---
         this.zIndexCounter++;
         let newZ = this.zIndexCounter;
 
-        // 如果窗口最大化，赋予更高的 z-index 以盖住 TopBar (z=5000)
-        // 普通窗口 z-index ~3000+, 最大化窗口 z-index ~8000+
-        if (win.maximized) {
-            newZ += 5000;
+        // 1. 获取当前所有可见窗口中的最大 Z 值（排除自身）
+        let maxZ = 0;
+        this.windows.forEach(w => {
+            if (w.id !== id && !w.minimized) {
+                const z = parseInt(w.element.style.zIndex) || 0;
+                if (z > maxZ) maxZ = z;
+            }
+        });
+
+        // 2. 确保新层级绝对高于现有所有窗口
+        if (newZ <= maxZ) {
+            newZ = maxZ + 1;
+            this.zIndexCounter = newZ;
         }
+
+        // 3. 处理 TopBar (z=5000) 覆盖逻辑
+        // 如果当前窗口最大化，或者当前系统中存在任何最大化窗口（我们可能是在它上面打开新窗口），
+        // 激活窗口必须在 5000 之上。
+        const hasMaximized = Array.from(this.windows.values()).some(w => w.maximized && !w.minimized);
+        if ((win.maximized || hasMaximized) && newZ < 5001) {
+            newZ += 5000;
+            this.zIndexCounter = Math.max(this.zIndexCounter, newZ);
+        }
+
+        // 4. 应用样式
         win.element.style.zIndex = newZ;
 
         // 更新激活类
@@ -253,6 +273,11 @@ const WindowManager = {
             // 保存所有窗口的 ID (即 path)
             const openWindowIds = windowsList.map(w => w.id);
             Store.set('openWindows', openWindowIds);
+        }
+
+        // --- 核心修复：无窗口时重置 Z-Index 计数器 ---
+        if (windowsList.length === 0) {
+            this.zIndexCounter = 3000;
         }
 
         // TopBar 逻辑

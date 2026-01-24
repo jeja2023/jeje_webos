@@ -99,7 +99,7 @@ class StartMenuComponent extends Component {
         const appItems = [];
         for (const mod of modules) {
             if (!mod.enabled) continue;
-            if (pinnedIds.has(mod.id)) continue;
+            // if (pinnedIds.has(mod.id)) continue; // 允许在开始菜单显示已固定的应用
 
             appItems.push({
                 id: mod.id,
@@ -174,7 +174,8 @@ class StartMenuComponent extends Component {
             'ocr': { ri: 'ri-scan-2-line' },
             'course': { ri: 'ri-book-open-line' },
             'schedule': { ri: 'ri-calendar-schedule-line' },
-            'vault': { ri: 'ri-shield-keyhole-line' }
+            'vault': { ri: 'ri-shield-keyhole-line' },
+            'pdf': { ri: 'ri-file-pdf-2-fill' }
         };
 
         return iconMap[id] || { ri: null, emoji: defaultIcon };

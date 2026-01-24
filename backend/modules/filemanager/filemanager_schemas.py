@@ -38,6 +38,10 @@ class FolderInfo(BaseModel):
     file_count: int = 0
     folder_count: int = 0
     
+    # 扩展标识
+    icon: str = "📁"
+    is_virtual: bool = False
+    
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -73,7 +77,7 @@ class FileMove(BaseModel):
 
 class FileInfo(BaseModel):
     """文件信息"""
-    id: int
+    id: Optional[int]
     name: str
     folder_id: Optional[int]
     storage_path: str
@@ -88,6 +92,8 @@ class FileInfo(BaseModel):
     download_url: str = ""
     preview_url: str = ""
     icon: str = "📄"
+    is_readonly: bool = False
+    origin_module: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 

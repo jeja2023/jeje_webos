@@ -253,6 +253,7 @@ class DockComponent extends Component {
             'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
             'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
             'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
+            'pdf': { ri: 'ri-file-pdf-2-fill', gradient: 'gradient-red' },
         };
 
         return iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
