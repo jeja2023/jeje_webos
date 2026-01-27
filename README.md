@@ -26,29 +26,29 @@
 #### 默认启用模块
 | 模块 | 功能描述 |
 |------|---------|
-| **📝 博客 (Blog)** | 完整 CMS 内容管理、封面上传、分类管理、状态流转 |
-| **📒 笔记 (Notes)** | Markdown 实时预览、无限层级文件夹、标签管理、收藏置顶 |
-| **💬 反馈 (Feedback)** | 用户与管理员沟通桥梁、状态追踪工作流 |
-| **📁 文件管理 (FileManager)** | 网格/列表视图、虚拟目录、无限层级、在线预览、拖拽上传 |
-| **⚡ 快传 (Transfer)** | 局域网跨设备文件传输、传输码机制、WebSocket 实时进度 |
-| **📄 PDF 工具 (PDF)** | 在线预览、格式转换 (Word/Excel/图像)、页面编辑 (合并/拆分/水印/加密) |
-| **🔬 数据透镜 (DataLens)** | 万能数据视窗，支持 MySQL/PostgreSQL/SQL Server/Oracle/SQLite/CSV/Excel/API 等数据源 |
+| **📝 博客 (Blog)** | 文章发布与管理系统，支持 Markdown 编辑、封面上传与分类管理 |
+| **📒 笔记 (Notes)** | 个人笔记管理，支持无限层级文件夹、Markdown 实时预览、标签管理与收藏 |
+| **💬 反馈 (Feedback)** | 用户反馈系统，支持提交、查看、回复和全流程状态追踪 |
+| **📁 文件管理 (FileManager)** | 全功能云端文件管理，支持文件夹多级嵌套、在线预览、多选批量操作与拖拽上传 |
+| **⚡ 快传 (Transfer)** | 局域网高速文件传输，支持分块传输、断点续传与传输历史记录 |
+| **📄 PDF 工具 (PDF)** | 全方位 PDF 处理，支持在线阅读、合并拆分、格式转换、水印及加密解密 |
+| **🔬 数据透镜 (DataLens)** | 万能数据视窗，支持 MySQL、SQLite、CSV、Excel、API 等多种外部数据源 |
 
 #### 按需启用模块（通过应用市场启用）
 | 模块 | 功能描述 |
 |------|---------|
-| **🧠 AI 助手** | 集成多种大模型引擎，支持流式对话、上下文记忆、多角色预设 |
-| **📊 数据分析 (Analysis)** | 基于 DuckDB 的 ETL 数据建模、BI 数据大屏、图表分析 |
-| **📚 知识库 (Knowledge)** | AI 混合搜索、图片语义搜索、知识图谱可视化 |
-| **💬 即时通讯 (IM)** | 端到端加密聊天、群组管理、文件传输、消息撤回 |
-| **🔐 密码箱 (Vault)** | AES-256 加密存储、主密码保护、恢复码机制、安全自动清除 |
-| **📅 日程管理 (Schedule)** | 日历视图、事件分类、提醒通知推送 |
-| **📚 课程学习 (Course)** | 沉浸式学习体验、智能记忆续学、专注模式 |
-| **📝 在线考试 (Exam)** | 题库管理、智能组卷、在线考试与自动阅卷 |
-| **📷 相册 (Album)** | 个人相册管理，支持相册分类和照片上传预览 |
-| **🎬 视频 (Video)** | 个人视频管理，支持视频集分类和视频上传播放 |
-| **🗺️ 智能地图 (Map)** | 离线/在线双模式、GPS 轨迹回放、热力图分析 |
-| **📷 图文识别 (OCR)** | 基于 RapidOCR 的离线图文识别，支持图片和 PDF |
+| **🧠 AI 助手** | 本地大模型驱动，集成流式对话、知识库挂载与多角色预设方案 |
+| **📊 数据分析 (Analysis)** | 基于 DuckDB 的高性能分析中心，支持数据清洗、建模与 BI 仪表盘 |
+| **📚 知识库 (Knowledge)** | 企业级知识管理，支持向量检索、RAG 增强搜索与文档语义分析 |
+| **💬 即时通讯 (IM)** | 即时通讯系统，支持私聊、群聊、消息加密与文件传输 |
+| **🔐 密码箱 (Vault)** | 安全存储账户密码，支持 AES 加密保护与分类管理 |
+| **📅 日程管理 (Schedule)** | 个人日程与时间规划，支持日历视图、分类管理与提醒通知 |
+| **📚 课程学习 (Course)** | 在线课程平台，支持视频课程上传、章节管理、进度追踪与断点续学 |
+| **📝 在线考试 (Exam)** | 考试系统，支持题库管理、智能组卷与在线阅卷 |
+| **📷 相册 (Album)** | 个人相册管理，支持相册分类、批量上传与照片预览 |
+| **🎬 视频 (Video)** | 个人视频库，支持视频集分类、封面抓取与在线流媒体播放 |
+| **🗺️ 智能地图 (Map)** | 智能地图展示，支持离线/在线瓦片、GPS 轨迹管理与热力分析 |
+| **📷 图文识别 (OCR)** | 基于 RapidOCR 的离线识别，支持图片和 PDF 文本精准提取 |
 
 ### ⚙️ 系统管理
 - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）
@@ -75,7 +75,7 @@
 ### 前端 (Vanilla JS / CSS3)
 - **无构建工具**：采用原生 ES Modules，修改即生效
 - **组件化**：自研轻量级 Component 基类，状态响应式更新
-- **样式隔离**：核心样式与 App 样式分离，支持动态 CSS 变量换肤
+- **样式架构**：核心样式、组件样式与模块样式分层解耦，支持基于 CSS 变量的动态换肤
 
 ---
 
@@ -88,61 +88,66 @@
 
 ### 方式一：Docker 部署（推荐）
 
-本系统提供 **CPU版** Docker 镜像（约 800MB），适合在 NAS、轻量级云服务器或普通个人电脑上运行。镜像已集成 OCR、PDF 处理及本地 AI 推理的 CPU 模式。
+本系统提供 **CPU版** Docker 镜像（约 **800MB**），适合在 NAS、轻量级云服务器或普通个人电脑上运行。镜像已集成 OCR、PDF 处理及本地 AI 推理的 CPU 模式，无需 GPU 显卡支持。
 
+1. **准备配置文件**
 ```bash
-# 1. 进入 docker 目录
+# 进入 docker 目录
 cd docker
 
-# 2. 复制配置模板
+# 复制配置模板
 cp env_docker.example env_docker
+```
 
-# 3. 编辑配置（修改数据库密码、应用端口等）
-# Windows: notepad env_docker
-# Linux/Mac: vim env_docker
+2. **配置环境参数**
+使用文本编辑器（如 Notepad 或 Vim）打开并编辑 `env_docker` 文件，根据实际需求修改数据库密码、应用端口等关键参数。
 
-# 4. 启动服务（会自动从 Docker Hub 拉取或本地构建）
+3. **启动服务**
+```bash
+# 启动服务
 docker-compose up -d
 
-# 5. 查看启动日志（包含数据库初始化进度）
+# 查看启动日志
 docker-compose logs -f app
 ```
 
-> **提示**：首次启动会自动运行 Alembic 数据库迁移。默认访问地址为 `http://localhost:8000`（或您在 `env_docker` 中配置的端口）。
+> **提示**：首次启动会自动完成数据库表结构的创建和默认管理员账户的初始化。默认访问地址为 `http://localhost:9000`（或您在 `env_docker` 中配置的端口）。
 >
 > **💡 NAS 用户特别说明**：
-> 如果您是在 **飞牛NAS (FnOS)**、群晖或威联通上通过 Docker 部署，请务必参考 [**NAS 部署详细指南 (含故障排查)**](./deployment/使用说明.md)。该文档详细说明了如何正确挂载大型模型文件。
+> 如果您是在 **飞牛NAS (FnOS)**、群晖或威联通上通过 Docker 部署，请务必参考 [**NAS 部署详细指南 (含故障排查)**](./deployment/使用说明.md)。该文档详细说明了如何正确挂载 AI 模型、OCR 模型及离线地图等大型文件。
 
 
 ### 方式二：本地开发运行
 
+1. **准备环境**
 ```bash
-# 1. 克隆项目
+# 克隆项目
 git clone https://github.com/jeja2023/jeje_webos.git
 cd jeje_webos/backend
 
-# 2. 创建虚拟环境
+# 创建虚拟环境
 python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/Mac
-source venv/bin/activate
+```
 
-# 3. 安装依赖
+2. **激活虚拟环境**
+- **Windows**: `venv\Scripts\activate`
+- **Linux / macOS**: `source venv/bin/activate`
+
+3. **安装依赖与配置**
+```bash
+# 安装必要依赖
 pip install -r requirements.txt
 
-# 4. 配置环境变量
-# 复制 .env.example 为 .env 并修改配置
-# 主要配置项：
-# - DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
-# - REDIS_HOST, REDIS_PORT
-# - JWT_SECRET（首次启动会自动生成）
+# 复制环境变量配置文件
+# Windows: copy .env.example .env
+# Linux / macOS: cp .env.example .env
+```
+随后请手动编辑 `.env` 文件，完善数据库（MySQL）和缓存（Redis）的连接配置。
 
-# 5. 初始化数据库
-# 确保 MySQL 和 Redis 已启动
-# 系统首次启动会自动创建数据库表
+4. **启动服务**
+确保 MySQL 和 Redis 服务已就绪，直接运行启动指令。系统首次启动会自动完成数据库表结构的创建。
 
-# 6. 启动服务
+```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -188,6 +193,7 @@ jeje_webos/
 │   │   ├── album/                # 相册模块
 │   │   ├── video/                # 视频模块
 │   │   ├── map/                  # 智能地图模块
+│   │   ├── pdf/                  # PDF 工具模块
 │   │   └── ocr/                  # 图文识别模块
 │   │
 │   ├── routers/                  # 系统级路由
@@ -220,10 +226,15 @@ jeje_webos/
 │   └── sw.js                     # Service Worker
 │
 ├── docker/                       # 容器化配置
-│   ├── docker-compose.yml        # 服务编排
-│   ├── Dockerfile                # 后端镜像构建
-│   ├── docker-entrypoint.sh      # 启动脚本
+│   ├── docker-compose.yml        # 服务编排（开发用）
+│   ├── Dockerfile                # 镜像构建文件
+│   ├── docker-entrypoint.sh      # 容器启动脚本
 │   └── env_docker.example        # 环境配置示例
+│
+├── deployment/                   # 部署相关
+│   ├── docker-compose.yml        # 服务编排（生产用）
+│   ├── 使用说明.md               # NAS 部署详细指南
+│   └── storage/                  # 模型及数据占位目录
 │
 ├── storage/                      # 数据持久化
 │   ├── public/                   # 公共文件
@@ -267,7 +278,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.4.9 |
+| | `APP_VERSION` | 系统版本 | 2.4.14 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |
@@ -324,6 +335,7 @@ python scripts/create_module.py todo_list 待办事项
 
 - **[开发规范](./开发规范.md)**：完整的开发指南，包含架构规范、代码标准、模块开发实战
 - **[更新日志](./更新日志.md)**：详细的版本更新历史
+- **[NAS 部署指南](./deployment/使用说明.md)**：飞牛NAS/群晖/威联通 Docker 部署详细说明
 
 ---
 

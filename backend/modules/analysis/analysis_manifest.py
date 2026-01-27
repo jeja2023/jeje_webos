@@ -17,6 +17,7 @@ async def on_install():
 
 async def on_enable():
     """模块启用时执行"""
+    
     # 初始化 DuckDB 连接，确保数据库文件已创建
     try:
         from .analysis_duckdb_service import duckdb_instance

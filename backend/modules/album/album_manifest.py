@@ -4,6 +4,14 @@
 """
 
 from core.loader import ModuleManifest, ModuleAssets
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("相册模块已启用")
+
 
 manifest = ModuleManifest(
     id="album",
@@ -40,5 +48,8 @@ manifest = ModuleManifest(
     
     dependencies=[],
     
-    enabled=False,
+    enabled=True,
+    
+    on_enable=on_enable,
 )
+

@@ -37,7 +37,7 @@ async def get_cover_url(db: AsyncSession, cover_video_id: int) -> str:
     return ""
 
 
-# ==================== 视频集接口 ====================
+# 视频集接口
 
 @router.get("/", summary="获取视频集列表")
 async def get_collection_list(
@@ -176,7 +176,7 @@ async def delete_collection(
     return success(message="视频集已删除")
 
 
-# ==================== 视频接口 ====================
+# 视频接口
 
 @router.post("/{collection_id}/videos", summary="上传视频")
 async def upload_video(
@@ -291,7 +291,7 @@ async def get_video_file(
         logger.error(f"视频文件未找到: {video.storage_path} (ID: {video_id})")
         raise HTTPException(status_code=404, detail="文件不存在")
     
-    logger.info(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {video.storage_path}")
+    logger.debug(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {video.storage_path}")
     
     # 确定 MIME 类型，对播放最友好的做法是强制 mp4 后缀为 video/mp4
     mime_type = "video/mp4" if video.filename.endswith(".mp4") else (video.mime_type or "video/mp4")

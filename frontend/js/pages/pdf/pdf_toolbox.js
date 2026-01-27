@@ -19,32 +19,38 @@ const PdfToolbox = {
             `;
         };
 
-        const benchBody = selectedFiles.length > 0
-            ? `<div class="pdf-bench-list">${selectedFiles.map(f => renderSelectedCard(f)).join('')}</div>`
+        const benchContent = selectedFiles.length > 0
+            ? `
+                <div class="pdf-bench-container">
+                    <div class="pdf-section-header">
+                        <h3><i class="ri-briefcase-line"></i> 任务工作台</h3>
+                        <div class="pdf-section-actions">
+                            <span class="count">${selectedFiles.length} 个文件</span>
+                            <button class="btn btn-text btn-sm" onclick="window._pdfPage.updateToolboxSelection()">重选</button>
+                        </div>
+                    </div>
+                    <div class="pdf-bench-content">
+                        <div class="pdf-bench-list">
+                            ${selectedFiles.map(f => renderSelectedCard(f)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `
             : `
-                <div class="pdf-bench-empty">
-                    <i class="ri-cursor-line"></i>
-                    <p>尚未选择待处理文件</p>
-                    <button class="btn btn-outline btn-sm" onclick="window._pdfPage.updateToolboxSelection()">
-                        <i class="ri-add-line"></i> 从文档库选择
+                <div class="pdf-bench-compact" onclick="window._pdfPage.updateToolboxSelection()">
+                    <div class="pdf-bench-compact-info">
+                        <i class="ri-cursor-line"></i>
+                        <span>尚未选择待处理文件，请先选择文件或直接点击下方工具</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm">
+                        <i class="ri-add-line"></i> 选择文件
                     </button>
                 </div>
             `;
 
         return `
             <div class="pdf-toolbox">
-                <div class="pdf-bench-container">
-                    <div class="pdf-section-header">
-                        <h3><i class="ri-briefcase-line"></i> 任务工作台</h3>
-                        <div class="pdf-section-actions">
-                            <span class="count">${selectedFiles.length} 个文件</span>
-                            ${selectedFiles.length > 0 ? `<button class="btn btn-text btn-sm" onclick="window._pdfPage.updateToolboxSelection()">重选</button>` : ''}
-                        </div>
-                    </div>
-                    <div class="pdf-bench-content">
-                        ${benchBody}
-                    </div>
-                </div>
+                ${benchContent}
 
                 <div class="pdf-tool-group-title">常用工具</div>
                 <div class="pdf-tool-grid">
@@ -144,6 +150,16 @@ const PdfToolbox = {
                         <div class="pdf-tool-icon"><i class="ri-file-pdf-fill"></i></div>
                         <div class="pdf-tool-title">图片转 PDF</div>
                         <div class="pdf-tool-desc">将多张图片合成 PDF</div>
+                    </div>
+                    <div class="pdf-tool-card" onclick="window._pdfPage.handleWordToPdf()">
+                        <div class="pdf-tool-icon"><i class="ri-file-word-2-line"></i></div>
+                        <div class="pdf-tool-title">Word 转 PDF</div>
+                        <div class="pdf-tool-desc">文档转 PDF</div>
+                    </div>
+                    <div class="pdf-tool-card" onclick="window._pdfPage.handleExcelToPdf()">
+                        <div class="pdf-tool-icon"><i class="ri-file-excel-2-line"></i></div>
+                        <div class="pdf-tool-title">Excel 转 PDF</div>
+                        <div class="pdf-tool-desc">表格转 PDF</div>
                     </div>
                     <div class="pdf-tool-card" onclick="window._pdfPage.handleExtractText()">
                         <div class="pdf-tool-icon"><i class="ri-text"></i></div>

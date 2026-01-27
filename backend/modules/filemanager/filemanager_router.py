@@ -4,6 +4,7 @@ RESTful 风格，提供完整的文件管理功能
 """
 
 from typing import Optional, List
+import os
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
@@ -18,8 +19,11 @@ from .filemanager_schemas import (
     FileUpdate, FileMove, FileInfo, DirectoryContents, StorageStats,
     BatchDeleteRequest, BatchDeleteResult
 )
+import logging
 from .filemanager_services import FileManagerService
 from utils.storage import get_storage_manager
+
+logger = logging.getLogger(__name__)
 
 
 def encode_filename_for_header(filename: str) -> str:
@@ -112,6 +116,9 @@ async def get_starred_files(
     service = get_service(db, user)
     files = await service.get_starred_files()
     return success([f.model_dump() for f in files])
+
+
+# --- 模块文件聚合功能已移除 ---
 
 
 # ============ 文件夹操作 ============
@@ -521,31 +528,26 @@ async def download_file(
     user: TokenData = Depends(require_permission("filemanager.download"))
 ):
     """下载文件（需要 filemanager.download 权限）"""
+    storage = get_storage_manager()
     service = FileManagerService(db, user.user_id)
-    
     file = await service.get_file(file_id)
+    
     if not file:
         raise HTTPException(status_code=404, detail="文件不存在")
     
-    storage = get_storage_manager()
     file_path = storage.get_file_path(file.storage_path)
+    if not file_path or not file_path.exists():
+        raise HTTPException(status_code=404, detail="物理文件已丢失")
     
-    if not file_path:
-        raise HTTPException(status_code=404, detail="文件已丢失")
-    
-    # 处理文件名编码（支持中文等非 ASCII 字符）
+    # 处理文件名编码
     encoded_filename = encode_filename_for_header(file.name)
-    if encoded_filename.startswith('"'):
-        # ASCII 文件名
-        content_disposition = f'attachment; filename={encoded_filename}'
-    else:
-        # 非 ASCII 文件名，使用 filename* 参数
-        content_disposition = f'attachment; filename*={encoded_filename}'
+    cd_type = 'inline' if file.mime_type and ('image' in file.mime_type or 'video' in file.mime_type or 'pdf' in file.mime_type) else 'attachment'
+    cd_header = f"{cd_type}; filename={encoded_filename}" if encoded_filename.startswith('"') else f"{cd_type}; filename*={encoded_filename}"
     
     return FileResponse(
         path=str(file_path),
         media_type=file.mime_type or "application/octet-stream",
-        headers={"Content-Disposition": content_disposition}
+        headers={"Content-Disposition": cd_header}
     )
 
 
@@ -556,31 +558,5 @@ async def preview_file(
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("filemanager.download"))
 ):
-    """预览文件（在线查看，不触发下载，需要 filemanager.download 权限）"""
-    service = FileManagerService(db, user.user_id)
-    
-    file = await service.get_file(file_id)
-    if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
-    
-    storage = get_storage_manager()
-    file_path = storage.get_file_path(file.storage_path)
-    
-    if not file_path:
-        raise HTTPException(status_code=404, detail="文件已丢失")
-    
-    # 设置 Content-Disposition 为 inline 以便在线预览
-    # 处理文件名编码（支持中文等非 ASCII 字符）
-    encoded_filename = encode_filename_for_header(file.name)
-    if encoded_filename.startswith('"'):
-        # ASCII 文件名
-        content_disposition = f'inline; filename={encoded_filename}'
-    else:
-        # 非 ASCII 文件名，使用 filename* 参数
-        content_disposition = f'inline; filename*={encoded_filename}'
-    
-    return FileResponse(
-        path=str(file_path),
-        media_type=file.mime_type or "application/octet-stream",
-        headers={"Content-Disposition": content_disposition}
-    )
+    """预览文件（在线查看，不触发下载）"""
+    return await download_file(file_id, token, db, user)

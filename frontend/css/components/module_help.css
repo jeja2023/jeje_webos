@@ -230,22 +230,22 @@
         padding: 5px 10px;
         font-size: 12px;
     }
-    
+
     .module-help-content {
         padding: 8px 0;
     }
-    
+
     .module-help-content h3 {
         font-size: 18px;
         margin-bottom: 16px;
     }
-    
+
     .module-help-content h4 {
         font-size: 15px;
         margin-top: 24px;
         margin-bottom: 12px;
     }
-    
+
     .module-help-content ul,
     .module-help-content ol {
         padding-left: 24px;
@@ -260,4 +260,3 @@
 .theme-neon .btn-help:hover {
     background: rgba(138, 43, 226, 0.15);
 }
-

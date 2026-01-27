@@ -177,29 +177,9 @@
     align-items: baseline;
 }
 
-/* 搜索框 */
-.search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    width: 280px;
-}
-
-.search-box i {
-    color: var(--text-tertiary);
-}
-
-.search-box input {
-    border: none;
-    background: transparent;
-    outline: none;
-    flex: 1;
-    font-size: 14px;
-    color: var(--text-primary);
+/* 课程搜索框 - 使用全局样式 */
+.course-page .search-box {
+    width: 260px;
 }
 
 /* 课程网格 */
@@ -1073,4 +1053,450 @@ body.focus-mode-active .btn-back {
 
 body.focus-mode-active .learn-view {
     border: none;
+}
+
+/* ========== 视频播放器样式 ========== */
+
+/* 视频播放器容器 */
+.video-player-container {
+    margin-bottom: 32px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.video-player {
+    position: relative;
+    width: 100%;
+    background: #000;
+    aspect-ratio: 16 / 9;
+}
+
+.video-player video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* 视频加载状态 */
+.video-player .video-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    z-index: 10;
+}
+
+.video-player .video-loading i {
+    font-size: 48px;
+    animation: spin 1s linear infinite;
+}
+
+.video-player .video-loading span {
+    font-size: 14px;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 视频控制区 */
+.video-controls {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+}
+
+.video-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.video-info i {
+    font-size: 20px;
+    color: var(--accent-color);
+}
+
+.video-duration {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.video-duration i {
+    font-size: 14px;
+}
+
+.video-speed {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.video-speed select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.video-speed select:hover {
+    border-color: var(--accent-color);
+}
+
+.video-speed select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* 视频进度保存提示 */
+.video-progress-tip {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1) 0%, rgba(var(--color-primary-rgb), 0.05) 100%);
+    border-top: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.video-progress-tip i {
+    color: var(--accent-color);
+    margin-right: 8px;
+}
+
+.video-progress-tip .btn-jump {
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.video-progress-tip .btn-jump:hover {
+    transform: scale(1.05);
+}
+
+/* 视频上传区域样式 */
+.video-upload-area {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.video-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg-primary);
+}
+
+.video-upload-placeholder:hover {
+    border-color: var(--accent-color);
+    background: rgba(var(--color-primary-rgb), 0.03);
+}
+
+.video-upload-placeholder i {
+    font-size: 48px;
+    color: var(--text-tertiary);
+}
+
+.video-upload-placeholder span {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.video-upload-placeholder small {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.video-upload-area.drag-over {
+    border-color: var(--accent-color);
+    background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.video-exists {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.video-exists i {
+    font-size: 32px;
+    color: var(--accent-color);
+}
+
+.video-exists span {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+/* 已选择视频状态 */
+.video-selected {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--accent-color);
+}
+
+.video-selected i {
+    font-size: 28px;
+    color: var(--accent-color);
+}
+
+.video-selected span {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 上传进度条 */
+.upload-progress {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.upload-progress .progress-bar-bg {
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.upload-progress .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-color) 0%, #22c55e 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.upload-progress span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 学习视图样式优化 */
+.learn-view {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.learn-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.learn-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.learn-content {
+    min-height: 300px;
+}
+
+.learn-footer {
+    display: flex;
+    justify-content: center;
+    padding: 24px 0 0;
+    margin-top: 32px;
+    border-top: 1px solid var(--border-color);
+}
+
+.learn-footer .btn-primary {
+    min-width: 160px;
+}
+
+.learn-footer .btn-primary.completed {
+    background: #22c55e;
+    cursor: default;
+}
+
+.learn-footer .btn-primary.completed:hover {
+    transform: none;
+}
+
+/* 导航文本样式 */
+.nav-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.btn-nav-chapter.next .nav-text {
+    align-items: flex-end;
+}
+
+.nav-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-title {
+    font-size: 13px;
+    color: var(--text-primary);
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 继续学习提示 */
+.continue-learning-tip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 8px;
+}
+
+.continue-learning-tip i {
+    font-size: 14px;
+    color: var(--accent-color);
+}
+
+/* 进度覆盖层 (我的学习卡片) */
+.progress-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+}
+
+.progress-overlay .progress-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.progress-overlay .progress-bar-bg {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-overlay .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-color) 0%, #22c55e 100%);
+    border-radius: 2px;
+}
+
+/* 专注模式下的视频播放器优化 */
+body.focus-mode-active .video-player-container {
+    margin-bottom: 40px;
+    border-radius: 12px;
+}
+
+body.focus-mode-active .video-player {
+    max-height: 60vh;
+}
+
+/* 视频完成标记动画 */
+@keyframes checkmark {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.chapter-completed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    animation: checkmark 0.3s ease-out;
+}
+
+.chapter-completed-badge i {
+    font-size: 12px;
 }

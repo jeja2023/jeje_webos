@@ -1,0 +1,239 @@
+/**
+ * Office 文档预览器样式
+ */
+
+/* 通用容器 */
+.office-viewer-container {
+    max-height: 75vh;
+    overflow: auto;
+    background: var(--color-bg-primary);
+    border-radius: 8px;
+}
+
+/* ========== Word 预览样式 ========== */
+.office-word-viewer {
+    padding: 40px;
+    background: white;
+    color: #333;
+    line-height: 1.8;
+}
+
+.office-word-content {
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: 'Microsoft YaHei', 'SimSun', serif;
+    font-size: 15px;
+}
+
+.office-word-content h1 {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 24px 0 16px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.office-word-content h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 20px 0 12px;
+    color: #2a2a2a;
+}
+
+.office-word-content h3 {
+    font-size: 17px;
+    font-weight: bold;
+    margin: 16px 0 10px;
+    color: #3a3a3a;
+}
+
+.office-word-content p {
+    margin: 12px 0;
+    text-align: justify;
+}
+
+.office-word-content ul,
+.office-word-content ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.office-word-content li {
+    margin: 6px 0;
+}
+
+.office-word-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.office-word-content table td,
+.office-word-content table th {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.office-word-content table th {
+    background: #f5f5f5;
+    font-weight: bold;
+}
+
+.office-word-content img {
+    max-width: 100%;
+    height: auto;
+    margin: 16px 0;
+    border-radius: 4px;
+}
+
+.office-word-content strong,
+.office-word-content b {
+    font-weight: bold;
+}
+
+.office-word-content em,
+.office-word-content i {
+    font-style: italic;
+}
+
+.office-word-content u {
+    text-decoration: underline;
+}
+
+/* ========== Excel 预览样式 ========== */
+.office-excel-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 75vh;
+}
+
+/* 工作表标签栏 */
+.office-excel-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 12px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.office-excel-tab {
+    padding: 6px 16px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.office-excel-tab:hover {
+    background: var(--color-bg-hover);
+    color: var(--text-primary);
+}
+
+.office-excel-tab.active {
+    background: var(--color-bg-primary);
+    color: var(--color-primary);
+    font-weight: 500;
+    border-color: var(--color-primary);
+    border-bottom: 1px solid var(--color-bg-primary);
+    margin-bottom: -1px;
+}
+
+/* 工作表内容区 */
+.office-excel-sheets {
+    flex: 1;
+    overflow: hidden;
+}
+
+.office-excel-sheet {
+    display: none;
+    height: 100%;
+    flex-direction: column;
+}
+
+.office-excel-sheet.active {
+    display: flex;
+}
+
+/* 数据量提示 */
+.office-excel-notice {
+    padding: 8px 16px;
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    font-size: 12px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* 表格容器 */
+.office-excel-table-wrapper {
+    flex: 1;
+    overflow: auto;
+}
+
+/* 表格样式 */
+.office-excel-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.office-excel-table td {
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    white-space: nowrap;
+    background: var(--color-bg-primary);
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.office-excel-table tr:nth-child(odd) td {
+    background: var(--color-bg-secondary);
+}
+
+.office-excel-table tr:hover td {
+    background: var(--color-bg-hover);
+}
+
+/* 第一行作为表头样式 */
+.office-excel-table tr:first-child td {
+    background: var(--color-bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .office-word-viewer {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .office-word-content h1,
+[data-theme="dark"] .office-word-content h2,
+[data-theme="dark"] .office-word-content h3 {
+    color: #fff;
+    border-color: #333;
+}
+
+[data-theme="dark"] .office-word-content table td,
+[data-theme="dark"] .office-word-content table th {
+    border-color: #444;
+}
+
+[data-theme="dark"] .office-word-content table th {
+    background: #2a2a2a;
+}

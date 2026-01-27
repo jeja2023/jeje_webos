@@ -52,4 +52,17 @@ manifest = ModuleManifest(
     
     # 是否启用
     enabled=True,
+
+    # 生命周期钩子
+    on_enable=lambda: None,  # 占位
 )
+
+async def on_enable():
+    pass
+
+async def on_disable():
+    pass
+
+# 重新注入钩子
+manifest.on_enable = on_enable
+manifest.on_disable = on_disable

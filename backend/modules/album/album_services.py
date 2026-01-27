@@ -203,9 +203,9 @@ class AlbumService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         safe_filename = f"{timestamp}{ext}"
         
-        # 获取模块存储目录
-        photo_dir = storage_manager.get_module_dir("album", "photos", user_id=user_id)
-        thumb_dir = storage_manager.get_module_dir("album", "thumbnails", user_id=user_id)
+        # 获取模块存储目录 (二元结构: uploads 存原图, outputs 存缩略图)
+        photo_dir = storage_manager.get_module_dir("album", "uploads", user_id=user_id)
+        thumb_dir = storage_manager.get_module_dir("album", "outputs", user_id=user_id)
         
         photo_path = os.path.join(photo_dir, safe_filename)
         thumb_path = os.path.join(thumb_dir, safe_filename)
@@ -265,6 +265,7 @@ class AlbumService:
         
         await db.flush()
         await db.refresh(photo)
+        
         logger.info(f"上传照片: id={photo.id}, album_id={album_id}")
         return photo
     
@@ -367,7 +368,6 @@ class AlbumService:
                     if album.cover_photo_id in photo_ids:
                         album.cover_photo_id = None
 
-        # 刷新数据库以应用删除
         await db.flush()
         logger.info(f"批量删除照片: count={deleted_count}, user_id={user_id}")
         return deleted_count

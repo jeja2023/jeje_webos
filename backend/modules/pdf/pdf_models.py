@@ -18,7 +18,10 @@ class Pdf(Base):
     表名规范：pdf_<表名>
     """
     __tablename__ = "pdf_history"
-    __table_args__ = {'extend_existing': True}  # 避免热重载时表重复定义错误
+    __table_args__ = {
+        'extend_existing': True,
+        'comment': 'PDF 工具操作历史记录表'
+    }
     
     id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     user_id = Column(Integer, nullable=False, index=True, comment="所属用户ID")
@@ -33,3 +36,28 @@ class Pdf(Base):
     
     def __repr__(self):
         return f"<Pdf(id={self.id}, title={self.title}, operation={self.operation})>"
+
+
+class PdfItems(Base):
+    """
+    PDF 工具项目保存表
+    """
+    __tablename__ = "pdf_items"
+    __table_args__ = {
+        'extend_existing': True,
+        'comment': 'PDF 工具扩展项目表'
+    }
+    
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
+    user_id = Column(Integer, nullable=False, index=True, comment="所属用户ID")
+    
+    title = Column(String(200), nullable=False, comment="标题")
+    content = Column(Text, nullable=True, comment="内容")
+    is_active = Column(Boolean, default=True, comment="是否启用")
+    
+    # 时间戳
+    created_at = Column(DateTime, default=get_beijing_time, comment="创建时间")
+    updated_at = Column(DateTime, default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
+
+    def __repr__(self):
+        return f"<PdfItems(id={self.id}, title={self.title})>"

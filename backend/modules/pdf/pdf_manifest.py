@@ -4,6 +4,14 @@ PDF工具模块清单
 """
 
 from core.loader import ModuleManifest, ModuleAssets
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("PDF 工具箱模块已启用")
+
 
 manifest = ModuleManifest(
     id="pdf",
@@ -32,30 +40,10 @@ manifest = ModuleManifest(
         {"code": "pdf.delete", "name": "删除历史", "desc": "允许删除操作历史记录"}
     ],
     
-    dependencies=["filemanager"],
+    dependencies=[],  # 移除 filemanager 依赖，模块现在完全独立
     
     enabled=True,
+    
+    on_enable=on_enable,
 )
 
-
-# ==================== 生命周期钩子示例 ====================
-
-# async def on_install_hook():
-#     """首次安装时执行"""
-#     print(f"模块 pdf 安装完成")
-
-# async def on_enable_hook():
-#     """模块启用时执行"""
-#     pass
-
-# async def on_disable_hook():
-#     """模块禁用时执行"""
-#     pass
-
-# async def on_uninstall_hook():
-#     """模块卸载时执行"""
-#     pass
-
-# async def on_upgrade_hook():
-#     """版本升级时执行"""
-#     pass

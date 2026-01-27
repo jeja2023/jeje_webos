@@ -65,8 +65,8 @@ class PdfPage extends Component {
                         <i class="ri-history-line"></i> <span>历史记录</span>
                     </div>
                     <div class="pdf-sidebar-spacer" style="flex: 1"></div>
-                    <div class="pdf-nav-item" onclick="ModuleHelp.show('pdf', 'PDF工具')">
-                        <i class="ri-question-line"></i> <span>帮助</span>
+                    <div class="pdf-help-btn-container">
+                        ${ModuleHelp.createHelpButton('pdf', 'PDF工具')}
                     </div>
                 </div>
                 <div class="pdf-main">
@@ -186,6 +186,13 @@ class PdfPage extends Component {
 
             const res = await Api.get(url);
             if (res.code === 0) {
+                // 检查加密状态 (只要是加密的，PyMuPDF 渲染通常需要密码，除非是 Owner Password 且有权限，但这里为了简单起见，统一拦截)
+                if (res.data.is_encrypted) {
+                    Toast.warning('该文档已加密，无法直接预览。请先使用 [解密 PDF] 工具移除密码。');
+                    this.state.activeTab = 'files';
+                    return;
+                }
+
                 this.state.reader = { fileId, filename: finalFilename, filePath, currentPage: 0, totalPages: res.data.page_count, zoom: 1.5, source };
             } else {
                 throw new Error(res.message || '后端解析返回空错误');
@@ -252,11 +259,11 @@ class PdfPage extends Component {
         }
     }
 
-    // ================== 工具处理函数 ==================
+    // 工具处理函数
 
     async handleSplit() {
         this._ensureFiles(async (file) => {
-            const ranges = prompt('请输入页码范围 (如: 1, 3-5):');
+            const ranges = await Modal.prompt('拆分 PDF', '请输入页码范围 (如: 1, 3-5):', '例如：1, 3-5', '1');
             if (!ranges) return;
             Toast.info('正在处理...');
             try {
@@ -273,7 +280,7 @@ class PdfPage extends Component {
 
     async handleMerge() {
         this._ensureFiles(async (files) => {
-            const outputName = prompt('请输入合并后的文件名:', 'merged_document.pdf');
+            const outputName = await Modal.prompt('合并 PDF', '请输入合并后的文件名:', '例如：merged.pdf', 'merged_document.pdf');
             if (!outputName) return;
 
             Toast.info('正在合并...');
@@ -291,7 +298,7 @@ class PdfPage extends Component {
 
     async handleCompress() {
         this._ensureFiles(async (file) => {
-            const level = prompt('请输入压缩等级 (0-4，默认为2，越大压缩率越高):', '2');
+            const level = await Modal.prompt('压缩 PDF', '请输入压缩等级 (0-4，默认为2，越大压缩率越高):', '0-4', '2');
             if (level === null) return;
 
             Toast.info('正在压缩...');
@@ -309,16 +316,19 @@ class PdfPage extends Component {
 
     async handleWatermark() {
         PdfUtils.pickFile(async (file) => {
-            const text = prompt('请输入水印文字:');
+            const text = await Modal.prompt('添加水印', '请输入水印文字:', '例如：内部资料', '内部资料');
             if (!text) return;
 
             Toast.info('正在添加水印...');
             try {
-                const res = await Api.post('/pdf/watermark', {
-                    file_id: file.id,
+                const payload = {
                     text: text,
                     output_name: `watermark_${file.name}`
-                });
+                };
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/watermark', payload);
                 if (res.code === 0) { Toast.success('处理成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('处理过程出错'); }
@@ -329,13 +339,14 @@ class PdfPage extends Component {
         Toast.info('请选择图片文件');
         PdfUtils.pickFile(async (files) => {
             if (!Array.isArray(files)) files = [files];
-            const outputName = prompt('请输入生成的 PDF 文件名:', 'images_merged.pdf');
+            const outputName = await Modal.prompt('图片转 PDF', '请输入生成的 PDF 文件名:', '例如：images.pdf', 'images_merged.pdf');
             if (!outputName) return;
 
             Toast.info('正在转换...');
             try {
                 const res = await Api.post('/pdf/images-to-pdf', {
-                    file_ids: files.map(f => f.id),
+                    file_ids: files.filter(f => f.id).map(f => f.id),
+                    paths: files.filter(f => !f.id).map(f => f.path),
                     output_name: outputName
                 });
                 if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
@@ -348,10 +359,52 @@ class PdfPage extends Component {
         PdfUtils.pickFile(async (file) => {
             Toast.info('正在转换...');
             try {
-                const res = await Api.post('/pdf/pdf-to-images', { file_id: file.id });
+                const payload = {};
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/pdf-to-images', payload);
                 if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
+        });
+    }
+
+    async handleImagesToPdf() {
+        PdfUtils.pickFile(async (files) => {
+            // 处理多选（如果此时返回的是数组）和单选兼容
+            const fileList = Array.isArray(files) ? files : [files];
+            if (fileList.length === 0) return;
+
+            Toast.info(`正在合并 ${fileList.length} 张图片...`);
+            try {
+                const payload = {
+                    file_ids: [],
+                    paths: [],
+                    // 自动生成输出文件名
+                    output_name: `images_merged_${new Date().getTime()}.pdf`
+                };
+
+                fileList.forEach(file => {
+                    if (file.id) payload.file_ids.push(file.id);
+                    else payload.path = payload.path ? [...payload.paths, file.path] : [file.path]; // 注意这里原本逻辑可能有误，最好统一下
+                });
+
+                // 修正 payload 构建逻辑
+                payload.paths = []; // 重置
+                fileList.forEach(file => {
+                    if (file.id) payload.file_ids.push(file.id);
+                    else payload.paths.push(file.path);
+                });
+
+                const res = await Api.post('/pdf/images-to-pdf', payload);
+                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                else Toast.error(res.message);
+            } catch (e) { Toast.error('转换过程出错'); }
+        }, {
+            multiple: true,
+            extensions: ['.jpg', '.jpeg', '.png', '.webp', '.bmp'],
+            title: '选择图片文件 (可多选，按住 Ctrl/Shift 选择)'
         });
     }
 
@@ -359,21 +412,106 @@ class PdfPage extends Component {
         PdfUtils.pickFile(async (file) => {
             Toast.info('正在提取文本...');
             try {
-                const res = await Api.get(`/pdf/extract-text?file_id=${file.id}`);
+                let url = '/pdf/extract-text?';
+                if (file.id) url += `file_id=${file.id}`;
+                else url += `path=${encodeURIComponent(file.path)}`;
+
+                const res = await Api.get(url);
                 if (res.code === 0) {
-                    Modal.show({ title: '提取结果', content: `<textarea class="form-control" style="height: 400px; font-family: monospace;">${res.data.text}</textarea>`, width: '80%' });
+                    const safeText = (res.data.text || '')
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+
+                    // 挂载临时操作函数
+                    window._tempExtractText = res.data.text || '';
+                    window._tempExtractFn = {
+                        saveToCloud: async () => {
+                            const fileName = `${file.name.replace('.pdf', '')}_extracted`;
+
+                            Toast.info('正在保存...');
+                            try {
+                                const payload = {
+                                    text: window._tempExtractText,
+                                    filename: fileName,
+                                    file_id: file.id || null
+                                };
+
+                                const res = await Api.post('/pdf/save-text', payload);
+
+                                if (res.code === 0) {
+                                    Toast.success('已保存到我的文档 (成果)');
+                                    Modal.closeAll();
+                                    // 刷新列表以便看到新文件
+                                    if (window._pdfPage) window._pdfPage.switchTab('files');
+                                } else {
+                                    Toast.error(res.message || '保存失败');
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                Toast.error('保存请求出错');
+                            }
+                        }
+                    };
+
+                    Modal.show({
+                        title: '提取结果',
+                        content: `
+                            <textarea id="pdf-extract-result" class="form-control" style="height: 400px; font-family: monospace; margin-bottom: 15px;">${safeText}</textarea>
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                                <button class="btn btn-text" onclick="Modal.closeAll()">关闭</button>
+                                <button class="btn btn-primary" onclick="window._tempExtractFn.saveToCloud()"><i class="ri-save-line"></i> 保存到我的文档</button>
+                            </div>
+                        `,
+                        width: '80%',
+                        footer: false
+                    });
                 } else Toast.error(res.message);
-            } catch (e) { Toast.error('提取失败'); }
+            } catch (e) { console.error(e); Toast.error('提取失败'); }
         });
     }
 
-    // ==================== 新增功能处理函数 ====================
+    async handleWordToPdf() {
+        PdfUtils.pickFile(async (file) => {
+            Toast.info('正在将 Word 转换为 PDF...');
+            try {
+                const payload = {};
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/word-to-pdf', payload);
+                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                else Toast.error(res.message);
+            } catch (e) { Toast.error('转换过程出错'); }
+        }, { extensions: ['.docx', '.doc'], title: '请选择 Word 文档' });
+    }
+
+    async handleExcelToPdf() {
+        PdfUtils.pickFile(async (file) => {
+            Toast.info('正在将 Excel 转换为 PDF...');
+            try {
+                const payload = {};
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/excel-to-pdf', payload);
+                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                else Toast.error(res.message);
+            } catch (e) { Toast.error('转换过程出错'); }
+        }, { extensions: ['.xlsx', '.xls', '.csv'], title: '请选择 Excel 文档' });
+    }
+
+    // 新增功能处理函数
 
     async handlePdfToWord() {
         PdfUtils.pickFile(async (file) => {
             Toast.info('正在转换为 Word...');
             try {
-                const res = await Api.post('/pdf/pdf-to-word', { file_id: file.id });
+                const payload = {};
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/pdf-to-word', payload);
                 if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
@@ -382,13 +520,14 @@ class PdfPage extends Component {
 
     async handlePdfToExcel() {
         PdfUtils.pickFile(async (file) => {
-            const ranges = prompt('请输入页码范围（可选，留空则转换全部）:');
+            const ranges = await Modal.prompt('PDF 转 Excel', '请输入页码范围（可选，留空则转换全部）:', '例如：1, 3-5', '');
             Toast.info('正在提取表格...');
             try {
-                const res = await Api.post('/pdf/pdf-to-excel', {
-                    file_id: file.id,
-                    page_ranges: ranges || null
-                });
+                const payload = { page_ranges: ranges || null };
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/pdf-to-excel', payload);
                 if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
@@ -399,7 +538,11 @@ class PdfPage extends Component {
         PdfUtils.pickFile(async (file) => {
             Toast.info('正在处理...');
             try {
-                const res = await Api.post('/pdf/remove-watermark', { file_id: file.id });
+                const payload = {};
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/remove-watermark', payload);
                 if (res.code === 0) { Toast.success('处理成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('处理过程出错'); }
@@ -408,15 +551,16 @@ class PdfPage extends Component {
 
     async handleEncrypt() {
         PdfUtils.pickFile(async (file) => {
-            const password = prompt('请输入密码:');
+            const password = await Modal.prompt('加密 PDF', '请输入密码:', '密码', '');
             if (!password) return;
 
             Toast.info('正在加密...');
             try {
-                const res = await Api.post('/pdf/encrypt', {
-                    file_id: file.id,
-                    password: password
-                });
+                const payload = { password: password };
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/encrypt', payload);
                 if (res.code === 0) { Toast.success('加密成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('加密过程出错'); }
@@ -425,15 +569,16 @@ class PdfPage extends Component {
 
     async handleDecrypt() {
         PdfUtils.pickFile(async (file) => {
-            const password = prompt('请输入当前密码:');
+            const password = await Modal.prompt('解密 PDF', '请输入当前密码:', '密码', '');
             if (!password) return;
 
             Toast.info('正在解密...');
             try {
-                const res = await Api.post('/pdf/decrypt', {
-                    file_id: file.id,
-                    password: password
-                });
+                const payload = { password: password };
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/decrypt', payload);
                 if (res.code === 0) { Toast.success('解密成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('解密过程出错'); }
@@ -442,35 +587,50 @@ class PdfPage extends Component {
 
     async handleRotate() {
         PdfUtils.pickFile(async (file) => {
-            const angle = prompt('请输入旋转角度 (90, 180, 270):', '90');
-            if (!angle) return;
+            Modal.form({
+                title: '旋转页面',
+                fields: [
+                    {
+                        name: 'angle', label: '旋转角度', type: 'select', value: '90',
+                        options: [
+                            { value: '90', text: '顺时针 90°' },
+                            { value: '180', text: '180°' },
+                            { value: '270', text: '逆时针 90°' }
+                        ]
+                    },
+                    { name: 'ranges', label: '页码范围 (可选)', placeholder: '例如: 1, 3-5 (留空则旋转全部)', type: 'text' }
+                ],
+                onSubmit: async (data) => {
+                    Toast.info('正在旋转...');
+                    try {
+                        const payload = {
+                            angle: parseInt(data.angle) || 90,
+                            page_ranges: data.ranges || null
+                        };
+                        if (file.id) payload.file_id = file.id;
+                        else payload.path = file.path;
 
-            const ranges = prompt('请输入页码范围（留空则旋转全部）:');
-
-            Toast.info('正在旋转...');
-            try {
-                const res = await Api.post('/pdf/rotate', {
-                    file_id: file.id,
-                    angle: parseInt(angle) || 90,
-                    page_ranges: ranges || null
-                });
-                if (res.code === 0) { Toast.success('旋转成功'); this.switchTab('history'); }
-                else Toast.error(res.message);
-            } catch (e) { Toast.error('旋转过程出错'); }
+                        const res = await Api.post('/pdf/rotate', payload);
+                        if (res.code === 0) { Toast.success('旋转成功'); this.switchTab('history'); }
+                        else Toast.error(res.message);
+                    } catch (e) { Toast.error('旋转过程出错'); }
+                }
+            });
         });
     }
 
     async handleExtractPages() {
         PdfUtils.pickFile(async (file) => {
-            const ranges = prompt('请输入要提取的页码范围 (如: 1, 3-5, 8):');
+            const ranges = await Modal.prompt('提取页面', '请输入要提取的页码范围 (如: 1, 3-5, 8):', '例如：1, 3-5', '');
             if (!ranges) return;
 
             Toast.info('正在提取...');
             try {
-                const res = await Api.post('/pdf/extract-pages', {
-                    file_id: file.id,
-                    page_ranges: ranges
-                });
+                const payload = { page_ranges: ranges };
+                if (file.id) payload.file_id = file.id;
+                else payload.path = file.path;
+
+                const res = await Api.post('/pdf/extract-pages', payload);
                 if (res.code === 0) { Toast.success('提取成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('提取过程出错'); }
@@ -479,12 +639,17 @@ class PdfPage extends Component {
 
     async handleDeletePages() {
         PdfUtils.pickFile(async (file) => {
-            const ranges = prompt('请输入要删除的页码范围 (如: 1, 3-5):');
+            const ranges = await Modal.prompt('删除页面', '请输入要删除的页码范围 (如: 1, 3-5):', '例如：2', '');
             if (!ranges) return;
 
             Toast.info('正在删除...');
             try {
-                const res = await Api.post(`/pdf/delete-pages?file_id=${file.id}&page_ranges=${encodeURIComponent(ranges)}`);
+                let url = '/pdf/delete-pages?';
+                if (file.id) url += `file_id=${file.id}`;
+                else url += `path=${encodeURIComponent(file.path)}`;
+                url += `&page_ranges=${encodeURIComponent(ranges)}`;
+
+                const res = await Api.post(url);
                 if (res.code === 0) { Toast.success('删除成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('删除过程出错'); }
@@ -495,7 +660,11 @@ class PdfPage extends Component {
         PdfUtils.pickFile(async (file) => {
             Toast.info('正在反转...');
             try {
-                const res = await Api.post(`/pdf/reverse?file_id=${file.id}`);
+                let url = '/pdf/reverse?';
+                if (file.id) url += `file_id=${file.id}`;
+                else url += `path=${encodeURIComponent(file.path)}`;
+
+                const res = await Api.post(url);
                 if (res.code === 0) { Toast.success('反转成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('反转过程出错'); }
@@ -504,51 +673,86 @@ class PdfPage extends Component {
 
     async handleAddPageNumbers() {
         PdfUtils.pickFile(async (file) => {
-            const position = prompt('请选择页码位置 (bottom-center, bottom-left, bottom-right, top-center, top-left, top-right):', 'bottom-center');
-            if (!position) return;
+            Modal.form({
+                title: '添加页码',
+                fields: [
+                    {
+                        name: 'position', label: '页码位置', type: 'select', value: 'bottom-center',
+                        options: [
+                            { value: 'bottom-center', text: '底部居中' },
+                            { value: 'bottom-left', text: '底部左侧' },
+                            { value: 'bottom-right', text: '底部右侧' },
+                            { value: 'top-center', text: '顶部居中' },
+                            { value: 'top-left', text: '顶部左侧' },
+                            { value: 'top-right', text: '顶部右侧' }
+                        ]
+                    },
+                    { name: 'format', label: '页码格式', placeholder: '{n} 为当前页，{total} 为总页数', value: '{n} / {total}' }
+                ],
+                onSubmit: async (data) => {
+                    Toast.info('正在添加页码...');
+                    try {
+                        const payload = {
+                            position: data.position,
+                            format: data.format || '{n}'
+                        };
+                        if (file.id) payload.file_id = file.id;
+                        else payload.path = file.path;
 
-            const format = prompt('请输入页码格式 ({n} 为当前页，{total} 为总页数):', '{n} / {total}');
-
-            Toast.info('正在添加页码...');
-            try {
-                const res = await Api.post('/pdf/add-page-numbers', {
-                    file_id: file.id,
-                    position: position,
-                    format: format || '{n}'
-                });
-                if (res.code === 0) { Toast.success('添加页码成功'); this.switchTab('history'); }
-                else Toast.error(res.message);
-            } catch (e) { Toast.error('添加页码出错'); }
+                        const res = await Api.post('/pdf/add-page-numbers', payload);
+                        if (res.code === 0) { Toast.success('添加页码成功'); this.switchTab('history'); }
+                        else Toast.error(res.message);
+                    } catch (e) { Toast.error('添加页码出错'); }
+                }
+            });
         });
     }
 
     async handleSign() {
-        Toast.info('请先选择 PDF 文件');
+        // 第一步：选择 PDF
         PdfUtils.pickFile(async (pdfFile) => {
-            Toast.info('请选择签名/印章图片');
-            PdfUtils.pickFile(async (imageFile) => {
-                const page = prompt('请输入签名页码:', '1');
-                if (!page) return;
+            Toast.success(`已选择目标文件: ${pdfFile.name}`);
 
-                const x = prompt('请输入 X 位置 (0-100%):', '70');
-                const y = prompt('请输入 Y 位置 (0-100%):', '85');
-                const width = prompt('请输入签名宽度 (0-100%):', '20');
+            // 稍作延迟，让用户意识到第一步完成了
+            setTimeout(() => {
+                // 第二步：选择图片
+                PdfUtils.pickFile(async (imageFile) => {
+                    Modal.form({
+                        title: '设置签名位置',
+                        fields: [
+                            { name: 'page', label: '页码', type: 'number', value: '1', required: true },
+                            { name: 'x', label: '横坐标 (X%)', type: 'number', value: '70', placeholder: '0-100', required: true },
+                            { name: 'y', label: '纵坐标 (Y%)', type: 'number', value: '85', placeholder: '0-100', required: true },
+                            { name: 'width', label: '宽度 (%)', type: 'number', value: '20', placeholder: '0-100', required: true }
+                        ],
+                        onSubmit: async (data) => {
+                            Toast.info('正在添加签名...');
+                            try {
+                                const payload = {
+                                    page: parseInt(data.page) || 1,
+                                    x: parseFloat(data.x) || 70,
+                                    y: parseFloat(data.y) || 85,
+                                    width: parseFloat(data.width) || 20
+                                };
+                                if (pdfFile.id) payload.file_id = pdfFile.id;
+                                else payload.path = pdfFile.path;
 
-                Toast.info('正在添加签名...');
-                try {
-                    const res = await Api.post('/pdf/sign', {
-                        file_id: pdfFile.id,
-                        image_file_id: imageFile.id,
-                        page: parseInt(page) || 1,
-                        x: parseFloat(x) || 70,
-                        y: parseFloat(y) || 85,
-                        width: parseFloat(width) || 20
+                                if (imageFile.id) payload.image_file_id = imageFile.id;
+                                else payload.image_path = imageFile.path;
+
+                                const res = await Api.post('/pdf/sign', payload);
+                                if (res.code === 0) { Toast.success('添加签名成功'); this.switchTab('history'); }
+                                else Toast.error(res.message);
+                            } catch (e) { Toast.error('添加签名出错'); }
+                        }
                     });
-                    if (res.code === 0) { Toast.success('添加签名成功'); this.switchTab('history'); }
-                    else Toast.error(res.message);
-                } catch (e) { Toast.error('添加签名出错'); }
-            }, { extensions: ['.jpg', '.jpeg', '.png', '.webp'] });
-        });
+                }, {
+                    extensions: ['.jpg', '.jpeg', '.png', '.webp'],
+                    title: '第二步：选择签名/印章图片'
+                });
+            }, 500);
+
+        }, { title: '第一步：选择目标 PDF 文件' });
     }
 
     async downloadResult(filename) {
@@ -583,12 +787,13 @@ class PdfPage extends Component {
     }
 
     // 下载 PDF 模块中的文件
-    async downloadPdfFile(filePath) {
-        if (!filePath) return;
+    async downloadPdfFile(fileArg) {
+        if (!fileArg) return;
         Toast.info('正在下载...');
 
         try {
-            const filename = filePath.split('/').pop();
+            // 兼容文件名或路径：统一分隔符并提取文件名
+            const filename = fileArg.replace(/\\/g, '/').split('/').pop();
             const res = await fetch(`${Api.baseUrl}/pdf/download-result?filename=${encodeURIComponent(filename)}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
@@ -617,39 +822,51 @@ class PdfPage extends Component {
     handleUpload() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.pdf';  // PDF 模块只接受 PDF 文件
+        input.accept = '.pdf,.jpg,.jpeg,.png,.webp,.bmp,.doc,.docx,.xls,.xlsx,.csv';  // 支持 PDF、图片及 Office 文档
+        input.multiple = true; // 支持多选
+
         input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
 
-            Toast.info('正在上传...');
-            const formData = new FormData();
-            formData.append('file', file);
+            Toast.info(`准备上传 ${files.length} 个文件...`);
+            let successCount = 0;
 
-            try {
-                // 使用 PDF 模块自己的上传接口（模块独立，不依赖文件管理）
-                const res = await fetch(`${Api.baseUrl}/pdf/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
-                    },
-                    body: formData
-                });
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
 
-                const data = await res.json();
-                if (data.code === 0) {
-                    Toast.success('上传成功');
-                    if (this.state.activeTab === 'files') {
-                        this.loadAllFiles();
+                try {
+                    const res = await fetch(`${Api.baseUrl}/pdf/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
+                        },
+                        body: formData
+                    });
+
+                    const data = await res.json();
+                    if (data.code === 0) {
+                        successCount++;
                     } else {
-                        this.loadRecentFiles();
+                        Toast.error(`文件 ${file.name} 上传失败: ${data.message}`);
                     }
-                } else {
-                    Toast.error(data.message || '上传失败');
+                } catch (err) {
+                    console.error(err);
+                    Toast.error(`文件 ${file.name} 上传出错`);
                 }
-            } catch (err) {
-                console.error(err);
-                Toast.error('上传出错');
+            }
+
+            if (successCount > 0) {
+                Toast.success(`成功上传 ${successCount} 个文件`);
+                // 刷新列表 (无论当前在哪个 tab)
+                if (this.state.activeTab === 'files') {
+                    this.loadAllFiles();
+                } else {
+                    this.loadRecentFiles(); // 刷新最近文件
+                    // 如果在 history 或 toolbox，可能不需要刷新，但为了保险起见
+                }
             }
         };
         input.click();

@@ -43,8 +43,20 @@ const PdfHistory = {
             case 'split': return 'ri-split-cells-horizontal';
             case 'compress': return 'ri-file-zip-line';
             case 'watermark': return 'ri-copyright-line';
+            case 'remove_watermark': return 'ri-eraser-line';
             case 'img2pdf': return 'ri-file-pdf-fill';
             case 'pdf2img': return 'ri-image-2-line';
+            case 'pdf2word': return 'ri-file-word-line';
+            case 'pdf2excel': return 'ri-file-excel-line';
+            case 'encrypt': return 'ri-lock-password-line';
+            case 'decrypt': return 'ri-lock-unlock-line';
+            case 'rotate': return 'ri-rotate-lock-line';
+            case 'reorder': return 'ri-drag-move-line';
+            case 'extract_pages': return 'ri-scissors-cut-line';
+            case 'delete_pages': return 'ri-delete-bin-line';
+            case 'reverse': return 'ri-arrow-left-right-line';
+            case 'add_page_numbers': return 'ri-sort-number-asc';
+            case 'sign': return 'ri-quill-pen-line';
             case 'read': return 'ri-book-read-line';
             default: return 'ri-file-pdf-line';
         }

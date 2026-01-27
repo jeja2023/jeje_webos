@@ -36,7 +36,10 @@ from .pdf_schemas import (
     PdfReorderRequest,
     PdfExtractPagesRequest,
     PdfAddPageNumbersRequest,
-    PdfSignRequest
+    PdfSignRequest,
+    PdfWordToPdfRequest,
+    PdfExcelToPdfRequest,
+    PdfSaveTextRequest
 )
 from .pdf_services import PdfService
 
@@ -111,12 +114,14 @@ async def upload_pdf(
     user: TokenData = Depends(get_current_user)
 ):
     """
-    上传 PDF 文件到 PDF 模块的 uploads 目录
-    PDF 模块独立管理自己的文件，不依赖文件管理模块
+    上传文件到 PDF 模块的 uploads 目录
+    支持 PDF 和常见图片格式（用于签名、图片转PDF等）
     """
     # 验证文件类型
-    if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="只支持上传 PDF 文件")
+    ext = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
+    allowed_exts = {'pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'csv'}
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail=f"不支持的文件类型，仅支持: {', '.join(allowed_exts)}")
     
     storage, base_dir, uploads_dir, outputs_dir = _get_pdf_storage_paths(user.user_id)
     
@@ -251,7 +256,7 @@ async def merge_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="合并成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/split", response_model=dict, summary="拆分 PDF")
@@ -266,7 +271,7 @@ async def split_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="拆分成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/compress", response_model=dict, summary="压缩 PDF")
@@ -281,7 +286,7 @@ async def compress_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="压缩成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/watermark", response_model=dict, summary="添加水印")
@@ -296,7 +301,7 @@ async def add_watermark(
         await db.commit()
         return success_response(data={"path": output_path}, message="添加水印成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/images-to-pdf", response_model=dict, summary="图片转 PDF")
@@ -311,7 +316,7 @@ async def images_to_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="转换成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/pdf-to-images", response_model=dict, summary="PDF 转图片")
@@ -326,7 +331,7 @@ async def pdf_to_images(
         await db.commit()
         return success_response(data={"path": output_path}, message="转换成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.get("/download-result", summary="下载处理结果")
@@ -336,47 +341,68 @@ async def download_result(
 ):
     """下载 PDF 处理后的结果文件"""
     storage = get_storage_manager()
-    # 构建安全路径
-    pdf_dir = Path(storage.root_path) / "modules" / "pdf" / str(user.user_id)
-    file_path = pdf_dir / filename
+    
+    # 获取正确的模块目录 (输出目录和上传目录)
+    output_dir = storage.get_module_dir("pdf", "outputs", user.user_id)
+    upload_dir = storage.get_module_dir("pdf", "uploads", user.user_id)
+    
+    # 按优先级查找文件
+    search_paths = [
+        output_dir / filename,
+        upload_dir / filename
+    ]
+    
+    file_path = None
+    for path in search_paths:
+        if path.exists() and path.is_file():
+            file_path = path
+            break
+    
+    if not file_path:
+        raise HTTPException(status_code=404, detail="文件不存在")
     
     # 路径遍历检查
     try:
         file_path = file_path.resolve()
-        pdf_dir = pdf_dir.resolve()
-        if not str(file_path).startswith(str(pdf_dir)):
+        storage_root = storage.root_dir.resolve()
+        # 只要在 storage 根目录下即视为安全（因为已通过 user_id 筛选了目录）
+        if not str(file_path).startswith(str(storage_root)):
             raise HTTPException(status_code=403, detail="非法路径访问")
     except Exception:
-         raise HTTPException(status_code=403, detail="非法路径访问")
+        raise HTTPException(status_code=403, detail="非法路径访问")
 
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="文件不存在")
-
-    # 根据文件扩展名确定 media_type
-    media_type = "application/pdf"
-    if filename.endswith(".zip"):
-        media_type = "application/zip"
+    # 强制下载处理
+    from urllib.parse import quote
+    encoded_filename = quote(filename)
     
-    return FileResponse(path=str(file_path), filename=filename, media_type=media_type)
+    return FileResponse(
+        path=file_path,
+        media_type="application/octet-stream",
+        filename=filename,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+    )
 
 
 @router.get("/extract-text", response_model=dict, summary="提取文本")
 async def extract_text(
-    file_id: int = Query(...),
-    source: str = Query("filemanager"),
+    file_id: Optional[int] = Query(None, description="文件ID (文件管理器)"),
+    path: Optional[str] = Query(None, description="文件路径 (PDF模块)"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
     """提取 PDF 全文文本"""
     try:
-        file_path, _ = await PdfService.get_file_path(db, file_id, user.user_id, source)
-        text = await PdfService.extract_text(file_path)
+        # 使用通用的解析方法，支持 ID 或 Path
+        file_path, _ = await PdfService._resolve_file(db, user.user_id, file_id, path)
+        text = await PdfService.extract_text(str(file_path))
         return success_response(data={"text": text}, message="提取成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
-# ==================== 新增功能路由 ====================
+# 新增功能路由
 
 @router.post("/pdf-to-word", response_model=dict, summary="PDF 转 Word")
 async def pdf_to_word(
@@ -390,7 +416,7 @@ async def pdf_to_word(
         await db.commit()
         return success_response(data={"path": output_path}, message="转换成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/pdf-to-excel", response_model=dict, summary="PDF 转 Excel")
@@ -405,7 +431,7 @@ async def pdf_to_excel(
         await db.commit()
         return success_response(data={"path": output_path}, message="转换成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/remove-watermark", response_model=dict, summary="去除水印")
@@ -420,7 +446,7 @@ async def remove_watermark(
         await db.commit()
         return success_response(data={"path": output_path}, message="处理成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/encrypt", response_model=dict, summary="加密 PDF")
@@ -435,7 +461,7 @@ async def encrypt_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="加密成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/decrypt", response_model=dict, summary="解密 PDF")
@@ -450,7 +476,7 @@ async def decrypt_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="解密成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/rotate", response_model=dict, summary="旋转页面")
@@ -465,7 +491,7 @@ async def rotate_pdf(
         await db.commit()
         return success_response(data={"path": output_path}, message="旋转成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/reorder", response_model=dict, summary="页面重排")
@@ -480,7 +506,7 @@ async def reorder_pages(
         await db.commit()
         return success_response(data={"path": output_path}, message="重排成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/extract-pages", response_model=dict, summary="提取页面")
@@ -495,7 +521,7 @@ async def extract_pages(
         await db.commit()
         return success_response(data={"path": output_path}, message="提取成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/add-page-numbers", response_model=dict, summary="添加页码")
@@ -510,7 +536,7 @@ async def add_page_numbers(
         await db.commit()
         return success_response(data={"path": output_path}, message="添加页码成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/sign", response_model=dict, summary="添加签名")
@@ -525,12 +551,13 @@ async def add_signature(
         await db.commit()
         return success_response(data={"path": output_path}, message="添加签名成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/delete-pages", response_model=dict, summary="删除页面")
 async def delete_pages(
-    file_id: int = Query(..., description="文件ID"),
+    file_id: Optional[int] = Query(None, description="文件ID"),
+    path: Optional[str] = Query(None, description="文件路径"),
     page_ranges: str = Query(..., description="要删除的页码范围"),
     output_name: Optional[str] = Query(None, description="输出文件名"),
     db: AsyncSession = Depends(get_db),
@@ -538,25 +565,71 @@ async def delete_pages(
 ):
     """删除 PDF 中的指定页面"""
     try:
-        output_path = await PdfService.delete_pages(db, user.user_id, file_id, page_ranges, output_name)
+        output_path = await PdfService.delete_pages(db, user.user_id, file_id, page_ranges, output_name, path)
         await db.commit()
         return success_response(data={"path": output_path}, message="删除成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
 
 
 @router.post("/reverse", response_model=dict, summary="反转页面")
 async def reverse_pages(
-    file_id: int = Query(..., description="文件ID"),
+    file_id: Optional[int] = Query(None, description="文件ID"),
+    path: Optional[str] = Query(None, description="文件路径"),
     output_name: Optional[str] = Query(None, description="输出文件名"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("pdf.create"))
 ):
     """反转 PDF 页面顺序"""
     try:
-        output_path = await PdfService.reverse_pages(db, user.user_id, file_id, output_name)
+        output_path = await PdfService.reverse_pages(db, user.user_id, file_id, output_name, path)
         await db.commit()
         return success_response(data={"path": output_path}, message="反转成功")
     except ValueError as e:
-        return success_response(code=400, message=str(e))
+        return error_response(message=str(e))
+
+
+@router.post("/word-to-pdf", response_model=dict, summary="Word 转 PDF")
+async def word_to_pdf(
+    request: PdfWordToPdfRequest,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("pdf.create"))
+):
+    """Word 转 PDF"""
+    try:
+        output_path = await PdfService.word_to_pdf(db, user.user_id, request)
+        await db.commit()
+        return success_response(data={"path": output_path}, message="转换成功")
+    except ValueError as e:
+        return error_response(message=str(e))
+
+
+@router.post("/excel-to-pdf", response_model=dict, summary="Excel 转 PDF")
+async def excel_to_pdf(
+    request: PdfExcelToPdfRequest,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("pdf.create"))
+):
+    """Excel 转 PDF"""
+    try:
+        output_path = await PdfService.excel_to_pdf(db, user.user_id, request)
+        await db.commit()
+        return success_response(data={"path": output_path}, message="转换成功")
+    except ValueError as e:
+        return error_response(message=str(e))
+
+
+@router.post("/save-text", response_model=dict, summary="保存提取的文本")
+async def save_text(
+    request: PdfSaveTextRequest,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("pdf.create"))
+):
+    """保存提取的文本到文件"""
+    try:
+        output_path = await PdfService.save_extracted_text(db, user.user_id, request)
+        await db.commit()
+        return success_response(data={"path": output_path}, message="保存成功")
+    except ValueError as e:
+        return error_response(message=str(e))
 

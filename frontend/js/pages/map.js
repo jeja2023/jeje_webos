@@ -30,51 +30,31 @@ class MapPage extends Component {
         this.tileLayer = null;
         this.colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
         this.mapContainer = null; // 引用地图DOM元素
+        this._zoomRenderTimer = null; // 缩放渲染防抖计时器
     }
 
-    async loadData() {
-        // [动态加载] 热力图库
-        if (typeof L.heatLayer === 'undefined') {
-            const script = document.createElement('script');
-            script.src = '/static/libs/leaflet/leaflet-heat.js';
-            document.head.appendChild(script);
-        }
-
-        // [核心] 优先从云端恢复状态
-        try {
-            const res = await Api.get('/map/config');
-            if (res.code === 200 && res.data) {
-                const config = res.data;
-                this.setState({
-                    mapMode: config.map_mode || 'offline',
-                    tileSource: config.tile_source || 'amap_offline',
-                    onlineTileUrl: config.online_tile_url || this.state.onlineTileUrl,
-                    lastCenter: config.last_center,
-                    lastZoom: config.last_zoom
-                });
-            }
-        } catch (e) {
-            // 云端失败时回退到本地存储
-            let savedMapConfig;
-            try {
-                savedMapConfig = localStorage.getItem('jeje_map_config');
-            } catch (e) { }
-
-            if (savedMapConfig) {
-                try {
-                    const config = JSON.parse(savedMapConfig);
-                    const newState = {};
-                    if (config.tileSource) newState.tileSource = config.tileSource;
-                    if (config.onlineTileUrl) newState.onlineTileUrl = config.onlineTileUrl;
-                    if (config.mapMode) newState.mapMode = config.mapMode;
-                    this.setState(newState);
-                } catch (e) { }
+    /** 计算轨迹总距离 (km) **/
+    calculateDistance(points) {
+        if (!points || points.length < 2) return 0;
+        let total = 0;
+        for (let i = 1; i < points.length; i++) {
+            const p1 = points[i - 1], p2 = points[i];
+            if (p1.lat && p1.lng && p2.lat && p2.lng) {
+                total += this.haversineDistance(p1.lat, p1.lng, p2.lat, p2.lng);
             }
         }
-
-        await this.fetchTrailFiles();
-        await this.fetchMarkers();
+        return total;
     }
+
+    /** Haversine 公式计算两点距离 (km) **/
+    haversineDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // 地球半径 km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
 
     async fetchMarkers() {
         try {
@@ -158,14 +138,7 @@ class MapPage extends Component {
                                     <i class="ri-map-2-fill"></i>
                                     <div class="brand-text">
                                         <div class="brand-title">智能地图</div>
-                                        <div class="brand-version">v2.6</div>
                                     </div>
-                                </div>
-                                <div class="header-actions">
-                                    <button class="btn-icon-only" id="btnMapHeatmap" title="热力图分析"><i class="ri-fire-line"></i></button>
-                                    <button class="btn-icon-only" id="btnMapRuler" title="测量工具"><i class="ri-ruler-2-line"></i></button>
-                                    <button class="btn-icon-only" id="btnMapConfig" title="配置中心"><i class="ri-settings-4-line"></i></button>
-                                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('map', '智能地图') : ''}
                                 </div>
                             </div>
                             
@@ -192,29 +165,42 @@ class MapPage extends Component {
                             <div class="list-section">
                                 <div class="section-title">
                                     <span>当前已载入 图层 (${datasets.length})</span>
-                                    <button class="btn-text-only" id="btnUploadGps" style="font-size: 18px;" title="上传新轨迹">
-                                        <i class="ri-add-circle-line"></i>
-                                    </button>
+                                    <div class="section-actions">
+                                        ${datasets.length > 0 ? `
+                                            <button class="btn-text-only" id="btnFitAll" title="适配全部轨迹"><i class="ri-fullscreen-line"></i></button>
+                                            <button class="btn-text-only" id="btnClearAll" title="清除所有图层" style="color: var(--color-error);"><i class="ri-delete-bin-7-line"></i></button>
+                                        ` : ''}
+                                        <button class="btn-text-only" id="btnUploadGps" style="font-size: 18px;" title="上传新轨迹">
+                                            <i class="ri-add-circle-line"></i>
+                                        </button>
+                                    </div>
                                     <input type="file" id="gpsFileInput" style="display:none" accept=".csv,.xlsx,.xls,.gpx">
                                 </div>
                                 ${datasets.length === 0 ? `
                                     <div class="empty-hint" style="padding: 20px 0;">
                                         <p style="font-size: 11px; opacity: 0.5;">地图上暂无轨迹图层</p>
                                     </div>
-                                ` : datasets.map(ds => `
-                                    <div class="dataset-item">
+                                ` : datasets.map(ds => {
+                const dist = this.calculateDistance(ds.points);
+                const distStr = dist >= 1 ? `${dist.toFixed(2)} km` : `${(dist * 1000).toFixed(0)} m`;
+                return `
+                                    <div class="dataset-item" data-id="${ds.id}">
                                         <div class="ds-info">
                                             <input type="checkbox" class="ds-toggle" data-id="${ds.id}" ${ds.visible ? 'checked' : ''}>
                                             <span class="ds-color-dot" data-id="${ds.id}" style="background:${ds.color}; cursor: pointer;" title="点击修改颜色"></span>
-                                            <span class="ds-name text-truncate" title="${escape(ds.name)}">${escape(ds.name)}</span>
+                                            <div class="ds-text">
+                                                <span class="ds-name text-truncate" title="${escape(ds.name)}">${escape(ds.name)}</span>
+                                                <span class="ds-meta">${ds.points.length} 点 · ${distStr}</span>
+                                            </div>
                                         </div>
                                         <div class="ds-actions">
+                                            <button class="btn-icon ds-info-btn" data-id="${ds.id}" title="详情"><i class="ri-information-line"></i></button>
                                             <button class="btn-icon ds-export" data-id="${ds.id}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
                                             <button class="btn-icon ds-locate" data-id="${ds.id}" title="定位"><i class="ri-focus-3-line"></i></button>
                                             <button class="btn-icon ds-remove" data-id="${ds.id}" title="移除"><i class="ri-close-line"></i></button>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `}).join('')}
                             </div>
 
                             <div class="list-section" style="border-top: 1px solid var(--color-border); margin-top: 10px; padding-top: 15px;">
@@ -271,16 +257,28 @@ class MapPage extends Component {
                         </div>
                     </div>
                 </div>
+                <div class="footer-extra" style="margin-top: 16px; display: flex; justify-content: flex-start;">
+                    ${window.ModuleHelp ? ModuleHelp.createHelpButton('map', '智能地图') : ''}
+                </div>
             </div>
                     </div >
 
-            <div class="map-main">
-                <div class="map-canvas" style="width:100%;height:100%;z-index:1;"></div>
-                <div class="zoom-indicator" style="position:absolute;top:20px;right:20px;">缩放: 12</div>
-                <div id="ruler-hint" style="display:none; position:absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 8px 16px; border-radius: 20px; z-index: 1000; font-size: 13px;">
-                    测量模式: 点击地图添加测量点，再次点击测量按钮退出
-                </div>
-            </div>
+                    <div class="map-main">
+                        <div class="map-canvas"></div>
+                        
+                        <!-- 悬浮工具栏 -->
+                        <div class="map-floating-tools">
+                            <button class="tool-btn" id="btnMapLocate" title="定位当前位置"><i class="ri-crosshair-2-line"></i></button>
+                            <button class="tool-btn" id="btnMapHeatmap" title="热力图分析"><i class="ri-fire-line"></i></button>
+                            <button class="tool-btn" id="btnMapRuler" title="测量工具"><i class="ri-ruler-2-line"></i></button>
+                            <button class="tool-btn" id="btnMapConfig" title="配置中心"><i class="ri-settings-4-line"></i></button>
+                        </div>
+
+                        <div class="zoom-indicator">缩放: 12</div>
+                        <div id="ruler-hint" style="display:none; position:absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.73); backdrop-filter: blur(8px); color: white; padding: 10px 20px; border-radius: 20px; z-index: 1000; font-size: 13px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            测量模式: 点击地图添加测量点，再次点击测量按钮退出
+                        </div>
+                    </div>
                 </div >
             `;
         } catch (e) {
@@ -291,13 +289,13 @@ class MapPage extends Component {
 
     async afterMount() {
         this.bindEvents();
-        window._currentMap = this; // 核心：绑定全局引用以支持 Popup 按钮回调
+        window._currentMap = this;
 
-        // 监听容器大小变化 (修复窗口最大化/缩放时的地图布局问题)
+        // 监听容器大小变化
         if (this.container) {
+            this.container.classList.add('map-window-body');
             this._resizeObserver = new ResizeObserver(() => {
                 if (this.map) {
-                    // 使用 debounce 思想或延时，确保 DOM 布局已完成
                     if (this._invalidateTimer) clearTimeout(this._invalidateTimer);
                     this._invalidateTimer = setTimeout(() => {
                         if (this.map) this.map.invalidateSize();
@@ -307,10 +305,223 @@ class MapPage extends Component {
             this._resizeObserver.observe(this.container);
         }
 
+        // 先加载配置，再初始化地图（确保使用正确的配置值）
+        await this.loadMapConfig();
         this.initMap();
 
-        // 异步加载数据 (不要 await 阻塞 UI 初始化)
-        this.loadData();
+        // 异步加载其他数据
+        this.fetchTrailFiles();
+        this.fetchMarkers();
+    }
+
+    /** 加载地图配置（不触发渲染）**/
+    async loadMapConfig() {
+        // [动态加载] 热力图库
+        if (typeof L.heatLayer === 'undefined' && !this._heatLibLoading) {
+            this._heatLibLoading = true;
+            const script = document.createElement('script');
+            script.src = '/static/libs/leaflet/leaflet-heat.js';
+            script.onload = () => { this._heatLibLoaded = true; };
+            document.head.appendChild(script);
+        }
+
+        try {
+            const res = await Api.get('/map/config');
+            if (res.code === 200 && res.data) {
+                const config = res.data;
+                this.state.mapMode = config.map_mode || 'offline';
+                this.state.tileSource = config.tile_source || 'amap_offline';
+                this.state.onlineTileUrl = config.online_tile_url || this.state.onlineTileUrl;
+                this.state.lastCenter = config.last_center;
+                this.state.lastZoom = config.last_zoom;
+            }
+        } catch (e) {
+            let savedMapConfig;
+            try { savedMapConfig = localStorage.getItem('jeje_map_config'); } catch (e) { }
+            if (savedMapConfig) {
+                try {
+                    const config = JSON.parse(savedMapConfig);
+                    if (config.tileSource) this.state.tileSource = config.tileSource;
+                    if (config.onlineTileUrl) this.state.onlineTileUrl = config.onlineTileUrl;
+                    if (config.mapMode) this.state.mapMode = config.mapMode;
+                } catch (e) { }
+            }
+        }
+
+        // 关键：配置加载后，如果地图已初始化，更新瓦片层
+        if (this.map) {
+            this.updateTileLayer();
+        }
+    }
+
+    /**
+     * 重写 update 方法，避免销毁 Leaflet 实例
+     * 只更新侧边栏的动态部分，不触碰地图区域
+     */
+    update() {
+        if (!this.container || !this.map) {
+            // 如果地图还未初始化，使用默认的完整渲染
+            if (this.container) {
+                this.container.innerHTML = this.render();
+                this.afterUpdate();
+            }
+            return;
+        }
+
+        // 局部更新：只刷新数据集列表、标记点列表、轨迹资源树
+        this.updateSidebarContent();
+    }
+
+    /**
+     * 局部刷新侧边栏内容
+     */
+    updateSidebarContent() {
+        const { datasets, markers, isMarkersVisible } = this.state;
+        const escape = (str) => (window.Utils && window.Utils.escapeHtml) ? window.Utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+
+        // 更新图层列表
+        const datasetSection = this.container.querySelector('.dataset-list .list-section:first-child');
+        if (datasetSection) {
+            const titleSpan = datasetSection.querySelector('.section-title span');
+            if (titleSpan) titleSpan.textContent = `当前已载入 图层 (${datasets.length})`;
+
+            const actionsDiv = datasetSection.querySelector('.section-actions');
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `
+                    ${datasets.length > 0 ? `
+                        <button class="btn-text-only" id="btnFitAll" title="适配全部轨迹"><i class="ri-fullscreen-line"></i></button>
+                        <button class="btn-text-only" id="btnClearAll" title="清除所有图层" style="color: var(--color-error);"><i class="ri-delete-bin-7-line"></i></button>
+                    ` : ''}
+                    <button class="btn-text-only" id="btnUploadGps" style="font-size: 18px;" title="上传新轨迹">
+                        <i class="ri-add-circle-line"></i>
+                    </button>
+                `;
+            }
+
+            // 更新数据集列表内容
+            let datasetListHtml = '';
+            if (datasets.length === 0) {
+                datasetListHtml = `<div class="empty-hint" style="padding: 20px 0;"><p style="font-size: 11px; opacity: 0.5;">地图上暂无轨迹图层</p></div>`;
+            } else {
+                datasetListHtml = datasets.map(ds => {
+                    const dist = this.calculateDistance(ds.points);
+                    const distStr = dist >= 1 ? `${dist.toFixed(2)} km` : `${(dist * 1000).toFixed(0)} m`;
+                    return `
+                        <div class="dataset-item" data-id="${ds.id}">
+                            <div class="ds-info">
+                                <input type="checkbox" class="ds-toggle" data-id="${ds.id}" ${ds.visible ? 'checked' : ''}>
+                                <span class="ds-color-dot" data-id="${ds.id}" style="background:${ds.color}; cursor: pointer;" title="点击修改颜色"></span>
+                                <div class="ds-text">
+                                    <span class="ds-name text-truncate" title="${escape(ds.name)}">${escape(ds.name)}</span>
+                                    <span class="ds-meta">${ds.points.length} 点 · ${distStr}</span>
+                                </div>
+                            </div>
+                            <div class="ds-actions">
+                                <button class="btn-icon ds-info-btn" data-id="${ds.id}" title="详情"><i class="ri-information-line"></i></button>
+                                <button class="btn-icon ds-export" data-id="${ds.id}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
+                                <button class="btn-icon ds-locate" data-id="${ds.id}" title="定位"><i class="ri-focus-3-line"></i></button>
+                                <button class="btn-icon ds-remove" data-id="${ds.id}" title="移除"><i class="ri-close-line"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 找到数据集列表容器并更新
+            const titleEl = datasetSection.querySelector('.section-title');
+            if (titleEl && titleEl.nextElementSibling) {
+                // 移除旧的列表项
+                while (titleEl.nextElementSibling) {
+                    titleEl.nextElementSibling.remove();
+                }
+            }
+            // 插入新内容
+            if (titleEl) {
+                titleEl.insertAdjacentHTML('afterend', datasetListHtml);
+            }
+        }
+
+        // 更新标记点列表
+        const markerList = this.container.querySelector('.marker-list');
+        if (markerList) {
+            if (markers.length === 0) {
+                markerList.innerHTML = `<div class="empty-hint" style="padding: 10px 0; font-size: 11px; opacity: 0.5;">暂无本地标记点</div>`;
+            } else {
+                markerList.innerHTML = markers.map(m => `
+                    <div class="dataset-item marker-item">
+                        <div class="ds-info marker-info">
+                            <i class="ri-map-pin-fill" style="color: ${m.color || '#ef4444'}"></i>
+                            <span class="ds-name text-truncate" title="${escape(m.name)}">${escape(m.name)}</span>
+                        </div>
+                        <div class="ds-actions">
+                            <button class="btn-icon marker-locate" data-id="${m.id}" title="定位"><i class="ri-focus-3-line"></i></button>
+                            <button class="btn-icon marker-delete" data-id="${m.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 更新标记点显示切换按钮
+        const toggleBtn = this.container.querySelector('#btnToggleMarkers');
+        if (toggleBtn) {
+            toggleBtn.title = isMarkersVisible ? '隐藏全部' : '显示全部';
+            toggleBtn.innerHTML = `<i class="ri-eye-${isMarkersVisible ? 'line' : 'off-line'}"></i>`;
+        }
+
+        // 更新轨迹资源树
+        this.updateTrailFilesTree();
+    }
+
+    /**
+     * 更新轨迹资源树
+     */
+    updateTrailFilesTree() {
+        const treeContainer = this.container.querySelector('.trail-files-tree');
+        if (!treeContainer) return;
+
+        const escape = (str) => (window.Utils && window.Utils.escapeHtml) ? window.Utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+
+        const renderTrailTree = (items, level = 0) => {
+            if (!items || items.length === 0) return `<div class="empty-hint" style="padding: 10px 0; font-size: 11px; opacity: 0.5;">此目录为空</div>`;
+            return items.map(item => {
+                const paddingLeft = level * 16 + 12;
+                if (item.type === 'directory') {
+                    return `
+                        <div class="trail-folder-container" data-id="${escape(item.id)}">
+                            <div class="trail-folder-item" style="padding-left: ${paddingLeft}px;">
+                                <div class="folder-info">
+                                    <i class="ri-folder-3-fill" style="color: #f59e0b;"></i>
+                                    <span class="folder-name text-truncate">${escape(item.filename)}</span>
+                                </div>
+                                <div class="folder-actions">
+                                    <button class="btn-icon btn-load-folder" data-id="${escape(item.id)}" title="加载此目录全部"><i class="ri-download-cloud-2-line"></i></button>
+                                    <i class="ri-arrow-down-s-line folder-toggle"></i>
+                                </div>
+                            </div>
+                            <div class="folder-children" style="display: block;">
+                                ${renderTrailTree(item.children, level + 1)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="trail-file-item" data-id="${escape(item.id)}" style="padding-left: ${paddingLeft}px;">
+                            <div class="file-info">
+                                <i class="ri-file-search-line"></i>
+                                <div class="file-text">
+                                    <div class="file-name text-truncate" title="${escape(item.filename)}">${escape(item.filename)}</div>
+                                    <div class="file-meta">${(item.size / 1024).toFixed(1)} KB</div>
+                                </div>
+                            </div>
+                            <button class="btn-icon btn-load-trail" data-id="${escape(item.id)}" title="加载轨迹"><i class="ri-download-2-line"></i></button>
+                        </div>
+                    `;
+                }
+            }).join('');
+        };
+
+        treeContainer.innerHTML = renderTrailTree(this.state.trailFiles);
     }
 
     destroy() {
@@ -318,6 +529,9 @@ class MapPage extends Component {
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
             this._resizeObserver = null;
+        }
+        if (this.container) {
+            this.container.classList.remove('map-window-body');
         }
         if (this.map) {
             this.map.remove();
@@ -327,107 +541,149 @@ class MapPage extends Component {
     }
 
     initMap() {
-        if (typeof L === 'undefined') return;
+        // 防止重复初始化
+        if (this._mapInitializing) return;
+
+        if (typeof L === 'undefined') {
+            console.error('Leaflet (L) 未定义，请检查资源加载');
+            return;
+        }
 
         const container = this.container ? this.container.querySelector('.map-canvas') : null;
-        if (!container) return;
-
-        if (container.clientHeight === 0) {
-            setTimeout(() => this.initMap(), 100);
+        if (!container) {
+            console.warn('地图容器 .map-canvas 未找到');
             return;
         }
 
-        let lastView = null;
+        // 检测容器高度，若为 0 则延迟重试
+        if (container.clientHeight === 0) {
+            if ((this._initRetryCount || 0) > 10) {
+                console.error('地图容器高度持续为 0，停止重试');
+                return;
+            }
+            this._initRetryCount = (this._initRetryCount || 0) + 1;
+            setTimeout(() => this.initMap(), 200);
+            return;
+        }
+        this._initRetryCount = 0;
+
+        // 如果地图已存在且容器相同，仅刷新
         if (this.map) {
             try {
-                lastView = { center: this.map.getCenter(), zoom: this.map.getZoom() };
+                if (this.map.getContainer() === container) {
+                    this.map.invalidateSize();
+                    this.updateTileLayer(); // 即使存在也要确保瓦片层正确
+                    return;
+                }
             } catch (e) { }
-        }
-
-        if (this.map && this.map.getContainer() === container) {
-            this.map.invalidateSize();
-            this.updateTileLayer();
-            return;
-        }
-
-        if (this.map) {
-            this.map.remove();
+            // 容器变化，移除旧地图
+            try { this.map.remove(); } catch (e) { }
             this.map = null;
         }
 
-        const center = this.state.lastCenter || (lastView ? lastView.center : [34.3, 118.5]);
-        const zoom = this.state.lastZoom || (lastView ? lastView.zoom : 12);
+        this._mapInitializing = true;
 
-        this.map = L.map(container, {
-            center: center,
-            zoom: zoom,
-            zoomControl: false,
-            attributionControl: false
-        });
+        const center = this.state.lastCenter || [34.3, 118.5];
+        const zoom = this.state.lastZoom || 12;
 
-        setTimeout(() => this.map.invalidateSize(), 50);
+        try {
+            this.map = L.map(container, {
+                center: center,
+                zoom: zoom,
+                zoomControl: false,
+                attributionControl: false
+            });
 
-        L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-        L.control.scale({ imperial: false, position: 'bottomright' }).addTo(this.map);
+            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 100);
+            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 500);
+            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 1500);
 
-        this.updateTileLayer();
+            // 如果处于不可见状态，持续尝试直到可见
+            const checkVisibility = setInterval(() => {
+                if (!this.map) { clearInterval(checkVisibility); return; }
+                const container = this.map.getContainer();
+                if (container && container.clientHeight > 0) {
+                    this.map.invalidateSize();
+                    clearInterval(checkVisibility);
+                }
+            }, 1000);
+            setTimeout(() => clearInterval(checkVisibility), 5000);
 
-        this.map.on('zoomend', () => {
-            const el = this.container.querySelector('.zoom-indicator');
-            if (el) el.innerText = `缩放: ${this.map.getZoom()} `;
-        });
+            L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+            L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(this.map);
 
-        this.state.datasets.forEach(ds => {
-            if (ds.visible) this.renderDataset(ds);
-        });
+            this.updateTileLayer();
 
-        // 渲染标记点
-        this.renderMarkers();
+            this.map.on('zoomend', () => {
+                const el = this.container.querySelector('.zoom-indicator');
+                if (el) el.innerText = `缩放: ${this.map.getZoom()} `;
 
-        // [业务辅助] 移动结束同步位置
-        this.map.on('moveend', () => this.syncMapConfig());
+                if (this._zoomRenderTimer) clearTimeout(this._zoomRenderTimer);
+                this._zoomRenderTimer = setTimeout(() => {
+                    this.state.datasets.forEach(ds => {
+                        if (ds.visible && ds.points.length > 500) this.renderDataset(ds);
+                    });
+                }, 300);
+            });
 
-        // [自动恢复] 初次启动时恢复持久化的轨迹
-        if (!this._initialDatasetsLoaded) {
-            this._initialDatasetsLoaded = true;
-            this.restoreDatasets();
+            this.map.on('moveend', () => this.syncMapConfig());
+
+            this.state.datasets.forEach(ds => {
+                if (ds.visible) this.renderDataset(ds);
+            });
+            this.renderMarkers();
+
+            if (!this._initialDatasetsLoaded) {
+                this._initialDatasetsLoaded = true;
+                this.restoreDatasets();
+            }
+        } catch (e) {
+            console.error('创建地图实例失败:', e);
+        } finally {
+            this._mapInitializing = false;
         }
     }
 
     async updateTileLayer(isUserSwitch = false) {
         if (!this.map) return;
-        if (this.tileLayer) this.map.removeLayer(this.tileLayer);
 
         const { mapMode, tileSource, onlineTileUrl } = this.state;
         let url = "";
 
         if (mapMode === 'offline') {
-            if (!tileSource) {
-                Toast.error('未配置离线瓦片源');
-                return;
-            }
+            if (!tileSource) return;
             url = `/static/storage/modules/map/map_tiles/${tileSource}/{z}/{x}/{y}.png`;
-
-            // [动态定位] 如果是用户手动切换源，尝试使用该源的推荐中心
-            if (isUserSwitch && this.state.sources) {
-                const sInfo = this.state.sources.find(s => s.name === tileSource);
-                if (sInfo && sInfo.center) {
-                    this.map.flyTo(sInfo.center, sInfo.default_zoom || 12);
-                    Toast.info(`已自动定位到 ${tileSource} 覆盖区域`);
-                }
-            }
         } else {
-            url = onlineTileUrl || "";
+            // 在线模式：直接使用瓦片源URL（高德等第三方服务通常支持跨域）
+            const baseUrl = onlineTileUrl || 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
+            url = baseUrl;
         }
 
-        // [Fix] 移除 loading 状态更新，防止触发 render -> afterUpdate -> initMap -> updateTileLayer -> setState 的无限循环
-        this.tileLayer = L.tileLayer(url, {
+        if (!url) return;
+
+        // 如果层已存在且 URL 相同，则无需重新创建
+        if (this.tileLayer && this.tileLayer._url === url) return;
+
+        if (this.tileLayer) {
+            this.map.removeLayer(this.tileLayer);
+        }
+
+        // 瓦片层配置
+        const tileOptions = {
             maxZoom: 18,
             minZoom: 1,
             errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABzy+wvAAAABlBMVEXMzMyWlpYU2uzLAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBSAcACBAAAegP9zsAAAAASUVORK5CYII='
-        });
+        };
 
+        this.tileLayer = L.tileLayer(url, tileOptions);
         this.tileLayer.addTo(this.map);
+
+        if (isUserSwitch && mapMode === 'offline' && this.state.sources) {
+            const sInfo = this.state.sources.find(s => s.name === tileSource);
+            if (sInfo && sInfo.center) {
+                this.map.flyTo(sInfo.center, sInfo.default_zoom || 12);
+            }
+        }
     }
 
     bindEvents() {
@@ -460,6 +716,9 @@ class MapPage extends Component {
         this.delegate('click', '.btn-load-folder', (e, el) => {
             this.loadFolderTrails(el.dataset.id);
         });
+
+        // 当前位置定位
+        this.delegate('click', '#btnMapLocate', () => this.locateCurrentPosition());
 
         // 热力图开关
         this.delegate('click', '#btnMapHeatmap', (e, el) => {
@@ -524,6 +783,11 @@ class MapPage extends Component {
 
         this.delegate('click', '.ds-locate', (e, el) => this.locateDataset(el.dataset.id));
         this.delegate('click', '.ds-remove', (e, el) => this.removeDataset(el.dataset.id));
+        this.delegate('click', '.ds-info-btn', (e, el) => this.showDatasetInfo(el.dataset.id));
+
+        // 批量操作
+        this.delegate('click', '#btnFitAll', () => this.fitAllDatasets());
+        this.delegate('click', '#btnClearAll', () => this.clearAllDatasets());
 
         // --- 标记点事件 ---
         this.delegate('click', '#btnToggleMarkers', () => {
@@ -536,6 +800,11 @@ class MapPage extends Component {
         this.delegate('click', '.marker-locate', (e, el) => {
             const marker = this.state.markers.find(m => m.id === parseInt(el.dataset.id));
             if (marker) this.map.setView([marker.lat, marker.lng], 16);
+        });
+
+        // 侧边栏标记点删除按钮
+        this.delegate('click', '.marker-delete', (e, el) => {
+            this.removeMarker(parseInt(el.dataset.id));
         });
     }
 
@@ -577,7 +846,9 @@ class MapPage extends Component {
             hint.style.display = 'block';
             this.map.getContainer().style.cursor = 'crosshair';
             if (!this.rulerLayer) this.rulerLayer = L.layerGroup().addTo(this.map);
-            this.map.on('click', this.onMapClickRuler.bind(this));
+            // 保存事件处理器引用，方便后续移除
+            this._rulerClickHandler = this.onMapClickRuler.bind(this);
+            this.map.on('click', this._rulerClickHandler);
         } else {
             hint.style.display = 'none';
             this.map.getContainer().style.cursor = '';
@@ -585,7 +856,11 @@ class MapPage extends Component {
                 this.rulerLayer.clearLayers();
                 this.rulerPoints = [];
             }
-            this.map.off('click');
+            // 只移除测量专用的点击事件，避免影响其他功能
+            if (this._rulerClickHandler) {
+                this.map.off('click', this._rulerClickHandler);
+                this._rulerClickHandler = null;
+            }
         }
     }
 
@@ -607,7 +882,93 @@ class MapPage extends Component {
                 .setLatLng(midPoint)
                 .setContent(distText)
                 .addTo(this.rulerLayer);
+
+            // 更新总距离提示
+            this.updateRulerTotal();
         }
+    }
+
+    /** 更新测量总距离 **/
+    updateRulerTotal() {
+        if (this.rulerPoints.length < 2) return;
+
+        let total = 0;
+        for (let i = 1; i < this.rulerPoints.length; i++) {
+            total += this.map.distance(this.rulerPoints[i - 1], this.rulerPoints[i]);
+        }
+
+        const totalStr = total > 1000 ? `${(total / 1000).toFixed(2)} km` : `${total.toFixed(0)} m`;
+        const hint = this.container.querySelector('#ruler-hint');
+        if (hint) {
+            hint.innerHTML = `测量模式: 已添加 ${this.rulerPoints.length} 个点，总距离 <b style="color:#ef4444;">${totalStr}</b>　|　<span style="cursor:pointer;text-decoration:underline;" onclick="window._currentMap.clearRulerPoints()">清除重测</span>　|　再次点击按钮退出`;
+        }
+    }
+
+    /** 清除测量点 **/
+    clearRulerPoints() {
+        if (this.rulerLayer) {
+            this.rulerLayer.clearLayers();
+            this.rulerPoints = [];
+        }
+        const hint = this.container.querySelector('#ruler-hint');
+        if (hint) {
+            hint.innerHTML = '测量模式: 点击地图添加测量点，再次点击测量按钮退出';
+        }
+    }
+
+    /** 定位到当前位置 **/
+    locateCurrentPosition() {
+        if (!navigator.geolocation) {
+            Toast.error('您的浏览器不支持地理定位');
+            return;
+        }
+
+        Toast.info('正在获取位置信息...');
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // 移动到当前位置
+                this.map.flyTo([latitude, longitude], 15);
+
+                // 移除之前的定位标记
+                if (this._locationMarker) {
+                    this.map.removeLayer(this._locationMarker);
+                    this.map.removeLayer(this._locationCircle);
+                }
+
+                // 添加定位标记
+                this._locationMarker = L.marker([latitude, longitude], {
+                    icon: L.divIcon({
+                        className: 'location-marker',
+                        html: '<div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(this.map);
+
+                // 添加精度圈
+                this._locationCircle = L.circle([latitude, longitude], {
+                    radius: accuracy,
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(this.map);
+
+                Toast.success(`定位成功 (精度: ${accuracy.toFixed(0)}m)`);
+            },
+            (error) => {
+                const msgs = {
+                    1: '定位权限被拒绝',
+                    2: '无法获取位置信息',
+                    3: '定位请求超时'
+                };
+                Toast.error(msgs[error.code] || '定位失败');
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
     }
 
     /** 文件夹操作 **/
@@ -716,9 +1077,13 @@ class MapPage extends Component {
     }
 
     afterUpdate() {
-        // 重要：在某些情况下窗口缩放会导致渲染滞后，使用 setTimeout 确保 DOM 稳定
+        // 仅在地图不存在时初始化，否则只刷新尺寸
         setTimeout(() => {
-            this.initMap();
+            if (!this.map) {
+                this.initMap();
+            } else {
+                this.map.invalidateSize();
+            }
         }, 50);
     }
 
@@ -928,6 +1293,119 @@ class MapPage extends Component {
         }
     }
 
+    /** 适配全部轨迹到视野 **/
+    fitAllDatasets() {
+        if (!this.map || this.state.datasets.length === 0) return;
+
+        const allBounds = [];
+        this.state.datasets.forEach(ds => {
+            if (ds.visible && this.layers[ds.id]) {
+                try {
+                    allBounds.push(this.layers[ds.id].getBounds());
+                } catch (e) { }
+            }
+        });
+
+        if (allBounds.length > 0) {
+            let combined = allBounds[0];
+            for (let i = 1; i < allBounds.length; i++) {
+                combined.extend(allBounds[i]);
+            }
+            this.map.fitBounds(combined, { padding: [50, 50] });
+            Toast.success('已适配全部轨迹范围');
+        }
+    }
+
+    /** 清除所有图层 **/
+    clearAllDatasets() {
+        if (this.state.datasets.length === 0) return;
+
+        if (!confirm(`确定要清除地图上的 ${this.state.datasets.length} 个轨迹图层吗？\n（仅从地图移除，不会删除云端文件）`)) return;
+
+        // 移除所有图层
+        Object.values(this.layers).forEach(layer => {
+            if (layer && this.map) this.map.removeLayer(layer);
+        });
+        this.layers = {};
+        this.setState({ datasets: [] });
+        this.savePersistDatasets();
+        Toast.success('已清除所有图层');
+    }
+
+    /** 显示轨迹详情 **/
+    showDatasetInfo(id) {
+        const ds = this.state.datasets.find(d => d.id == id);
+        if (!ds) return;
+
+        const dist = this.calculateDistance(ds.points);
+        const distStr = dist >= 1 ? `${dist.toFixed(2)} km` : `${(dist * 1000).toFixed(0)} m`;
+
+        // 计算时间跨度
+        let timeInfo = '无时间数据';
+        const times = ds.points.filter(p => p.time).map(p => new Date(p.time));
+        if (times.length >= 2) {
+            times.sort((a, b) => a - b);
+            const durationMs = times[times.length - 1] - times[0];
+            const hours = Math.floor(durationMs / 3600000);
+            const mins = Math.floor((durationMs % 3600000) / 60000);
+            timeInfo = hours > 0 ? `${hours}小时${mins}分钟` : `${mins}分钟`;
+        }
+
+        // 计算边界
+        let bounds = { minLat: 90, maxLat: -90, minLng: 180, maxLng: -180 };
+        ds.points.forEach(p => {
+            if (p.lat && p.lng) {
+                bounds.minLat = Math.min(bounds.minLat, p.lat);
+                bounds.maxLat = Math.max(bounds.maxLat, p.lat);
+                bounds.minLng = Math.min(bounds.minLng, p.lng);
+                bounds.maxLng = Math.max(bounds.maxLng, p.lng);
+            }
+        });
+
+        Modal.show({
+            title: '轨迹详情',
+            width: '400px',
+            content: `
+                <div style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="ds-color-dot" style="background:${ds.color}; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;"></span>
+                        <span style="font-weight: 600; font-size: 16px;">${ds.name}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--color-primary);">${ds.points.length}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">轨迹点数</div>
+                        </div>
+                        <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--color-success);">${distStr}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">总里程</div>
+                        </div>
+                        <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--color-warning);">${timeInfo}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">时间跨度</div>
+                        </div>
+                        <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--color-info);">${dist > 0 && times.length >= 2 ? ((dist / ((times[times.length - 1] - times[0]) / 3600000)).toFixed(1)) : '-'}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">平均速度(km/h)</div>
+                        </div>
+                    </div>
+                    <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; font-size: 12px;">
+                        <div style="margin-bottom: 6px; font-weight: 500;">地理范围</div>
+                        <div style="opacity: 0.7;">
+                            纬度: ${bounds.minLat.toFixed(4)} ~ ${bounds.maxLat.toFixed(4)}<br>
+                            经度: ${bounds.minLng.toFixed(4)} ~ ${bounds.maxLng.toFixed(4)}
+                        </div>
+                    </div>
+                </div>
+            `,
+            confirmText: '定位到此轨迹',
+            onConfirm: () => {
+                this.locateDataset(id);
+                return true;
+            }
+        });
+    }
+
     /**
      * 显示地图配置对话框
      * [优化] 从后端拉取可用瓦片源，支持下拉选择与删除管理
@@ -1061,8 +1539,12 @@ class MapPage extends Component {
                 maxZoom: 17,
                 gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red' }
             }).addTo(this.map);
+        } else if (this._heatLibLoading && !this._heatLibLoaded) {
+            // 库正在加载中，延时重试
+            Toast.info('热力图引擎加载中...');
+            setTimeout(() => this.renderHeatmap(), 500);
         } else {
-            Toast.error('热力图引擎加载中，请稍后重试');
+            Toast.error('热力图引擎加载失败');
             this.state.isHeatmapMode = false;
         }
     }
@@ -1123,10 +1605,13 @@ class MapPage extends Component {
                 });
 
                 marker.bindPopup(`
-                    <div class="marker-popup" style="min-width: 150px;">
+                    <div class="marker-popup" style="min-width: 180px;">
                         <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:4px;">${m.name}</div>
                         <div style="font-size:12px; color:#666;">${m.description || '无备注'}</div>
                         <div style="margin-top:8px; display:flex; gap:8px;">
+                            <button class="btn-xs btn-marker-edit" onclick="window._currentMap.editMarker(${m.id})" style="background:#dbeafe; color:#3b82f6; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
+                                <i class="ri-edit-line"></i> 编辑
+                            </button>
                             <button class="btn-xs btn-marker-delete" onclick="window._currentMap.removeMarker(${m.id})" style="background:#fee2e2; color:#ef4444; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
                                 <i class="ri-delete-bin-line"></i> 删除
                             </button>
@@ -1154,8 +1639,11 @@ class MapPage extends Component {
                 last_zoom: this.map.getZoom()
             };
 
+            // 暂时仅保存到本地，避免 401 错误干扰
+            this.saveMapConfig();
             try {
-                await Api.post('/map/config/save', payload);
+                // 如果需要恢复 API 调用，请取消注释，并确保已登录
+                // await Api.post('/map/config/save', payload);
             } catch (e) { }
         }, 3000);
     }
@@ -1171,6 +1659,65 @@ class MapPage extends Component {
                 this.renderMarkers();
             }
         } catch (e) { }
+    }
+
+    /** 编辑标记点 **/
+    editMarker(id) {
+        const marker = this.state.markers.find(m => m.id === id);
+        if (!marker) return;
+
+        // 关闭 popup
+        this.map.closePopup();
+
+        Modal.show({
+            title: '编辑标记点',
+            width: '400px',
+            content: `
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 500;">名称</label>
+                        <input type="text" id="editMarkerName" value="${marker.name}" 
+                               style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 500;">备注描述</label>
+                        <textarea id="editMarkerDesc" rows="3" placeholder="可选..."
+                                  style="width: 100%; border-radius: 10px; border: 1px solid var(--color-border); padding: 10px 14px; background: var(--color-bg-primary); color: var(--color-text); resize: none;">${marker.description || ''}</textarea>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 500;">颜色</label>
+                        <input type="color" id="editMarkerColor" value="${marker.color || '#ef4444'}" 
+                               style="width: 60px; height: 36px; border: none; cursor: pointer;">
+                    </div>
+                </div>
+            `,
+            onConfirm: async () => {
+                const name = document.getElementById('editMarkerName')?.value.trim();
+                const description = document.getElementById('editMarkerDesc')?.value.trim();
+                const color = document.getElementById('editMarkerColor')?.value;
+
+                if (!name) {
+                    Toast.error('名称不能为空');
+                    return false;
+                }
+
+                try {
+                    const res = await Api.post('/map/markers/update', {
+                        id: id,
+                        name: name,
+                        description: description,
+                        color: color
+                    });
+                    if (res.code === 200) {
+                        Toast.success('标记点已更新');
+                        await this.fetchMarkers();
+                        this.renderMarkers();
+                        return true;
+                    }
+                } catch (e) { Toast.error('更新失败'); }
+                return false;
+            }
+        });
     }
 }
 

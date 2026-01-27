@@ -165,16 +165,25 @@ const App = {
             return ({ params, path, query }) => {
                 this.ensureDesktopEnvironment();
 
-                // 构造完整 URL 以便 WindowManager 同步状态
+                // 构造组件参数
                 const props = [params ? params.id : null, ...args];
 
                 // 重构完整路径（含查询参数）
                 const qs = new URLSearchParams(query).toString();
                 const fullUrl = qs ? `${path}?${qs}` : path;
 
+                // 核心修复：返回到原来的窗口
+                // 使用模块路径作为 ID 基准（例如 /markdown, /blog），而不是完整路径。
+                // 这样同一模块下的不同页面将复用同一个窗口，实现单窗口内导航。
+                let windowId = path;
+                const pathParts = path.split('/');
+                if (pathParts.length > 1 && ['markdown', 'blog', 'notes', 'feedback', 'users', 'system', 'announcement', 'knowledge', 'album', 'video', 'exam', 'vault', 'pdf', 'profile', 'help', 'analysis', 'ai', 'map', 'lens', 'ocr', 'course', 'schedule', 'vault', 'pdf', 'transfer'].includes(pathParts[1])) {
+                    windowId = '/' + pathParts[1];
+                }
+
                 WindowManager.open(PageClass, props, {
                     title: title,
-                    id: path, // 路径作为唯一ID（实现 URL 单例）
+                    id: windowId, // 同一模块共享 ID
                     url: fullUrl
                 });
             };
@@ -296,6 +305,13 @@ const App = {
             '/pdf': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
             '/pdf/list': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
             '/pdf/reader': { auth: true, handler: wrap(PdfPage, 'PDF 阅读器') },
+
+            // Markdown 编辑器
+            '/markdown': { auth: true, handler: wrap(MarkdownListPage, 'Markdown') },
+            '/markdown/list': { auth: true, handler: wrap(MarkdownListPage, '文档列表') },
+            '/markdown/edit': { auth: true, handler: wrap(MarkdownEditPage, '新建文档') },
+            '/markdown/edit/:id': { auth: true, handler: wrap(MarkdownEditPage, '编辑文档') },
+            '/markdown/view/:id': { auth: true, handler: wrap(MarkdownViewPage, '查看文档') },
         });
 
     },

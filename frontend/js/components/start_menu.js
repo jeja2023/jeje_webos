@@ -175,7 +175,8 @@ class StartMenuComponent extends Component {
             'course': { ri: 'ri-book-open-line' },
             'schedule': { ri: 'ri-calendar-schedule-line' },
             'vault': { ri: 'ri-shield-keyhole-line' },
-            'pdf': { ri: 'ri-file-pdf-2-fill' }
+            'pdf': { ri: 'ri-file-pdf-2-fill' },
+            'markdown': { ri: 'ri-markdown-line' }
         };
 
         return iconMap[id] || { ri: null, emoji: defaultIcon };

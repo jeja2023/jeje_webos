@@ -25,9 +25,7 @@ const KnowledgeApi = {
         formData.append('base_id', baseId);
         if (parentId) formData.append('parent_id', parentId);
         formData.append('file', file);
-        return Api.post('/knowledge/upload', formData, {
-            headers: { 'Content-Type': undefined }
-        });
+        return Api.upload('/knowledge/upload', formData);
     },
 
     // 混合搜索

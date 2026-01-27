@@ -22,13 +22,42 @@ const WindowManager = {
     open(ComponentClass, props = [], options = {}) {
         const id = options.id || `win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // 如果已存在（且是单例类型），则聚焦它
+        // 如果已存在（单例模式），则聚焦并更新内容
         if (this.windows.has(id)) {
-            // 更新该窗口关联的 URL（如果有）
+            const win = this.windows.get(id);
+
+            // 更新标题（如果提供）
+            if (options.title) {
+                win.element.querySelector('.window-title').innerText = options.title;
+            }
+
+            // 更新 URL 状态
             if (options.url) {
-                const win = this.windows.get(id);
                 win.url = options.url;
             }
+
+            // 核心逻辑：如果组件类或者是参数变化了，需要刷新窗口内容
+            // 我们通过比较构造函数来判断是否需要重新创建组件
+            const isSameComponent = win.component && win.component.constructor === ComponentClass;
+
+            // 为了保证交互体验，如果组件不同，或者显式要求刷新，或者为了简化逻辑（暂时每次都刷新）
+            // 实际上为了 SPA 导航体验，每次在同一个窗口打开不同路由，应该重新挂载
+            if (!isSameComponent || options.refresh !== false) {
+                // 销毁旧组件
+                if (win.component && typeof win.component.destroy === 'function') {
+                    win.component.destroy();
+                }
+
+                // 重新挂载新组件
+                const contentEl = win.element.querySelector('.window-body');
+                contentEl.innerHTML = ''; // 清空内容
+
+                win.component = new ComponentClass(contentEl, ...props);
+                if (typeof win.component.mount === 'function') {
+                    win.component.mount();
+                }
+            }
+
             this.focus(id);
             return id;
         }

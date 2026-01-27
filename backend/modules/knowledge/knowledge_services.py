@@ -199,8 +199,8 @@ class KnowledgeService:
         处理文件上传：保存文件并创建节点记录
         实际的文件解析在后台异步执行
         """
-        # 构建存储路径
-        relative_path = f"files/{base_id}"
+        # 构建存储路径 (符合标准 uploads/outputs 规范)
+        relative_path = f"uploads/{base_id}"
         save_dir = storage_manager.get_module_dir("knowledge", relative_path)
         os.makedirs(save_dir, exist_ok=True)
         

@@ -232,31 +232,51 @@ class Modal {
 
     /**
      * 带输入框的提示框
-     * @param {string} title 标题
-     * @param {string} message 描述
-     * @param {string} placeholder 占位文本
-     * @param {string} defaultValue 默认值
-     * @returns {Promise<string|null>} 用户输入，取消时返回 null
+     * 支持两种调用方式：
+     * 1. positional: Modal.prompt(title, message, placeholder, defaultValue)
+     * 2. options: Modal.prompt({ title, message, label, placeholder, defaultValue, onConfirm, onCancel })
      */
-    static prompt(title, message = '', placeholder = '', defaultValue = '') {
+    static prompt(titleOrOptions, message = '', placeholder = '', defaultValue = '') {
+        const isOptions = typeof titleOrOptions === 'object' && titleOrOptions !== null;
+        const options = isOptions ? titleOrOptions : {
+            title: titleOrOptions,
+            message: message,
+            placeholder: placeholder,
+            defaultValue: defaultValue
+        };
+
+        // 兼容 map.js 中使用的 'label' 作为 'message'
+        const displayMessage = options.message || options.label || '';
+
         return new Promise((resolve) => {
             let inputEl;
             const modal = new Modal({
-                title,
+                title: options.title || '提示',
                 content: `
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        ${message ? `<p>${message}</p>` : ''}
+                        ${displayMessage ? `<p>${displayMessage}</p>` : ''}
                         <input type="text" class="form-input" id="modalPromptInput"
-                               placeholder="${placeholder || '请输入'}"
-                               value="${defaultValue || ''}">
+                               placeholder="${options.placeholder || '请输入'}"
+                               value="${options.defaultValue || ''}">
                     </div>
                 `,
-                onConfirm: () => {
+                onConfirm: async () => {
                     const value = inputEl?.value ?? '';
+
+                    // 如果提供了 onConfirm 回调（如 map.js 中那样）
+                    if (typeof options.onConfirm === 'function') {
+                        const result = await options.onConfirm(value);
+                        // 如果回调返回 false，则不关闭弹窗
+                        if (result === false) return false;
+                    }
+
                     resolve(value);
                     return true;
                 },
                 onCancel: () => {
+                    if (typeof options.onCancel === 'function') {
+                        options.onCancel();
+                    }
                     resolve(null);
                 }
             });
@@ -382,6 +402,56 @@ class Modal {
                 return true;
             }
         }).show();
+    }
+
+    /**
+     * 静态方法：显示选择对话框
+     * @param {Object} options { title, content, options: [{label, value}] }
+     * @returns {Promise<any>}
+     */
+    static select(options = {}) {
+        return new Promise((resolve) => {
+            const { title, content = '', options: selectOptions = [] } = options;
+            const containerId = Utils.uniqueId('modal-select-');
+
+            const modalContent = `
+                <div id="${containerId}" class="modal-select-container">
+                    ${content ? `<p style="margin-bottom: 12px; color: var(--color-text-secondary);">${content}</p>` : ''}
+                    <div class="list-group">
+                        ${selectOptions.map(opt => `
+                            <div class="list-item list-item-clickable" data-value="${opt.value}">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">${opt.label}</div>
+                                </div>
+                                <i class="ri-arrow-right-s-line"></i>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const modal = new Modal({
+                title,
+                content: modalContent,
+                footer: false // 不显示页脚按钮
+            });
+
+            modal.show();
+
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.querySelectorAll('.list-item').forEach(item => {
+                    item.onclick = () => {
+                        const value = item.dataset.value;
+                        modal.close();
+                        resolve(value);
+                    };
+                });
+            }
+
+            // esc 或点击关闭按钮处理
+            modal.options.onCancel = () => resolve(null);
+        });
     }
 
     /**

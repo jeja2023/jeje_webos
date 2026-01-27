@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
-# ==================== 基础模型 ====================
+# 基础模型
 
 class PdfBase(BaseModel):
     """基础数据模型"""
@@ -33,13 +33,15 @@ class PdfMetadata(BaseModel):
 
 class PdfMergeRequest(BaseModel):
     """合并 PDF 请求"""
-    file_ids: List[int] = Field(..., description="要合并的文件ID列表（按顺序）")
+    file_ids: Optional[List[int]] = Field(None, description="要合并的文件ID列表（按顺序）")
+    paths: Optional[List[str]] = Field(None, description="要合并的文件路径列表")
     output_name: str = Field(..., min_length=1, description="输出文件名")
 
 
 class PdfSplitRequest(BaseModel):
     """拆分 PDF 请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     page_ranges: str = Field(..., description="页码范围，如 '1-3, 5, 8-10'")
     output_name: Optional[str] = Field(None, description="输出文件名（可选）")
 
@@ -52,14 +54,16 @@ class PdfConvertRequest(BaseModel):
 
 class PdfCompressRequest(BaseModel):
     """压缩 PDF 请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     level: int = Field(2, ge=0, le=4, description="压缩等级 0-4 (0: 默认, 4: 最大压缩)")
     output_name: Optional[str] = Field(None, description="输出文件名")
 
 
 class PdfWatermarkRequest(BaseModel):
     """添加水印请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     text: str = Field(..., description="水印文本")
     output_name: Optional[str] = Field(None, description="输出文件名")
     color: List[float] = Field([0.5, 0.5, 0.5], description="RGB颜色 [0-1, 0-1, 0-1]")
@@ -69,39 +73,66 @@ class PdfWatermarkRequest(BaseModel):
 
 class PdfImagesToPdfRequest(BaseModel):
     """图片转 PDF 请求"""
-    file_ids: List[int] = Field(..., description="图片文件ID列表")
+    file_ids: Optional[List[int]] = Field(None, description="图片文件ID列表")
+    paths: Optional[List[str]] = Field(None, description="图片文件路径列表")
     output_name: str = Field(..., description="输出文件名")
 
 
 class PdfToImagesRequest(BaseModel):
     """PDF 转图片请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     page_ranges: Optional[str] = Field(None, description="页码范围，默认全部")
 
 
 class PdfToWordRequest(BaseModel):
     """PDF 转 Word 请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     output_name: Optional[str] = Field(None, description="输出文件名")
 
 
 class PdfToExcelRequest(BaseModel):
     """PDF 转 Excel 请求（提取表格）"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     output_name: Optional[str] = Field(None, description="输出文件名")
     page_ranges: Optional[str] = Field(None, description="页码范围，默认全部")
 
 
+class PdfWordToPdfRequest(BaseModel):
+    """Word 转 PDF 请求"""
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
+    output_name: Optional[str] = Field(None, description="输出文件名")
+
+
+class PdfExcelToPdfRequest(BaseModel):
+    """Excel 转 PDF 请求"""
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
+    output_name: Optional[str] = Field(None, description="输出文件名")
+
+
+class PdfSaveTextRequest(BaseModel):
+    """保存文本文件请求"""
+    text: str = Field(..., description="文本内容")
+    filename: str = Field(..., description="文件名")
+    file_id: Optional[int] = Field(None, description="源文件ID")
+
+
 class PdfRemoveWatermarkRequest(BaseModel):
     """PDF 去水印请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     output_name: Optional[str] = Field(None, description="输出文件名")
     method: str = Field("auto", description="去水印方法: auto, text, image")
 
 
 class PdfEncryptRequest(BaseModel):
     """PDF 加密请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     password: str = Field(..., min_length=1, description="密码")
     output_name: Optional[str] = Field(None, description="输出文件名")
     owner_password: Optional[str] = Field(None, description="所有者密码（可选，用于更多权限控制）")
@@ -109,14 +140,16 @@ class PdfEncryptRequest(BaseModel):
 
 class PdfDecryptRequest(BaseModel):
     """PDF 解密请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     password: str = Field(..., description="当前密码")
     output_name: Optional[str] = Field(None, description="输出文件名")
 
 
 class PdfRotateRequest(BaseModel):
     """PDF 旋转页面请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     angle: int = Field(90, description="旋转角度: 90, 180, 270, -90")
     page_ranges: Optional[str] = Field(None, description="页码范围，默认全部页面")
     output_name: Optional[str] = Field(None, description="输出文件名")
@@ -124,21 +157,24 @@ class PdfRotateRequest(BaseModel):
 
 class PdfReorderRequest(BaseModel):
     """PDF 页面重排请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     page_order: List[int] = Field(..., description="新的页面顺序（从1开始的页码列表）")
     output_name: Optional[str] = Field(None, description="输出文件名")
 
 
 class PdfExtractPagesRequest(BaseModel):
     """PDF 提取页面请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     page_ranges: str = Field(..., description="要提取的页码范围，如 '1, 3-5, 8'")
     output_name: Optional[str] = Field(None, description="输出文件名")
 
 
 class PdfAddPageNumbersRequest(BaseModel):
     """PDF 添加页码请求"""
-    file_id: int = Field(..., description="文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
     position: str = Field("bottom-center", description="页码位置: bottom-left, bottom-center, bottom-right, top-left, top-center, top-right")
     start_number: int = Field(1, ge=1, description="起始页码")
     format: str = Field("{n}", description="页码格式，{n}为当前页，{total}为总页数")
@@ -155,8 +191,10 @@ class PdfOcrRequest(BaseModel):
 
 class PdfSignRequest(BaseModel):
     """PDF 添加签名/印章请求"""
-    file_id: int = Field(..., description="文件ID")
-    image_file_id: int = Field(..., description="签名/印章图片文件ID")
+    file_id: Optional[int] = Field(None, description="文件ID")
+    path: Optional[str] = Field(None, description="文件路径")
+    image_file_id: Optional[int] = Field(None, description="签名/印章图片文件ID")
+    image_path: Optional[str] = Field(None, description="签名/印章图片文件路径")
     page: int = Field(1, ge=1, description="签名页码")
     x: float = Field(..., description="X 坐标位置（百分比 0-100）")
     y: float = Field(..., description="Y 坐标位置（百分比 0-100）")

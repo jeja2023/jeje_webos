@@ -339,7 +339,7 @@ async def upload_message_file(
     
     # 发送 WebSocket 广播通知
     await notify_new_message(db, message)
-    
+
     return success_response(
         data=MessageResponse.model_validate(message),
         message="文件上传成功"

@@ -31,8 +31,8 @@ class FolderInfo(BaseModel):
     name: str
     parent_id: Optional[int]
     path: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     # 统计信息（动态计算）
     file_count: int = 0
@@ -41,6 +41,7 @@ class FolderInfo(BaseModel):
     # 扩展标识
     icon: str = "📁"
     is_virtual: bool = False
+    is_system: bool = False
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -85,8 +86,8 @@ class FileInfo(BaseModel):
     mime_type: Optional[str]
     description: Optional[str]
     is_starred: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     # 扩展信息
     download_url: str = ""
@@ -106,8 +107,8 @@ class FileListItem(BaseModel):
     size: int = 0
     mime_type: Optional[str] = None
     is_starred: bool = False
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     icon: str = "📄"
 
 

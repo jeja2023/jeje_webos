@@ -80,7 +80,7 @@ class VideoService:
     提供视频集和视频的 CRUD 操作
     """
     
-    # ==================== 视频集操作 ====================
+    # 视频集操作
     
     @staticmethod
     async def create_collection(
@@ -175,7 +175,7 @@ class VideoService:
         
         await db.flush()
         await db.refresh(collection)
-        logger.info(f"更新视频集: id={collection_id}")
+        # 更新视频信息
         return collection
     
     @staticmethod
@@ -198,7 +198,7 @@ class VideoService:
         logger.info(f"删除视频集: id={collection_id}")
         return True
     
-    # ==================== 视频操作 ====================
+    # 视频操作
     
     @staticmethod
     async def upload_video(
@@ -236,9 +236,9 @@ class VideoService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         safe_filename = f"{timestamp}{ext}"
         
-        # 获取模块存储目录
-        video_dir = storage_manager.get_module_dir("video", "videos", user_id=user_id)
-        thumb_dir = storage_manager.get_module_dir("video", "thumbnails", user_id=user_id)
+        # 获取模块存储目录 (二元结构: uploads 存视频, outputs 存封面缩略图)
+        video_dir = storage_manager.get_module_dir("video", "uploads", user_id=user_id)
+        thumb_dir = storage_manager.get_module_dir("video", "outputs", user_id=user_id)
         
         video_path = os.path.join(video_dir, safe_filename)
         thumb_path = os.path.join(thumb_dir, f"{timestamp}.jpg")
@@ -292,6 +292,7 @@ class VideoService:
         
         await db.flush()
         await db.refresh(video)
+        
         logger.info(f"上传视频: id={video.id}, collection_id={collection_id}")
         return video
     

@@ -82,6 +82,14 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 帮助按钮 */
+.pdf-help-btn-container {
+    padding: var(--spacing-lg);
+    margin-top: auto;
+    display: flex;
+    justify-content: center;
+}
+
 /* 主内容区 */
 .pdf-main {
     flex: 1;
@@ -610,4 +618,87 @@
 .pdf-empty-state p {
     margin-bottom: 24px;
     font-size: 1rem;
+}
+
+/* 紧凑型工作台 */
+.pdf-bench-compact {
+    background: rgba(255, 255, 255, 0.05);
+    /* 提升背景可见度 */
+    backdrop-filter: blur(8px);
+    /* 增加磨砂玻璃感 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    /* 改为实线边框，增加质感 */
+    border-radius: var(--radius-lg);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: var(--spacing-xxl);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 悬停效果增强 */
+.pdf-bench-compact:hover {
+    background: rgba(255, 255, 255, 0.08);
+    /* 悬停时更亮一点 */
+    border-color: var(--primary-color);
+    /* 边框变色提示交互 */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 添加一个微妙的光晕装饰 */
+.pdf-bench-compact::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--primary-color);
+    opacity: 0.6;
+}
+
+.pdf-bench-compact-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--text-primary);
+    /* 文字颜色更亮 */
+    font-weight: 500;
+}
+
+.pdf-bench-compact-info i {
+    font-size: 1.4rem;
+    color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.1);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.pdf-bench-compact-info span {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+/* 适配移动端 */
+@media (max-width: 600px) {
+    .pdf-bench-compact {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+        padding: 16px;
+    }
+
+    .pdf-bench-compact-info {
+        flex-direction: column;
+        gap: 8px;
+    }
 }

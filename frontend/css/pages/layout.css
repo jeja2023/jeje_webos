@@ -24,7 +24,7 @@
     overflow: hidden;
 }
 
-.sidebar.collapsed ~ .main-wrapper {
+.sidebar.collapsed~.main-wrapper {
     margin-left: var(--sidebar-collapsed);
 }
 
@@ -35,6 +35,8 @@
     background: var(--color-bg-deep);
     overflow-y: auto;
     overflow-x: hidden;
+    position: relative;
+    /* 为绝对定位的子元素提供锚点 */
 }
 
 /* 在内容不足以滚动时隐藏滚动条 */
@@ -50,10 +52,7 @@
     background: var(--color-border);
 }
 
-/* 页面容器 */
-.page {
-    /* 移除动画，避免创建层叠上下文 */
-}
+/* 页面容器 - 动画已移除 */
 
 .page-header {
     margin-bottom: var(--spacing-lg);
@@ -76,19 +75,16 @@
     .sidebar {
         transform: translateX(-100%);
     }
-    
+
     .sidebar.mobile-open {
         transform: translateX(0);
     }
-    
+
     .main-wrapper {
         margin-left: 0;
     }
-    
+
     .main-content {
         padding: var(--spacing-md);
     }
 }
-
-
-

@@ -29,6 +29,13 @@ class VirtualFolder(Base):
     created_at = Column(DateTime(timezone=True), default=get_beijing_time, comment="创建时间")
     updated_at = Column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
+    # 扩展标识
+    is_virtual = Column(Boolean, default=False, comment="是否为虚拟文件夹")
+    is_system = Column(Boolean, default=False, comment="是否为系统保护文件夹")
+    icon = Column(String(50), nullable=True, comment="文件夹图标")
+    module_id = Column(String(50), nullable=True, comment="关联模块ID")
+    module_path = Column(String(255), nullable=True, comment="模块内部路径")
+    
     # 关系 - 通过 VirtualFile 的 backref 自动创建 files
 
 

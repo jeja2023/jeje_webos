@@ -3,7 +3,15 @@
 定义模块元信息、路由入口、权限声明等
 """
 
-from core.loader import ModuleManifest
+from core.loader import ModuleManifest, ModuleAssets
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("反馈模块已启用")
+
 
 manifest = ModuleManifest(
     id="feedback",
@@ -36,4 +44,6 @@ manifest = ModuleManifest(
     ],
     
     enabled=True,
+    
+    on_enable=on_enable,
 )

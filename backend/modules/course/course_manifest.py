@@ -5,6 +5,16 @@
 
 from core.loader import ModuleManifest, ModuleAssets
 from .course_router import router
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("课程模块已启用")
+
+async def on_disable():
+    pass
 
 manifest = ModuleManifest(
     # 基本信息
@@ -54,5 +64,9 @@ manifest = ModuleManifest(
     kernel_version=">=1.0.0",
     
     # 是否启用
-    enabled=False,
+    enabled=True,
+    
+    # 生命周期钩子
+    on_enable=on_enable,
+    on_disable=on_disable,
 )

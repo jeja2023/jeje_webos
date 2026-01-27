@@ -64,6 +64,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 安装运行所需的最小化系统动态库
 RUN apt-get update && apt-get install -y --no-install-recommends \
     default-mysql-client \
+    ffmpeg \
     libgomp1 \
     libgl1 \
     libglib2.0-0 \

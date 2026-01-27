@@ -326,10 +326,10 @@ class FileManagerPage extends Component {
                         <span>--</span>
                         <span>${Utils.formatDate(folder.updated_at)}</span>
                         <span>
-                            ${!folder.is_virtual ? `
+                            ${(!folder.is_virtual && !folder.is_system) ? `
                             <button class="btn btn-ghost btn-sm" data-action="rename" data-type="folder" data-id="${folder.id}">✏️</button>
                             <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="folder" data-id="${folder.id}">🗑️</button>
-                            ` : '<span style="color: var(--color-text-tertiary); font-size: 11px;">系统挂载</span>'}
+                            ` : `<span style="color: var(--color-primary); font-size: 11px;">系统${folder.is_system ? '文件夹' : '挂载'}</span>`}
                         </span>
                     </div>
                 `).join('')}
@@ -702,6 +702,17 @@ class FileManagerPage extends Component {
     }
 
     async deleteItem(type, id) {
+        const item = type === 'folder'
+            ? this.state.folders.find(f => String(f.id) === String(id))
+            : this.state.files.find(f => String(f.id) === String(id));
+
+        if (!item) return;
+
+        if (type === 'folder' && item.is_system) {
+            Toast.warning('系统文件夹不允许删除');
+            return;
+        }
+
         const confirmed = await Modal.confirm('删除确认', `确定要删除这个${type === 'folder' ? '文件夹' : '文件'}吗？${type === 'folder' ? '文件夹内的所有内容也会被删除。' : ''}`);
         if (!confirmed) return;
 
@@ -731,8 +742,8 @@ class FileManagerPage extends Component {
 
         if (!item) return;
 
-        if (item.is_virtual || item.is_readonly) {
-            Toast.warning('系统挂载项不支持重命名');
+        if (item.is_virtual || item.is_readonly || item.is_system) {
+            Toast.warning('系统项项目不支持重命名');
             return;
         }
 
@@ -939,13 +950,22 @@ class FileManagerPage extends Component {
                 </div>`,
                 width: '500px'
             });
-        } else if (mime === 'application/pdf') {
-            // PDF 预览
-            Modal.show({
-                title: `📕 ${file.name}`,
-                content: `<iframe src="${url}" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>`,
-                width: '900px'
-            });
+        } else if (mime === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            // PDF 预览 - 使用 PdfViewer 组件
+            if (window.PdfViewer) {
+                PdfViewer.open({
+                    fileId: file.id,
+                    filename: file.name,
+                    source: 'filemanager'
+                });
+            } else {
+                // 降级处理：使用 iframe
+                Modal.show({
+                    title: `📕 ${file.name}`,
+                    content: `<iframe src="${url}" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>`,
+                    width: '900px'
+                });
+            }
         } else if (mime.startsWith('text/') || ['application/json', 'application/xml', 'application/javascript'].includes(mime)) {
             // 文本文件预览
             fetch(url)
@@ -960,13 +980,42 @@ class FileManagerPage extends Component {
                 .catch(() => {
                     window.open(url, '_blank');
                 });
-        } else if (mime.includes('word') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('excel') || mime.includes('presentation') || mime.includes('powerpoint')) {
-            // Office 文档 - 使用 Microsoft Office Online 预览
-            const docUrl = encodeURIComponent(window.location.origin + url.replace(Config.apiBase, '/api/v1'));
+        } else if (mime.includes('word') || mime.includes('document') || file.name.endsWith('.docx')) {
+            // Word 文档预览 - 使用 OfficeViewer 组件
+            if (window.OfficeViewer && window.OfficeViewer.isWordFile(file.name)) {
+                OfficeViewer.previewWord({ url, filename: file.name });
+            } else {
+                // 降级处理
+                Modal.show({
+                    title: `📄 ${file.name}`,
+                    content: `<div style="text-align: center; padding: 40px;">
+                        <p style="margin-bottom: 20px;">Word 预览组件未加载</p>
+                        <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
+                    </div>`,
+                    width: '500px'
+                });
+            }
+        } else if (mime.includes('spreadsheet') || mime.includes('excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            // Excel 表格预览 - 使用 OfficeViewer 组件
+            if (window.OfficeViewer && window.OfficeViewer.isExcelFile(file.name)) {
+                OfficeViewer.previewExcel({ url, filename: file.name });
+            } else {
+                // 降级处理
+                Modal.show({
+                    title: `📊 ${file.name}`,
+                    content: `<div style="text-align: center; padding: 40px;">
+                        <p style="margin-bottom: 20px;">Excel 预览组件未加载</p>
+                        <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
+                    </div>`,
+                    width: '500px'
+                });
+            }
+        } else if (mime.includes('presentation') || mime.includes('powerpoint')) {
+            // PPT 暂不支持在线预览
             Modal.show({
-                title: `📄 ${file.name}`,
+                title: `📽️ ${file.name}`,
                 content: `<div style="text-align: center; padding: 40px;">
-                    <p style="margin-bottom: 20px;">Office 文档无法直接在浏览器中预览</p>
+                    <p style="margin-bottom: 20px;">PPT 文件暂不支持在线预览</p>
                     <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
                 </div>`,
                 width: '500px'

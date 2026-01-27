@@ -11,7 +11,13 @@
     <title>JeJe WebOS</title>
     <link rel="manifest" href="/manifest.json">
 
-    <!-- 核心样式 -->
+    <!-- ========== 第三方库 ========== -->
+    <link rel="stylesheet" href="/static/libs/remixicon/remixicon.css">
+    <link rel="stylesheet" href="/static/libs/leaflet/leaflet.css">
+    <script src="/static/libs/leaflet/leaflet.js"></script>
+    <script src="/static/libs/echarts/echarts.min.js"></script>
+
+    <!-- ========== 核心样式 ========== -->
     <link rel="stylesheet" href="/static/css/core/variables.css">
     <link rel="stylesheet" href="/static/css/core/reset.css">
     <link rel="stylesheet" href="/static/css/core/utils.css">
@@ -19,12 +25,12 @@
     <link rel="stylesheet" href="/static/css/core/button.css">
     <link rel="stylesheet" href="/static/css/core/card.css">
     <link rel="stylesheet" href="/static/css/core/form.css">
+    <link rel="stylesheet" href="/static/css/core/search.css">
     <link rel="stylesheet" href="/static/css/core/table.css">
     <link rel="stylesheet" href="/static/css/core/tag.css">
     <link rel="stylesheet" href="/static/css/core/pagination.css">
-    <link rel="stylesheet" href="/static/libs/remixicon/remixicon.css">
 
-    <!-- 组件样式 -->
+    <!-- ========== 组件样式 ========== -->
     <link rel="stylesheet" href="/static/css/components/modal.css">
     <link rel="stylesheet" href="/static/css/components/toast.css">
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
@@ -36,70 +42,73 @@
     <link rel="stylesheet" href="/static/css/components/topbar.css">
     <link rel="stylesheet" href="/static/css/components/start_menu.css">
     <link rel="stylesheet" href="/static/css/components/module_help.css">
+    <link rel="stylesheet" href="/static/css/components/office_viewer.css">
+    <link rel="stylesheet" href="/static/css/components/pdf_viewer.css">
 
-    <!-- 页面样式 -->
+    <!-- ========== 页面样式 - 基础 ========== -->
     <link rel="stylesheet" href="/static/css/pages/layout.css">
     <link rel="stylesheet" href="/static/css/pages/desktop.css">
     <link rel="stylesheet" href="/static/css/pages/login.css">
-    <link rel="stylesheet" href="/static/css/pages/blog.css">
-    <link rel="stylesheet" href="/static/css/pages/notes.css">
-    <link rel="stylesheet" href="/static/css/pages/users.css">
-    <link rel="stylesheet" href="/static/css/pages/system.css">
-    <link rel="stylesheet" href="/static/css/pages/features.css">
+    <link rel="stylesheet" href="/static/css/pages/profile.css">
     <link rel="stylesheet" href="/static/css/pages/help.css">
-    <link rel="stylesheet" href="/static/css/pages/theme_editor.css">
-    <link rel="stylesheet" href="/static/css/pages/filemanager.css">
-    <link rel="stylesheet" href="/static/css/pages/transfer.css">
-    <link rel="stylesheet" href="/static/css/pages/announcement.css">
+    <link rel="stylesheet" href="/static/css/pages/features.css">
+    <link rel="stylesheet" href="/static/css/pages/messages.css">
+
+    <!-- ========== 页面样式 - 系统管理 ========== -->
+    <link rel="stylesheet" href="/static/css/pages/system.css">
+    <link rel="stylesheet" href="/static/css/pages/users.css">
+    <link rel="stylesheet" href="/static/css/pages/roles.css">
     <link rel="stylesheet" href="/static/css/pages/backup.css">
+    <link rel="stylesheet" href="/static/css/pages/monitor.css">
+    <link rel="stylesheet" href="/static/css/pages/import-export.css">
+    <link rel="stylesheet" href="/static/css/pages/announcement.css">
     <link rel="stylesheet" href="/static/css/pages/feedback.css">
     <link rel="stylesheet" href="/static/css/pages/market.css">
-    <link rel="stylesheet" href="/static/css/pages/messages.css">
-    <link rel="stylesheet" href="/static/css/pages/monitor.css">
-    <link rel="stylesheet" href="/static/css/pages/profile.css">
-    <link rel="stylesheet" href="/static/css/pages/roles.css">
-    <link rel="stylesheet" href="/static/css/pages/import-export.css">
+    <link rel="stylesheet" href="/static/css/pages/theme_editor.css">
+
+    <!-- ========== 页面样式 - 文件与内容 ========== -->
+    <link rel="stylesheet" href="/static/css/pages/filemanager.css">
+    <link rel="stylesheet" href="/static/css/pages/transfer.css">
+    <link rel="stylesheet" href="/static/css/pages/blog.css">
+    <link rel="stylesheet" href="/static/css/pages/notes.css">
     <link rel="stylesheet" href="/static/css/pages/knowledge.css">
+    <link rel="stylesheet" href="/static/css/pages/vault.css">
+
+    <!-- ========== 页面样式 - 媒体工具 ========== -->
+    <link rel="stylesheet" href="/static/css/pages/album.css">
+    <link rel="stylesheet" href="/static/css/pages/video.css">
+    <link rel="stylesheet" href="/static/css/pages/ocr.css">
+    <link rel="stylesheet" href="/static/css/pages/pdf/pdf.css">
+    <link rel="stylesheet" href="/static/css/pages/markdown/markdown.css">
+    <link rel="stylesheet" href="/static/css/pages/markdown/markdown_wysiwyg.css">
+
+    <!-- ========== 页面样式 - 学习与办公 ========== -->
+    <link rel="stylesheet" href="/static/css/pages/exam.css">
+    <link rel="stylesheet" href="/static/css/pages/course.css">
+    <link rel="stylesheet" href="/static/css/pages/schedule.css">
+
+    <!-- ========== 页面样式 - 通讯与AI ========== -->
+    <link rel="stylesheet" href="/static/css/pages/im/im.css">
     <link rel="stylesheet" href="/static/css/pages/ai.css">
     <link rel="stylesheet" href="/static/css/pages/map.css">
-    <link rel="stylesheet" href="/static/css/pages/im/im.css">
 
-    <!-- Leaflet 地图框架 (本地化) -->
-    <link rel="stylesheet" href="/static/libs/leaflet/leaflet.css" />
-    <script src="/static/libs/leaflet/leaflet.js"></script>
-
-    <!-- 数据分析模块样式 -->
+    <!-- ========== 页面样式 - 数据分析模块 ========== -->
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_sql.css">
-    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_bi.css">
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis_import.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_cleaning.css">
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis_modeling.css">
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis_chart.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_sql.css">
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis_compare.css">
+    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_bi.css">
     <link rel="stylesheet" href="/static/css/pages/analysis/analysis_smart_table.css">
 
-    <link rel="stylesheet" href="/static/css/pages/analysis/analysis_cleaning.css">
-
-    <!-- 数据透镜模块样式 -->
+    <!-- ========== 页面样式 - 数据透镜模块 ========== -->
     <link rel="stylesheet" href="/static/css/pages/datalens/datalens.css">
     <link rel="stylesheet" href="/static/css/pages/datalens/datalens_hub.css">
     <link rel="stylesheet" href="/static/css/pages/datalens/datalens_viewer.css">
     <link rel="stylesheet" href="/static/css/pages/datalens/datalens_editor.css">
     <link rel="stylesheet" href="/static/css/pages/datalens/datalens_api.css">
-
-    <!-- 图表库 -->
-    <script src="/static/libs/echarts/echarts.min.js"></script>
-
-    <link rel="stylesheet" href="/static/css/pages/album.css">
-    <link rel="stylesheet" href="/static/css/pages/video.css">
-    <link rel="stylesheet" href="/static/css/pages/exam.css">
-    <link rel="stylesheet" href="/static/css/pages/ocr.css">
-    <link rel="stylesheet" href="/static/css/pages/course.css">
-    <link rel="stylesheet" href="/static/css/pages/schedule.css">
-    <link rel="stylesheet" href="/static/css/pages/vault.css">
-    <link rel="stylesheet" href="/static/css/pages/pdf.css">
-
-
 </head>
 
 <body>
@@ -111,7 +120,7 @@
         </div>
     </div>
 
-    <!-- 核心脚本 -->
+    <!-- ========== 核心脚本 ========== -->
     <script src="/static/js/core/config.js"></script>
     <script src="/static/js/core/api.js"></script>
     <script src="/static/js/core/store.js"></script>
@@ -119,57 +128,82 @@
     <script src="/static/js/core/component.js"></script>
     <script src="/static/js/core/window_manager.js"></script>
     <script src="/static/js/core/websocket.js"></script>
-
-    <!-- 组件脚本 -->
-    <script src="/static/js/components/modal.js"></script>
-    <script src="/static/js/components/toast.js"></script>
     <script src="/static/js/core/notification.js"></script>
-    <script src="/static/js/components/shortcuts_help.js"></script>
-    <script src="/static/js/components/data_tools.js"></script>
 
-    <!-- 页面脚本 -->
-    <script src="/static/js/pages/login.js"></script>
-    <script src="/static/js/pages/desktop.js"></script>
-    <script src="/static/js/pages/messages.js"></script>
-    <script src="/static/js/pages/blog.js"></script>
-    <script src="/static/js/pages/users.js"></script>
-    <script src="/static/js/pages/notes.js"></script>
-    <script src="/static/js/pages/feedback.js"></script>
-    <script src="/static/js/pages/announcement.js"></script>
-    <script src="/static/js/pages/system.js"></script>
-    <script src="/static/js/pages/roles.js"></script>
-    <script src="/static/js/pages/backup.js"></script>
-    <script src="/static/js/pages/monitor.js"></script>
-    <script src="/static/js/pages/import-export.js"></script>
-    <script src="/static/js/pages/theme_editor.js"></script>
-    <script src="/static/js/pages/filemanager.js"></script>
-    <script src="/static/js/pages/transfer.js"></script>
-    <script src="/static/js/pages/knowledge.js"></script>
-    <script src="/static/js/pages/ai.js"></script>
-    <script src="/static/js/pages/im/components.js"></script>
-    <script src="/static/js/pages/im/im.js"></script>
-    <script src="/static/js/pages/map.js"></script>
-
-
-    <script src="/static/js/pages/profile.js"></script>
-    <script src="/static/js/pages/help.js"></script>
-    <script src="/static/js/pages/market.js"></script>
-
-    <!-- 工具类脚本 -->
-    <!-- 图表工具 -->
+    <!-- ========== 工具类脚本 ========== -->
+    <script src="/static/js/utils/shortcut_manager.js"></script>
+    <script src="/static/js/utils/module_help/module_help.js"></script>
+    <script src="/static/js/utils/module_help/module_help_contents.js"></script>
     <script src="/static/js/utils/chart/chart_style_config.js"></script>
     <script src="/static/js/utils/chart/chart_helper.js"></script>
     <script src="/static/js/utils/chart/chart_factory.js"></script>
     <script src="/static/js/utils/chart/chart_render_cache.js"></script>
     <script src="/static/js/utils/chart/chart_config_ui.js"></script>
-    <!-- 其他工具 -->
-    <script src="/static/js/utils/shortcut_manager.js"></script>
-    <!-- 模块帮助工具 -->
-    <script src="/static/js/utils/module_help/module_help.js"></script>
-    <script src="/static/js/utils/module_help/module_help_contents.js"></script>
 
+    <!-- ========== 组件脚本 ========== -->
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/shortcuts_help.js"></script>
+    <script src="/static/js/components/data_tools.js"></script>
+    <script src="/static/js/components/dock.js"></script>
+    <script src="/static/js/components/topbar.js"></script>
+    <script src="/static/js/components/start_menu.js"></script>
+    <script src="/static/js/components/spotlight.js"></script>
+    <script src="/static/js/components/office_viewer.js"></script>
+    <script src="/static/js/components/pdf_viewer.js"></script>
 
-    <!-- 数据分析模块脚本 -->
+    <!-- ========== 页面脚本 - 基础 ========== -->
+    <script src="/static/js/pages/login.js"></script>
+    <script src="/static/js/pages/desktop.js"></script>
+    <script src="/static/js/pages/profile.js"></script>
+    <script src="/static/js/pages/help.js"></script>
+    <script src="/static/js/pages/messages.js"></script>
+
+    <!-- ========== 页面脚本 - 系统管理 ========== -->
+    <script src="/static/js/pages/system.js"></script>
+    <script src="/static/js/pages/users.js"></script>
+    <script src="/static/js/pages/roles.js"></script>
+    <script src="/static/js/pages/backup.js"></script>
+    <script src="/static/js/pages/monitor.js"></script>
+    <script src="/static/js/pages/import-export.js"></script>
+    <script src="/static/js/pages/announcement.js"></script>
+    <script src="/static/js/pages/feedback.js"></script>
+    <script src="/static/js/pages/market.js"></script>
+    <script src="/static/js/pages/theme_editor.js"></script>
+
+    <!-- ========== 页面脚本 - 文件与内容 ========== -->
+    <script src="/static/js/pages/filemanager.js"></script>
+    <script src="/static/js/pages/transfer.js"></script>
+    <script src="/static/js/pages/blog.js"></script>
+    <script src="/static/js/pages/notes.js"></script>
+    <script src="/static/js/pages/knowledge.js"></script>
+    <script src="/static/js/pages/vault.js"></script>
+
+    <!-- ========== 页面脚本 - 媒体工具 ========== -->
+    <script src="/static/js/pages/album.js"></script>
+    <script src="/static/js/pages/video.js"></script>
+    <script src="/static/js/pages/ocr.js"></script>
+    <script src="/static/js/pages/pdf/pdf_utils.js"></script>
+    <script src="/static/js/pages/pdf/pdf_reader.js"></script>
+    <script src="/static/js/pages/pdf/pdf_toolbox.js"></script>
+    <script src="/static/js/pages/pdf/pdf_history.js"></script>
+    <script src="/static/js/pages/pdf/pdf_documents.js"></script>
+    <script src="/static/js/pages/pdf/pdf.js"></script>
+    <script src="/static/js/pages/markdown/markdown_wysiwyg.js"></script>
+    <script src="/static/js/pages/markdown/markdown.js"></script>
+
+    <!-- ========== 页面脚本 - 学习与办公 ========== -->
+    <script src="/static/js/pages/exam.js"></script>
+    <script src="/static/js/pages/course.js"></script>
+    <script src="/static/js/pages/schedule.js"></script>
+
+    <!-- ========== 页面脚本 - 通讯与AI ========== -->
+    <script src="/static/js/pages/im/components.js"></script>
+    <script src="/static/js/pages/im/im.js"></script>
+    <script src="/static/js/pages/ai.js"></script>
+    <script src="/static/js/pages/map.js"></script>
+
+    <!-- ========== 页面脚本 - 数据分析模块 ========== -->
     <script src="/static/js/pages/analysis/analysis.js"></script>
     <script src="/static/js/pages/analysis/analysis_import.js"></script>
     <script src="/static/js/pages/analysis/analysis_cleaning.js"></script>
@@ -180,42 +214,17 @@
     <script src="/static/js/pages/analysis/analysis_bi.js"></script>
     <script src="/static/js/pages/analysis/analysis_smart_table.js"></script>
 
-
-
-    <!-- 数据透镜模块脚本 -->
+    <!-- ========== 页面脚本 - 数据透镜模块 ========== -->
     <script src="/static/js/pages/datalens/datalens_api.js"></script>
     <script src="/static/js/pages/datalens/datalens.js"></script>
     <script src="/static/js/pages/datalens/datalens_hub.js"></script>
     <script src="/static/js/pages/datalens/datalens_viewer.js"></script>
     <script src="/static/js/pages/datalens/datalens_editor.js"></script>
 
-
-    <!-- 桌面环境组件 -->
-    <script src="/static/js/components/dock.js"></script>
-    <script src="/static/js/components/topbar.js"></script>
-    <script src="/static/js/components/start_menu.js"></script>
-    <script src="/static/js/components/spotlight.js"></script>
-
-    <!-- 应用入口 -->
-    <script src="/static/js/pages/album.js"></script>
-    <script src="/static/js/pages/video.js"></script>
-    <script src="/static/js/pages/exam.js"></script>
-    <script src="/static/js/pages/ocr.js"></script>
-    <script src="/static/js/pages/course.js"></script>
-    <script src="/static/js/pages/schedule.js"></script>
-    <script src="/static/js/pages/vault.js"></script>
-    <!-- PDF 工具模块 -->
-    <script src="/static/js/pages/pdf/pdf_utils.js"></script>
-    <script src="/static/js/pages/pdf/pdf_reader.js"></script>
-    <script src="/static/js/pages/pdf/pdf_toolbox.js"></script>
-    <script src="/static/js/pages/pdf/pdf_history.js"></script>
-    <script src="/static/js/pages/pdf/pdf_documents.js"></script>
-    <script src="/static/js/pages/pdf/pdf.js"></script>
-
-
+    <!-- ========== 应用入口 ========== -->
     <script src="/static/js/pages/app.js"></script>
 
-    <!-- PWA Service Worker Registration -->
+    <!-- ========== PWA Service Worker ========== -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -229,7 +238,6 @@
             });
         }
     </script>
-
 </body>
 
 </html>

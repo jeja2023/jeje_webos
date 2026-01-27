@@ -1,0 +1,244 @@
+/**
+ * 全局搜索框组件样式
+ * 统一的搜索框设计，适用于所有模块
+ */
+
+/* ==================== 基础搜索框容器 ==================== */
+.search-box {
+    position: relative;
+    width: 220px;
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+/* 大尺寸搜索框 */
+.search-box.search-lg {
+    width: 280px;
+}
+
+/* 小尺寸搜索框 */
+.search-box.search-sm {
+    width: 160px;
+}
+
+/* 自适应宽度 */
+.search-box.search-fluid {
+    width: 100%;
+}
+
+/* ==================== 搜索图标 ==================== */
+.search-box i.search-icon,
+.search-box>i:first-of-type {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-tertiary);
+    font-size: 0.875rem;
+    pointer-events: none;
+    transition: all var(--transition-fast);
+    z-index: 2;
+}
+
+/* ==================== 搜索输入框 ==================== */
+.search-box input,
+.search-box .search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 36px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-tertiary);
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+    outline: none;
+    box-sizing: border-box;
+}
+
+/* 占位符样式 */
+.search-box input::placeholder,
+.search-box .search-input::placeholder {
+    color: var(--color-text-tertiary);
+    font-size: 0.8125rem;
+}
+
+/* 跨浏览器兼容 */
+.search-box input::-webkit-input-placeholder,
+.search-box .search-input::-webkit-input-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+.search-box input::-moz-placeholder,
+.search-box .search-input::-moz-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+.search-box input:-ms-input-placeholder,
+.search-box .search-input:-ms-input-placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+}
+
+/* 悬停状态 */
+.search-box input:hover,
+.search-box .search-input:hover {
+    background: var(--color-bg-hover);
+    border-color: rgba(var(--color-primary-rgb), 0.3);
+}
+
+/* 聚焦状态 */
+.search-box input:focus,
+.search-box .search-input:focus {
+    background: var(--color-bg-primary);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* 聚焦时图标高亮 */
+.search-box input:focus+i,
+.search-box .search-input:focus+i,
+.search-box:focus-within i.search-icon,
+.search-box:focus-within>i:first-of-type {
+    color: var(--color-primary);
+}
+
+/* ==================== 清除按钮 ==================== */
+.search-box .search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: var(--color-bg-tertiary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-tertiary);
+    font-size: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-fast);
+}
+
+.search-box:hover .search-clear,
+.search-box:focus-within .search-clear {
+    opacity: 1;
+    visibility: visible;
+}
+
+.search-box .search-clear:hover {
+    background: var(--color-error);
+    color: #fff;
+}
+
+/* 有清除按钮时输入框右侧留出空间 */
+.search-box.has-clear input,
+.search-box.has-clear .search-input {
+    padding-right: 36px;
+}
+
+/* ==================== 玻璃拟态风格变体 ==================== */
+.search-box.search-glass input,
+.search-box.search-glass .search-input {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.search-box.search-glass input:hover,
+.search-box.search-glass .search-input:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.search-box.search-glass input:focus,
+.search-box.search-glass .search-input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+/* ==================== 暗色主题适配 ==================== */
+:root.theme-neon .search-box input,
+:root.theme-neon .search-box .search-input {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root.theme-neon .search-box input:hover,
+:root.theme-neon .search-box .search-input:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(var(--color-primary-rgb), 0.4);
+}
+
+:root.theme-neon .search-box input:focus,
+:root.theme-neon .search-box .search-input:focus {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.25),
+        0 0 20px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* ==================== 日出主题适配 ==================== */
+:root.theme-sunrise .search-box input,
+:root.theme-sunrise .search-box .search-input {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(214, 90, 49, 0.15);
+}
+
+:root.theme-sunrise .search-box input:hover,
+:root.theme-sunrise .search-box .search-input:hover {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(214, 90, 49, 0.3);
+}
+
+:root.theme-sunrise .search-box input:focus,
+:root.theme-sunrise .search-box .search-input:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* ==================== 动画效果 ==================== */
+.search-box.search-animated input:focus,
+.search-box.search-animated .search-input:focus {
+    animation: searchPulse 0.3s ease-out;
+}
+
+@keyframes searchPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb), 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(var(--color-primary-rgb), 0.1);
+    }
+
+    100% {
+        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+    }
+}
+
+/* ==================== 响应式调整 ==================== */
+@media (max-width: 768px) {
+    .search-box {
+        width: 100%;
+    }
+
+    .search-box.search-lg,
+    .search-box.search-sm {
+        width: 100%;
+    }
+}

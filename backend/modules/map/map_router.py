@@ -121,6 +121,32 @@ async def delete_marker(
     await db.commit()
     return success(message="标记点已移除")
 
+@router.post("/markers/update")
+async def update_marker(
+    marker_data: Dict,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """更新标记点信息"""
+    marker_id = marker_data.get("id")
+    if not marker_id:
+        return error(message="缺少标记点ID")
+    
+    result = await db.execute(select(MapMarker).where(MapMarker.id == marker_id, MapMarker.user_id == user.user_id))
+    marker = result.scalar_one_or_none()
+    
+    if not marker:
+        return error(message="标记点不存在")
+    
+    # 更新字段
+    if "name" in marker_data: marker.name = marker_data["name"]
+    if "description" in marker_data: marker.description = marker_data["description"]
+    if "color" in marker_data: marker.color = marker_data["color"]
+    if "icon" in marker_data: marker.icon = marker_data["icon"]
+    
+    await db.commit()
+    return success(message="标记点已更新")
+
 import gpxpy
 import gpxpy.gpx
 

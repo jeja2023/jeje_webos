@@ -50,7 +50,12 @@ const PdfDocuments = {
     renderFileItem(file) {
         const sizeStr = Utils.formatBytes(file.size);
         const timeStr = Utils.formatDate(file.updated_at);
-        // 如果是 PDF 模块的文件，传给 openReader 时可以直接传对象
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        let iconClass = 'ri-file-pdf-fill';
+        let clickAction = '';
+
+        // 构造文件数据对象
         const fileJson = JSON.stringify({
             id: null,
             name: file.name,
@@ -58,10 +63,24 @@ const PdfDocuments = {
             source: 'pdf'
         }).replace(/"/g, '&quot;');
 
+        if (['doc', 'docx'].includes(ext)) {
+            iconClass = 'ri-file-word-2-fill style="color: #2b579a;"';
+            clickAction = "Toast.info('请使用 [Word转PDF] 功能转换此文件')";
+        } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+            iconClass = 'ri-file-excel-2-fill style="color: #217346;"';
+            clickAction = "Toast.info('请使用 [Excel转PDF] 功能转换此文件')";
+        } else if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+            iconClass = 'ri-image-2-fill style="color: #bfa15f;"';
+            clickAction = "Toast.info('请使用 [图片转PDF] 功能转换此文件')";
+        } else {
+            // 默认 PDF 行为
+            clickAction = `window._pdfPage.openReader(${fileJson}, '${file.name}', 'pdf')`;
+        }
+
         return `
-            <div class="pdf-item-card" onclick="window._pdfPage.openReader(${fileJson}, '${file.name}', 'pdf')">
+            <div class="pdf-item-card" onclick="${clickAction}">
                 <div class="pdf-item-icon">
-                    <i class="ri-file-pdf-fill"></i>
+                    <i class="${iconClass}"></i>
                 </div>
                 <div class="pdf-item-info">
                     <div class="pdf-item-name" title="${file.name}">${file.name}</div>
@@ -72,7 +91,7 @@ const PdfDocuments = {
                     </div>
                 </div>
                 <div class="pdf-item-actions">
-                    <button class="action-btn" title="下载" onclick="event.stopPropagation(); window._pdfPage.downloadPdfFile('${file.path}')">
+                    <button class="action-btn" title="下载" onclick="event.stopPropagation(); window._pdfPage.downloadPdfFile('${file.name}')">
                         <i class="ri-download-line"></i>
                     </button>
                     <button class="action-btn danger" title="删除" onclick="event.stopPropagation(); window._pdfPage.handleDelete('${file.name}', '${file.category}')">

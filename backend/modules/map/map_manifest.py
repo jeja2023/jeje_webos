@@ -4,6 +4,14 @@
 
 from core.loader import ModuleManifest, ModuleAssets
 from .map_router import router
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("地图模块已启用")
+
 
 manifest = ModuleManifest(
     # 基本信息
@@ -48,5 +56,8 @@ manifest = ModuleManifest(
     kernel_version=">=1.0.0",
     
     # 是否启用
-    enabled=False,
+    enabled=True,
+    
+    on_enable=on_enable,
 )
+

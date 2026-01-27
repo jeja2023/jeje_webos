@@ -1,9 +1,38 @@
 /* 地图模块样式 - 全面重构版本 */
+
+/* 修复: 地图窗口需要无padding的容器 */
+.window-body:has(.map-layout),
+.map-window-body {
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    /* 强制使用 flex，确保高度能传递给子级 */
+    flex-direction: column;
+}
+
 .map-layout {
     display: flex;
-    height: 100%;
+    /* 强制填满 .main-content */
     overflow: hidden;
-    background: var(--color-bg-container);
+    background: var(--color-bg-primary);
+    height: 100%;
+    width: 100%;
+}
+
+
+
+/* 地图画布容器 - Leaflet 需要明确的宽高 */
+.map-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    /* 必须透明，否则会遮挡内部渲染层 */
+    z-index: 1;
 }
 
 .map-sidebar {
@@ -12,7 +41,7 @@
     border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    background: var(--color-bg-container);
+    background: var(--color-bg-primary);
     backdrop-filter: blur(20px);
     z-index: 100 !important;
     position: relative;
@@ -36,9 +65,25 @@
     align-items: center;
 }
 
-.header-actions {
-    display: flex;
-    gap: 8px;
+/* 侧边栏帮助按钮统一样式 - 位于左下角 */
+.sidebar-footer .btn-help {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(var(--color-primary-rgb), 0.05);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-footer .btn-help:hover {
+    background: rgba(var(--color-primary-rgb), 0.1);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.sidebar-footer .btn-help .help-text {
+    display: inline;
 }
 
 .brand-info {
@@ -120,10 +165,24 @@
     background: rgba(var(--color-primary-rgb), 0.1);
 }
 
-/* 比例尺定位微调 */
+/* 比例尺定位微调 - 靠左显示 */
 .leaflet-control-scale {
-    margin-bottom: 20px !important;
-    margin-right: 20px !important;
+    margin-bottom: 30px !important;
+    margin-left: 20px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(8px);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaflet-control-scale-line {
+    background: transparent !important;
+    color: white !important;
+    border: 2px solid white !important;
+    border-top: none !important;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .brand-info i {
@@ -139,11 +198,7 @@
     font-weight: 700;
 }
 
-.brand-version {
-    font-size: 10px;
-    opacity: 0.4;
-    font-family: monospace;
-}
+
 
 /* 搜索容器 */
 .map-search-container {
@@ -326,21 +381,16 @@
     gap: 10px;
 }
 
+/* trail-file-item 的扩展样式（基础样式在74行已定义） */
 .trail-file-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
     background: var(--color-bg-tertiary);
     border: 1px dashed var(--color-border);
     border-radius: 12px;
-    transition: all 0.2s;
 }
 
 .trail-file-item:hover {
     border-style: solid;
     border-color: var(--color-primary);
-    background: var(--color-bg-hover);
 }
 
 .trail-file-item .file-info {
@@ -401,6 +451,33 @@
     gap: 4px;
 }
 
+/* 轨迹信息布局增强 */
+.ds-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.ds-meta {
+    font-size: 10px;
+    opacity: 0.5;
+    margin-top: 2px;
+}
+
+.dataset-item {
+    transition: all 0.2s ease;
+}
+
+.dataset-item:hover .ds-actions {
+    opacity: 1;
+}
+
+.dataset-item .ds-actions {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
 .empty-hint {
     padding: 20px;
     text-align: center;
@@ -418,7 +495,7 @@
 .sidebar-footer {
     padding: 20px;
     border-top: 1px solid var(--color-border);
-    background: var(--color-bg-container);
+    background: var(--color-bg-primary);
     position: relative;
     z-index: 200;
     pointer-events: auto !important;
@@ -480,62 +557,128 @@
 .map-main {
     flex: 1;
     position: relative;
-    z-index: 1;
-    /* 创建新的堆叠上下文，防止内部元素影响外部 */
-    isolation: isolate;
     overflow: hidden;
+    height: 100%;
+    min-width: 0;
+    /* 防止 flex 压缩失败 */
+    background: #f0f2f5;
 }
 
-.map-canvas {
-    width: 100%;
-    height: 100%;
-    /* 确保不会超出容器边界 */
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-}
 
 .zoom-indicator {
     position: absolute;
     top: 24px;
-    right: 24px;
-    background: rgba(15, 23, 42, 0.6);
+    left: 24px;
+    /* 移到左侧，避免与工具栏冲突 */
+    background: rgba(15, 23, 42, 0.7);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     z-index: 100;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* 悬浮工具栏 */
+.map-floating-tools {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    gap: 12px;
+    z-index: 1000;
+}
+
+.tool-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    padding: 0;
+}
+
+.tool-btn i {
+    font-size: 20px;
+}
+
+.tool-btn:hover {
+    background: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(var(--color-primary-rgb), 0.4);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.tool-btn.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Leaflet 覆盖 */
 .leaflet-container {
-    background: var(--color-bg-container) !important;
-    /* 确保地图交互层不会超出容器边界 */
+    background: #f0f2f5 !important;
     overflow: hidden !important;
+    height: 100% !important;
+    width: 100% !important;
+    z-index: 2 !important;
+    /* 确保高于所有保底背景 */
 }
 
-/* 确保 Leaflet 的所有覆盖层保持在地图区域内 */
-.map-main .leaflet-pane,
-.map-main .leaflet-control-container {
-    z-index: auto !important;
+/* 强制显示瓷砖层 */
+.leaflet-tile-pane {
+    z-index: 200 !important;
 }
+
+.leaflet-map-pane {
+    z-index: 400 !important;
+}
+
+/* 保持 Leaflet 默认图层顺序 */
 
 .leaflet-control-zoom {
     border: none !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    margin-bottom: 30px !important;
+    margin-right: 30px !important;
 }
 
 .leaflet-control-zoom a {
-    background: var(--color-bg-container) !important;
-    color: var(--color-text) !important;
-    border: 1px solid var(--color-border) !important;
+    background: rgba(15, 23, 42, 0.7) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(12px);
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.2s;
+}
+
+.leaflet-control-zoom a:first-child {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.leaflet-control-zoom a:last-child {
+    border-radius: 0 0 10px 10px !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: var(--color-primary) !important;
+    color: white !important;
 }
 
 .leaflet-popup-content-wrapper {
@@ -547,4 +690,39 @@
 
 .leaflet-popup-tip {
     background: var(--color-bg-container) !important;
+}
+
+/* 测量工具提示框 */
+.ruler-tooltip {
+    background: rgba(239, 68, 68, 0.9) !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 10px !important;
+    font-weight: 600;
+    font-size: 12px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ruler-tooltip::before {
+    border-top-color: rgba(239, 68, 68, 0.9) !important;
+}
+
+/* 定位标记脉冲动画 */
+.location-marker {
+    animation: locationPulse 2s ease-out infinite;
+}
+
+@keyframes locationPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 20px rgba(59, 130, 246, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
 }

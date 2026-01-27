@@ -5,6 +5,16 @@
 
 from core.loader import ModuleManifest, ModuleAssets
 from .exam_router import router
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def on_enable():
+    logger.info("考试模块已启用")
+
+async def on_disable():
+    pass
 
 manifest = ModuleManifest(
     id="exam",
@@ -46,5 +56,8 @@ manifest = ModuleManifest(
     
     dependencies=[],
     
-    enabled=False,
+    enabled=True,
+    
+    on_enable=on_enable,
+    on_disable=on_disable,
 )

@@ -191,7 +191,7 @@ async def upload_analysis_file(
     content = await file.read()
     with open(save_path, "wb") as f:
         f.write(content)
-        
+
     return success({
         "name": save_path.name,
         "path": str(save_path.relative_to(storage.root_dir)),

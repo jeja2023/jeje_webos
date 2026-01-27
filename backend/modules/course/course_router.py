@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """
 课程学习模块 - API 路由
+支持视频课程上传和学习
 """
 
 import logging
-from fastapi import APIRouter, Depends, Query, HTTPException
+import os
+import uuid
+from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
 from schemas.response import success, error
+from utils.storage import get_storage_manager
 
 from .course_schemas import (
     CourseCreate, CourseUpdate, CourseResponse, CourseDetailResponse,
@@ -324,3 +329,194 @@ async def get_course_progress(
         "last_chapter_id": enrollment.last_chapter_id,
         "chapters": [ChapterProgressResponse.model_validate(cp).model_dump() for cp in chapter_progress]
     })
+
+
+# ========== 视频上传相关接口 ==========
+
+# 支持的视频类型
+ALLOWED_VIDEO_TYPES = {
+    'video/mp4': '.mp4',
+    'video/webm': '.webm',
+    'video/quicktime': '.mov',
+    'video/x-msvideo': '.avi',
+    'video/x-matroska': '.mkv',
+    'video/x-flv': '.flv',
+    'video/x-ms-wmv': '.wmv',
+    'video/x-m4v': '.m4v'
+}
+
+
+@router.post("/chapters/{chapter_id}/video")
+async def upload_chapter_video(
+    chapter_id: int,
+    file: UploadFile = File(..., description="视频文件"),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """
+    上传章节视频
+    支持的格式: mp4, webm, mov, avi, mkv, flv, wmv, m4v
+    最大文件大小: 500MB
+    """
+    # 验证章节
+    chapter = await ChapterService.get_chapter_by_id(db, chapter_id)
+    if not chapter:
+        return error(code=404, message="章节不存在")
+    
+    # 验证权限
+    course = await CourseService.get_course_by_id(db, chapter.course_id)
+    if course.author_id != user.user_id and user.role != "admin":
+        return error(code=403, message="无权限上传视频")
+    
+    # 验证文件类型
+    content_type = file.content_type or ''
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        return error(code=400, message=f"不支持的视频格式，请上传 MP4、WebM、MOV 等格式")
+    
+    # 获取存储管理器
+    storage = get_storage_manager()
+    max_video_size = 500 * 1024 * 1024  # 500MB
+    
+    # 读取文件内容（流式读取检查大小）
+    content_chunks = []
+    total_size = 0
+    chunk_size = 2 * 1024 * 1024  # 2MB 块
+    
+    try:
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > max_video_size:
+                return error(code=413, message="视频文件过大，最大支持 500MB")
+            content_chunks.append(chunk)
+    except Exception as e:
+        logger.error(f"读取视频文件失败: {e}")
+        return error(code=500, message="读取视频文件失败")
+    
+    content = b''.join(content_chunks)
+    
+    # 生成文件名
+    ext = ALLOWED_VIDEO_TYPES.get(content_type, '.mp4')
+    filename = f"{uuid.uuid4().hex}{ext}"
+    
+    # 保存到课程模块的 uploads 目录
+    video_dir = storage.get_module_dir("course", "uploads", user_id=user.user_id)
+    video_path = os.path.join(video_dir, filename)
+    
+    try:
+        with open(video_path, 'wb') as f:
+            f.write(content)
+        
+        # 生成访问URL
+        # 使用相对路径存储，方便迁移
+        relative_path = os.path.relpath(video_path, storage.upload_dir)
+        video_url = f"/api/v1/course/video/{chapter_id}/stream"
+        
+        # 更新章节视频URL
+        from .course_schemas import ChapterUpdate
+        update_data = ChapterUpdate(video_url=relative_path)
+        await ChapterService.update_chapter(db, chapter_id, update_data)
+        
+        logger.info(f"视频上传成功: {filename}, 大小: {total_size / 1024 / 1024:.2f}MB, 章节: {chapter_id}")
+        
+        return success(data={
+            "video_url": video_url,
+            "filename": file.filename,
+            "size": total_size,
+            "size_mb": round(total_size / 1024 / 1024, 2)
+        }, message="视频上传成功")
+        
+    except Exception as e:
+        logger.error(f"保存视频文件失败: {e}")
+        # 清理已上传的文件
+        if os.path.exists(video_path):
+            os.remove(video_path)
+        return error(code=500, message="保存视频文件失败")
+
+
+@router.get("/video/{chapter_id}/stream")
+async def stream_chapter_video(
+    chapter_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """
+    获取章节视频流
+    返回视频文件以供播放
+    """
+    # 获取章节
+    chapter = await ChapterService.get_chapter_by_id(db, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    if not chapter.video_url:
+        raise HTTPException(status_code=404, detail="该章节没有视频")
+    
+    # 获取视频文件路径
+    storage = get_storage_manager()
+    video_path = storage.get_file_path(chapter.video_url)
+    
+    if not video_path or not video_path.exists():
+        raise HTTPException(status_code=404, detail="视频文件不存在")
+    
+    # 确定视频类型
+    ext = video_path.suffix.lower()
+    mime_types = {
+        '.mp4': 'video/mp4',
+        '.webm': 'video/webm',
+        '.mov': 'video/quicktime',
+        '.avi': 'video/x-msvideo',
+        '.mkv': 'video/x-matroska',
+        '.m4v': 'video/x-m4v'
+    }
+    media_type = mime_types.get(ext, 'video/mp4')
+    
+    return FileResponse(
+        path=str(video_path),
+        media_type=media_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=3600"
+        }
+    )
+
+
+@router.delete("/chapters/{chapter_id}/video")
+async def delete_chapter_video(
+    chapter_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """删除章节视频"""
+    # 验证章节
+    chapter = await ChapterService.get_chapter_by_id(db, chapter_id)
+    if not chapter:
+        return error(code=404, message="章节不存在")
+    
+    # 验证权限
+    course = await CourseService.get_course_by_id(db, chapter.course_id)
+    if course.author_id != user.user_id and user.role != "admin":
+        return error(code=403, message="无权限删除视频")
+    
+    if not chapter.video_url:
+        return error(code=400, message="该章节没有视频")
+    
+    # 删除视频文件
+    storage = get_storage_manager()
+    video_path = storage.get_file_path(chapter.video_url)
+    
+    if video_path and video_path.exists():
+        try:
+            os.remove(str(video_path))
+        except Exception as e:
+            logger.error(f"删除视频文件失败: {e}")
+    
+    # 清空视频URL
+    from .course_schemas import ChapterUpdate
+    update_data = ChapterUpdate(video_url=None)
+    await ChapterService.update_chapter(db, chapter_id, update_data)
+    
+    return success(message="视频已删除")
+

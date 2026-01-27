@@ -31,7 +31,10 @@ from .pdf_schemas import (
     PdfReorderRequest,
     PdfExtractPagesRequest,
     PdfAddPageNumbersRequest,
-    PdfSignRequest
+    PdfSignRequest,
+    PdfWordToPdfRequest,
+    PdfExcelToPdfRequest,
+    PdfSaveTextRequest
 )
 from models.storage import FileRecord
 from utils.storage import get_storage_manager
@@ -46,82 +49,6 @@ class PdfService:
     
     providing PDF reading, splitting, merging, conversion, and syncing with FileManager
     """
-    
-    @staticmethod
-    async def _ensure_pdf_output_folder(db: AsyncSession, user_id: int) -> int:
-        """确保存在 'PDF Output' 文件夹，并返回其 ID"""
-        from modules.filemanager.filemanager_models import VirtualFolder
-        
-        # 查找是否存在
-        result = await db.execute(
-            select(VirtualFolder).where(
-                VirtualFolder.user_id == user_id,
-                VirtualFolder.name == "PDF Output",
-                VirtualFolder.parent_id == None  # 根目录下
-            )
-        )
-        folder = result.scalar_one_or_none()
-        
-        if folder:
-            return folder.id
-            
-        # 不存在则创建
-        new_folder = VirtualFolder(
-            name="PDF Output",
-            user_id=user_id,
-            parent_id=None,
-            path="/PDF Output"
-        )
-        db.add(new_folder)
-        await db.flush() # 获取 ID
-        return new_folder.id
-
-    @staticmethod
-    async def _register_to_filemanager(db: AsyncSession, user_id: int, filename: str, storage_path: str, file_size: int):
-        """将生成的文件注册到文件管理器"""
-        from modules.filemanager.filemanager_models import VirtualFile
-        
-        try:
-            folder_id = await PdfService._ensure_pdf_output_folder(db, user_id)
-            
-            # 检查是否已存在同名文件，如果存在则自动重命名
-            base_name, ext = os.path.splitext(filename)
-            counter = 1
-            final_name = filename
-            
-            while True:
-                existing = await db.execute(
-                    select(VirtualFile).where(
-                        VirtualFile.folder_id == folder_id,
-                        VirtualFile.name == final_name,
-                        VirtualFile.user_id == user_id
-                    )
-                )
-                if not existing.scalar_one_or_none():
-                    break
-                final_name = f"{base_name}_{counter}{ext}"
-                counter += 1
-            
-            # 创建文件记录
-            # storage_path 是绝对路径，需要转换为相对 storage root 的路径
-            storage = get_storage_manager()
-            rel_path = os.path.relpath(storage_path, storage.root_dir).replace('\\', '/')
-            
-            virtual_file = VirtualFile(
-                name=final_name,
-                folder_id=folder_id,
-                user_id=user_id,
-                storage_path=rel_path,
-                file_size=file_size,
-                mime_type='application/pdf' if final_name.lower().endswith('.pdf') else 'application/zip',
-                description="由 PDF 工具箱生成"
-            )
-            db.add(virtual_file)
-            logger.info(f"已自动注册 PDF 文件到文件管理器: {final_name}")
-            
-        except Exception as e:
-            logger.error(f"注册文件到文件管理器失败: {e}")
-            # 不阻断主流程
 
     @staticmethod
     async def get_file_path_by_storage(user_id: int, storage_path: str) -> Tuple[str, str]:
@@ -138,7 +65,7 @@ class PdfService:
     async def get_file_path(db: AsyncSession, file_id: Optional[int], user_id: int, source: str = "filemanager") -> Tuple[str, str]:
         """
         统一获取文件物理路径和文件名
-        source 支持: filemanager, upload, pdf
+        source 支持: filemanager, upload
         """
         if file_id is None:
              raise ValueError("无效的文件ID")
@@ -146,9 +73,7 @@ class PdfService:
         storage_path = None
         filename = None
         
-        if source == "pdf":
-            return None, None
-        elif source == "filemanager":
+        if source == "filemanager":
             # 动态导入，避免循环引用
             from modules.filemanager.filemanager_models import VirtualFile
             result = await db.execute(select(VirtualFile).where(and_(VirtualFile.id == file_id, VirtualFile.user_id == user_id)))
@@ -171,6 +96,20 @@ class PdfService:
             raise ValueError(f"物理文件丢失: {filename}")
             
         return str(file_path), filename
+
+    @staticmethod
+    async def _resolve_file(db: AsyncSession, user_id: int, file_id: Optional[int] = None, path: Optional[str] = None) -> Tuple[str, str]:
+        """统一解析请求中的 file_id 或 path，返回 (物理路径, 文件名)"""
+        if file_id:
+            # 默认先尝试从文件管理器找，找不到再尝试从 upload 记录找
+            try:
+                return await PdfService.get_file_path(db, file_id, user_id, "filemanager")
+            except:
+                return await PdfService.get_file_path(db, file_id, user_id, "upload")
+        elif path:
+            return await PdfService.get_file_path_by_storage(user_id, path)
+        else:
+            raise ValueError("未提供有效的文件 ID 或路径")
 
     @staticmethod
     def get_file_path_by_name(user_id: int, filename: str, category: str = "uploads") -> Tuple[str, str]:
@@ -218,7 +157,10 @@ class PdfService:
         """获取 PDF 元数据"""
         try:
             doc = fitz.open(file_path)
-            meta = doc.metadata
+            # PyMuPDF metadata 可能为 None（例如加密文档未解锁时）
+            meta = doc.metadata or {}
+            
+            # 即使加密，doc.page_count 通常也是可用的
             page_count = doc.page_count
             size_bytes = os.path.getsize(file_path)
             
@@ -239,7 +181,13 @@ class PdfService:
             return result
         except Exception as e:
             logger.error(f"解析 PDF 元数据失败: {e}")
-            raise ValueError(f"解析 PDF 失败: {str(e)}")
+            # 如果彻底失败，返回一个提示加密或错误的对象
+            return PdfMetadata(
+                title="无法读取",
+                page_count=0,
+                is_encrypted=True # 假设它可能是加密导致的
+            )
+
 
     @staticmethod
     async def render_page(file_path: str, page_num: int, zoom: float = 2.0) -> bytes:
@@ -264,8 +212,18 @@ class PdfService:
         """合并多个 PDF"""
         try:
             result_doc = fitz.open()
-            for fid in request.file_ids:
-                fpath, _ = await PdfService.get_file_path(db, fid, user_id)
+            # 收集文件路径
+            file_paths = []
+            if request.file_ids:
+                for fid in request.file_ids:
+                    fpath, _ = await PdfService.get_file_path(db, fid, user_id)
+                    file_paths.append(fpath)
+            if request.paths:
+                for p in request.paths:
+                    fpath, _ = await PdfService.get_file_path_by_storage(user_id, p)
+                    file_paths.append(fpath)
+
+            for fpath in file_paths:
                 with fitz.open(fpath) as doc:
                     result_doc.insert_pdf(doc)
             
@@ -278,7 +236,7 @@ class PdfService:
             result_doc.close()
             
             await PdfService._save_history(db, user_id, f"合并 PDF: {output_name}", output_name, "merge")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             
             return str(save_path)
         except Exception as e:
@@ -289,7 +247,7 @@ class PdfService:
     async def split_pdf(db: AsyncSession, user_id: int, request: PdfSplitRequest) -> str:
         """拆分 PDF"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             doc = fitz.open(fpath)
             
             pages_to_keep = []
@@ -313,20 +271,20 @@ class PdfService:
             if not pages_to_keep:
                 raise ValueError("未选择有效的页码范围")
             
-            result_doc = fitz.open()
-            result_doc.insert_pdf(doc, from_page=0, to_page=doc.page_count-1, select=pages_to_keep)
+            # 使用 select 方法保留/重排选中的页面
+            # 注意：select 是就地修改，但只要我们不覆盖源文件保存，就是安全的
+            doc.select(pages_to_keep)
             
             output_name = request.output_name or f"split_{old_name}"
             if not output_name.lower().endswith(".pdf"):
                 output_name += ".pdf"
                 
             save_path = PdfService._get_output_path(user_id, output_name)
-            result_doc.save(str(save_path))
-            result_doc.close()
+            doc.save(str(save_path))
             doc.close()
             
             await PdfService._save_history(db, user_id, f"拆分 PDF: {output_name}", output_name, "split")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             
             return str(save_path)
         except Exception as e:
@@ -351,25 +309,89 @@ class PdfService:
     async def compress_pdf(db: AsyncSession, user_id: int, request: PdfCompressRequest) -> str:
         """压缩 PDF"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            # 延迟导入以避免循环依赖或不必要的加载
+            from PIL import Image
+            import io
+            
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             doc = fitz.open(fpath)
             
+            # 只有当 level >= 2 时才启用激进的图片压缩
+            # level 1: 仅清理 (Quick)
+            # level 2: 图片压缩 (Standard)
+            # level 3: 图片压缩+缩放 (Max)
+            if request.level >= 2:
+                processed_xrefs = set()
+                
+                for page in doc:
+                    images = page.get_images()
+                    for img in images:
+                        xref = img[0]
+                        if xref in processed_xrefs:
+                            continue
+                        processed_xrefs.add(xref)
+                        
+                        try:
+                            # 提取图片
+                            pix = fitz.Pixmap(doc, xref)
+                            
+                            # 如果图片很小 (<50KB) 或尺寸很小，跳过
+                            if pix.size < 50 * 1024 or pix.width < 100 or pix.height < 100:
+                                pix = None
+                                continue
+                                
+                            # 处理颜色空间
+                            if pix.n - pix.alpha > 3: # CMYK 等
+                                pix0 = fitz.Pixmap(fitz.csRGB, pix)
+                                pix = pix0
+                            
+                            # 转 PIL 处理
+                            img_data = pix.tobytes()
+                            image = Image.open(io.BytesIO(img_data))
+                            
+                            # 确定压缩参数
+                            quality = 75
+                            new_size = None
+                            
+                            if request.level >= 3:
+                                quality = 50
+                                # 如果图片过大，进行缩放
+                                if image.width > 1500 or image.height > 1500:
+                                    factor = 1500 / max(image.width, image.height)
+                                    new_size = (int(image.width * factor), int(image.height * factor))
+                            
+                            if new_size:
+                                image = image.resize(new_size, Image.Resampling.LANCZOS)
+                                
+                            # 压缩
+                            buffer = io.BytesIO()
+                            # 统一转 RGB 并存为 JPEG
+                            image.convert("RGB").save(buffer, format="JPEG", quality=quality, optimize=True)
+                            new_bytes = buffer.getvalue()
+                            
+                            # 只有当压缩后体积确实减小时才替换
+                            if len(new_bytes) < pix.size:
+                                doc.update_stream(xref, new_bytes)
+                                
+                            pix = None
+                        except Exception as e:
+                            # 个别图片处理失败不应中断整个流程
+                            logger.warning(f"压缩图片失败 xref={xref}: {e}")
+                            continue
+
             output_name = request.output_name or f"compressed_{old_name}"
             if not output_name.lower().endswith(".pdf"):
                 output_name += ".pdf"
             
             save_path = PdfService._get_output_path(user_id, output_name)
             
-            # deflate=True, garbage=request.level (0-4)
-            # PyMuPDF garbage collection options: 0=none, 1=unused objs, 2=duplicate objs, 3=duplicate streams, 4=max
-            # We map request level roughly to garbage level or use it for deflate
-            garbage_level = max(0, min(4, request.level))
-            
-            doc.save(str(save_path), garbage=garbage_level, deflate=True)
+            # 使用最大程度的垃圾清理
+            # garbage=4: dedup contents, streams, unused objects
+            doc.save(str(save_path), garbage=4, deflate=True)
             doc.close()
             
             await PdfService._save_history(db, user_id, f"压缩 PDF: {output_name}", output_name, "compress")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"压缩 PDF 失败: {e}")
@@ -379,7 +401,7 @@ class PdfService:
     async def add_watermark(db: AsyncSession, user_id: int, request: PdfWatermarkRequest) -> str:
         """添加水印"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             doc = fitz.open(fpath)
             
             output_name = request.output_name or f"watermarked_{old_name}"
@@ -387,19 +409,23 @@ class PdfService:
                 output_name += ".pdf"
             
             for page in doc:
-                # 计算中心位置
                 rect = page.rect
-                center = fitz.Point(rect.width / 2, rect.height / 2)
                 
-                # 插入文本
+                # 使用 insert_text 配合 morph 矩阵实现旋转
+                # 计算页面中心
+                center_point = fitz.Point(rect.width / 2, rect.height / 2)
+                
+                # 创建旋转矩阵 (顺时针 45 度)
+                mat = fitz.Matrix(45)
+                
                 page.insert_text(
-                    center,
+                    center_point,
                     request.text,
                     fontsize=request.fontsize,
-                    fontname="helv", # 默认字体
+                    fontname="china-s",  # 支持简体中文的内置字体
                     color=request.color,
                     fill_opacity=request.opacity,
-                    rotate=45 # 旋转45度
+                    morph=(center_point, mat)  # (固定点, 矩阵) 实现围绕该点旋转
                 )
                 
             save_path = PdfService._get_output_path(user_id, output_name)
@@ -407,7 +433,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加水印: {output_name}", output_name, "watermark")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"添加水印失败: {e}")
@@ -419,8 +445,18 @@ class PdfService:
         try:
             result_doc = fitz.open()
             
-            for fid in request.file_ids:
-                fpath, _ = await PdfService.get_file_path(db, fid, user_id)
+            # 收集文件路径
+            file_paths = []
+            if request.file_ids:
+                for fid in request.file_ids:
+                    fpath, _ = await PdfService.get_file_path(db, fid, user_id)
+                    file_paths.append(fpath)
+            if request.paths:
+                for p in request.paths:
+                    fpath, _ = await PdfService.get_file_path_by_storage(user_id, p)
+                    file_paths.append(fpath)
+
+            for fpath in file_paths:
                 # 打开图片并转换为 PDF 单页
                 img = fitz.open(fpath)
                 pdfbytes = img.convert_to_pdf()
@@ -437,7 +473,7 @@ class PdfService:
             result_doc.close()
             
             await PdfService._save_history(db, user_id, f"图片转 PDF: {output_name}", output_name, "img2pdf")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"图片转PDF失败: {e}")
@@ -447,7 +483,7 @@ class PdfService:
     async def pdf_to_images(db: AsyncSession, user_id: int, request: PdfToImagesRequest) -> str:
         """PDF 转图片 (Zip)"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             doc = fitz.open(fpath)
             
             base_name = os.path.splitext(old_name)[0]
@@ -488,8 +524,6 @@ class PdfService:
         
         return list(items), total
 
-    # ==================== 新增功能 ====================
-
     @staticmethod
     def _parse_page_ranges(page_ranges: str, total_pages: int) -> List[int]:
         """解析页码范围字符串，返回页码列表（0-indexed）"""
@@ -516,7 +550,7 @@ class PdfService:
     async def pdf_to_word(db: AsyncSession, user_id: int, request: PdfToWordRequest) -> str:
         """PDF 转 Word 文档"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or os.path.splitext(old_name)[0] + ".docx"
             if not output_name.lower().endswith(".docx"):
@@ -547,7 +581,7 @@ class PdfService:
                 word_doc.save(str(save_path))
             
             await PdfService._save_history(db, user_id, f"PDF 转 Word: {output_name}", output_name, "pdf2word")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"PDF转Word失败: {e}")
@@ -557,7 +591,7 @@ class PdfService:
     async def pdf_to_excel(db: AsyncSession, user_id: int, request: PdfToExcelRequest) -> str:
         """PDF 转 Excel（提取表格）"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or os.path.splitext(old_name)[0] + ".xlsx"
             if not output_name.lower().endswith(".xlsx"):
@@ -583,11 +617,13 @@ class PdfService:
             for page_num in pages_to_process:
                 page = doc.load_page(page_num)
                 # 提取表格
-                tables = page.find_tables()
-                if tables:
-                    for table in tables:
+                # PyMuPDF 的 find_tables 返回 TableFinder 对象
+                finder = page.find_tables()
+                
+                if finder.tables:
+                    for table in finder:
                         # 写入表头分隔
-                        ws.cell(row=row_idx, column=1, value=f"--- 第 {page_num + 1} 页 ---")
+                        ws.cell(row=row_idx, column=1, value=f"--- 第 {page_num + 1} 页表格 ---")
                         row_idx += 1
                         
                         # 提取表格数据
@@ -596,12 +632,23 @@ class PdfService:
                                 ws.cell(row=row_idx, column=col_idx, value=cell_value or "")
                             row_idx += 1
                         row_idx += 1  # 表格之间空一行
+                else:
+                    # Fallback: 如果未检测到表格，提取纯文本
+                    text = page.get_text()
+                    if text.strip():
+                        ws.cell(row=row_idx, column=1, value=f"--- 第 {page_num + 1} 页文本（未检测到表格）---")
+                        row_idx += 1
+                        for line in text.split('\n'):
+                            if line.strip():
+                                ws.cell(row=row_idx, column=1, value=line.strip())
+                                row_idx += 1
+                        row_idx += 1
             
             doc.close()
             wb.save(str(save_path))
             
             await PdfService._save_history(db, user_id, f"PDF 转 Excel: {output_name}", output_name, "pdf2excel")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"PDF转Excel失败: {e}")
@@ -611,7 +658,7 @@ class PdfService:
     async def remove_watermark(db: AsyncSession, user_id: int, request: PdfRemoveWatermarkRequest) -> str:
         """去除 PDF 水印"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"no_watermark_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -620,41 +667,37 @@ class PdfService:
             doc = fitz.open(fpath)
             
             for page in doc:
-                # 方法1: 移除半透明的文本/图像（常见水印特征）
-                # 获取页面的绘图命令
-                drawings = page.get_drawings()
+                # 策略 1: 移除倾斜的文本 (常见水印特征)
+                # 获取页面详细文本结构
+                blocks = page.get_text("dict")["blocks"]
+                for block in blocks:
+                    if block["type"] == 0:  # 0 = 文本块
+                        for line in block["lines"]:
+                            # line["dir"] 是方向向量 (cos, sin)
+                            # 水平文本: dir=(1, 0), sin~0
+                            # 垂直文本: dir=(0, -1) 或 (0, 1), cos~0
+                            # 如果既不水平也不垂直，认为是倾斜水印
+                            dir_vec = line["dir"]
+                            is_horizontal = abs(dir_vec[1]) < 0.05
+                            is_vertical = abs(dir_vec[0]) < 0.05
+                            
+                            if not is_horizontal and not is_vertical:
+                                # 添加遮盖注释（后续统一应用）
+                                page.add_redact_annot(line["bbox"])
+
+                # 策略 2: 移除可能是水印的大型半透明图形/图像
+                # ... (保留原有或者简化原有逻辑)
+                # 原有的基于图画的检测逻辑比较脆弱，我们主要依赖上面的文本检测
                 
-                # 移除可能是水印的元素（灰色、低透明度的大元素）
-                for d in drawings:
-                    # 检查是否可能是水印（通常是灰色、大面积）
-                    if d.get("fill") and len(d.get("items", [])) > 0:
-                        rect = d.get("rect")
-                        if rect and (rect.width > page.rect.width * 0.3 or rect.height > page.rect.height * 0.3):
-                            # 大面积元素可能是水印，尝试用白色矩形覆盖
-                            pass
-                
-                # 方法2: 移除特定的图像（如水印图片）
-                images = page.get_images()
-                for img in images:
-                    xref = img[0]
-                    # 检查图像大小，如果覆盖大部分页面可能是水印
-                    try:
-                        pix = fitz.Pixmap(doc, xref)
-                        if pix.width > page.rect.width * 0.5 and pix.height > page.rect.height * 0.5:
-                            # 可能是水印图片，尝试删除
-                            page.delete_image(xref)
-                    except:
-                        pass
-                
-                # 方法3: 使用清理选项
-                page.clean_contents()
+                # 应用所有遮盖
+                page.apply_redactions()
             
             save_path = PdfService._get_output_path(user_id, output_name)
             doc.save(str(save_path), garbage=4, deflate=True)
             doc.close()
             
             await PdfService._save_history(db, user_id, f"去除水印: {output_name}", output_name, "remove_watermark")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"去除水印失败: {e}")
@@ -664,7 +707,7 @@ class PdfService:
     async def encrypt_pdf(db: AsyncSession, user_id: int, request: PdfEncryptRequest) -> str:
         """加密 PDF"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"encrypted_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -695,7 +738,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"加密 PDF: {output_name}", output_name, "encrypt")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"加密PDF失败: {e}")
@@ -705,7 +748,7 @@ class PdfService:
     async def decrypt_pdf(db: AsyncSession, user_id: int, request: PdfDecryptRequest) -> str:
         """解密 PDF"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"decrypted_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -724,7 +767,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"解密 PDF: {output_name}", output_name, "decrypt")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"解密PDF失败: {e}")
@@ -734,7 +777,7 @@ class PdfService:
     async def rotate_pdf(db: AsyncSession, user_id: int, request: PdfRotateRequest) -> str:
         """旋转 PDF 页面"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"rotated_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -762,7 +805,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"旋转 PDF: {output_name}", output_name, "rotate")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"旋转PDF失败: {e}")
@@ -772,7 +815,7 @@ class PdfService:
     async def reorder_pages(db: AsyncSession, user_id: int, request: PdfReorderRequest) -> str:
         """重新排列 PDF 页面顺序"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"reordered_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -796,7 +839,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"页面重排: {output_name}", output_name, "reorder")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"重排PDF页面失败: {e}")
@@ -806,7 +849,7 @@ class PdfService:
     async def extract_pages(db: AsyncSession, user_id: int, request: PdfExtractPagesRequest) -> str:
         """提取 PDF 指定页面"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"extracted_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -820,18 +863,15 @@ class PdfService:
             if not pages_to_extract:
                 raise ValueError("未选择有效的页码范围")
             
-            # 创建新文档
-            result_doc = fitz.open()
-            for page_num in pages_to_extract:
-                result_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+            # 使用 select 方法提取页面，保留元数据
+            doc.select(pages_to_extract)
             
             save_path = PdfService._get_output_path(user_id, output_name)
-            result_doc.save(str(save_path))
-            result_doc.close()
+            doc.save(str(save_path))
             doc.close()
             
             await PdfService._save_history(db, user_id, f"提取页面: {output_name}", output_name, "extract_pages")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"提取PDF页面失败: {e}")
@@ -841,7 +881,7 @@ class PdfService:
     async def add_page_numbers(db: AsyncSession, user_id: int, request: PdfAddPageNumbersRequest) -> str:
         """为 PDF 添加页码"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
             
             output_name = request.output_name or f"numbered_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -897,7 +937,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加页码: {output_name}", output_name, "add_page_numbers")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"添加页码失败: {e}")
@@ -907,8 +947,8 @@ class PdfService:
     async def add_signature(db: AsyncSession, user_id: int, request: PdfSignRequest) -> str:
         """为 PDF 添加签名/印章图片"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, request.file_id, user_id)
-            img_path, _ = await PdfService.get_file_path(db, request.image_file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
+            img_path, _ = await PdfService._resolve_file(db, user_id, request.image_file_id, request.image_path)
             
             output_name = request.output_name or f"signed_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -951,17 +991,17 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加签名: {output_name}", output_name, "sign")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"添加签名失败: {e}")
             raise ValueError(f"添加签名失败: {str(e)}")
 
     @staticmethod
-    async def delete_pages(db: AsyncSession, user_id: int, file_id: int, page_ranges: str, output_name: Optional[str] = None) -> str:
+    async def delete_pages(db: AsyncSession, user_id: int, file_id: Optional[int], page_ranges: str, output_name: Optional[str] = None, path: Optional[str] = None) -> str:
         """删除 PDF 指定页面"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, file_id, path)
             
             output_name = output_name or f"deleted_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -978,28 +1018,25 @@ class PdfService:
             if not pages_to_keep:
                 raise ValueError("不能删除所有页面")
             
-            # 创建新文档
-            result_doc = fitz.open()
-            for page_num in pages_to_keep:
-                result_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+            # 使用 select 方法保留页面，保留元数据
+            doc.select(pages_to_keep)
             
             save_path = PdfService._get_output_path(user_id, output_name)
-            result_doc.save(str(save_path))
-            result_doc.close()
+            doc.save(str(save_path))
             doc.close()
             
             await PdfService._save_history(db, user_id, f"删除页面: {output_name}", output_name, "delete_pages")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"删除PDF页面失败: {e}")
             raise ValueError(f"删除失败: {str(e)}")
 
     @staticmethod
-    async def reverse_pages(db: AsyncSession, user_id: int, file_id: int, output_name: Optional[str] = None) -> str:
+    async def reverse_pages(db: AsyncSession, user_id: int, file_id: Optional[int], output_name: Optional[str] = None, path: Optional[str] = None) -> str:
         """反转 PDF 页面顺序"""
         try:
-            fpath, old_name = await PdfService.get_file_path(db, file_id, user_id)
+            fpath, old_name = await PdfService._resolve_file(db, user_id, file_id, path)
             
             output_name = output_name or f"reversed_{old_name}"
             if not output_name.lower().endswith(".pdf"):
@@ -1018,8 +1055,131 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"反转页面: {output_name}", output_name, "reverse")
-            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
+
             return str(save_path)
         except Exception as e:
             logger.error(f"反转PDF页面失败: {e}")
             raise ValueError(f"反转失败: {str(e)}")
+
+    @staticmethod
+    async def word_to_pdf(db: AsyncSession, user_id: int, request: PdfWordToPdfRequest) -> str:
+        """Word 转 PDF (基础版: 仅提取文本内容)"""
+        try:
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
+            
+            output_name = request.output_name or os.path.splitext(old_name)[0] + ".pdf"
+            if not output_name.lower().endswith(".pdf"):
+                output_name += ".pdf"
+            
+            save_path = PdfService._get_output_path(user_id, output_name)
+            
+            # 使用 python-docx 读取
+            try:
+                from docx import Document
+                doc = Document(fpath)
+            except ImportError:
+                raise ValueError("服务器缺少 python-docx 库")
+            
+            # 创建 PDF
+            pdf = fitz.open()
+            page = pdf.new_page()
+            margin = 50
+            y = margin
+            line_height = 14
+            
+            # 使用内置字体，不支持复杂中文排版是已知限制
+            fontname = "china-s" 
+            
+            for para in doc.paragraphs:
+                text = para.text
+                if not text.strip():
+                    y += line_height / 2
+                    continue
+                
+                # 简单的自动换行处理
+                page.insert_text((margin, y), text, fontsize=11, fontname=fontname, encoding=0)
+                y += line_height * 1.5
+                
+                if y > page.rect.height - margin:
+                    page = pdf.new_page()
+                    y = margin
+
+            pdf.save(str(save_path))
+            pdf.close()
+            
+            await PdfService._save_history(db, user_id, f"Word转PDF: {output_name}", output_name, "word_to_pdf")
+
+            return str(save_path)
+        except Exception as e:
+            logger.error(f"Word转PDF失败: {e}")
+            raise ValueError(f"转换失败: {str(e)}")
+
+    @staticmethod
+    async def excel_to_pdf(db: AsyncSession, user_id: int, request: PdfExcelToPdfRequest) -> str:
+        """Excel 转 PDF (基础版: 表格转文本)"""
+        try:
+            fpath, old_name = await PdfService._resolve_file(db, user_id, request.file_id, request.path)
+            
+            output_name = request.output_name or os.path.splitext(old_name)[0] + ".pdf"
+            if not output_name.lower().endswith(".pdf"):
+                output_name += ".pdf"
+            
+            save_path = PdfService._get_output_path(user_id, output_name)
+            
+            try:
+                import openpyxl
+            except ImportError:
+                raise ValueError("服务器缺少 openpyxl 库")
+            
+            wb = openpyxl.load_workbook(fpath, data_only=True)
+            
+            pdf = fitz.open()
+            fontname = "china-s"
+            
+            for sheetname in wb.sheetnames:
+                ws = wb[sheetname]
+                page = pdf.new_page()
+                page.insert_text((50, 40), f"Sheet: {sheetname}", fontsize=14, fontname=fontname)
+                y = 70
+                
+                for row in ws.iter_rows(values_only=True):
+                    # 简单的 Tab 分隔
+                    text = "  ".join([str(c) if c is not None else "" for c in row])
+                    if text.strip():
+                        page.insert_text((50, y), text, fontsize=10, fontname=fontname)
+                        y += 12
+                    
+                    if y > page.rect.height - 50:
+                        page = pdf.new_page()
+                        y = 50
+            
+            pdf.save(str(save_path))
+            pdf.close()
+            wb.close()
+            
+            await PdfService._save_history(db, user_id, f"Excel转PDF: {output_name}", output_name, "excel_to_pdf")
+
+            return str(save_path)
+        except Exception as e:
+            logger.error(f"Excel转PDF失败: {e}")
+            raise ValueError(f"转换失败: {str(e)}")
+
+    @staticmethod
+    async def save_extracted_text(db: AsyncSession, user_id: int, request: PdfSaveTextRequest) -> str:
+        """保存提取的文本到文件"""
+        try:
+            output_name = request.filename
+            if not output_name.lower().endswith('.txt'): 
+                output_name += '.txt'
+            
+            save_path = PdfService._get_output_path(user_id, output_name)
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                f.write(request.text)
+                
+            await PdfService._save_history(db, user_id, f"提取文本: {output_name}", output_name, "extract_text")
+
+            return str(save_path)
+        except Exception as e:
+            logger.error(f"保存文本失败: {e}")
+            raise ValueError(f"保存失败: {str(e)}")

@@ -27,26 +27,25 @@ settings = get_settings()
 
 class StorageManager:
     """
-    文件存储管理器 - 统一存储规则
+    文件存储管理器 - 统一存储规则 (遵循开发规范 6.x)
     
     目录结构:
     storage/
-    ├── public/              # 公共文件（不区分用户，如系统资源）
-    │   ├── avatars/         # 用户头像
-    │   └── attachments/     # 公共附件
-    ├── users/               # 用户私有文件（按用户ID隔离）
-    │   └── user_{id}/       # 单个用户的所有私有文件
-    │       ├── uploads/     # 用户上传的文件
-    │       └── exports/     # 用户导出的文件
-    ├── modules/             # 模块专属目录（按模块+用户隔离）
-    │   └── {module}/        # 模块名
-    │       ├── temp/        # 临时文件
-    │       │   └── user_{id}/
-    │       └── archive/     # 归档文件
-    │           └── user_{id}/
-    └── system/              # 系统级目录（备份、日志等）
-        ├── backups/
-        └── logs/
+    ├── public/              # 公共文件（全员可见，如头像、公共附件库）
+    ├── modules/             # [核心业务区] 功能模块专属存储 (Module Autonomy)
+    │   ├── {module}/        # 模块 ID (如 analysis, album, filemanager)
+    │   │   ├── uploads/     # 模块业务原始附件
+    │   │   └── outputs/     # 模块业务处理成果
+    │   └── ...              # 各模块专项子目录 (如 ai_models, photos)
+    └── system/              # 系统运行维护区 (不计入用户配额)
+        ├── backups/         # 数据库备份
+        ├── logs/            # 运行日志
+        └── transfer_temp/   # [隔离区] 快传瞬时碎片 (即焚)
+        
+    ⚠️ 存储原则:
+    - 隔离原则: vault (加密隐私) 无可见存储目录；transfer 归口 system/ 且 24h 清理。
+    - 自治原则: 统一弃用顶层 users 目录，所有用户私有文件归口至 modules/filemanager。
+    - 二元结构: 标准业务目录应统一为 uploads (入) 与 outputs (出)。
     """
     
     def __init__(self):
@@ -56,7 +55,6 @@ class StorageManager:
         
         # 定义标准子目录
         self.public_dir = self.root_dir / "public"
-        self.users_dir = self.root_dir / "users"
         self.modules_dir = self.root_dir / "modules"
         self.system_dir = self.root_dir / "system"
         
@@ -76,7 +74,7 @@ class StorageManager:
         }
         
         # 确保基础目录存在
-        for d in [self.public_dir, self.users_dir, self.modules_dir, self.system_dir]:
+        for d in [self.public_dir, self.modules_dir, self.system_dir]:
             d.mkdir(parents=True, exist_ok=True)
         
         # 初始化所有标准模块目录
@@ -91,51 +89,63 @@ class StorageManager:
         # 格式：{模块名: [子目录列表]}
         standard_module_dirs = {
             # AI 模块
-            "ai": ["ai_models"],
+            "ai": ["ai_models", "uploads", "outputs"],
             # OCR 模块  
-            "ocr": ["ocr_models"],
+            "ocr": ["ocr_models", "uploads", "outputs"],
             # 地图模块
-            "map": ["map_tiles", "map_gps"],
+            "map": ["map_tiles", "map_gps", "uploads", "outputs"],
             # 知识库模块
-            "knowledge": ["embedding_models", "vector_db"],
+            "knowledge": ["embedding_models", "vector_db", "uploads", "outputs"],
             # 数据分析模块
-            "analysis": ["uploads", "outputs"],
+            "analysis": ["uploads", "outputs", "temp"],
             # IM 模块
-            "im": ["uploads"],
+            "im": ["uploads", "outputs"],
             # PDF 模块
             "pdf": ["uploads", "outputs"],
-            # 相册模块
-            "album": ["photos", "thumbnails"],
-            # 视频模块
-            "video": ["videos", "thumbnails"],
+            # 相册模块 (统一二元结构: uploads 存原图, outputs 存缩略图)
+            "album": ["uploads", "outputs"],
+            # 视频模块 (统一二元结构: uploads 存视频, outputs 存封面缩略图)
+            "video": ["uploads", "outputs"],
+            # 博客模块
+            "blog": ["uploads", "outputs"],
+            # 笔记模块
+            "notes": ["uploads", "outputs"],
+            # 数据透镜
+            "datalens": ["uploads", "outputs"],
+            # 课程模块
+            "course": ["uploads", "outputs"],
+            # 考试模块
+            "exam": ["uploads", "outputs"],
+            # 反馈模块
+            "feedback": ["uploads", "outputs"],
+            # 文件管理
+            "filemanager": ["uploads", "outputs"],
         }
         
         for module_name, sub_dirs in standard_module_dirs.items():
             module_dir = self.modules_dir / module_name
             module_dir.mkdir(parents=True, exist_ok=True)
-            
             for sub_dir in sub_dirs:
-                target_dir = module_dir / sub_dir
-                target_dir.mkdir(parents=True, exist_ok=True)
+                (module_dir / sub_dir).mkdir(parents=True, exist_ok=True)
         
+        # 初始化标准系统目录
+        standard_system_dirs = ["backups", "logs", "transfer_temp"]
+        for category in standard_system_dirs:
+            self.get_system_dir(category)
+            
+        # 初始化标准公共目录
+        (self.public_dir / "avatars").mkdir(parents=True, exist_ok=True)
+        (self.public_dir / "attachments").mkdir(parents=True, exist_ok=True)
+
         logger.debug("标准存储目录初始化完成")
 
-    def get_user_dir(self, user_id: int, sub_dir: str = "") -> Path:
+    def get_user_dir(self, user_id: int, sub_dir: str = "uploads") -> Path:
         """
-        获取用户私有目录
+        获取用户私有目录 (重定向至 filemanager 模块)
         
-        Args:
-            user_id: 用户ID
-            sub_dir: 子目录（如 uploads, exports）
-        
-        Returns:
-            用户目录路径
+        按照新规范，所有用户在网盘上传的文件均存放在 modules/filemanager 下
         """
-        target = self.users_dir / f"user_{user_id}"
-        if sub_dir:
-            target = target / sub_dir
-        target.mkdir(parents=True, exist_ok=True)
-        return target
+        return self.get_module_dir("filemanager", sub_dir=sub_dir, user_id=user_id)
 
     def get_module_dir(self, module_name: str, sub_dir: str = "", user_id: Optional[int] = None) -> Path:
         """
@@ -176,15 +186,8 @@ class StorageManager:
         import shutil
         success = True
         
-        # 删除 users 目录下的用户文件
-        user_dir = self.users_dir / f"user_{user_id}"
-        if user_dir.exists():
-            try:
-                shutil.rmtree(user_dir)
-                logger.info(f"已删除用户目录: {user_dir}")
-            except Exception as e:
-                logger.error(f"删除用户目录失败: {user_dir}, 错误: {e}")
-                success = False
+        # 删除 modules 目录下所有模块的用户文件
+        # (filemanager 的文件也包含在内，因为 users_dir 已弃用)
         
         # 删除 modules 目录下所有模块的用户文件
         for module_dir in self.modules_dir.iterdir():
@@ -202,13 +205,13 @@ class StorageManager:
         
         return success
 
-    def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachment", module: Optional[str] = None, sub_type: str = "uploads") -> Tuple[str, str]:
+    def generate_filename(self, original_filename: str, user_id: Optional[int] = None, category: str = "attachments", module: Optional[str] = None, sub_type: str = "uploads") -> Tuple[str, str]:
         """
         生成唯一文件名，遵循 6.3 存储规则
         
         规则优先级:
-        1. 如果指定了 module: modules/{module}/{sub_type}/user_{user_id}/filename
-        2. 如果指定了 user_id 且不是 avatar: users/user_{user_id}/{sub_type}/filename
+        1. 如果指定了业务模块: modules/{module}/{sub_type}/user_{user_id}/filename
+        2. 如果无业务模块且有 user_id 且非 avatar: 重定向至网盘 modules/filemanager/uploads/user_{user_id}/filename
         3. 如果是 avatar 或无 user_id: public/{category}/filename
         
         Args:
@@ -226,14 +229,14 @@ class StorageManager:
         filename = f"{file_id}.{ext}" if ext else file_id
         
         if module:
-            # 模块专用路径: modules/{module}/{sub_type}/user_{user_id}/filename
+            # 模块专用路径
             rel_dir = f"modules/{module}/{sub_type}"
             if user_id:
                 rel_dir += f"/user_{user_id}"
             base_dir = self.root_dir / rel_dir
         elif user_id and category != "avatar":
-            # 用户私有路径: users/user_{user_id}/{sub_type}/filename
-            rel_dir = f"users/user_{user_id}/{sub_type}"
+            # 无明确模块的用户文件，统一归口至网盘 (filemanager)
+            rel_dir = f"modules/filemanager/{sub_type}/user_{user_id}"
             base_dir = self.root_dir / rel_dir
         else:
             # 公共路径: public/{category}/filename

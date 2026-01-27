@@ -5,6 +5,73 @@
 
 const ModuleHelpContents = {
     /**
+     * Markdown 编辑器帮助
+     */
+    markdown: () => `
+        <h3>Markdown 编辑器使用指南</h3>
+        <p>Markdown 编辑器是一款专业的文档创作工具，提供所见即所得的编辑体验，自动保存您的每一份心血。</p>
+        
+        <h4>📝 核心功能</h4>
+        <ul>
+            <li><strong>所见即所得</strong> - 富文本编辑体验，边写边预览，无需切换模式。</li>
+            <li><strong>自动保存</strong> - 停止编辑 3 秒后自动保存，永不丢失内容。</li>
+            <li><strong>文档管理</strong> - 创建、编辑、收藏、公开分享您的文档。</li>
+            <li><strong>大纲导航</strong> - 右侧大纲面板自动提取标题，快速跳转。</li>
+        </ul>
+        
+        <h4>🛠️ 工具栏格式</h4>
+        <ul>
+            <li><strong>标题</strong> - H1、H2、H3 三级标题快速插入。</li>
+            <li><strong>文本样式</strong> - 粗体、斜体、删除线、行内代码。</li>
+            <li><strong>列表</strong> - 无序列表、有序列表、任务清单。</li>
+            <li><strong>引用</strong> - 块引用、代码块。</li>
+            <li><strong>链接与图片</strong> - 插入超链接、图片。</li>
+            <li><strong>表格与分割线</strong> - 快速插入表格和水平分割线。</li>
+        </ul>
+        
+        <h4>⌨️ 快捷键</h4>
+        <ul>
+            <li><kbd>Ctrl+B</kbd> - 加粗</li>
+            <li><kbd>Ctrl+I</kbd> - 斜体</li>
+            <li><kbd>Ctrl+K</kbd> - 插入链接</li>
+            <li><kbd>Ctrl+\`</kbd> - 行内代码</li>
+            <li><kbd>Ctrl+Z</kbd> - 撤销</li>
+            <li><kbd>Ctrl+Y</kbd> - 重做</li>
+            <li><kbd>Ctrl+S</kbd> - 手动保存</li>
+        </ul>
+        
+        <h4>📁 文档列表</h4>
+        <ul>
+            <li><strong>所有文档</strong> - 查看您创建的全部文档。</li>
+            <li><strong>我的收藏</strong> - 快速访问已收藏的重要文档。</li>
+            <li><strong>公开文档</strong> - 您设置为公开的文档，其他用户也可查看。</li>
+        </ul>
+        
+        <h4>⭐ 文档操作</h4>
+        <ul>
+            <li><strong>收藏</strong> - 点击星标图标收藏重要文档。</li>
+            <li><strong>公开</strong> - 勾选「公开」选项可让其他用户查看。</li>
+            <li><strong>编辑</strong> - 点击编辑按钮或直接点击文档卡片进入编辑。</li>
+            <li><strong>删除</strong> - 点击删除按钮移除文档（不可恢复）。</li>
+        </ul>
+        
+        <h4>📑 快速模板</h4>
+        <ul>
+            <li>工具栏右侧提供「快速模板」下拉菜单。</li>
+            <li>选择模板后会自动插入预设的文档结构。</li>
+            <li>适合快速创建会议记录、技术文档、日报等常用格式。</li>
+        </ul>
+        
+        <h4>💡 使用技巧</h4>
+        <ul>
+            <li>左侧边栏可折叠，点击箭头按钮切换显示/隐藏。</li>
+            <li>右侧大纲面板方便长文档快速导航。</li>
+            <li>输入首行标题，编辑器会自动同步为文档标题。</li>
+            <li>状态栏实时显示字数统计和保存状态。</li>
+        </ul>
+    `,
+
+    /**
      * 数据透镜帮助
      */
     datalens: () => `
@@ -553,59 +620,52 @@ const ModuleHelpContents = {
      */
     map: () => `
         <h3>智能地图使用指南</h3>
-        <p>智能地图支持在线和离线双模式，提供丰富的地理信息服务。</p>
+        <p>智能地图是一款功能极其强大的地理分析工具，支持离线与在线双模式，整合了轨迹分析、精确测距、地理标记和实时定位等核心功能。</p>
         
         <h4>🗺️ 基础操作</h4>
         <ul>
-            <li><strong>缩放</strong> - 滚动鼠标滚轮或使用缩放按钮</li>
-            <li><strong>平移</strong> - 按住左键拖拽地图</li>
-            <li><strong>全屏</strong> - 点击全屏按钮进入/退出全屏模式</li>
-            <li><strong>定位</strong> - 点击定位按钮回到当前位置</li>
+            <li><strong>地图导航</strong> - 滚动鼠标滚轮缩放，按住左键拖拽平移。</li>
+            <li><strong>缩放联动</strong> - 针对大数据量轨迹，缩放后会自动重渲染可见点，确保细节清晰。</li>
+            <li><strong>全屏切换</strong> - 点击右上角全屏按钮可获得更广阔的视野。</li>
+            <li><strong>坐标显示</strong> - 左上角实时显示当前缩放级别。</li>
         </ul>
         
-        <h4>🌐 地图模式</h4>
+        <h4>🛤️ 轨迹分析与管理</h4>
         <ul>
-            <li><strong>在线模式</strong> - 使用在线地图服务（高德/腾讯/OpenStreetMap）</li>
-            <li><strong>离线模式</strong> - 使用本地离线地图瓦片</li>
-            <li><strong>切换方式</strong> - 点击右上角模式切换按钮</li>
+            <li><strong>轨迹载入</strong> - 支持 GPX、CSV、Excel 格式。侧边栏可以直接从云端库批量载入文件夹内的轨迹。</li>
+            <li><strong>实时统计</strong> - 图层列表实时计算并显示每条轨迹的<strong>总点数</strong>和<strong>行驶里程</strong>。</li>
+            <li><strong>详情分析</strong> - 点击轨迹旁的 ⓘ 按钮，查看包括<strong>时间跨度、平均时速、地理范围范围</strong>在内的深度分析报告。</li>
+            <li><strong>样式自定义</strong> - 点击色块可实时修改轨迹颜色，勾选复选框可快速隐藏/显示图层。</li>
+            <li><strong>批量操作</strong> - 使用列表顶部的 <strong>「适配全部」</strong> 快速缩放以看清所有轨迹；使用 <strong>「清除全部」</strong> 一键清空地图图层。</li>
         </ul>
         
-        <h4>📍 标记功能</h4>
+        <h4>📏 测量工具与热力图</h4>
         <ul>
-            <li><strong>添加标记</strong> - 右键点击地图选择「添加标记」</li>
-            <li><strong>编辑标记</strong> - 点击标记进行编辑</li>
-            <li><strong>删除标记</strong> - 右键标记选择删除</li>
-            <li><strong>标记分类</strong> - 使用不同颜色和图标分类标记</li>
+            <li><strong>精确测距</strong> - 点击尺子图标开启。点击地图添加测量点，系统会实时计算并显示各段距离及<strong>累计总里程</strong>。</li>
+            <li><strong>清除重测</strong> - 在测量模式下，点击提示条中的「清除重测」可清空当前测量点而不关闭工具。</li>
+            <li><strong>热力分析</strong> - 点击火苗图标将当前可见轨迹转换为热力图模式，分析活动密度。</li>
         </ul>
         
-        <h4>🔍 搜索功能</h4>
+        <h4>📍 定位与标记</h4>
         <ul>
-            <li>在搜索框输入地名或地址</li>
-            <li>从搜索结果中选择目标地点</li>
-            <li>地图自动定位到搜索结果</li>
+            <li><strong>实时定位</strong> - 点击悬浮工具栏的瞄准图标，通过浏览器 Geolocation 获取您的<strong>当前 GPS 位置</strong>。</li>
+            <li><strong>精度显示</strong> - 定位后会显示蓝色脉冲气泡和透明的精度覆盖圈。</li>
+            <li><strong>自定义标记</strong> - 右键点击地图可添加标记点。</li>
+            <li><strong>高级编辑</strong> - 点击标记点气泡中的「编辑」按钮，可修改标记名称、详细描述以及图标颜色。</li>
         </ul>
         
-        <h4>📊 数据可视化</h4>
+        <h4>🌐 地图源管理</h4>
         <ul>
-            <li><strong>热力图</strong> - 展示数据密度分布</li>
-            <li><strong>聚合点</strong> - 自动聚合密集的标记点</li>
-            <li><strong>轨迹展示</strong> - 显示移动轨迹路线</li>
-        </ul>
-        
-        <h4>⚙️ 地图配置</h4>
-        <ul>
-            <li>点击设置按钮打开配置面板</li>
-            <li>配置在线地图服务商</li>
-            <li>设置离线地图瓦片路径</li>
-            <li>自定义默认中心点和缩放级别</li>
+            <li><strong>在线模式</strong> - 支持高德、腾讯、OSM 等主流 XYZ 瓦片服务。可在配置中心自定义 URL 模板。</li>
+            <li><strong>离线模式</strong> - 使用本地 /map/map_tiles 目录下的瓦片资源。适合内网或偏远地区使用。</li>
+            <li><strong>配置中心</strong> - 点击齿轮图标可管理本地瓦片包、删除旧源、切换默认底图。</li>
         </ul>
         
         <h4>💡 使用技巧</h4>
         <ul>
-            <li>离线模式适合无网络环境使用</li>
-            <li>预先下载离线地图瓦片确保离线可用</li>
-            <li>使用标记分类功能管理大量地点</li>
-            <li>双击地图可快速放大</li>
+            <li><strong>导出功能</strong> - 加载到地图上的任何轨迹（包括解析后的 CSV）都可一键导出为标准 GPX 文件。</li>
+            <li><strong>快速定位</strong> - 双击侧边栏的标记点或轨迹定位按钮，可快速闪现到目标区域。</li>
+            <li><strong>离线优先</strong> - 建议在常用区域使用离线瓦片，加载速度更快且保护隐私。</li>
         </ul>
     `,
 
@@ -1064,28 +1124,63 @@ const ModuleHelpContents = {
      */
     pdf: () => `
         <h3>PDF 工具箱使用指南</h3>
-        <p>PDF 工具箱是一个全能的 PDF 处理中心，支持阅读、编辑、转换和安全加固。</p>
+        <p>PDF 工具箱是一个全能的 PDF 处理中心，支持阅读、编辑、转换和安全加固，满足您的所有 PDF 处理需求。</p>
         
         <h4>📂 文档管理</h4>
         <ul>
             <li><strong>我的文档</strong> - 集中管理您上传的原始文件和系统生成的处理成果。</li>
             <li><strong>开卷阅读</strong> - 直接点击文档卡片即可进入沉浸式阅读模式。</li>
-            <li><strong>文件上传</strong> - 点击左侧「上传文件」按钮将本地 PDF 同步至云端。</li>
+            <li><strong>文件上传</strong> - 点击左侧「上传文件」按钮，支持 PDF、Word、Excel、图片等多种格式。</li>
         </ul>
         
-        <h4>🛠️ 任务工作台 (Working Bench)</h4>
+        <h4>🛠️ 任务工作台</h4>
         <ul>
             <li><strong>精准挑选</strong> - 进入「工具箱」，优先从文档库中挑选待处理文件到工作台。</li>
             <li><strong>一键处理</strong> - 准备好文件后，直接选择下方的功能工具即可开始任务。</li>
             <li><strong>批量合并</strong> - 合并工具支持同时选取多份文档，一键合成长卷。</li>
+            <li><strong>历史记录</strong> - 所有处理操作都会记录在历史列表中，方便追溯。</li>
         </ul>
         
-        <h4>⚡ 核心功能工具</h4>
+        <h4>📄 页面编辑</h4>
         <ul>
-            <li><strong>页面编辑</strong> - 支持页面的 90/180 度旋转、指定页码提取、反转逻辑或彻底删除。</li>
-            <li><strong>格式转换</strong> - 可将 PDF 高清转为 Word、Excel (提取表格) 或批量导出为图片。</li>
+            <li><strong>页面旋转</strong> - 支持 90°、180°、270° 旋转，可指定页码或全部旋转。</li>
+            <li><strong>页面提取</strong> - 从文档中提取指定页码范围，生成新的 PDF。</li>
+            <li><strong>页面删除</strong> - 删除不需要的页面，如广告页、空白页。</li>
+            <li><strong>页面反转</strong> - 将整个文档的页面顺序完全颠倒。</li>
+            <li><strong>页面重排</strong> - 自定义页面的排列顺序。</li>
+            <li><strong>添加页码</strong> - 为文档添加页码，支持自定义位置和格式。</li>
+        </ul>
+        
+        <h4>🔄 格式转换</h4>
+        <ul>
+            <li><strong>PDF → Word</strong> - 将 PDF 转换为可编辑的 Word 文档 (.docx)。</li>
+            <li><strong>PDF → Excel</strong> - 智能提取 PDF 中的表格数据，生成 Excel 文件。</li>
+            <li><strong>PDF → 图片</strong> - 将 PDF 每页导出为高清 PNG/JPG 图片压缩包。</li>
+            <li><strong>Word → PDF</strong> - 将 Word 文档转换为 PDF 格式。</li>
+            <li><strong>Excel → PDF</strong> - 将 Excel 表格转换为 PDF 格式。</li>
+            <li><strong>图片 → PDF</strong> - 将多张图片合并转换为一个 PDF 文档。</li>
+        </ul>
+        
+        <h4>📦 合并与拆分</h4>
+        <ul>
+            <li><strong>合并 PDF</strong> - 将多个 PDF 文件按顺序合并为一个文档。</li>
+            <li><strong>拆分 PDF</strong> - 按页码范围将文档拆分为多个独立文件。</li>
             <li><strong>压缩瘦身</strong> - 提供 0-4 级自定义压缩，显著降低文档存储体积。</li>
-            <li><strong>安全防护</strong> - 支持 AES-256 加密保护、水印添加 (文字印记) 或签名盖章。</li>
+        </ul>
+        
+        <h4>🔐 安全防护</h4>
+        <ul>
+            <li><strong>文档加密</strong> - 使用 AES-256 加密保护文档，设置打开密码。</li>
+            <li><strong>移除密码</strong> - 输入正确密码后，可移除文档的密码保护。</li>
+            <li><strong>添加水印</strong> - 添加自定义文字水印，支持调整透明度、位置和颜色。</li>
+            <li><strong>去除水印</strong> - 尝试智能识别并移除文档中的水印（效果视水印类型而定）。</li>
+            <li><strong>签名盖章</strong> - 在指定页面位置添加签名或印章图片。</li>
+        </ul>
+        
+        <h4>📝 文本操作</h4>
+        <ul>
+            <li><strong>提取文本</strong> - 一键提取 PDF 全文内容，可复制或下载为文本文件。</li>
+            <li><strong>保存文本</strong> - 将提取的文本保存为 .txt 文件到输出目录。</li>
         </ul>
         
         <h4>📖 阅读体验</h4>
@@ -1100,6 +1195,14 @@ const ModuleHelpContents = {
             <li>处理后的文件会自动存入「处理成果」分类下，方便二次编辑。</li>
             <li>建议先将常用的 PDF 统一上传，再到工具箱集中处理，效率更高。</li>
             <li>对于包含敏感信息的文档，处理完后建议立即使用加密功能加固。</li>
+            <li>批量操作时，可多选文件一起处理，节省操作时间。</li>
+        </ul>
+        
+        <h4>⚠️ 注意事项</h4>
+        <ul>
+            <li><strong>扫描件转换</strong> - 扫描图片类型的 PDF 转 Word/Excel 效果有限，建议配合 OCR 模块使用。</li>
+            <li><strong>加密文档</strong> - 处理加密文档前需先使用「解密」功能输入正确密码。</li>
+            <li><strong>文件大小</strong> - 超大型 PDF（500 页以上）处理可能需要较长时间，请耐心等待。</li>
         </ul>
     `
 };
