@@ -1204,6 +1204,29 @@ const ModuleHelpContents = {
             <li><strong>加密文档</strong> - 处理加密文档前需先使用「解密」功能输入正确密码。</li>
             <li><strong>文件大小</strong> - 超大型 PDF（500 页以上）处理可能需要较长时间，请耐心等待。</li>
         </ul>
+    `,
+
+    /**
+     * NotebookLM 水印清除帮助
+     */
+    lm_cleaner: () => `
+        <h3>NotebookLM 水印清除指南</h3>
+        <p>专为去除 NotebookLM 生成的 PDF 或图片水印而设计，智能识别并无痕清除。</p>
+        
+        <h4>📌 支持格式</h4>
+        <p>支持 <strong>PDF</strong> 文档以及 <strong>PNG, JPG, JPEG, WEBP</strong> 等常见图片格式。</p>
+        
+        <h4>🧠 智能原理</h4>
+        <ul>
+            <li><strong>纯色背景优化</strong> - 对于幻灯片或文档的纯色背景，自动吸取背景色进行完美填充，无痕迹。</li>
+            <li><strong>复杂背景修复</strong> - 对于照片或渐变背景，自动启用 Inpainting 图像修复算法，智能填补内容。</li>
+        </ul>
+        
+        <h4>🚧 注意事项</h4>
+        <ul>
+            <li>处理多页 PDF 时请耐心等待，系统需逐页处理。</li>
+            <li>建议处理前保留原始文件备份。</li>
+        </ul>
     `
 };
 

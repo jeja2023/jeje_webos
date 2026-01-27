@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 课程学习模块清单
 """
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 async def on_enable():
-    logger.info("课程模块已启用")
+    pass  # logger.info("课程模块已启用")
 
 async def on_disable():
     pass

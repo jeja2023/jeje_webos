@@ -11,6 +11,12 @@ from modules.markdown.markdown_schemas import MarkdownDocCreate, MarkdownDocUpda
 class TestMarkdownService:
     """Markdown 服务测试"""
     
+    @pytest.fixture
+    async def sample_user_id(self, db_session, test_user_data):
+        from tests.test_conftest import create_test_user
+        user = await create_test_user(db_session, test_user_data)
+        return user["id"]
+
     @pytest.mark.asyncio
     async def test_create_doc(self, db_session, sample_user_id):
         """测试创建文档"""

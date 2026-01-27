@@ -55,6 +55,47 @@ const App = {
         if (typeof ShortcutsHelp !== 'undefined') {
             ShortcutsHelp.init();
         }
+
+        // 动态加载已安装模块的资源
+        await this.loadModuleAssets();
+    },
+
+    /**
+     * 动态加载模块资源 (JS/CSS)
+     */
+    async loadModuleAssets() {
+        const modules = Store.get('modules') || [];
+        const promises = [];
+
+        modules.forEach(m => {
+            if (m.assets) {
+                // 加载 CSS
+                if (m.assets.css && Array.isArray(m.assets.css)) {
+                    m.assets.css.forEach(url => {
+                        if (!document.querySelector(`link[href="${url}"]`)) {
+                            const link = document.createElement('link');
+                            link.rel = 'stylesheet';
+                            link.href = url;
+                            document.head.appendChild(link);
+                        }
+                    });
+                }
+                // 加载 JS
+                if (m.assets.js && Array.isArray(m.assets.js)) {
+                    m.assets.js.forEach(url => {
+                        promises.push(Utils.loadScript(url).catch(err => {
+                            console.error(`加载模块 ${m.id} 资源失败: ${url}`, err);
+                        }));
+                    });
+                }
+            }
+        });
+
+        if (promises.length > 0) {
+            Config.log(`正在加载 ${promises.length} 个模块脚本...`);
+            await Promise.all(promises);
+            Config.log('模块脚本加载完成');
+        }
     },
 
     async updateUnreadCount() {
@@ -110,6 +151,46 @@ const App = {
             return true;
         };
 
+        const wrap = (PageClassName, title, ...args) => {
+            return ({ params, path, query }) => {
+                this.ensureDesktopEnvironment();
+
+                // 动态获取类（处理延迟加载）
+                let PageClass = typeof PageClassName === 'string' ? window[PageClassName] : PageClassName;
+
+                if (!PageClass && typeof PageClassName === 'string') {
+                    // 尝试从全局查找（某些 UMD 模块加载到 window 上）
+                    PageClass = window[PageClassName];
+                }
+
+                if (!PageClass) {
+                    console.error(`页面组件未定义: ${PageClassName}`);
+                    Toast.error('加载页面组件失败，请尝试刷新页面');
+                    return;
+                }
+
+                // 构造组件参数
+                const props = [params ? params.id : null, ...args];
+
+                // 重构完整路径（含查询参数）
+                const qs = new URLSearchParams(query).toString();
+                const fullUrl = qs ? `${path}?${qs}` : path;
+
+                // 核心修复：返回到原来的窗口
+                let windowId = path;
+                const pathParts = path.split('/');
+                if (pathParts.length > 1 && ['markdown', 'blog', 'notes', 'feedback', 'users', 'system', 'announcement', 'knowledge', 'album', 'video', 'exam', 'vault', 'pdf', 'profile', 'help', 'analysis', 'ai', 'map', 'lens', 'ocr', 'course', 'schedule', 'vault', 'pdf', 'transfer', 'lm_cleaner'].includes(pathParts[1])) {
+                    windowId = '/' + pathParts[1];
+                }
+
+                WindowManager.open(PageClass, props, {
+                    title: title,
+                    id: windowId, // 同一模块共享 ID
+                    url: fullUrl
+                });
+            };
+        };
+
         Router.notFound = (path) => {
             // 404 使用弹窗，不打开窗口
             // 或者打开一个 404 窗口
@@ -157,37 +238,11 @@ const App = {
                     this.setWindowTitle('相册');
                 }
             },
+            // ========== NotebookLM水印清除模块路由 ==========
+            '/lm_cleaner': { auth: true, handler: wrap(LmCleanerPage, 'LM 水印清除') },
+            '/lm_cleaner/list': { auth: true, handler: wrap(LmCleanerPage, '历史记录') },
 
         });
-
-        // 多窗口包装器
-        const wrap = (PageClass, title, ...args) => {
-            return ({ params, path, query }) => {
-                this.ensureDesktopEnvironment();
-
-                // 构造组件参数
-                const props = [params ? params.id : null, ...args];
-
-                // 重构完整路径（含查询参数）
-                const qs = new URLSearchParams(query).toString();
-                const fullUrl = qs ? `${path}?${qs}` : path;
-
-                // 核心修复：返回到原来的窗口
-                // 使用模块路径作为 ID 基准（例如 /markdown, /blog），而不是完整路径。
-                // 这样同一模块下的不同页面将复用同一个窗口，实现单窗口内导航。
-                let windowId = path;
-                const pathParts = path.split('/');
-                if (pathParts.length > 1 && ['markdown', 'blog', 'notes', 'feedback', 'users', 'system', 'announcement', 'knowledge', 'album', 'video', 'exam', 'vault', 'pdf', 'profile', 'help', 'analysis', 'ai', 'map', 'lens', 'ocr', 'course', 'schedule', 'vault', 'pdf', 'transfer'].includes(pathParts[1])) {
-                    windowId = '/' + pathParts[1];
-                }
-
-                WindowManager.open(PageClass, props, {
-                    title: title,
-                    id: windowId, // 同一模块共享 ID
-                    url: fullUrl
-                });
-            };
-        };
 
         // 注册业务路由
         Router.registerAll({

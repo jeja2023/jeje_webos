@@ -126,8 +126,11 @@ async def tmp_workspace(tmp_path) -> AsyncGenerator[dict, None]:
     os.environ["MODULES_DIR"] = str(modules_dir)
     os.environ["UPLOAD_DIR"] = str(storage_dir)
     
-    # 重置单例 loader
-    from core.loader import get_module_loader, init_loader
+    # 重置单例 loader 和 storage
+    from core.loader import get_module_loader
+    import utils.storage
+    utils.storage._storage_manager = None
+    
     loader = get_module_loader()
     if loader:
         loader.modules_path = Path(str(modules_dir))

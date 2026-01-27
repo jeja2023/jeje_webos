@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 async def on_enable():
-    logger.info("PDF 工具箱模块已启用")
+    pass  # logger.info("PDF 工具箱模块已启用")
 
 
 manifest = ModuleManifest(

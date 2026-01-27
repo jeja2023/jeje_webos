@@ -1,0 +1,536 @@
+/**
+ * NotebookLM水印清除页面样式
+ * 定义水印清除模块的界面风格
+ */
+
+.lm_cleaner-page {
+    padding: var(--spacing-md);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* 顶部紧凑栏 */
+.lm-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card-bg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+}
+
+.lm-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lm-title h1 {
+    font-size: 1.25rem;
+    margin: 0;
+    line-height: list-item;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+}
+
+.lm-title p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* 紧凑上传区域 */
+.upload-compact {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-xl);
+    min-width: 300px;
+    height: 50px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-color);
+}
+
+.upload-compact:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-compact input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.upload-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* 处理中状态 */
+.processing-mini {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.spinner-mini {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(99, 102, 241, 0.2);
+    border-left-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* 历史记录区域 - 占据剩余空间 */
+.history-section {
+    flex: 1;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    /* 内部布局控制 */
+}
+
+.history-header {
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) var(--spacing-lg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.history-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.history-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+}
+
+/* 表格优化 */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.data-table th {
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    z-index: 10;
+    padding: var(--spacing-md);
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-align: left;
+}
+
+.data-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.data-table tr:hover td {
+    background: var(--bg-color);
+}
+
+.action-btns {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* 动画和通用 */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lm_cleaner-page .page-header {
+    margin-bottom: var(--spacing-xl);
+    text-align: center;
+}
+
+.lm_cleaner-page .page-header h1 {
+    font-size: 2rem;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: var(--spacing-sm);
+}
+
+.lm_cleaner-page .page-header p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+/* 上传卡片样式 */
+.upload-section {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-lg);
+    border: 2px dashed var(--border-color);
+    text-align: center;
+    transition: all 0.3s ease;
+    margin-bottom: var(--spacing-xl);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-section:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+}
+
+.upload-section .upload-icon {
+    font-size: 3.5rem;
+    margin-bottom: var(--spacing-md);
+    display: block;
+}
+
+.upload-section h3 {
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.25rem;
+}
+
+.upload-section input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* 处理状态 */
+.processing-overlay {
+    margin: var(--spacing-xl) 0;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 历史记录卡片 */
+.history-section {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.history-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* 历史记录列表 - Grid 布局 */
+.history-list-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    /* 包含滚动区域 */
+    background: var(--card-bg);
+}
+
+/* 统一的 Grid 列定义 */
+.history-grid-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px 240px;
+    gap: var(--spacing-md);
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* 列表头 - 固定 */
+.history-list-header {
+    background: var(--card-bg);
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    z-index: 10;
+    /* 修正列名对齐 */
+    font-weight: bold;
+}
+
+/* 列表内容 - 可滚动 */
+.history-list-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.history-item {
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.history-item:hover {
+    background: var(--bg-color);
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+/* 列样式 */
+.col-name {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.col-date {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.col-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-xs);
+}
+
+/* 图标 */
+.file-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.action-btns {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.font-bold {
+    font-weight: 600;
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* 渐入动画 */
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 编辑器模式样式 */
+.editor-mode {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--bg-color);
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-xl);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.editor-body {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    flex: 1;
+    overflow: hidden;
+    /* 防止页面整体滚动 */
+    height: calc(100vh - 80px);
+    /* 减去头部高度，固定高度 */
+}
+
+.editor-container {
+    position: relative;
+    background: #f1f5f9;
+    border-radius: var(--radius-lg);
+    overflow: auto;
+    /* 内容溢出时显示滚动条 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 垂直居中 */
+    padding: var(--spacing-md);
+    /* 减小内边距 */
+    border: 1px solid var(--border-color);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.canvas-wrapper {
+    position: relative;
+    box-shadow: var(--shadow-xl);
+    background: white;
+    /* 确保 wrapper 尺寸紧贴 canvas */
+    display: inline-block;
+}
+
+#editor-canvas {
+    display: block;
+    /* 消除 unwanted margin */
+    max-width: 100%;
+    /* 防止超出容器宽导致被裁剪 */
+    height: auto;
+    /* 保持比例 */
+}
+
+.ocr-layers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.ocr-box {
+    position: absolute;
+    border: 1px dashed rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.05);
+    cursor: pointer;
+    transition: all 0.2s;
+    pointer-events: auto;
+}
+
+.ocr-box:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    z-index: 10;
+}
+
+.editor-sidebar {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.editor-sidebar h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.editor-sidebar li {
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.edit-stats {
+    background: rgba(99, 102, 241, 0.05);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+}

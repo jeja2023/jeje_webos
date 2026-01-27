@@ -255,6 +255,7 @@ class DockComponent extends Component {
             'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
             'pdf': { ri: 'ri-file-pdf-2-fill', gradient: 'gradient-red' },
             'markdown': { ri: 'ri-markdown-line', gradient: 'gradient-slate' },
+            'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
         };
 
         return iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
@@ -302,6 +303,10 @@ class DockComponent extends Component {
             'announcement': {
                 singleEntry: true,
                 path: '/announcement/list'
+            },
+            'lm_cleaner': {
+                singleEntry: true,
+                path: '/lm_cleaner'
             },
 
         };
