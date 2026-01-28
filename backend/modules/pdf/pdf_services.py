@@ -153,6 +153,24 @@ class PdfService:
         db.add(history)
 
     @staticmethod
+    async def _register_to_filemanager(db: AsyncSession, user_id: int, filename: str, storage_path: str, file_size: int):
+        """将生成的 PDF/Zip 文件注册到文件管理器的 PDF 文件夹中"""
+        try:
+            # 动态导入，避免循环引用
+            from modules.filemanager.filemanager_services import FileManagerService
+            fm_service = FileManagerService(db, user_id)
+            await fm_service.register_file(
+                folder_name="PDF 工具",
+                filename=filename,
+                storage_path=storage_path,
+                file_size=file_size
+            )
+        except Exception as e:
+            logger.error(f"注册到文件管理器失败: {e}")
+            # 注册失败不影响主流程
+
+
+    @staticmethod
     async def get_metadata(file_path: str) -> PdfMetadata:
         """获取 PDF 元数据"""
         try:
@@ -236,6 +254,7 @@ class PdfService:
             result_doc.close()
             
             await PdfService._save_history(db, user_id, f"合并 PDF: {output_name}", output_name, "merge")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             
             return str(save_path)
@@ -284,6 +303,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"拆分 PDF: {output_name}", output_name, "split")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             
             return str(save_path)
@@ -391,6 +411,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"压缩 PDF: {output_name}", output_name, "compress")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -433,6 +454,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加水印: {output_name}", output_name, "watermark")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -473,6 +495,7 @@ class PdfService:
             result_doc.close()
             
             await PdfService._save_history(db, user_id, f"图片转 PDF: {output_name}", output_name, "img2pdf")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -581,6 +604,7 @@ class PdfService:
                 word_doc.save(str(save_path))
             
             await PdfService._save_history(db, user_id, f"PDF 转 Word: {output_name}", output_name, "pdf2word")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -648,6 +672,7 @@ class PdfService:
             wb.save(str(save_path))
             
             await PdfService._save_history(db, user_id, f"PDF 转 Excel: {output_name}", output_name, "pdf2excel")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -697,6 +722,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"去除水印: {output_name}", output_name, "remove_watermark")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -738,6 +764,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"加密 PDF: {output_name}", output_name, "encrypt")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -767,6 +794,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"解密 PDF: {output_name}", output_name, "decrypt")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -805,6 +833,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"旋转 PDF: {output_name}", output_name, "rotate")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -839,6 +868,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"页面重排: {output_name}", output_name, "reorder")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -871,6 +901,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"提取页面: {output_name}", output_name, "extract_pages")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -937,6 +968,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加页码: {output_name}", output_name, "add_page_numbers")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -991,6 +1023,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"添加签名: {output_name}", output_name, "sign")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -1026,6 +1059,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"删除页面: {output_name}", output_name, "delete_pages")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -1055,6 +1089,7 @@ class PdfService:
             doc.close()
             
             await PdfService._save_history(db, user_id, f"反转页面: {output_name}", output_name, "reverse")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -1108,6 +1143,7 @@ class PdfService:
             pdf.close()
             
             await PdfService._save_history(db, user_id, f"Word转PDF: {output_name}", output_name, "word_to_pdf")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -1158,6 +1194,7 @@ class PdfService:
             wb.close()
             
             await PdfService._save_history(db, user_id, f"Excel转PDF: {output_name}", output_name, "excel_to_pdf")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
@@ -1178,6 +1215,7 @@ class PdfService:
                 f.write(request.text)
                 
             await PdfService._save_history(db, user_id, f"提取文本: {output_name}", output_name, "extract_text")
+            await PdfService._register_to_filemanager(db, user_id, output_name, str(save_path), os.path.getsize(save_path))
 
             return str(save_path)
         except Exception as e:
