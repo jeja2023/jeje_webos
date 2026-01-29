@@ -44,5 +44,5 @@ manifest = ModuleManifest(
     ],
     
     on_enable=on_enable,
-    enabled=False
+    enabled=True
 )
