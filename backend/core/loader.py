@@ -31,9 +31,16 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 CORE_MODULES = [
+    # 系统内核核心
     "system", "user", "auth", "boot", "roles",
     "audit", "backup", "monitor", "notification", "announcement",
-    "storage", "websocket", "import_export"
+    "storage", "websocket", "import_export", 
+    
+    # 业务功能核心 (全部加入以保证部署即用)
+    "filemanager", "pdf", "markdown", "lm_cleaner", "knowledge", 
+    "map", "schedule", "notes", "album", "video", "ocr", "ai", 
+    "analysis", "blog", "course", "datalens", "exam", "feedback", 
+    "im", "transfer", "vault"
 ]
 
 
