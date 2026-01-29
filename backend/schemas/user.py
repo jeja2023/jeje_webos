@@ -5,7 +5,8 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+import json
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UserListQuery(BaseModel):
@@ -39,6 +40,17 @@ class UserListItem(BaseModel):
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('role_ids', 'permissions', mode='before')
+    @classmethod
+    def parse_json_list(cls, v):
+        if isinstance(v, str):
+            try:
+                data = json.loads(v)
+                return data if isinstance(data, list) else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
 
 
 class UserUpdateAdmin(BaseModel):

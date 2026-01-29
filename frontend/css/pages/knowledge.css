@@ -6,43 +6,206 @@
     margin: 0 auto;
 }
 
-/* 基础卡片 */
+/* 顶部头部样式优化 */
+.kb-dashboard-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    position: relative;
+    border-bottom: 1px solid rgba(var(--border-color-rgb), 0.3);
+}
+
+.kb-header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.kb-page-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+
+.kb-page-subtitle {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+.kb-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 帮助按钮微调 */
+.btn-help-custom {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.btn-help-custom:hover {
+    background: var(--bg-hover);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* 高级发光按钮 */
+.btn-primary-glow {
+    background: linear-gradient(135deg, var(--primary-color), #6366f1);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.3);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary-glow:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.4);
+}
+
+.btn-primary-glow:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.plus-icon {
+    font-size: 20px;
+    font-weight: 300;
+}
+
+/* 基础卡片网格优化 */
 .kb-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
-    margin-top: 24px;
 }
 
 .kb-card {
     background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 24px;
     cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.2s;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     gap: 16px;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .kb-card:hover {
     border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(var(--color-primary-rgb), 0.15);
 }
 
-.kb-card-icon {
-    font-size: 32px;
-    width: 48px;
-    height: 48px;
+.kb-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.kb-card:hover::before {
+    opacity: 1;
+}
+
+/* 操作按钮容器 */
+.kb-card-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.25s ease;
+    z-index: 10;
+}
+
+.kb-card:hover .kb-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(var(--bg-primary-rgb), 0.6);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-tertiary);
-    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.btn-action:hover {
+    transform: scale(1.1);
+    background: var(--bg-primary);
+}
+
+.btn-action.edit:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-action.delete:hover {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.kb-card-icon {
+    font-size: 36px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    border-radius: 14px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s;
+}
+
+.kb-card:hover .kb-card-icon {
+    transform: scale(1.05) rotate(5deg);
 }
 
 .kb-card-body {
@@ -76,44 +239,89 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-tertiary);
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--border-color-rgb), 0.5);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.time-icon {
+    font-style: normal;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.tag {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.tag-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
 }
 
 /* 知识库视图布局 */
 .kb-layout {
     display: flex;
-    height: 100vh;
+    height: 100%;
+    /* 使用父容器高度 */
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
     padding: 0 !important;
     overflow: hidden;
 }
 
 .kb-sidebar {
-    width: 280px;
+    width: 300px;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    height: 100%;
+}
+
+.btn-back-home {
+    margin-right: 8px;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.btn-back-home:hover {
+    opacity: 1;
+    transform: translateX(-2px);
+    color: var(--primary-color);
 }
 
 
 .kb-sidebar-header {
-    padding: 0 16px;
+    padding: 0 20px;
     border-bottom: 1px solid var(--border-color);
-    height: 56px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 12px;
 }
 
 .kb-header-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 16px;
     overflow: hidden;
     min-width: 0;
 }
@@ -121,7 +329,7 @@
 .kb-header-tools {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-shrink: 0;
 }
 
@@ -131,13 +339,13 @@
 }
 
 .kb-search-bar {
-    padding: 12px 16px;
+    padding: 20px 20px;
 }
 
 .kb-tree {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 0;
+    padding: 12px 0;
 }
 
 .kb-sidebar-footer {
@@ -147,8 +355,8 @@
 
 .kb-sidebar-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 16px;
 }
 
 .btn-sm {
@@ -424,9 +632,10 @@
 
 .kb-editor-area {
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
     /* padding: 0 40px; optional */
     position: relative;
+    padding-bottom: 40px;
 }
 
 .folder-view-placeholder {
@@ -634,15 +843,21 @@ mark {
 
 .status-processing {
     position: relative;
-    opacity: 0.7;
+    opacity: 0.8;
 }
 
 .status-processing::after {
-    content: '';
+    content: '⚙️';
+    display: inline-block;
     animation: spin 2s linear infinite;
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    margin-left: 8px;
     font-size: 12px;
+    filter: grayscale(1);
+}
+
+.status-processing .tree-text::after {
+    content: ' (解析中...)';
+    font-size: 11px;
+    opacity: 0.6;
+    margin-left: 4px;
 }

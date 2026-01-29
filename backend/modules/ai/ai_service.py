@@ -186,17 +186,28 @@ class AIService:
     @classmethod
     async def _chat_online(cls, messages: List[Dict[str, str]], stream: bool = True, api_config: Optional[Dict[str, str]] = None) -> Any:
         """在线 API 推理 (OpenAI 兼容格式)"""
+        from core.cache import Cache
         settings = get_settings()
         
-        # 优先使用前端传入的配置
+        # 优先使用前端传入的配置 (会话级配置)
         if api_config:
             api_key = api_config.get("apiKey")
             base_url = api_config.get("baseUrl")
             model_name = api_config.get("model")
         else:
-            api_key = getattr(settings, "ai_online_api_key", "sk-xxx")
-            base_url = getattr(settings, "ai_online_base_url", "https://api.deepseek.com/v1")
-            model_name = getattr(settings, "ai_online_model", "deepseek-chat")
+            # 其次尝试从数据库/缓存读取系统全局配置 (动态配置)
+            # CACHE_KEY_SYSTEM_SETTINGS = "system:settings"
+            dynamic_settings = await Cache.get("system:settings")
+            
+            if dynamic_settings and dynamic_settings.get("ai_online_api_key"):
+                api_key = dynamic_settings.get("ai_online_api_key")
+                base_url = dynamic_settings.get("ai_online_base_url")
+                model_name = dynamic_settings.get("ai_online_model")
+            else:
+                # 最后降级到 .env 配置文件 (基础配置)
+                api_key = getattr(settings, "ai_online_api_key", "sk-xxx")
+                base_url = getattr(settings, "ai_online_base_url", "https://api.deepseek.com/v1")
+                model_name = getattr(settings, "ai_online_model", "deepseek-chat")
 
         if not api_key or api_key == "sk-xxx":
             raise ValueError("未配置在线 API Key")

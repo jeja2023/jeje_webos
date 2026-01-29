@@ -12,12 +12,10 @@ const AnalysisImportMixin = {
         return `
             <div class="p-20" style="height: calc(100vh - 120px); overflow: auto;">
                 <div class="flex-between mb-20">
-                    <div class="flex-center">
-                        <h2 class="mr-20">数据导入中心</h2>
-                        <div class="tab-pill-group">
-                            <button class="tab-pill ${this.state.importType === 'file' ? 'active' : ''}" data-import-type="file">文件导入</button>
-                            <button class="tab-pill ${this.state.importType === 'database' ? 'active' : ''}" data-import-type="database">数据库导入</button>
-                        </div>
+                    <h2 class="m-0">数据导入中心</h2>
+                    <div class="tab-pill-group">
+                        <button class="tab-pill ${this.state.importType === 'file' ? 'active' : ''}" data-import-type="file">文件导入</button>
+                        <button class="tab-pill ${this.state.importType === 'database' ? 'active' : ''}" data-import-type="database">数据库导入</button>
                     </div>
                 </div>
                 

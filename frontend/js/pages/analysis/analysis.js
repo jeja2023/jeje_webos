@@ -743,7 +743,7 @@ class AnalysisPage extends Component {
         return `
             <div class="p-20" style="height: calc(100vh - 120px); overflow: auto;">
                 <div class="flex-between mb-20 gap-15">
-                    <div class="flex-center gap-15" style="flex: 1;">
+                    <div class="flex align-center gap-15" style="flex: 1;">
                         <h2 class="m-0">数据管理</h2>
                         <div class="search-wrapper" style="max-width: 300px; flex: 1;">
                             <i class="ri-search-line"></i>

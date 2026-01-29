@@ -32,13 +32,25 @@ const AnalysisModelingMixin = {
                 </div>
                 
                 <div class="model-grid">
-                    ${models.length === 0 ? '<div class="empty-state text-center p-20 text-secondary w-100" style="grid-column: 1/-1;">暂无模型，请点击新建</div>' : ''}
-                    
-                    <!-- 新建模型卡片 -->
-                    <div class="new-model-card animate-in btn-create-model-global">
-                        <div class="new-card-icon">➕</div>
-                        <span style="font-weight: 600; font-size: 15px;">新建模型</span>
-                    </div>
+                    ${models.length === 0 ? `
+                        <div class="empty-state-placeholder" style="grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 24px; min-height: 400px;">
+                            <div class="empty-illustration" style="width: 120px; height: 120px; background: var(--color-bg-tertiary); border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 56px; opacity: 0.8; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);">🛸</div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 18px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 8px;">开启您的第一个数据模型</div>
+                                <div style="font-size: 14px; color: var(--color-text-tertiary);">通过 ETL 可视化算子，轻松完成数据清洗与转换</div>
+                            </div>
+                            <div class="new-model-card animate-in btn-create-model-global" style="margin: 0; width: 280px; border-color: var(--color-primary); border-style: solid; background: rgba(var(--color-primary-rgb), 0.02); height: 160px;">
+                                <div class="new-card-icon" style="background: var(--color-primary); color: white;">➕</div>
+                                <span style="font-weight: 600; font-size: 15px; color: var(--color-primary);">立即新建模型</span>
+                            </div>
+                        </div>
+                    ` : `
+                        <!-- 新建模型卡片 -->
+                        <div class="new-model-card animate-in btn-create-model-global">
+                            <div class="new-card-icon">➕</div>
+                            <span style="font-weight: 600; font-size: 15px;">新建模型</span>
+                        </div>
+                    `}
 
                     ${models.map((m, index) => `
                         <div class="model-card animate-in" data-id="${m.id}" style="animation-delay: ${index * 50}ms">

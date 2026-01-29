@@ -356,6 +356,7 @@ class AppCenterMarketPage extends Component {
             'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
             'pdf': { ri: 'ri-file-pdf-2-fill', gradient: 'gradient-red' },
             'markdown': { ri: 'ri-markdown-line', gradient: 'gradient-slate' },
+            'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
         };
 
         return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || '📦' };

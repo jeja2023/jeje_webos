@@ -1,6 +1,8 @@
 """
 用户组（权限模板）管理
 """
+import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -18,22 +20,42 @@ async def list_roles(
     current_user: TokenData = Depends(require_manager()),
     db: AsyncSession = Depends(get_db)
 ):
+    logger = logging.getLogger(__name__)
     # 取出所有用户，用于计算各组成员数
-    users_res = await db.execute(select(User.id, User.role_ids))
-    user_rows = users_res.all()
+    try:
+        users_res = await db.execute(select(User.id, User.role_ids))
+        user_rows = users_res.all()
+    except Exception as e:
+        logger.error(f"Error fetching users: {e}")
+        raise
 
-    result = await db.execute(select(UserGroup))
-    roles = result.scalars().all()
+    try:
+        result = await db.execute(select(UserGroup))
+        roles = result.scalars().all()
+    except Exception as e:
+        logger.error(f"Error fetching roles: {e}")
+        raise
 
     role_list = []
     for r in roles:
         count = 0
         for uid, role_ids in user_rows:
-            if role_ids and r.id in role_ids:
+            # 安全解析 role_ids
+            if isinstance(role_ids, str):
+                try:
+                    role_ids = json.loads(role_ids)
+                except:
+                    role_ids = []
+            
+            if isinstance(role_ids, list) and r.id in role_ids:
                 count += 1
-        data = UserGroupInfo.model_validate(r).model_dump()
-        data["user_count"] = count
-        role_list.append(data)
+        try:
+            data = UserGroupInfo.model_validate(r).model_dump()
+            data["user_count"] = count
+            role_list.append(data)
+        except Exception as e:
+            logger.error(f"Error validating role {r.id}: {e}")
+            raise
 
     return success(role_list)
 

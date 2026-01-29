@@ -39,6 +39,9 @@ def _default_settings():
         rate_limit_requests=getattr(settings, "rate_limit_requests", 200),
         rate_limit_window=getattr(settings, "rate_limit_window", 60),
         rate_limit_block_duration=getattr(settings, "rate_limit_block_duration", 30),
+        ai_online_api_key=getattr(settings, "ai_online_api_key", "sk-xxx"),
+        ai_online_base_url=getattr(settings, "ai_online_base_url", "https://api.deepseek.com/v1"),
+        ai_online_model=getattr(settings, "ai_online_model", "deepseek-chat"),
     )
 
 

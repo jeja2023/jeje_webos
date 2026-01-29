@@ -87,6 +87,24 @@ class SystemSettingsPage extends Component {
                             <small class="form-hint">触发限制后 IP 将被封禁的时间</small>
                         </div>
 
+                        <div class="section-divider"></div>
+                        <h3 class="section-title">AI 在线模型配置 (用于知识库解析等)</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">API Key</label>
+                            <input type="password" name="ai_online_api_key" class="form-input" value="${data.ai_online_api_key || ''}" placeholder="sk-...">
+                            <small class="form-hint">全局在线 API Key，用于后台知识库解析及其他异步任务</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Base URL</label>
+                            <input type="text" name="ai_online_base_url" class="form-input" value="${data.ai_online_base_url || 'https://api.deepseek.com/v1'}" placeholder="https://api.deepseek.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">模型名称</label>
+                            <input type="text" name="ai_online_model" class="form-input" value="${data.ai_online_model || 'deepseek-chat'}" placeholder="deepseek-chat">
+                        </div>
+
+
                         <div class="settings-footer">
                             <button type="button" class="btn btn-secondary" id="reloadSettings" title="重新加载配置">
                                 <span>↺</span> 刷新
@@ -166,8 +184,12 @@ class SystemSettingsPage extends Component {
             jwt_rotate_enabled: jwtRotateEnabled || false,
             rate_limit_requests: parseInt(form.querySelector('[name="rate_limit_requests"]')?.value) || 200,
             rate_limit_window: parseInt(form.querySelector('[name="rate_limit_window"]')?.value) || 60,
-            rate_limit_block_duration: parseInt(form.querySelector('[name="rate_limit_block_duration"]')?.value) || 30
+            rate_limit_block_duration: parseInt(form.querySelector('[name="rate_limit_block_duration"]')?.value) || 30,
+            ai_online_api_key: form.querySelector('[name="ai_online_api_key"]')?.value || '',
+            ai_online_base_url: form.querySelector('[name="ai_online_base_url"]')?.value || '',
+            ai_online_model: form.querySelector('[name="ai_online_model"]')?.value || ''
         };
+
 
 
         this.setState({ saving: true });

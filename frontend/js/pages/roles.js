@@ -47,7 +47,8 @@ class RolesPage extends Component {
 
             this.setState({ roles: rolesRes.data || [], loading: false });
         } catch (e) {
-            Toast.error('加载用户组失败');
+            console.error('loadData error:', e);
+            Toast.error('加载用户组失败: ' + (e.message || '未知错误'));
             this.setState({ loading: false });
         }
     }

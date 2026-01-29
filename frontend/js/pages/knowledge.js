@@ -70,13 +70,21 @@ class KnowledgeListPage extends Component {
 
         return `
             <div class="page fade-in knowledge-dashboard">
-                <div class="page-header">
-                    <div style="display:flex; align-items:center; gap:12px; flex:1">
-                        <h1 class="page-title" style="margin:0">知识库</h1>
-                        ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-ghost') : ''}
+                <header class="kb-dashboard-header">
+                    <div class="kb-header-main">
+                        <div class="kb-header-info">
+                            <h1 class="kb-page-title">知识库</h1>
+                            <p class="kb-page-subtitle">构建您的个人数字图书馆，沉淀智慧与经验</p>
+                        </div>
+                        <div class="kb-header-actions">
+                            ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-help-custom') : ''}
+                            <button class="btn-primary-glow" id="btnCreateBase">
+                                <span class="plus-icon">+</span>
+                                <span>新建知识库</span>
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" id="btnCreateBase">➕ 新建知识库</button>
-                </div>
+                </header>
                 
                 ${bases.length === 0 ? `
                     <div class="empty-state">
@@ -87,13 +95,17 @@ class KnowledgeListPage extends Component {
                     <div class="kb-grid">
                         ${bases.map(base => `
                             <div class="kb-card" data-id="${base.id}">
+                                <div class="kb-card-actions">
+                                    <button class="btn-action edit" data-action="edit" title="编辑">✏️</button>
+                                    <button class="btn-action delete" data-action="delete" title="删除">🗑️</button>
+                                </div>
                                 <div class="kb-card-icon">${base.cover || '📘'}</div>
                                 <div class="kb-card-body">
                                     <h3 class="kb-title">${Utils.escapeHtml(base.name)}</h3>
                                     <p class="kb-desc">${Utils.escapeHtml(base.description || '无描述')}</p>
                                     <div class="kb-meta">
-                                        <span>${Utils.timeAgo(base.updated_at)}</span>
-                                        ${base.is_public ? '<span class="tag tag-success">公开</span>' : '<span class="tag">私有</span>'}
+                                        <span class="meta-item"><i class="time-icon">🕒</i> ${Utils.timeAgo(base.updated_at)}</span>
+                                        ${base.is_public ? '<span class="tag tag-success">公开</span>' : '<span class="tag tag-secondary">私有</span>'}
                                     </div>
                                 </div>
                             </div>
@@ -108,8 +120,31 @@ class KnowledgeListPage extends Component {
         this.delegate('click', '#btnCreateBase', () => this.showCreateModal());
 
         this.delegate('click', '.kb-card', (e, el) => {
+            // 如果点击的是操作按钮，不触发卡片导航
+            if (e.target.closest('.kb-card-actions')) return;
             const id = el.dataset.id;
             Router.push(`/knowledge/view/${id}`);
+        });
+
+        this.delegate('click', '[data-action="edit"]', (e, el) => {
+            e.stopPropagation();
+            const id = el.closest('.kb-card').dataset.id;
+            const base = this.state.bases.find(b => b.id == id);
+            if (base) this.showEditModal(base);
+        });
+
+        this.delegate('click', '[data-action="delete"]', (e, el) => {
+            e.stopPropagation();
+            const id = el.closest('.kb-card').dataset.id;
+            Modal.confirm('删除知识库', '确定要删除此知识库吗？这将同时删除其中所有的文档，且无法恢复。', async () => {
+                try {
+                    await KnowledgeApi.deleteBase(id);
+                    Toast.success('删除成功');
+                    this.loadData();
+                } catch (error) {
+                    Toast.error('删除失败: ' + error.message);
+                }
+            });
         });
     }
 
@@ -117,16 +152,35 @@ class KnowledgeListPage extends Component {
         Modal.form({
             title: '新建知识库',
             fields: [
-                { name: 'name', label: '名称', required: true },
-                { name: 'description', label: '描述' },
+                { name: 'name', label: '名称', required: true, placeholder: '输入知识库名称' },
+                { name: 'description', label: '描述', placeholder: '简单的描述一下吧' },
                 { name: 'icon', label: '图标', placeholder: '比如 📚' },
                 { name: 'is_public', label: '公开可见', type: 'checkbox' }
             ],
             onSubmit: async (data) => {
                 data.cover = data.icon || '📘';
-                delete data.icon; // 字段映射
+                delete data.icon;
                 await KnowledgeApi.createBase(data);
                 Toast.success('创建成功');
+                this.loadData();
+            }
+        });
+    }
+
+    showEditModal(base) {
+        Modal.form({
+            title: '编辑知识库',
+            fields: [
+                { name: 'name', label: '名称', required: true, value: base.name },
+                { name: 'description', label: '描述', value: base.description },
+                { name: 'icon', label: '图标', placeholder: '比如 📚', value: base.cover },
+                { name: 'is_public', label: '公开可见', type: 'checkbox', value: base.is_public }
+            ],
+            onSubmit: async (data) => {
+                data.cover = data.icon || '📘';
+                delete data.icon;
+                await KnowledgeApi.updateBase(base.id, data);
+                Toast.success('更新成功');
                 this.loadData();
             }
         });
@@ -250,6 +304,7 @@ class KnowledgeViewPage extends Component {
                 <!-- 左侧侧边栏 -->
                 <div class="kb-sidebar">
                     <div class="kb-sidebar-header">
+                        <button class="btn-icon btn-back-home" id="btnBackHome" title="返回知识库列表">⬅️</button>
                         <div class="kb-header-title" style="flex:1">
                             <span class="icon">${base.cover}</span>
                             <span class="text-truncate">${Utils.escapeHtml(base.name)}</span>
@@ -259,7 +314,6 @@ class KnowledgeViewPage extends Component {
                                 <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表">📁</button>
                                 <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱">🕸️</button>
                             </div>
-                            ${typeof ModuleHelp !== 'undefined' ? ModuleHelp.createHelpButton('knowledge', '知识库', 'btn-icon') : ''}
                         </div>
                     </div>
                     
@@ -368,7 +422,7 @@ class KnowledgeViewPage extends Component {
 
         return `
             <div class="kb-breadcrumbs">
-                <span class="breadcrumb-item" data-id="root">🏠 根目录</span>
+                <span class="breadcrumb-item" data-id="root" title="回到概览">🏠 概览</span>
                 ${path.map((node, index) => `
                     <span class="breadcrumb-separator">/</span>
                     <span class="breadcrumb-item ${index === path.length - 1 ? 'active' : ''}" 
@@ -562,7 +616,18 @@ class KnowledgeViewPage extends Component {
             if (newNode.status !== 'processing') {
                 clearInterval(this.pollingTimer);
                 this.pollingTimer = null;
-                this.setState({ activeNode: newNode });
+
+                // 同步更新侧边栏列表中的节点状态
+                const newNodes = this.state.nodes.map(n =>
+                    n.id == nodeId ? { ...n, status: newNode.status, title: newNode.title } : n
+                );
+
+                this.setState({
+                    activeNode: newNode,
+                    nodes: newNodes,
+                    tree: this.buildTree(newNodes)
+                });
+
                 this.updateViewer();
                 Toast.success('文档解析完成');
             }
@@ -587,20 +652,48 @@ class KnowledgeViewPage extends Component {
         }
     }
 
-    // 文件上传处理
-    async handleFileUpload(file, parentId = null) {
-        if (!file) return;
+    // 批量文件上传处理
+    async handleBatchUpload(files, parentId = null) {
+        if (!files || files.length === 0) return;
 
-        const loader = Toast.loading('正在上传并解析...');
+        const fileList = Array.from(files);
+        const loader = Toast.loading(`准备上传 ${fileList.length} 个文件...`);
+        let successCount = 0;
+        let lastNode = null;
+
         try {
-            await KnowledgeApi.uploadFile(this.baseId, parentId, file);
-            Toast.success('上传成功');
-            this.loadData();
+            for (let i = 0; i < fileList.length; i++) {
+                const file = fileList[i];
+                loader.update(`正在上传: ${file.name} (${i + 1}/${fileList.length})`);
+
+                try {
+                    const res = await KnowledgeApi.uploadFile(this.baseId, parentId, file);
+                    successCount++;
+                    lastNode = res.data;
+                } catch (e) {
+                    Toast.error(`${file.name} 上传失败: ${e.message}`);
+                }
+            }
+
+            if (successCount > 0) {
+                Toast.success(`${successCount} 个文件上传成功，正在解析中...`);
+                await this.loadData();
+
+                // 自动选中最后一个上传的文件，展示解析状态
+                if (lastNode && lastNode.id) {
+                    this.selectNode(lastNode.id);
+                }
+            }
         } catch (e) {
-            Toast.error('上传失败: ' + e.message);
+            Toast.error('上传过程发生错误: ' + e.message);
         } finally {
             loader.close();
         }
+    }
+
+    // 单个文件上传处理 (保持兼容性)
+    async handleFileUpload(file, parentId = null) {
+        await this.handleBatchUpload([file], parentId);
     }
 
     afterMount() {
@@ -620,7 +713,7 @@ class KnowledgeViewPage extends Component {
                 if (this.state.activeNode && this.state.activeNode.node_type === 'folder') {
                     targetParentId = this.state.activeNode.id;
                 }
-                this.handleFileUpload(e.dataTransfer.files[0], targetParentId);
+                this.handleBatchUpload(e.dataTransfer.files, targetParentId);
             }
         };
     }
@@ -697,12 +790,7 @@ class KnowledgeViewPage extends Component {
             this.showCreateNodeModal(parentId);
         });
 
-        // 上传子文件
-        this.delegate('click', '[data-action="upload-sub"]', (e, el) => {
-            e.stopPropagation();
-            const parentId = el.dataset.id;
-            this.triggerUpload(parentId);
-        });
+
 
         // 添加根节点
         this.delegate('click', '#btnAddRoot', () => this.showCreateNodeModal(null));
@@ -744,10 +832,7 @@ class KnowledgeViewPage extends Component {
             if (e.target && e.target.id === 'fileUploader') {
                 const files = e.target.files;
                 if (files.length > 0) {
-                    // 逐个上传文件
-                    Array.from(files).forEach(file => {
-                        this.handleFileUpload(file, this.uploadTargetId);
-                    });
+                    this.handleBatchUpload(files, this.uploadTargetId);
                     // 重置文件输入框
                     e.target.value = '';
                 }
@@ -771,6 +856,11 @@ class KnowledgeViewPage extends Component {
 
         // 图谱刷新
         this.delegate('click', '#btnRefreshGraph', () => this.loadGraphData());
+
+        // 返回首页
+        this.delegate('click', '#btnBackHome', () => {
+            Router.push('/knowledge');
+        });
     }
 
     async switchView(mode) {
@@ -847,17 +937,7 @@ class KnowledgeViewPage extends Component {
         window.addEventListener('resize', () => chart.resize());
     }
 
-    triggerUpload(parentId) {
 
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.onchange = (e) => {
-            if (e.target.files.length > 0) {
-                this.handleFileUpload(e.target.files[0], parentId);
-            }
-        };
-        input.click();
-    }
 
     showCreateNodeModal(parentId) {
         Modal.form({
@@ -875,9 +955,12 @@ class KnowledgeViewPage extends Component {
                 data.base_id = this.baseId;
                 if (parentId) data.parent_id = parseInt(parentId);
 
-                await KnowledgeApi.createNode(data);
+                const res = await KnowledgeApi.createNode(data);
                 Toast.success('创建成功');
-                this.loadData();
+                await this.loadData();
+                if (res.data && res.data.id) {
+                    this.selectNode(res.data.id);
+                }
             }
         });
     }

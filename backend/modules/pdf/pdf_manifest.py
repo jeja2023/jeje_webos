@@ -35,9 +35,9 @@ manifest = ModuleManifest(
     },
     
     permissions=[
-        {"code": "pdf.read", "name": "阅读PDF", "desc": "允许查看PDF内容"},
-        {"code": "pdf.create", "name": "处理PDF", "desc": "允许合并、拆分等修改操作"},
-        {"code": "pdf.delete", "name": "删除历史", "desc": "允许删除操作历史记录"}
+        "pdf.read",
+        "pdf.create",
+        "pdf.delete"
     ],
     
     dependencies=[],  # 移除 filemanager 依赖，模块现在完全独立

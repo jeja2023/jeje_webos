@@ -16,6 +16,11 @@ class SystemSettingInfo(BaseModel):
     rate_limit_requests: int = Field(200, ge=1, le=10000)
     rate_limit_window: int = Field(60, ge=1, le=3600)
     rate_limit_block_duration: int = Field(30, ge=1, le=3600)
+    # AI 相关设置
+    ai_online_api_key: Optional[str] = Field("sk-xxx", description="在线 AI API Key")
+    ai_online_base_url: Optional[str] = Field("https://api.deepseek.com/v1", description="在线 AI API 地址")
+    ai_online_model: Optional[str] = Field("deepseek-chat", description="在线 AI 模型名称")
+
 
 
 class SystemSettingUpdate(BaseModel):
@@ -28,3 +33,9 @@ class SystemSettingUpdate(BaseModel):
     rate_limit_requests: Optional[int] = Field(None, ge=1)
     rate_limit_window: Optional[int] = Field(None, ge=1)
     rate_limit_block_duration: Optional[int] = Field(None, ge=1)
+    
+    # AI 相关设置
+    ai_online_api_key: Optional[str] = None
+    ai_online_base_url: Optional[str] = None
+    ai_online_model: Optional[str] = None
+

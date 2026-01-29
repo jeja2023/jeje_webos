@@ -121,14 +121,14 @@ class KnowledgeGraphService:
         messages = [{"role": "user", "content": prompt}]
         
         try:
-            # 调用AI服务提取三元组，优先使用在线模型以获得更好的效果
+            # 优先使用在线模型（如 DeepSeek）以获得更精准的提取效果
             response_gen = await AIService.chat_with_context(
                 query=prompt, 
                 history=[],
                 provider="online"
             )
             
-            # 收集流式响应结果
+            # 收集结果
             full_response = ""
             async for chunk in response_gen:
                 if 'choices' in chunk and len(chunk['choices']) > 0:
@@ -136,12 +136,33 @@ class KnowledgeGraphService:
                     if 'content' in delta:
                         full_response += delta['content']
             
-            # 解析JSON结果
+            # 解析JSON
             json_str = KnowledgeGraphService._clean_json_string(full_response)
             return json.loads(json_str)
             
         except Exception as e:
-            logger.warning(f"大模型提取三元组失败: {e}")
+            # 降级：如果在线 API 不可用或未配置，尝试使用本地模型
+            if "未配置在线 API Key" in str(e) or "API 请求失败" in str(e):
+                logger.debug("在线 API 不可用，尝试降级到本地模型提取三元组...")
+                try:
+                    response_gen = await AIService.chat_with_context(
+                        query=prompt,
+                        history=[],
+                        provider="local"
+                    )
+                    full_response = ""
+                    async for chunk in response_gen:
+                        if 'choices' in chunk and len(chunk['choices']) > 0:
+                            delta = chunk['choices'][0].get('delta', {})
+                            if 'content' in delta:
+                                full_response += delta['content']
+                    
+                    json_str = KnowledgeGraphService._clean_json_string(full_response)
+                    return json.loads(json_str)
+                except Exception as local_e:
+                    logger.warning(f"本地模型提取三元组也失败了: {local_e}")
+            else:
+                logger.warning(f"大模型提取三元组失败: {e}")
             return []
 
     @staticmethod
