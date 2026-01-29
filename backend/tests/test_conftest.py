@@ -23,12 +23,6 @@ from core.config import get_settings, reload_settings
 import models # Force load core models for Base.metadata registration
 from main import app
 
-# Mock 审计日志，防止测试中尝试连接 MySQL
-from unittest.mock import patch, MagicMock, AsyncMock
-patch("core.audit_utils.log_audit", new_callable=AsyncMock).start()
-patch("core.audit_utils.AuditLogger.log", new_callable=AsyncMock).start()
-
-
 # ==================== 配置 ====================
 
 # 使用 SQLite 内存数据库进行测试
