@@ -41,24 +41,4 @@ manifest = ModuleManifest(
 )
 
 
-# ==================== 生命周期钩子示例 ====================
 
-# async def on_install_hook():
-#     """首次安装时执行"""
-#     print(f"模块 lm_cleaner 安装完成")
-
-# async def on_enable_hook():
-#     """模块启用时执行"""
-#     pass
-
-# async def on_disable_hook():
-#     """模块禁用时执行"""
-#     pass
-
-# async def on_uninstall_hook():
-#     """模块卸载时执行"""
-#     pass
-
-# async def on_upgrade_hook():
-#     """版本升级时执行"""
-#     pass

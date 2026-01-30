@@ -321,10 +321,6 @@ def register_exception_handlers(app):
             })
         
         # 记录验证错误
-        print(f"\n{'='*60}")
-        print(f"🟡 请求验证失败: {request.url.path}")
-        print(f"验证错误: {errors}")
-        print(f"{'='*60}\n")
         logger.warning(f"请求验证失败: {request.url.path} - {errors}")
         
         return JSONResponse(
