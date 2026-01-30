@@ -629,6 +629,11 @@ def upgrade() -> None:
     sa.Column('parent_id', sa.Integer(), nullable=True, comment='父文件夹ID'),
     sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
     sa.Column('path', sa.String(length=1024), nullable=False, comment='完整路径'),
+    sa.Column('is_virtual', sa.Boolean(), nullable=True, server_default=sa.text('0'), comment='是否为虚拟文件夹'),
+    sa.Column('is_system', sa.Boolean(), nullable=True, server_default=sa.text('0'), comment='是否为系统保护文件夹'),
+    sa.Column('icon', sa.String(length=50), nullable=True, comment='文件夹图标'),
+    sa.Column('module_id', sa.String(length=50), nullable=True, comment='关联模块ID'),
+    sa.Column('module_path', sa.String(length=255), nullable=True, comment='模块内部路径'),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='创建时间'),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True, comment='更新时间'),
     sa.ForeignKeyConstraint(['parent_id'], ['fm_folders.id'], ondelete='CASCADE'),
@@ -717,6 +722,31 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_notes_notes_folder_id'), 'notes_notes', ['folder_id'], unique=False)
     op.create_index(op.f('ix_notes_notes_user_id'), 'notes_notes', ['user_id'], unique=False)
+    op.create_table('pdf_history',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='标题/描述'),
+    sa.Column('filename', sa.String(length=255), nullable=True, comment='原始文件名'),
+    sa.Column('file_id', sa.Integer(), nullable=True, comment='关联的文件ID（文件管理器）'),
+    sa.Column('operation', sa.String(length=50), nullable=True, comment='操作类型: merge, split, convert, read'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='操作时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='PDF 工具操作历史记录表'
+    )
+    op.create_index(op.f('ix_pdf_history_file_id'), 'pdf_history', ['file_id'], unique=False)
+    op.create_index(op.f('ix_pdf_history_user_id'), 'pdf_history', ['user_id'], unique=False)
+    op.create_table('pdf_items',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='标题'),
+    sa.Column('content', sa.Text(), nullable=True, comment='内容'),
+    sa.Column('is_active', sa.Boolean(), nullable=True, comment='是否启用'),
+    sa.Column('created_at', sa.DateTime(), nullable=True, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(), nullable=True, comment='更新时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='PDF 工具扩展项目表'
+    )
+    op.create_index(op.f('ix_pdf_items_user_id'), 'pdf_items', ['user_id'], unique=False)
     op.create_table('schedule_categories',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
     sa.Column('user_id', sa.Integer(), nullable=False, comment='用户ID'),
@@ -1259,6 +1289,11 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_map_configs_id'), table_name='map_configs')
     op.drop_table('map_configs')
     op.drop_table('knowledge_bases')
+    op.drop_index(op.f('ix_pdf_items_user_id'), table_name='pdf_items')
+    op.drop_table('pdf_items')
+    op.drop_index(op.f('ix_pdf_history_user_id'), table_name='pdf_history')
+    op.drop_index(op.f('ix_pdf_history_file_id'), table_name='pdf_history')
+    op.drop_table('pdf_history')
     op.drop_index(op.f('ix_im_conversations_type'), table_name='im_conversations')
     op.drop_index('idx_im_conv_updated', table_name='im_conversations')
     op.drop_table('im_conversations')

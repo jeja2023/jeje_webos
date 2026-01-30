@@ -297,6 +297,15 @@ const WindowManager = {
             else widgets.classList.remove('blur-out');
         }
 
+        // --- 移动端适配：为 body 添加类名以隐藏 TopBar ---
+        if (window.innerWidth <= 768) {
+            if (hasOpenWindows) {
+                document.body.classList.add('has-open-window');
+            } else {
+                document.body.classList.remove('has-open-window');
+            }
+        }
+
         // 更新 Store 中的打开窗口列表，供 Dock 使用
         if (typeof Store !== 'undefined') {
             // 保存所有窗口的 ID (即 path)

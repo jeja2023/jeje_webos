@@ -175,13 +175,13 @@ const DataLensHubMixin = {
 
                     <div class="lens-sidebar-footer">
                         <div class="lens-sidebar-label">系统管理</div>
-                        ${this._hasPermission('datalens:source:manage') || this._hasPermission('datalens:admin') ? `
+                        ${this._hasPermission('datalens.source.manage') || this._hasPermission('datalens.admin') ? `
                             <div class="lens-sidebar-item" id="lens-manage-sources">
                                 <span class="lens-sidebar-icon">🔌</span>
                                 <span class="lens-sidebar-text">数据源管理</span>
                             </div>
                         ` : ''}
-                        ${this._hasPermission('datalens:category:manage') || this._hasPermission('datalens:admin') ? `
+                        ${this._hasPermission('datalens.category.manage') || this._hasPermission('datalens.admin') ? `
                             <div class="lens-sidebar-item" id="lens-manage-categories">
                                 <span class="lens-sidebar-icon">📂</span>
                                 <span class="lens-sidebar-text">分类管理</span>
@@ -274,7 +274,7 @@ const DataLensHubMixin = {
                                 title="${pinned ? '从开始菜单移除' : '固定到开始菜单'}">
                             ${pinned ? '📍' : '📌'}
                         </button>
-                        ${this._hasPermission('datalens:admin') || view.owner_id === Store.get('user')?.id ? `
+                        ${this._hasPermission('datalens.admin') || view.owner_id === Store.get('user')?.id ? `
                             <button class="lens-view-card-btn edit" data-id="${view.id}" title="编辑">✏️</button>
                             <button class="lens-view-card-btn delete" data-id="${view.id}" title="删除">🗑️</button>
                         ` : ''}

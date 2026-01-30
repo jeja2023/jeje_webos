@@ -195,7 +195,7 @@ class DataLensPage extends Component {
         const user = Store.get('user');
         if (!user) return false;
         if (user.role === 'admin') return true;
-        if (user.permissions && user.permissions.includes('datalens:admin')) return true;
+        if (user.permissions && user.permissions.includes('datalens.admin')) return true;
         return user.permissions && user.permissions.includes(permission);
     }
 
@@ -430,7 +430,7 @@ class DataLensPage extends Component {
                 </div>
                 <div class="lens-header-actions" style="display: flex; gap: 8px; align-items: center;">
                     ${window.ModuleHelp ? ModuleHelp.createHelpButton('datalens', '数据透镜') : ''}
-                    ${this._hasPermission('datalens:create') ? `
+                    ${this._hasPermission('datalens.create') ? `
                         <button class="lens-btn lens-btn-primary" id="lens-create-view" style="padding: 6px 16px; border-radius: 8px;">
                             <span>➕ 新建视图</span>
                         </button>

@@ -8,7 +8,6 @@ class ExamPage extends Component {
     constructor(container) {
         super(container);
         const user = Store.get('user');
-        this.isAdmin = user?.role === 'admin' || user?.role === 'manager';
 
         this.state = {
             view: 'home',  // 视图: home, questions, papers, take, result, grading, grading_detail, result_detail, wrong_questions, ranking, preview
@@ -71,6 +70,21 @@ class ExamPage extends Component {
         this._copyHandler = null;
         this._contextMenuHandler = null;
         this._keydownHandler = null;
+
+        // 默认权限检查
+        this.permissions = user?.permissions || [];
+    }
+
+    /**
+     * 权限检查辅助方法
+     */
+    _hasPermission(permission) {
+        const user = Store.get('user');
+        if (!user) return false;
+        if (user.role === 'admin') return true;
+        // 如果是 exam.admin 权限，则拥有模块所有权限
+        if (user.permissions && user.permissions.includes('exam.admin')) return true;
+        return user.permissions && user.permissions.includes(permission);
     }
 
     async afterMount() {
@@ -557,6 +571,22 @@ class ExamPage extends Component {
         this.delegate('click', '[data-action="publish-paper"]', (e, el) => this.publishPaper(parseInt(el.dataset.id)));
         this.delegate('click', '[data-action="view-ranking"]', (e, el) => this.loadRanking(parseInt(el.dataset.id)));
 
+        // 题目搜索
+        this.delegate('input', '#questionSearch', (e, el) => {
+            if (this._searchTimeout) clearTimeout(this._searchTimeout);
+            this._searchTimeout = setTimeout(() => {
+                this.loadQuestions(el.value.trim());
+            }, 500);
+        });
+
+        // 试卷搜索
+        this.delegate('input', '#paperSearch', (e, el) => {
+            if (this._paperSearchTimeout) clearTimeout(this._paperSearchTimeout);
+            this._paperSearchTimeout = setTimeout(() => {
+                this.loadPapers(el.value.trim());
+            }, 500);
+        });
+
         // 考试操作
         this.delegate('click', '[data-action="start-exam"]', (e, el) => this.startExam(parseInt(el.dataset.id)));
         this.delegate('click', '[data-action="submit-exam"]', () => this.submitExam());
@@ -594,6 +624,9 @@ class ExamPage extends Component {
         // 试卷预览
         this.delegate('click', '[data-action="preview-paper"]', (e, el) => this.previewPaper(parseInt(el.dataset.id)));
         this.delegate('click', '[data-action="exit-preview"]', () => this.navigateTo('papers'));
+
+        // 批量导入
+        this.delegate('click', '[data-action="import-questions"]', () => this.showImportModal());
     }
 
     async navigateTo(view) {
@@ -656,11 +689,12 @@ class ExamPage extends Component {
         }
     }
 
-    async loadQuestions() {
+    async loadQuestions(keyword = '') {
         const { currentBankId, questionPage } = this.state;
         try {
             let url = `/exam/questions?page=${questionPage}&page_size=20`;
             if (currentBankId) url += `&bank_id=${currentBankId}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
 
             const res = await Api.get(url);
             this.setState({
@@ -672,10 +706,12 @@ class ExamPage extends Component {
         }
     }
 
-    async loadPapers() {
+    async loadPapers(keyword = '') {
         const { paperPage } = this.state;
         try {
-            const res = await Api.get(`/exam/papers?page=${paperPage}&page_size=20`);
+            let url = `/exam/papers?page=${paperPage}&page_size=20`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            const res = await Api.get(url);
             this.setState({
                 papers: res.data?.items || [],
                 paperTotal: res.data?.total || 0
@@ -937,16 +973,18 @@ class ExamPage extends Component {
                 <button class="nav-btn ${view === 'home' ? 'active' : ''}" data-nav="home">
                     <i class="ri-home-4-line"></i> 考试中心
                 </button>
-                <button class="nav-btn ${view === 'questions' ? 'active' : ''}" data-nav="questions">
-                    <i class="ri-question-line"></i> 题库管理
-                </button>
-                <button class="nav-btn ${view === 'papers' ? 'active' : ''}" data-nav="papers">
-                    <i class="ri-file-list-3-line"></i> 试卷管理
-                </button>
+                ${this._hasPermission('exam.read') ? `
+                    <button class="nav-btn ${view === 'questions' ? 'active' : ''}" data-nav="questions">
+                        <i class="ri-question-line"></i> 题库管理
+                    </button>
+                    <button class="nav-btn ${view === 'papers' ? 'active' : ''}" data-nav="papers">
+                        <i class="ri-file-list-3-line"></i> 试卷管理
+                    </button>
+                ` : ''}
                 <button class="nav-btn ${view === 'wrong_questions' ? 'active' : ''}" data-nav="wrong_questions">
                     <i class="ri-error-warning-line"></i> 错题本
                 </button>
-                ${this.isAdmin ? `
+                ${this._hasPermission('exam.grade') ? `
                     <button class="nav-btn ${view === 'grading' ? 'active' : ''}" data-nav="grading">
                         <i class="ri-edit-box-line"></i> 阅卷
                     </button>
@@ -978,8 +1016,31 @@ class ExamPage extends Component {
     renderHome() {
         const { availableExams, myRecords } = this.state;
 
+        // 计算一些简单的统计
+        const totalTaken = myRecords.length;
+        const passedExams = myRecords.filter(r => r.is_passed).length;
+        const passRate = totalTaken > 0 ? Math.round((passedExams / totalTaken) * 100) : 0;
+        const avgScore = totalTaken > 0 ? (myRecords.reduce((sum, r) => sum + (r.score || 0), 0) / totalTaken).toFixed(1) : 0;
+
         return `
             <div class="exam-home">
+                <div class="home-hero">
+                    <div class="hero-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${totalTaken}</div>
+                            <div class="stat-label">累计参与考试</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${passRate}%</div>
+                            <div class="stat-label">评估通过率</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${avgScore}</div>
+                            <div class="stat-label">平均分数</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="section">
                     <h2 class="section-title"><i class="ri-play-circle-line"></i> 可参加的考试</h2>
                     ${availableExams.length === 0 ? '<p class="empty-text">暂无可参加的考试</p>' : `
@@ -995,8 +1056,8 @@ class ExamPage extends Component {
                                         <p><i class="ri-file-list-line"></i> ${exam.question_count} 道题</p>
                                     </div>
                                     <div class="exam-card-footer">
-                                        <button class="btn btn-primary" data-action="start-exam" data-id="${exam.id}">
-                                            开始考试
+                                        <button class="btn btn-primary btn-block" data-action="start-exam" data-id="${exam.id}">
+                                            立即参加
                                         </button>
                                     </div>
                                 </div>
@@ -1043,7 +1104,9 @@ class ExamPage extends Component {
                 <div class="questions-sidebar">
                     <div class="sidebar-header">
                         <h3>题库分类</h3>
-                        <button class="btn btn-sm btn-primary" data-action="create-bank"><i class="ri-add-line"></i></button>
+                        ${this._hasPermission('exam.create') ? `
+                            <button class="btn btn-sm btn-primary" data-action="create-bank"><i class="ri-add-line"></i></button>
+                        ` : ''}
                     </div>
                     <div class="bank-list">
                         <div class="bank-item ${!currentBankId ? 'active' : ''}" data-id="">全部题目</div>
@@ -1061,7 +1124,14 @@ class ExamPage extends Component {
                 </div>
                 <div class="questions-main">
                     <div class="toolbar">
-                        <button class="btn btn-primary" data-action="create-question"><i class="ri-add-line"></i> 新增题目</button>
+                        ${this._hasPermission('exam.create') ? `
+                            <button class="btn btn-primary" data-action="create-question"><i class="ri-add-line"></i> 新增题目</button>
+                            <button class="btn btn-ghost" data-action="import-questions"><i class="ri-upload-2-line"></i> 批量导入</button>
+                        ` : ''}
+                        <div class="search-box">
+                            <i class="ri-search-line"></i>
+                            <input type="text" placeholder="搜索题目内容..." id="questionSearch">
+                        </div>
                     </div>
                     <div class="question-list">
                         ${questions.length === 0 ? '<p class="empty-text">暂无题目</p>' : questions.map((q, i) => `
@@ -1077,8 +1147,8 @@ class ExamPage extends Component {
                                 <div class="question-title">${Utils.escapeHtml(q.title)}</div>
                                 ${expandedQuestionId === q.id ? this.renderQuestionPreview(q) : ''}
                                 <div class="question-actions">
-                                    <button data-action="edit-question" data-id="${q.id}"><i class="ri-edit-line"></i></button>
-                                    <button data-action="delete-question" data-id="${q.id}"><i class="ri-delete-bin-line"></i></button>
+                                    ${this._hasPermission('exam.update') ? `<button data-action="edit-question" data-id="${q.id}"><i class="ri-edit-line"></i></button>` : ''}
+                                    ${this._hasPermission('exam.delete') ? `<button data-action="delete-question" data-id="${q.id}"><i class="ri-delete-bin-line"></i></button>` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -1137,8 +1207,14 @@ class ExamPage extends Component {
         return `
             <div class="papers-view">
                 <div class="toolbar">
-                    <button class="btn btn-primary" data-action="create-paper"><i class="ri-add-line"></i> 创建试卷</button>
-                    <button class="btn btn-ghost" data-action="smart-paper"><i class="ri-magic-line"></i> 智能组卷</button>
+                    ${this._hasPermission('exam.create') ? `
+                        <button class="btn btn-primary" data-action="create-paper"><i class="ri-add-line"></i> 创建试卷</button>
+                        <button class="btn btn-ghost" data-action="smart-paper"><i class="ri-magic-line"></i> 智能组卷</button>
+                    ` : ''}
+                    <div class="search-box">
+                        <i class="ri-search-line"></i>
+                        <input type="text" placeholder="搜索试卷标题..." id="paperSearch">
+                    </div>
                 </div>
                 <div class="paper-list">
                     ${papers.length === 0 ? '<p class="empty-text">暂无试卷</p>' : papers.map(paper => `
@@ -1155,10 +1231,10 @@ class ExamPage extends Component {
                             </div>
                             <div class="paper-actions">
                                 <button class="btn btn-sm btn-ghost" data-action="preview-paper" data-id="${paper.id}"><i class="ri-eye-line"></i> 预览</button>
-                                <button class="btn btn-sm btn-ghost" data-action="view-paper" data-id="${paper.id}">编辑</button>
+                                ${this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-ghost" data-action="view-paper" data-id="${paper.id}">编辑</button>` : ''}
                                 ${paper.status === 'published' ? `<button class="btn btn-sm btn-ghost" data-action="view-ranking" data-id="${paper.id}"><i class="ri-bar-chart-line"></i> 排名</button>` : ''}
-                                ${paper.status === 'draft' ? `<button class="btn btn-sm btn-primary" data-action="publish-paper" data-id="${paper.id}">发布</button>` : ''}
-                                <button class="btn btn-sm btn-ghost danger" data-action="delete-paper" data-id="${paper.id}">删除</button>
+                                ${paper.status === 'draft' && this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-primary" data-action="publish-paper" data-id="${paper.id}">发布</button>` : ''}
+                                ${this._hasPermission('exam.delete') ? `<button class="btn btn-sm btn-ghost danger" data-action="delete-paper" data-id="${paper.id}">删除</button>` : ''}
                             </div>
                         </div>
                     `).join('')}
@@ -2105,5 +2181,63 @@ class ExamPage extends Component {
                 </div>
             </div>
         `;
+    }
+
+    // ==================== 批量导入 ====================
+
+    async showImportModal() {
+        new Modal({
+            title: '批量导入题目',
+            width: 700,
+            content: `
+                <div class="import-container">
+                    <p class="import-hint">请按照 JSON 格式录入题目数据：</p>
+                    <textarea class="form-control" id="importJson" rows="15" placeholder='[
+  {
+    "question_type": "single",
+    "title": "示例题目",
+    "option_a": "选项A",
+    "option_b": "选项B",
+    "option_c": "选项C",
+    "option_d": "选项D",
+    "answer": "A",
+    "score": 2,
+    "difficulty": 1
+  }
+]'></textarea>
+                    <div class="import-actions" style="margin-top: 12px;">
+                        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importJson').value = JSON.stringify([{'question_type':'single','title':'','option_a':'','option_b':'','option_c':'','option_d':'','answer':'','score':2,'difficulty':1}], null, 2)">插入模板</button>
+                    </div>
+                </div>
+            `,
+            confirmText: '开始导入',
+            onConfirm: async () => {
+                const jsonText = document.getElementById('importJson').value.trim();
+                if (!jsonText) {
+                    Toast.warning('请输入题目数据');
+                    return false;
+                }
+
+                try {
+                    const questions = JSON.parse(jsonText);
+                    if (!Array.isArray(questions)) throw new Error('数据必须是数组格式');
+
+                    const res = await Api.post('/exam/questions/import', {
+                        bank_id: this.state.currentBankId,
+                        questions: questions
+                    });
+
+                    Toast.success(`导入成功: ${res.data.success_count} 题`);
+                    if (res.data.fail_count > 0) {
+                        Toast.warning(`失败 ${res.data.fail_count} 题，请检查格式`);
+                    }
+                    this.loadQuestions();
+                    return true;
+                } catch (e) {
+                    Toast.error('导入失败: ' + (e.message || 'JSON格式错误'));
+                    return false;
+                }
+            }
+        }).show();
     }
 }

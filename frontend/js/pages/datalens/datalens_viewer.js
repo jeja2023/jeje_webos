@@ -236,7 +236,7 @@ const DataLensViewerMixin = {
     <div class="lens-chart-container">
         <div class="lens-chart-loading">
             <p>该视图尚未配置图表展示</p>
-            ${this._hasPermission('datalens:update') ? `<button class="lens-btn lens-btn-primary mt-10" onclick="window.DataLensPageInstance._showVisualSettings(${tab.id})">去配置图表</button>` : ''}
+            ${this._hasPermission('datalens.update') ? `<button class="lens-btn lens-btn-primary mt-10" onclick="window.DataLensPageInstance._showVisualSettings(${tab.id})">去配置图表</button>` : ''}
         </div>
                     </div>
     `;

@@ -505,6 +505,9 @@ class DockComponent extends Component {
 
     // 设置底部热区检测（解决最大化窗口时的 Dock 显示问题）
     setupAutoHideHotzone() {
+        // --- 移动端适配：移动端不使用 MouseMove 热区逻辑 ---
+        if (window.innerWidth <= 768) return;
+
         const HOTZONE_HEIGHT = 8; // 底部热区高度（像素）
         let hideTimeout = null;
         let isTriggered = false; // 是否已通过热区触发
