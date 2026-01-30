@@ -31,16 +31,9 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 CORE_MODULES = [
-    # 系统内核核心
     "system", "user", "auth", "boot", "roles",
     "audit", "backup", "monitor", "notification", "announcement",
-    "storage", "websocket", "import_export", 
-    
-    # 业务功能核心 (全部加入以保证部署即用)
-    "filemanager", "pdf", "markdown", "lm_cleaner", "knowledge", 
-    "map", "schedule", "notes", "album", "video", "ocr", "ai", 
-    "analysis", "blog", "course", "datalens", "exam", "feedback", 
-    "im", "transfer", "vault"
+    "storage", "websocket", "import_export"
 ]
 
 
@@ -381,7 +374,7 @@ class ModuleLoader:
         state = self._states.get(module_id)
         is_new_install = state is None
         
-        if is_new_install and not install and module_id not in CORE_MODULES:
+        if is_new_install and not install and module_id not in CORE_MODULES and not manifest.enabled:
             return False
 
         # 优先使用持久化状态中的启用配置
@@ -446,9 +439,9 @@ class ModuleLoader:
             self._states[module_id] = ModuleState(
                 module_id=module_id,
                 version=manifest.version,
-                enabled=False,
+                enabled=manifest.enabled,
                 installed_at=get_beijing_time(),
-                last_enabled_at=None
+                last_enabled_at=get_beijing_time() if manifest.enabled else None
             )
         else:
             self._states[module_id].version = manifest.version
