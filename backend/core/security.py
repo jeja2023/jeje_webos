@@ -10,10 +10,15 @@ from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from cachetools import TTLCache
 
 from .config import get_settings
 
 settings = get_settings()
+
+# 权限缓存：容量1000，过期时间60秒
+# 用于在 get_current_user 中缓存用户的角色和权限信息，减少数据库查询
+permission_cache = TTLCache(maxsize=1000, ttl=60)
 
 # Bearer令牌认证，设置为 auto_error=False 以支持从 Query 参数中读取 token
 security = HTTPBearer(auto_error=False)
@@ -178,6 +183,13 @@ async def get_current_user(
         )
     
     # --- 实时权限同步逻辑 ---
+    # 检查缓存是否存在
+    cached_data = permission_cache.get(token_data.user_id)
+    if cached_data:
+        token_data.role = cached_data["role"]
+        token_data.permissions = cached_data["permissions"]
+        return token_data
+
     # 为了避免循环导入，在函数内部导入相关模型和数据库方法
     try:
         from core.database import async_session
@@ -200,6 +212,13 @@ async def get_current_user(
                 # 更新 token_data 中的权限和角色（内存中更新，不修改原始 JWT）
                 token_data.permissions = list(set(all_perms))
                 token_data.role = user.role
+
+                # 写入缓存
+                permission_cache[token_data.user_id] = {
+                    "role": user.role,
+                    "permissions": token_data.permissions
+                }
+
             elif user and not user.is_active:
                 raise HTTPException(status_code=401, detail="账户已被禁用")
     except ImportError:
@@ -232,6 +251,13 @@ async def get_optional_user(
         return None
         
     # 同步最新权限逻辑（复用 get_current_user 思路，但不抛出 401/403）
+    # 检查缓存
+    cached_data = permission_cache.get(token_data.user_id)
+    if cached_data:
+        token_data.role = cached_data["role"]
+        token_data.permissions = cached_data["permissions"]
+        return token_data
+
     try:
         from core.database import async_session
         from models import User, UserGroup
@@ -249,6 +275,12 @@ async def get_optional_user(
                             all_perms.extend(r.permissions)
                 token_data.permissions = list(set(all_perms))
                 token_data.role = user.role
+                
+                # 写入缓存
+                permission_cache[token_data.user_id] = {
+                    "role": user.role,
+                    "permissions": token_data.permissions
+                }
     except:
         pass
         
