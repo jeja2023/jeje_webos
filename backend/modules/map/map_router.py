@@ -502,3 +502,30 @@ async def check_local_tiles():
         "offline_available": len(sources) > 0,
         "sources": sources
     })
+
+import httpx
+from fastapi import Response
+import logging
+logger = logging.getLogger(__name__)
+
+@router.get("/tile-proxy", include_in_schema=False)
+async def map_tile_proxy(url: str):
+    """
+    地图瓦片反向代理
+    解决前端跨域或 HTTP/HTTPS 混合加载限制
+    """
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        try:
+            # 模拟浏览器 UA
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            resp = await client.get(url, timeout=10.0, headers=headers)
+            if resp.status_code != 200:
+                logger.error(f"⚠️ 地图瓦片抓取异常: HTTP {resp.status_code}, URL: {url}")
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                media_type="image/png"
+            )
+        except Exception as e:
+            logger.error(f"❌ 地图代理连接失败: {str(e)}, URL: {url}")
+            return Response(status_code=502, content=f"Proxy Error: {str(e)}")

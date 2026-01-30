@@ -1,3 +1,7 @@
+"""
+Analysis 模块数据模型
+"""
+
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column

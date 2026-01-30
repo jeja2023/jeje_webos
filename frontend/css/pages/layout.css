@@ -69,22 +69,3 @@
     color: var(--color-text-secondary);
     font-size: 0.95rem;
 }
-
-/* 响应式 */
-@media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-    }
-
-    .sidebar.mobile-open {
-        transform: translateX(0);
-    }
-
-    .main-wrapper {
-        margin-left: 0;
-    }
-
-    .main-content {
-        padding: var(--spacing-md);
-    }
-}

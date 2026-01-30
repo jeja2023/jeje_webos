@@ -297,14 +297,7 @@ const WindowManager = {
             else widgets.classList.remove('blur-out');
         }
 
-        // --- 移动端适配：为 body 添加类名以隐藏 TopBar ---
-        if (window.innerWidth <= 768) {
-            if (hasOpenWindows) {
-                document.body.classList.add('has-open-window');
-            } else {
-                document.body.classList.remove('has-open-window');
-            }
-        }
+
 
         // 更新 Store 中的打开窗口列表，供 Dock 使用
         if (typeof Store !== 'undefined') {
@@ -360,15 +353,7 @@ const WindowManager = {
     },
 
     positionWindow(el, options) {
-        // 检查 CSS 中的移动端逻辑，但这里我们设置初始内联样式
-        const isMobile = window.innerWidth <= 768;
-
-        if (isMobile) {
-            // CSS 处理全屏
-            return;
-        }
-
-        // 恢复原始大小逻辑：90% 宽度 (最大 1400)，85% 高度
+        // --- 桌面版定位逻辑 ---
         const defaultWidth = Math.min(window.innerWidth * 0.9, 1400);
         const defaultHeight = window.innerHeight * 0.85;
 

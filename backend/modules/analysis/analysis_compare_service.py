@@ -1,3 +1,7 @@
+"""
+Analysis 模块业务服务层
+"""
+
 from typing import List, Dict, Any, Optional
 from modules.analysis.analysis_duckdb_service import duckdb_instance
 from modules.analysis.analysis_models import AnalysisDataset

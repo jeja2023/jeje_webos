@@ -226,12 +226,7 @@ body {
     cursor: nw-resize;
 }
 
-/* 移动端全屏模式不需要 Resize Handle */
-@media (max-width: 768px) {
-    .resize-handle {
-        display: none;
-    }
-}
+
 
 .window-container.maximized {
     width: 100vw !important;

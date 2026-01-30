@@ -329,9 +329,10 @@ class AIPage extends Component {
                 <div class="ai-main">
                     <div class="ai-header">
                         <div class="ai-title">
+
                             <h3>AI助手 <small style="font-size: 10px; opacity: 0.5;">v3.0</small></h3>
-                            <span class="ai-badge">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
-                            ${selectedKb ? '<span class="ai-badge secondary">📚 已挂载知识库</span>' : ''}
+                            <span class="ai-badge hide-mobile">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
+                            ${selectedKb ? '<span class="ai-badge secondary hide-mobile">📚 已挂载知识库</span>' : ''}
                         </div>
                         <div class="ai-options">
                             <!-- 角色预设选择器 -->
@@ -684,7 +685,12 @@ class AIPage extends Component {
                 this.handleSendMessage();
             }
         });
-        this.delegate('click', '#btnNewChat', () => this.createNewSession());
+
+
+
+        this.delegate('click', '#btnNewChat', () => {
+            this.createNewSession();
+        });
 
         // 设置按钮 - 使用全局 Modal
         this.delegate('click', '#btnConfig', (e) => {
@@ -700,7 +706,10 @@ class AIPage extends Component {
             }
             // 切换会话需要强制滚动到新会话的底部
             this._shouldForceScroll = true;
-            this.setState({ activeSessionId: parseInt(el.dataset.id) || el.dataset.id }, () => {
+            this.setState({
+                activeSessionId: parseInt(el.dataset.id) || el.dataset.id,
+                mobileSidebarOpen: false
+            }, () => {
                 this.saveSessions(); // 保存会话
             });
         });

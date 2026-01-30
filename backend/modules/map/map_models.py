@@ -1,3 +1,7 @@
+"""
+Map 模块数据模型
+"""
+
 from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey, DateTime, Boolean
 from sqlalchemy.sql import func
 from core.database import Base

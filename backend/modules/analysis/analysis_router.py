@@ -1,3 +1,7 @@
+"""
+Analysis 模块API路由
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, Form
 from fastapi.responses import StreamingResponse, FileResponse
 import uuid

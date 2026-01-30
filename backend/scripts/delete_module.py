@@ -3,10 +3,10 @@
 模块删除工具
 一键删除模块的所有相关文件和数据库表
 
-Usage:
+使用方法：
     python scripts/delete_module.py <module_id> [--no-backup] [--delete-db] [--force]
     
-Examples:
+示例：
     python scripts/delete_module.py task_manager
     python scripts/delete_module.py product --delete-db --force
 """

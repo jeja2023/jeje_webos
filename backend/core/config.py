@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     admin_password: str = "admin123"
     admin_phone: str = "13800138000"
     admin_nickname: str = "系统管理员"
+
+    # CORS 配置
+    allow_origins: list[str] = ["*"]
     
 
     model_config = SettingsConfigDict(

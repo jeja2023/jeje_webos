@@ -1,3 +1,7 @@
+"""
+Analysis 模块Pydantic数据模式
+"""
+
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
