@@ -171,6 +171,75 @@ sudo ufw allow 9000/tcp
 
 现在您可以通过 `http://<您的IP或域名>` 直接访问，无需加端口号。
 
+### 5.2 启用 HTTPS 与 HTTP/2 (强烈推荐)
+
+HTTP/2 协议能显著提升应用加载速度（尤其是多文件请求时），但它依赖于 HTTPS。
+以下步骤介绍如何配置 SSL 证书并开启 HTTP/2。
+
+1. **安装 Certbot (SSL 证书工具)**
+   ```bash
+   sudo apt-get install -y certbot python3-certbot-nginx
+   ```
+
+2. **获取免费证书 (Let's Encrypt)**
+   ```bash
+   sudo certbot --nginx -d your_domain.com
+   ```
+   按照提示输入邮箱并同意协议，Certbot 会自动修改 Nginx 配置。
+
+3. **手动开启 HTTP/2**
+   Certbot 自动生成的配置可能未默认开启 HTTP/2。
+   编辑配置文件：
+   ```bash
+   sudo nano /etc/nginx/sites-available/jeje_webos
+   ```
+
+   找到 `listen 443 ssl;` 行，将其修改为：
+   ```nginx
+   listen 443 ssl http2;
+   ```
+
+   完整配置示例（参考）：
+   ```nginx
+   server {
+       listen 80;
+       server_name your_domain.com;
+       # 强制跳转 HTTPS
+       return 301 https://$host$request_uri;
+   }
+
+   server {
+       # 启用 SSL 和 HTTP/2
+       listen 443 ssl http2;
+       server_name your_domain.com;
+
+       ssl_certificate /etc/letsencrypt/live/your_domain.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/your_domain.com/privkey.pem;
+       include /etc/letsencrypt/options-ssl-nginx.conf;
+       ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+       client_max_body_size 500M;
+
+       location / {
+           proxy_pass http://localhost:9000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           
+           # WebSocket 支持
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+       }
+   }
+   ```
+
+4. **重启 Nginx**
+   ```bash
+   sudo systemctl restart nginx
+   ```
+
 ---
 
 ## 🔄 6. 后续维护
