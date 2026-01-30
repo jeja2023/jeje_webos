@@ -1124,8 +1124,19 @@ class UserListPage extends Component {
                     const currentCheckedModules = getSelectedModules();
                     const currentCheckedSpecific = getSelectedSpecific();
 
-                    overlay.querySelector('#specificBox').innerHTML = renderSpecific(selectedGroupIds, currentCheckedSpecific, isUpgrade);
+                    // 刷新模块列表和子功能列表
+                    const moduleBox = overlay.querySelector('#moduleAccessBox');
+                    const specificBox = overlay.querySelector('#specificBox');
+
+                    if (moduleBox) {
+                        moduleBox.innerHTML = renderModules(selectedGroupIds, currentCheckedModules, isUpgrade);
+                    }
+                    if (specificBox) {
+                        specificBox.innerHTML = renderSpecific(selectedGroupIds, currentCheckedSpecific, isUpgrade);
+                    }
                 };
+
+
 
                 // 绑定用户组切换
                 overlay.querySelector('#groupBox')?.addEventListener('change', refreshModules);

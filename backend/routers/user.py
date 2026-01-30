@@ -514,6 +514,12 @@ async def update_permissions(
     specific_perms = payload.get("specific_perms")
     direct_permissions = payload.get("direct_permissions")  # 直接设置权限（用于权限收紧）
 
+    # 强制将 role_ids 转换为整数列表，增强容错
+    try:
+        role_ids = [int(rid) for rid in role_ids if rid is not None]
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="用户组ID格式错误")
+
     # 仅允许选择一个用户组（或不选）
     if len(role_ids) > 1:
         raise HTTPException(status_code=400, detail="用户组只能选择一个")
@@ -524,7 +530,7 @@ async def update_permissions(
         res = await db.execute(select(Role).where(Role.id.in_(role_ids)))
         groups = res.scalars().all()
         if not groups:
-            raise HTTPException(status_code=404, detail="用户组不存在")
+            raise HTTPException(status_code=404, detail="选中的用户组不存在")
 
     group = groups[0] if groups else None
     group_name = group.name.lower() if group else None
