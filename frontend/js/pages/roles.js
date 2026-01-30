@@ -93,19 +93,28 @@ class RolesPage extends Component {
             `;
         } else {
             const hasWildcard = perms.includes('*');
-            featuresHtml = featureEntries.length ? featureEntries.map(([moduleId, list]) => `
-                <div style="margin-bottom:10px;">
-                    <div class="form-label" style="margin-bottom:4px;">${moduleId}</div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            featuresHtml = featureEntries.length ? featureEntries.map(([moduleId, list]) => {
+                const allChecked = list.every(f => hasWildcard || perms.includes(f.id));
+                return `
+                <div class="module-permission-section" style="margin-bottom:16px; border:1px solid var(--color-border); border-radius:8px; padding:12px; background:rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid var(--color-border-subtle); padding-bottom:8px;">
+                        <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${moduleId}</div>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; user-select:none;">
+                            <input type="checkbox" class="module-select-all" data-module="${moduleId}" ${allChecked ? 'checked' : ''}>
+                            <span style="color:var(--color-text-secondary);">一键全选</span>
+                        </label>
+                    </div>
+                    <div class="module-perms-group" data-module="${moduleId}" style="display:flex; gap:16px; flex-wrap:wrap;">
                         ${list.map(f => `
-                            <label style="display:flex;align-items:center;gap:6px;">
-                                <input type="checkbox" name="perms" value="${f.id}" ${hasWildcard || perms.includes(f.id) ? 'checked' : ''}>
-                                <span>${f.label}</span>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" name="perms" data-module-ref="${moduleId}" value="${f.id}" ${hasWildcard || perms.includes(f.id) ? 'checked' : ''}>
+                                <span style="font-size:14px;">${f.label}</span>
                             </label>
                         `).join('')}
                     </div>
                 </div>
-            `).join('') : '<div style="color:var(--color-text-secondary);">暂无可配置的模块功能，请先在应用中心加载模块</div>';
+            `;
+            }).join('') : '<div style="color:var(--color-text-secondary);">暂无可配置的模块功能，请先在应用中心加载模块</div>';
         }
 
         Modal.show({
@@ -132,6 +141,30 @@ class RolesPage extends Component {
                 ${isAdmin ? '' : '<button class="btn btn-primary" id="saveRole">保存</button>'}
             `
         });
+
+        const overlay = document.querySelector('.modal-overlay:last-child');
+        if (overlay) {
+            // 模块权限全选逻辑
+            overlay.addEventListener('change', (e) => {
+                const t = e.target;
+                if (t.classList.contains('module-select-all')) {
+                    const moduleId = t.dataset.module;
+                    const checked = t.checked;
+                    const checkboxes = overlay.querySelectorAll(`input[name="perms"][data-module-ref="${moduleId}"]`);
+                    checkboxes.forEach(cb => {
+                        cb.checked = checked;
+                    });
+                } else if (t.name === 'perms' && t.dataset.moduleRef) {
+                    const moduleId = t.dataset.moduleRef;
+                    const allInModule = overlay.querySelectorAll(`input[name="perms"][data-module-ref="${moduleId}"]`);
+                    const selectAll = overlay.querySelector(`.module-select-all[data-module="${moduleId}"]`);
+                    if (selectAll) {
+                        const allChecked = Array.from(allInModule).every(cb => cb.checked);
+                        selectAll.checked = allChecked;
+                    }
+                }
+            });
+        }
 
         document.getElementById('saveRole')?.addEventListener('click', async () => {
             const name = document.querySelector('#roleForm input[name="name"]').value.trim();
@@ -238,8 +271,8 @@ class RolesPage extends Component {
                         </div>
                     `}
                 </div>
-            </div>
-        `;
+            </div >
+            `;
     }
 
     afterMount() {
@@ -261,7 +294,6 @@ class RolesPage extends Component {
         if (this.container && !this.container._bindedRoles) {
             this.container._bindedRoles = true;
             // 用事件委托，避免重渲染后失效
-            this.delegate('click', '#createRole', () => this.openEditor());
             this.delegate('click', '[data-edit-role]', (e, t) => {
                 const id = parseInt(t.dataset.editRole);
                 const role = this.state.roles.find(r => r.id === id);
@@ -277,20 +309,20 @@ class RolesPage extends Component {
                     const res = await GroupApi.users(id);
                     const users = res.data || [];
                     const content = users.length ? `
-                        <div class="table-wrapper" style="max-height:320px;overflow:auto;">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>用户名</th>
-                                        <th>昵称</th>
-                                        <th>角色</th>
-                                        <th>状态</th>
-                                        <th>创建时间</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${users.map(u => `
+            < div class= "table-wrapper" style = "max-height:320px;overflow:auto;" >
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>昵称</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${users.map(u => `
                                         <tr>
                                             <td>${u.id}</td>
                                             <td>${Utils.escapeHtml(u.username)}</td>
@@ -300,14 +332,14 @@ class RolesPage extends Component {
                                             <td>${Utils.formatDate(u.created_at)}</td>
                                         </tr>
                                     `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    ` : '<div style="color:var(--color-text-secondary);">暂无用户</div>';
+                </tbody>
+            </table>
+                        </div >
+            ` : '<div style="color:var(--color-text-secondary);">暂无用户</div>';
                     Modal.show({
                         title: `用户组成员 - ID ${id}`,
                         content,
-                        footer: `<button class="btn btn-primary" data-close>关闭</button>`
+                        footer: `< button class= "btn btn-primary" data - close > 关闭</button > `
                     });
                 } catch (err) {
                     Toast.error(err.message || '加载用户失败');

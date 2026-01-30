@@ -1043,19 +1043,28 @@ class UserListPage extends Component {
                     if (moduleKeys.length === 0 && wildcard) {
                         return '<div style="color:var(--color-text-secondary);">用户组为全权限，可通过不选来收紧。</div>';
                     }
-                    return moduleKeys.map(mod => `
-                        <div style="margin-bottom:8px;">
-                            <div class="form-label" style="margin-bottom:4px;">${mod}</div>
+                    return moduleKeys.map(mod => {
+                        const allChecked = grouped[mod].every(item => presets.includes(item.id));
+                        return `
+                        <div class="user-perm-module-section" style="margin-bottom:12px; border:1px solid var(--color-border); border-radius:6px; padding:10px; background:rgba(0,0,0,0.01);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--color-border-subtle); padding-bottom:4px;">
+                                <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${mod}</div>
+                                <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; user-select:none;">
+                                    <input type="checkbox" class="user-module-specific-all" data-user-mod="${mod}" ${allChecked ? 'checked' : ''}>
+                                    <span style="color:var(--color-text-secondary);">全选</span>
+                                </label>
+                            </div>
                             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                                 ${grouped[mod].map(item => `
-                                    <label style="display:flex;align-items:center;gap:6px;">
-                                        <input type="checkbox" name="specific" value="${item.id}" ${presets.includes(item.id) ? 'checked' : ''}>
-                                        <span>${item.tail}</span>
+                                    <label style="display:flex;align-items:center;gap:6px; cursor:pointer;">
+                                        <input type="checkbox" name="specific" data-user-mod-ref="${mod}" value="${item.id}" ${presets.includes(item.id) ? 'checked' : ''}>
+                                        <span style="font-size:13px;">${item.tail}</span>
                                     </label>
                                 `).join('')}
                             </div>
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
                 };
 
                 const currentSpecific = (currentPerms || []).filter(p => p !== '*' && !p.endsWith('.*'));
@@ -1140,6 +1149,25 @@ class UserListPage extends Component {
 
                 // 绑定用户组切换
                 overlay.querySelector('#groupBox')?.addEventListener('change', refreshModules);
+
+                // 绑定模块权限全选逻辑
+                overlay.addEventListener('change', (e) => {
+                    const target = e.target;
+                    if (target.classList.contains('user-module-specific-all')) {
+                        const mod = target.dataset.userMod;
+                        const checked = target.checked;
+                        overlay.querySelectorAll(`input[name="specific"][data-user-mod-ref="${mod}"]`).forEach(cb => {
+                            cb.checked = checked;
+                        });
+                    } else if (target.name === 'specific' && target.dataset.userModRef) {
+                        const mod = target.dataset.userModRef;
+                        const allInMod = overlay.querySelectorAll(`input[name="specific"][data-user-mod-ref="${mod}"]`);
+                        const selectAll = overlay.querySelector(`.user-module-specific-all[data-user-mod="${mod}"]`);
+                        if (selectAll) {
+                            selectAll.checked = Array.from(allInMod).every(cb => cb.checked);
+                        }
+                    }
+                });
 
                 // 初次渲染
                 refreshModules();
