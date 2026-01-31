@@ -356,3 +356,6 @@ MIT License. Copyright (c) 2026 JeJe WebOS.
 如有问题或建议，请通过以下方式联系：
 - GitHub Issues: [提交问题](https://github.com/jeja2023/jeje_webos/issues)
 - Email: jejajeja2023@gmail.com
+- WeChat: 扫码关注
+
+<img src="./frontend/images/author_wechat.png" width="200" alt="WeChat QR Code" />
