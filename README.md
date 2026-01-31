@@ -341,7 +341,7 @@ python scripts/create_module.py todo_list 待办事项
 
 ## 📄 License
 
-MIT License. Copyright (c) 2025 JeJe WebOS.
+MIT License. Copyright (c) 2026 JeJe WebOS.
 
 ---
 
