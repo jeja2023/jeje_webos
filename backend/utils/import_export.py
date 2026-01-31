@@ -142,8 +142,9 @@ class DataExporter:
                         cell_length = len(str(cell.value)) if cell.value else 0
                         if cell_length > max_length:
                             max_length = cell_length
-                    except:
-                        pass
+                    except Exception as e:
+                        # 单元格计算失败时跳过，不影响整体导出
+                        logger.debug(f"计算单元格宽度失败（已跳过）: {e}")
             adjusted_width = min(max_length + 2, 50)  # 最大宽度 50
             ws.column_dimensions[column_letter].width = adjusted_width
         

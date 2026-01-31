@@ -6,13 +6,13 @@
 const Router = {
     // 路由表
     routes: {},
-    
+
     // 路由守卫
     beforeEach: null,
-    
+
     // 404处理
     notFound: null,
-    
+
     /**
      * 注册路由
      */
@@ -23,7 +23,7 @@ const Router = {
         };
         Config.log(`路由注册: ${path}`);
     },
-    
+
     /**
      * 批量注册路由
      */
@@ -36,7 +36,7 @@ const Router = {
             }
         });
     },
-    
+
     normalizePath(rawPath) {
         if (!rawPath) return '/';
         let p = rawPath.split('#')[0]; // 去除可能的 hash
@@ -66,7 +66,7 @@ const Router = {
         const query = qs ? Object.fromEntries(new URLSearchParams(qs)) : {};
         return { path, query };
     },
-    
+
     /**
      * 跳转路由
      */
@@ -77,7 +77,7 @@ const Router = {
         window.history.pushState({}, '', url);
         this.handleRoute();
     },
-    
+
     /**
      * 替换路由
      */
@@ -88,14 +88,14 @@ const Router = {
         window.history.replaceState({}, '', url);
         this.handleRoute();
     },
-    
+
     /**
      * 返回
      */
     back() {
         window.history.back();
     },
-    
+
     /**
      * 解析路由
      */
@@ -105,7 +105,7 @@ const Router = {
         if (this.routes[currentPath]) {
             return { route: this.routes[currentPath], params: {} };
         }
-        
+
         // 动态路由匹配
         for (const [path, route] of Object.entries(this.routes)) {
             const paramNames = [];
@@ -113,10 +113,10 @@ const Router = {
                 paramNames.push(name);
                 return '([^/]+)';
             });
-            
+
             const regex = new RegExp(`^${regexPath}$`);
             const match = currentPath.match(regex);
-            
+
             if (match) {
                 const params = {};
                 paramNames.forEach((name, i) => {
@@ -125,19 +125,19 @@ const Router = {
                 return { route, params };
             }
         }
-        
+
         return null;
     },
-    
+
     /**
      * 处理路由变化
      */
     async handleRoute() {
         const { path, query } = this.current();
         Config.log(`路由变化: ${path}`);
-        
+
         Store.set('currentRoute', path);
-        
+
         // 路由守卫
         if (this.beforeEach) {
             const next = await this.beforeEach(path, query);
@@ -147,19 +147,24 @@ const Router = {
                 return;
             }
         }
-        
+
         // 解析路由
         const resolved = this.resolve(path);
-        
+
         if (resolved) {
             const { route, params } = resolved;
-            
+
             // 权限检查
             if (route.auth && !Store.get('isLoggedIn')) {
                 this.replace('/login');
                 return;
             }
-            
+
+            // 按需加载模块资源（在执行路由处理函数前）
+            if (typeof ResourceLoader !== 'undefined') {
+                await ResourceLoader.loadModuleByPath(path);
+            }
+
             // 执行处理函数
             await route.handler({ path, query, params });
         } else if (this.notFound) {
@@ -168,7 +173,7 @@ const Router = {
             Config.error(`路由未找到: ${path}`);
         }
     },
-    
+
     /**
      * 初始化
      */
@@ -192,10 +197,10 @@ const Router = {
 
         // 监听浏览器前进/后退
         window.addEventListener('popstate', () => this.handleRoute());
-        
+
         // 立即处理当前路由（不等待 load 事件）
         this.handleRoute();
-        
+
         Config.log('路由初始化完成（History 模式）');
     }
 };

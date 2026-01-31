@@ -262,6 +262,16 @@ class NotificationsPage extends Component {
         return classes[type] || '';
     }
 
+    getTypeLabel(type) {
+        const labels = {
+            'info': '通知',
+            'success': '成功',
+            'warning': '警告',
+            'error': '错误'
+        };
+        return labels[type] || type;
+    }
+
     changePage(page) {
         this.state.page = page;
         this.loadData();
@@ -323,7 +333,7 @@ class NotificationsPage extends Component {
                                     <div class="notification-content">
                                         <div class="notification-header">
                                             <span class="notification-title">${Utils.escapeHtml(n.title)}</span>
-                                            <span class="tag ${this.getTypeTag(n.type)}">${n.type}</span>
+                                            <span class="tag ${this.getTypeTag(n.type)}">${this.getTypeLabel(n.type)}</span>
                                         </div>
                                         <p class="notification-message">${Utils.escapeHtml(n.content || '')}</p>
                                         <div class="notification-meta">

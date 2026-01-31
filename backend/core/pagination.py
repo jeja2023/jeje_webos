@@ -8,7 +8,7 @@ from typing import TypeVar, Generic, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from pydantic import BaseModel, ConfigDict, Field
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Query
 
@@ -295,3 +295,70 @@ def create_page_response(
         "message": message,
         "data": result.to_dict()
     }
+
+
+async def paginate_model(
+    db: AsyncSession,
+    model,
+    conditions: List[Any] = None,
+    order_by = None,
+    page: int = 1,
+    page_size: int = 20,
+    transformer: Optional[Callable] = None
+) -> tuple[List[Any], int]:
+    """
+    通用模型分页查询助手
+    
+    封装了各模块中重复的分页逻辑，简化 Service 层代码。
+    
+    Args:
+        db: 数据库会话
+        model: SQLAlchemy 模型类
+        conditions: 查询条件列表（使用 and_ 连接）
+        order_by: 排序字段（如 Model.created_at.desc()）
+        page: 页码（从1开始）
+        page_size: 每页数量
+        transformer: 可选的数据转换函数
+    
+    Returns:
+        (items, total): 数据列表和总记录数的元组
+    
+    Usage:
+        # 在 Service 中使用
+        conditions = [User.is_active == True]
+        if keyword:
+            conditions.append(User.username.ilike(f"%{keyword}%"))
+        
+        items, total = await paginate_model(
+            db, User, 
+            conditions=conditions,
+            order_by=User.created_at.desc(),
+            page=page, 
+            page_size=page_size
+        )
+    """
+    # 构建计数查询
+    count_query = select(func.count(model.id))
+    if conditions:
+        count_query = count_query.where(and_(*conditions))
+    
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+    
+    # 构建数据查询
+    query = select(model)
+    if conditions:
+        query = query.where(and_(*conditions))
+    if order_by is not None:
+        query = query.order_by(order_by)
+    
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    
+    result = await db.execute(query)
+    items = list(result.scalars().all())
+    
+    # 应用转换器
+    if transformer:
+        items = [transformer(item) for item in items]
+    
+    return items, total

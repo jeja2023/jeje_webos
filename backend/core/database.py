@@ -15,12 +15,20 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # 创建异步引擎（初始化会话时区）
+# 连接池配置说明：
+# - pool_size: 连接池保持的常驻连接数（根据并发量调整）
+# - max_overflow: 超出 pool_size 后允许额外创建的连接数
+# - pool_recycle: 连接最大存活时间（秒），防止 MySQL 主动断开长连接
+# - pool_timeout: 获取连接的最大等待时间（秒），超时抛出异常
+# - pool_pre_ping: 使用前检测连接有效性，自动剔除失效连接
 engine = create_async_engine(
     settings.db_url,
     echo=False,  # 禁用 SQL 详细输出，避免日志过多
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    pool_recycle=3600,  # 1小时后回收连接，防止 MySQL wait_timeout 导致连接失效
+    pool_timeout=30,    # 获取连接最长等待30秒
     connect_args={
         "init_command": f"SET time_zone = '{settings.db_time_zone}'"
     }

@@ -39,7 +39,8 @@ class SystemMonitor:
                     disk = psutil.disk_usage('C:')
                 else:
                     disk = psutil.disk_usage('/')
-            except Exception:
+            except Exception as e:
+                logger.debug(f"获取磁盘信息失败（使用默认值）: {e}")
                 disk = None
             
             # 系统启动时间
@@ -105,7 +106,8 @@ class SystemMonitor:
                 open_files = len(process.open_files())
             except (psutil.AccessDenied, psutil.NoSuchProcess):
                 open_files = 0
-            except Exception:
+            except Exception as e:
+                logger.debug(f"获取打开文件数失败（使用默认值）: {e}")
                 open_files = 0
             
             return {

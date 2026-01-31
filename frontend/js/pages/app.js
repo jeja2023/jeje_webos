@@ -11,6 +11,11 @@ const App = {
     async init() {
         Config.log('应用初始化...');
 
+        // 初始化资源加载器
+        if (typeof ResourceLoader !== 'undefined') {
+            ResourceLoader.init();
+        }
+
         // 获取系统初始化信息
         try {
             const token = localStorage.getItem(Config.storageKeys.token);
@@ -58,6 +63,11 @@ const App = {
 
         // 动态加载已安装模块的资源
         await this.loadModuleAssets();
+
+        // 预加载常用模块资源（浏览器空闲时）
+        if (typeof ResourceLoader !== 'undefined') {
+            ResourceLoader.preloadModules(['/filemanager', '/notes', '/ai']);
+        }
     },
 
     /**

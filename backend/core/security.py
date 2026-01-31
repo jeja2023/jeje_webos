@@ -16,9 +16,29 @@ from .config import get_settings
 
 settings = get_settings()
 
-# 权限缓存：容量1000，过期时间60秒
-# 用于在 get_current_user 中缓存用户的角色和权限信息，减少数据库查询
-permission_cache = TTLCache(maxsize=1000, ttl=60)
+# 权限缓存配置
+# - maxsize: 缓存容量上限（用户数量）
+# - ttl: 缓存过期时间（秒），在此时间内不会重新查询数据库
+# 注意：修改用户权限后应调用 invalidate_permission_cache() 立即生效
+permission_cache = TTLCache(maxsize=2000, ttl=120)
+
+
+def invalidate_permission_cache(user_id: int = None):
+    """
+    使权限缓存失效
+    
+    Args:
+        user_id: 指定用户 ID 则仅清除该用户缓存，否则清除全部缓存
+        
+    使用场景：
+        - 管理员修改用户权限后调用
+        - 用户角色变更后调用
+        - 用户组权限变更时，对该组所有用户调用
+    """
+    if user_id is not None:
+        permission_cache.pop(user_id, None)
+    else:
+        permission_cache.clear()
 
 # Bearer令牌认证，设置为 auto_error=False 以支持从 Query 参数中读取 token
 security = HTTPBearer(auto_error=False)

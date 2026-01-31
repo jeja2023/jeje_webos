@@ -329,7 +329,8 @@ class StorageManager:
             resolved_path = path.resolve()
             # 确保路径在 upload_dir 内
             return str(resolved_path).startswith(str(self.upload_dir.resolve()))
-        except Exception:
+        except Exception as e:
+            logger.debug(f"路径安全检查失败: {path}, 原因: {e}")
             return False
     
     def get_file_path(self, relative_path: str) -> Optional[Path]:

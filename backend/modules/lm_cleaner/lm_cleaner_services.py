@@ -111,8 +111,8 @@ class LmCleanerService:
                 try:
                     if os.path.exists(f):
                         os.remove(f)
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"清理临时文件失败（可忽略）: {f}, 原因: {e}")
 
     @staticmethod
     async def _clean_image(input_path: str, output_path: str):
@@ -271,18 +271,22 @@ class LmCleanerService:
     async def delete(db: AsyncSession, item_id: int, user_id: Optional[int] = None) -> bool:
         item = await LmCleanerService.get_by_id(db, item_id, user_id)
         if not item: return False
-        if item.content:
-            path = Path(item.content)
+        # 清理产出文件
         if item.content:
             path = Path(item.content)
             if path.exists():
-                try: os.remove(path)
-                except: pass
+                try:
+                    os.remove(path)
+                except Exception as e:
+                    logger.debug(f"删除产出文件失败（可忽略）: {path}, 原因: {e}")
+        # 清理源文件
         if item.source_file:
             source_path = Path(item.source_file)
             if source_path.exists():
-                try: os.remove(source_path)
-                except: pass
+                try:
+                    os.remove(source_path)
+                except Exception as e:
+                    logger.debug(f"删除源文件失败（可忽略）: {source_path}, 原因: {e}")
         await db.delete(item)
         await db.flush()
         return True
