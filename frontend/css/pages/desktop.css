@@ -575,6 +575,3 @@ body {
         transform: translateY(0);
     }
 }
-
-/* ===== 移动端适配 (Responsive) ===== */
-/* 移至 mobile.css 统一管理，此处不再保留移动端媒体查询以减少冗余 */

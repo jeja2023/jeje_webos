@@ -376,3 +376,42 @@ def require_manager():
         return user
     return manager_checker
 
+
+# ==================== 数据加密工具 ====================
+import base64
+import hashlib
+from cryptography.fernet import Fernet
+
+def _get_fernet() -> Fernet:
+    """
+    根据 JWT_SECRET 生成 Fernet 实例
+    确保相同的 JWT_SECRET 生成相同的加密密钥
+    """
+    # 1. 对 JWT_SECRET 进行哈希，得到 32 字节的摘要
+    secret_bytes = settings.jwt_secret.encode('utf-8')
+    key_hash = hashlib.sha256(secret_bytes).digest()
+    
+    # 2. 将哈希值进行 URL-safe Base64 编码，符合 Fernet 密钥要求
+    fernet_key = base64.urlsafe_b64encode(key_hash)
+    
+    return Fernet(fernet_key)
+
+def encrypt_data(data: str) -> str:
+    """加密字符串数据"""
+    if not data:
+        return ""
+    f = _get_fernet()
+    return f.encrypt(data.encode('utf-8')).decode('utf-8')
+
+def decrypt_data(encrypted_data: str) -> Optional[str]:
+    """解密字符串数据"""
+    if not encrypted_data:
+        return None
+    try:
+        f = _get_fernet()
+        return f.decrypt(encrypted_data.encode('utf-8')).decode('utf-8')
+    except Exception:
+        # 解密失败（如密钥变更或数据损坏）返回 None
+        return None
+
+

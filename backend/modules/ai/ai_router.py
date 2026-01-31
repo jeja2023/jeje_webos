@@ -11,12 +11,14 @@ from fastapi.responses import StreamingResponse
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel
 
-from core.security import get_current_user, TokenData
+from core.security import get_current_user, TokenData, encrypt_data, decrypt_data
 from core.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from .ai_service import AIService
 from .ai_session_service import AISessionService
 from schemas.response import success, error
+from models.system_secrets import SystemSecret
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,10 @@ class ChatRequest(BaseModel):
     session_id: Optional[int] = None # 会话ID，如果提供则保存消息到此会话
 
 @router.get("/status")
-async def get_status():
+async def get_status(
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """检查模型状态与可用模型"""
     try:
         models_dir = AIService.get_model_path("")
@@ -42,13 +47,80 @@ async def get_status():
         if os.path.exists(models_dir):
             available_models = [f for f in os.listdir(models_dir) if f.endswith(".gguf")]
         
+        # 检查是否已配置在线 API Key
+        has_online_config = False
+        try:
+            result = await db.execute(
+                select(SystemSecret).where(
+                    SystemSecret.user_id == user.user_id,
+                    SystemSecret.key_name == "ai_api_key"
+                )
+            )
+            if result.scalar_one_or_none():
+                has_online_config = True
+        except Exception:
+            pass # 忽略数据库查询错误，视为未配置
+
         return success(data={
             "status": "ready",
             "available_models": available_models,
-            "engine": "llama-cpp-python (Offline) / Online Hybrid"
+            "engine": "llama-cpp-python (Offline) / Online Hybrid",
+            "has_online_config": has_online_config
         })
     except Exception as e:
         return error(message=str(e))
+
+class AIConfigSetRequest(BaseModel):
+    api_key: str
+    base_url: Optional[str] = "https://api.deepseek.com/v1"
+    model: Optional[str] = "deepseek-chat"
+
+@router.post("/config")
+async def save_ai_config(
+    request: AIConfigSetRequest,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """保存 AI 在线配置（加密存储）"""
+    try:
+        if not request.api_key:
+            return error(message="API Key 不能为空")
+            
+        # 查询现有配置
+        result = await db.execute(
+            select(SystemSecret).where(
+                SystemSecret.user_id == user.user_id,
+                SystemSecret.key_name == "ai_api_key"
+            )
+        )
+        existing_secret = result.scalar_one_or_none()
+        
+        encrypted_key = encrypt_data(request.api_key)
+        additional_info = {
+            "base_url": request.base_url,
+            "model": request.model
+        }
+        
+        if existing_secret:
+            existing_secret.encrypted_value = encrypted_key
+            existing_secret.additional_info = additional_info
+            existing_secret.updated_at = datetime.now()
+        else:
+            new_secret = SystemSecret(
+                user_id=user.user_id,
+                category="ai",
+                key_name="ai_api_key",
+                encrypted_value=encrypted_key,
+                additional_info=additional_info
+            )
+            db.add(new_secret)
+            
+        await db.commit()
+        return success(message="AI 配置已安全保存")
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"保存配置失败: {e}")
+        return error(message="保存配置失败")
 
 @router.post("/chat")
 async def chat(
@@ -61,6 +133,30 @@ async def chat(
     支持本地和在线混合模式
     自动保存消息到数据库
     """
+    from datetime import datetime
+    
+    # 提前获取 API 配置（如果是在线模式且没有传入临时配置）
+    db_api_config = None
+    if request.provider == "online" and not request.api_config:
+        try:
+            result = await db.execute(
+                select(SystemSecret).where(
+                    SystemSecret.user_id == user.user_id,
+                    SystemSecret.key_name == "ai_api_key"
+                )
+            )
+            secret = result.scalar_one_or_none()
+            if secret:
+                api_key = decrypt_data(secret.encrypted_value)
+                if api_key:
+                    db_api_config = {
+                        "apiKey": api_key,
+                        "baseUrl": secret.additional_info.get("base_url", "https://api.deepseek.com/v1"),
+                        "model": secret.additional_info.get("model", "deepseek-chat")
+                    }
+        except Exception as e:
+            logger.warning(f"获取 AI 配置失败: {e}")
+
     # 保存用户消息到数据库
     session_id = request.session_id
     user_message_id = None
@@ -99,9 +195,9 @@ async def chat(
                     provider=request.provider,
                     role_preset=request.role_preset,
                     model_name=request.model_name,
-                    api_config=request.api_config
+                    api_config=db_api_config or request.api_config # 优先使用数据库配置
                 )
-    
+
                 if asyncio.iscoroutine(response_iter):
                     response_iter = await response_iter
             except Exception as service_err:

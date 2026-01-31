@@ -53,8 +53,9 @@ class AIPage extends Component {
             tokenStats: { prompt: 0, completion: 0, total: 0 }, // Token统计
             generationSpeed: 0, // 生成速度 (tokens/s)
             sessionSearchQuery: '', // 会话搜索关键词
+            hasOnlineConfig: false, // 是否已配置在线 API
             apiConfig: {
-                apiKey: '',
+                apiKey: '', // 仅用于临时输入显示，不持久化保存到 State
                 baseUrl: 'https://api.deepseek.com/v1',
                 model: 'deepseek-chat'
             }
@@ -230,19 +231,18 @@ class AIPage extends Component {
                 this.loadSessions() // 加载会话
             ]);
 
-            // 从 LocalStorage 加载 API 配置（解密API密钥）
-            const savedConfig = localStorage.getItem('jeje_ai_config');
+            // 从 LocalStorage 加载部分非敏感配置（BaseURL/Model）
+            const savedConfig = localStorage.getItem('jeje_ai_config_public');
             let apiConfig = this.state.apiConfig;
             if (savedConfig) {
                 try {
                     const parsed = JSON.parse(savedConfig);
-                    // 解密API密钥
-                    if (parsed.apiKey) {
-                        parsed.apiKey = AIPage.decryptKey(parsed.apiKey);
-                    }
-                    apiConfig = { ...apiConfig, ...parsed };
+                    apiConfig = { ...apiConfig, ...parsed, apiKey: '' }; // 确保不读取旧 Key
                 } catch (e) { Config.error('解析配置失败', e); }
             }
+
+            // 清理旧的敏感配置
+            localStorage.removeItem('jeje_ai_config');
 
             // 从 LocalStorage 加载选中的模型
             const savedModel = localStorage.getItem('jeje_ai_selected_model');
@@ -256,9 +256,10 @@ class AIPage extends Component {
 
             this.setState({
                 knowledgeBases: kbRes.data || [],
-                apiConfig: apiConfig,
                 availableModels: availableModels,
-                selectedModel: selectedModel
+                selectedModel: selectedModel,
+                apiConfig: apiConfig,
+                hasOnlineConfig: aiStatusRes.data?.has_online_config || false
             });
         } catch (e) {
             Config.error('加载数据失败', e);
@@ -331,8 +332,8 @@ class AIPage extends Component {
                         <div class="ai-title">
 
                             <h3>AI助手 <small style="font-size: 10px; opacity: 0.5;">v3.0</small></h3>
-                            <span class="ai-badge hide-mobile">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
-                            ${selectedKb ? '<span class="ai-badge secondary hide-mobile">📚 已挂载知识库</span>' : ''}
+                            <span class="ai-badge">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
+                            ${selectedKb ? '<span class="ai-badge secondary">📚 已挂载知识库</span>' : ''}
                         </div>
                         <div class="ai-options">
                             <!-- 角色预设选择器 -->
@@ -370,7 +371,9 @@ class AIPage extends Component {
                                 <div class="welcome-icon">🧠</div>
                                 <h2>你好，我是AI助手</h2>
                                 <p>当前处于 <b>${provider === 'local' ? '本地离线模式' : '在线 API 模式'}</b></p>
-                                <p>我可以帮你总结文档、分析数据或进行通用对话。请选择一个模式开始吧！</p>
+                                ${provider === 'online' && !this.state.hasOnlineConfig ?
+                    '<p class="text-warning">⚠️ 您尚未配置在线 API Key，请点击右上角设置图标进行配置。</p>' :
+                    '<p>我可以帮你总结文档、分析数据或进行通用对话。请选择一个模式开始吧！</p>'}
                                 <div class="welcome-hints">
                                     <div class="hint-card" data-text="什么是 RAG 技术？">"什么是 RAG 技术？"</div>
                                     <div class="hint-card" data-text="介绍一下 JeJe WebOS">"介绍一下 JeJe WebOS"</div>
@@ -380,11 +383,11 @@ class AIPage extends Component {
                         ` : `
                             <div class="message-list">
                                 ${activeSession.messages.map((msg, idx) => {
-                // 跳过正在生成中的空 AI 消息，由下面的点点点占位符代替显示
-                if (isGenerating && msg.role === 'assistant' && !msg.content && idx === activeSession.messages.length - 1) {
-                    return '';
-                }
-                return `
+                        // 跳过正在生成中的空 AI 消息，由下面的点点点占位符代替显示
+                        if (isGenerating && msg.role === 'assistant' && !msg.content && idx === activeSession.messages.length - 1) {
+                            return '';
+                        }
+                        return `
                                     <div class="message-wrapper ${msg.role === 'user' ? 'user' : msg.role === 'system' ? 'system' : 'ai'}" data-message-idx="${idx}">
                                         <div class="avatar">${msg.role === 'user' ? '👤' : msg.role === 'system' ? '⚠️' : '🧠'}</div>
                                         <div class="message-content-wrapper">
@@ -613,7 +616,7 @@ class AIPage extends Component {
      * 显示 API 设置弹窗（使用全局 Modal 组件）
      */
     showConfigModal() {
-        const { apiConfig } = this.state;
+        const { apiConfig, hasOnlineConfig } = this.state;
 
         const modal = Modal.show({
             title: '⚙️ API 设置 (在线模式)',
@@ -622,16 +625,17 @@ class AIPage extends Component {
                 <div class="form-group">
                     <label class="form-label">API Key</label>
                     <input type="password" class="form-input" id="cfgApiKey" 
-                           value="${Utils.escapeHtml(apiConfig.apiKey || '')}" 
-                           placeholder="sk-...">
-                    <small class="form-hint">DeepSeek / OpenAI 兼容的 API Key</small>
+                           value="" 
+                           placeholder="${hasOnlineConfig ? '已配置 (留空保持不变)' : 'sk-...'}"
+                           autocomplete="new-password">
+                    <small class="form-hint">密钥将加密存储在服务器，前端不保留。支持 DeepSeek / OpenAI。</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Base URL</label>
                     <input type="text" class="form-input" id="cfgBaseUrl" 
                            value="${Utils.escapeHtml(apiConfig.baseUrl || '')}" 
                            placeholder="https://api.deepseek.com/v1">
-                    <small class="form-hint">API 基础地址，支持 OpenAI 兼容接口</small>
+                    <small class="form-hint">API 基础地址</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Model Name</label>
@@ -641,32 +645,63 @@ class AIPage extends Component {
                     <small class="form-hint">模型名称，如 deepseek-chat, gpt-4o 等</small>
                 </div>
             `,
-            confirmText: '保存配置',
+            confirmText: '保存到服务器',
             cancelText: '取消',
-            onConfirm: () => {
+            onConfirm: async () => {
                 const overlay = modal.overlay;
                 const apiKey = overlay.querySelector('#cfgApiKey').value.trim();
                 const baseUrl = overlay.querySelector('#cfgBaseUrl').value.trim();
                 const model = overlay.querySelector('#cfgModel').value.trim();
 
-                if (!apiKey) {
+                if (!hasOnlineConfig && !apiKey) {
                     Toast.error('请输入 API Key');
-                    return false; // 阻止关闭
+                    return false;
                 }
 
-                // 保存时加密API密钥
-                const configToSave = {
-                    apiKey: AIPage.encryptKey(apiKey),
-                    baseUrl,
-                    model
-                };
-                localStorage.setItem('jeje_ai_config', JSON.stringify(configToSave));
+                try {
+                    // 仅当用户输入了新 Key 时才发送 Key，否则只更新其他配置（需后端支持，暂时假设都发送）
+                    // 实际上如果用户没填 Key 但已配置，我们如何告诉后端？
+                    // 简单起见，如果已配置且未填，则不允许为空，或者我们假设用户想修改其他配置
+                    // 这里我们要求如果是首次配置必须填。如果已配置，填了就更新，没填就报错（简化逻辑）
+                    if (!apiKey && !hasOnlineConfig) {
+                        Toast.error('请填写 API Key');
+                        return false;
+                    }
 
-                // 状态中保存解密后的密钥（用于实际请求）
-                const newConfig = { apiKey, baseUrl, model };
-                this.setState({ apiConfig: newConfig, provider: 'online' });
-                Toast.success('API 配置已保存（密钥已加密存储）');
-                return true; // 允许关闭
+                    // 如果已配置且留空，则发送特定标识或不发送？
+                    // 为了简化，我们要求如果要修改配置，最好重新输入 Key。
+                    // 或者，我们可以只在 apiKey 有值时才发送
+
+                    if (apiKey) {
+                        await Api.post('/ai/config', {
+                            api_key: apiKey,
+                            base_url: baseUrl,
+                            model: model
+                        });
+                        Toast.success('配置已安全保存到服务器');
+                        this.setState({ hasOnlineConfig: true, provider: 'online' });
+                    } else if (hasOnlineConfig) {
+                        // 仅更新非敏感信息（暂不实现，提示用户输入Key）
+                        Toast.info('如需修改 BaseURL 或模型，请重新输入 API Key 以验证身份');
+                        return false;
+                    }
+
+                    // 保存非敏感配置到本地以便回显
+                    localStorage.setItem('jeje_ai_config_public', JSON.stringify({
+                        baseUrl,
+                        model
+                    }));
+
+                    // 更新本地状态用于回显
+                    this.setState({
+                        apiConfig: { ...this.state.apiConfig, baseUrl, model }
+                    });
+
+                    return true;
+                } catch (e) {
+                    Toast.error('保存失败: ' + e.message);
+                    return false;
+                }
             }
         });
     }
@@ -941,7 +976,7 @@ class AIPage extends Component {
         if (isGenerating || !currentInput) return;
 
         // 如果是在线模式但没有配置
-        if (provider === 'online' && !apiConfig.apiKey) {
+        if (provider === 'online' && !this.state.hasOnlineConfig) {
             Toast.error('请先配置 API Key');
             this.showConfigModal();
             return;
@@ -1051,8 +1086,9 @@ class AIPage extends Component {
                     role_preset: this.state.rolePreset,
                     // 传递本地模型名称
                     model_name: provider === 'local' ? this.state.selectedModel : null,
-                    // 传递临时 API 配置
-                    api_config: provider === 'online' ? apiConfig : null,
+                    // 不再传递 api_config (apiKey)，后端会自动从数据库读取
+                    // 仅当 api_config 为空时，后端才会查库
+                    api_config: null,
                     // 传递会话ID，用于保存消息到数据库
                     session_id: typeof realSessionId === 'number' ? realSessionId : null
                 })
