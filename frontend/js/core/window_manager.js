@@ -383,7 +383,9 @@ const WindowManager = {
             // 忽略按钮
             if (e.target.closest('.window-btn')) return;
             // 如果已最大化则忽略
-            if (this.windows.get(id).maximized) return;
+            // 如果已最大化或窗口不存在则忽略
+            const win = this.windows.get(id);
+            if (!win || win.maximized) return;
 
             e.preventDefault();
             this.startDragging(e, winEl);
