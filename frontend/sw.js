@@ -2,12 +2,76 @@ const CACHE_NAME = 'jeje-webos-cache';
 
 // 需要预缓存的核心资源
 const PRECACHE_ASSETS = [
+    // ========== 入口页面 ==========
     '/',
+    '/manifest.json',
+    '/favicon.ico',
+
+    // ========== 核心图片资源 ==========
+    '/static/images/logo.png',
+    '/static/images/logo.ico',
+    '/static/images/default-avatar.png',
+
+    // ========== 核心 CSS ==========
     '/static/css/core/variables.css',
     '/static/css/core/reset.css',
     '/static/css/core/utils.css',
+    '/static/css/core/button.css',
+    '/static/css/core/card.css',
+    '/static/css/core/form.css',
+    '/static/css/core/search.css',
+    '/static/css/core/table.css',
+    '/static/css/core/tag.css',
+    '/static/css/core/pagination.css',
+    '/static/css/core/lazy.css',
+
+    // ========== 组件 CSS ==========
+    '/static/css/components/modal.css',
+    '/static/css/components/toast.css',
+    '/static/css/components/sidebar.css',
+    '/static/css/components/header.css',
+    '/static/css/components/spotlight.css',
+    '/static/css/components/dock.css',
+    '/static/css/components/topbar.css',
+    '/static/css/components/start_menu.css',
+
+    // ========== 页面 CSS ==========
+    '/static/css/pages/layout.css',
+    '/static/css/pages/desktop.css',
+    '/static/css/pages/login.css',
+
+    // ========== 核心 JS ==========
     '/static/js/core/config.js',
-    '/static/js/core/api.js'
+    '/static/js/core/api.js',
+    '/static/js/core/store.js',
+    '/static/js/core/router.js',
+    '/static/js/core/component.js',
+    '/static/js/core/loader.js',
+    '/static/js/core/window_manager.js',
+    '/static/js/core/websocket.js',
+    '/static/js/core/notification.js',
+
+    // ========== 核心工具 JS ==========
+    '/static/js/core/lazy_loader.js',
+    '/static/js/core/shortcut_manager.js',
+
+    // ========== 组件 JS ==========
+    '/static/js/components/modal.js',
+    '/static/js/components/toast.js',
+    '/static/js/components/dock.js',
+    '/static/js/components/topbar.js',
+    '/static/js/components/start_menu.js',
+    '/static/js/components/spotlight.js',
+
+    // ========== 页面 JS ==========
+    '/static/js/pages/login.js',
+    '/static/js/pages/desktop.js',
+    '/static/js/pages/app.js',
+
+    // ========== 第三方库 ==========
+    '/static/libs/remixicon/remixicon.css',
+    '/static/libs/remixicon/remixicon.woff2?t=1708865856766',
+    '/static/libs/remixicon/remixicon.woff?t=1708865856766'
 ];
 
 // 安装阶段：预缓存核心资源

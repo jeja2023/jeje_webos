@@ -9,6 +9,25 @@
     <title>JeJe WebOS</title>
     <link rel="manifest" href="/manifest.json">
 
+    <!-- ========== DNS 预获取（提前解析第三方域名） ========== -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link rel="preconnect" href="//cdn.jsdelivr.net" crossorigin>
+
+    <!-- ========== 关键资源预加载 ========== -->
+    <!-- 图标字体预加载（首屏必需） -->
+    <link rel="preload" href="/static/libs/remixicon/remixicon.woff2?t=1708865856766" as="font" type="font/woff2"
+        crossorigin>
+    <!-- 核心 CSS 预加载 -->
+    <link rel="preload" href="/static/css/core/variables.css" as="style">
+    <link rel="preload" href="/static/css/core/reset.css" as="style">
+    <!-- 核心 JS 预加载 -->
+    <link rel="preload" href="/static/js/core/config.js" as="script">
+    <link rel="preload" href="/static/js/core/api.js" as="script">
+    <!-- Logo 图片预加载 -->
+    <link rel="preload" href="/static/images/logo.png" as="image" type="image/png">
+
     <!-- ========== 第三方库 ========== -->
     <link rel="stylesheet" href="/static/libs/remixicon/remixicon.css">
     <link rel="stylesheet" href="/static/libs/leaflet/leaflet.css">
@@ -26,6 +45,7 @@
     <link rel="stylesheet" href="/static/css/core/table.css">
     <link rel="stylesheet" href="/static/css/core/tag.css">
     <link rel="stylesheet" href="/static/css/core/pagination.css">
+    <link rel="stylesheet" href="/static/css/core/lazy.css">
 
     <!-- ========== 组件样式（首屏必需） ========== -->
     <link rel="stylesheet" href="/static/css/components/modal.css">
@@ -78,15 +98,20 @@
     <script src="/static/js/core/websocket.js"></script>
     <script src="/static/js/core/notification.js"></script>
 
-    <!-- ========== 工具类脚本（defer 延迟加载） ========== -->
-    <script src="/static/js/utils/shortcut_manager.js" defer></script>
-    <script src="/static/js/utils/module_help/module_help.js" defer></script>
-    <script src="/static/js/utils/module_help/module_help_contents.js" defer></script>
-    <script src="/static/js/utils/chart/chart_style_config.js" defer></script>
-    <script src="/static/js/utils/chart/chart_helper.js" defer></script>
-    <script src="/static/js/utils/chart/chart_factory.js" defer></script>
-    <script src="/static/js/utils/chart/chart_render_cache.js" defer></script>
-    <script src="/static/js/utils/chart/chart_config_ui.js" defer></script>
+    <!-- ========== 核心工具脚本（defer 延迟加载） ========== -->
+    <script src="/static/js/core/lazy_loader.js" defer></script>
+    <script src="/static/js/core/shortcut_manager.js" defer></script>
+
+    <!-- ========== 组件脚本 - 帮助系统（defer 延迟加载） ========== -->
+    <script src="/static/js/components/module_help/module_help.js" defer></script>
+    <script src="/static/js/components/module_help/module_help_contents.js" defer></script>
+
+    <!-- ========== 组件脚本 - 图表工具（defer 延迟加载） ========== -->
+    <script src="/static/js/components/chart/chart_style_config.js" defer></script>
+    <script src="/static/js/components/chart/chart_helper.js" defer></script>
+    <script src="/static/js/components/chart/chart_factory.js" defer></script>
+    <script src="/static/js/components/chart/chart_render_cache.js" defer></script>
+    <script src="/static/js/components/chart/chart_config_ui.js" defer></script>
 
     <!-- ========== 组件脚本（defer 延迟加载） ========== -->
     <script src="/static/js/components/modal.js" defer></script>
