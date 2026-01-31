@@ -48,20 +48,33 @@
 .exam-nav .btn-help {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border: none;
-    background: transparent;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
     border-radius: 8px;
     color: var(--color-text-secondary);
     cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.exam-nav .btn-help i {
+    font-size: 16px;
+    transition: transform 0.3s ease;
 }
 
 .exam-nav .btn-help:hover {
-    background: var(--color-bg-tertiary);
-    color: var(--color-primary);
+    background: var(--color-bg-hover);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.exam-nav .btn-help:hover i {
+    transform: scale(1.1);
 }
 
 /* 内容区域 */
@@ -73,62 +86,85 @@
 
 /* 首页 Hero 仪表盘 */
 .home-hero {
-    background: linear-gradient(135deg, var(--color-primary), #6366f1);
-    background-size: 200% 200%;
-    animation: gradientBG 15s ease infinite;
-    border-radius: 20px;
-    padding: 40px;
+    background: linear-gradient(135deg, #1a1c2e 0%, #161b22 100%);
+    border-radius: 24px;
+    padding: 48px;
     margin-bottom: 32px;
     color: white;
-    box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.2);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-@keyframes gradientBG {
-    0% {
-        background-position: 0% 50%;
-    }
+/* 装饰性柔光 */
+.home-hero::before {
+    content: '';
+    position: absolute;
+    top: -150px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.15) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+}
 
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
+.home-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    left: -50px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
 }
 
 .hero-stats {
     display: flex;
     justify-content: space-around;
     gap: 24px;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-card {
     text-align: center;
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.1);
-    padding: 24px;
-    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 32px 24px;
+    border-radius: 20px;
     flex: 1;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .stat-card:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-8px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(var(--color-primary-rgb), 0.4);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
 }
 
 .stat-card .stat-value {
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 38px;
+    font-weight: 800;
     margin-bottom: 8px;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(to bottom, #ffffff, #cbd5e1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .stat-card .stat-label {
-    font-size: 13px;
-    opacity: 0.8;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.02em;
 }
 
 .exam-home .section {
@@ -1008,8 +1044,8 @@
 
 /* ==================== 错题本样式 ==================== */
 .wrong-questions-view {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: 1000px;
+    margin: 0;
 }
 
 .wrong-questions-header {
