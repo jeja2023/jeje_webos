@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     db_name: str = "jeje_webos"
     db_time_zone: str = "+08:00"  # 数据库会话时区，使用东八区写入
     
+    # 数据库连接池配置
+    db_pool_size: int = 10         # 基础连接池大小
+    db_max_overflow: int = 20      # 最大溢出连接数
+    db_pool_recycle: int = 3600    # 连接回收时间（秒）
+    
     @property
     def db_url(self) -> str:
         encoded_user = quote_plus(self.db_user)

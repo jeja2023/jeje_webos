@@ -18,6 +18,11 @@ ENV/
 .env.local
 backend/.env
 *.local
+# 忽略 Docker 实际配置文件 (防止密钥泄露)
+deployment/env_docker
+docker/env_docker
+# 但保留示例文件
+!*.example
 
 .agent/
 

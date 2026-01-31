@@ -25,9 +25,9 @@ engine = create_async_engine(
     settings.db_url,
     echo=False,  # 禁用 SQL 详细输出，避免日志过多
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,  # 1小时后回收连接，防止 MySQL wait_timeout 导致连接失效
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    pool_recycle=settings.db_pool_recycle,  # 回收连接，防止 MySQL wait_timeout 导致连接失效
     pool_timeout=30,    # 获取连接最长等待30秒
     connect_args={
         "init_command": f"SET time_zone = '{settings.db_time_zone}'"

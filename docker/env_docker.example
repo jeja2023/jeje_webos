@@ -22,11 +22,13 @@ APP_NAME=JeJe WebOS
 # 应用版本
 APP_VERSION=2.5.3
 
-# 是否开启调试模式 (true/false)
-# 生产环境请务必设置为 false
+# 调试模式（生产环境请设为 false）
 DEBUG=false
 
-# 应用访问端口 (浏览器访问端口)
+
+# ==================== 端口配置 ====================
+
+# 应用访问端口（浏览器访问 http://localhost:APP_PORT）
 APP_PORT=9000
 
 # MySQL 外部访问端口
@@ -42,6 +44,10 @@ REDIS_PORT=6379
 
 # 数据库名称
 DB_NAME=jeje_webos
+# 数据库连接池设置 (优化高并发性能)
+DB_POOL_SIZE=10               # 基础连接池大小 (默认10)
+DB_MAX_OVERFLOW=20            # 最大溢出连接数 (默认20, 允许 burst)
+DB_POOL_RECYCLE=3600          # 连接回收时间 (秒, 防止 MySQL wait_timeout 断连)
 
 # 数据库用户名（应用使用此账户连接）
 DB_USER=jeje
