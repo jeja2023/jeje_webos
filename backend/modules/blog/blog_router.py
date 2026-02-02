@@ -149,6 +149,9 @@ async def list_my_posts(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
+    category_id: Optional[int] = None,
+    tag_id: Optional[int] = None,
+    keyword: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("blog.read"))
 ):
@@ -162,6 +165,9 @@ async def list_my_posts(
         page=page,
         size=size,
         status=status,
+        category_id=category_id,
+        tag_id=tag_id,
+        keyword=keyword,
         author_id=author_id
     )
     

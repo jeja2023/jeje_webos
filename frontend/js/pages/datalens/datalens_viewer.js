@@ -177,10 +177,9 @@ const DataLensViewerMixin = {
                         <button class="lens-btn lens-btn-outline lens-sort-btn ${sortCount > 0 ? 'has-sort' : ''}" title="多字段排序">
                             ↕️ 排序${sortCount > 0 ? ` (${sortCount})` : ''}
                         </button>
-                        <div class="lens-search-box">
+                        <div class="lens-search-box search-group">
                             <input type="text" class="lens-viewer-search-input" placeholder="在结果中搜索..." value="${activeTab.search || ''}">
-                            <i class="lens-search-icon">🔍</i>
-                            ${activeTab.search ? '<button class="lens-search-clear">✕</button>' : ''}
+                            <button class="btn btn-primary" id="lens-viewer-search-btn"><i class="ri-search-2-line"></i></button>
                         </div>
                         <button class="lens-btn lens-btn-outline lens-refresh-btn" title="刷新数据">🔄</button>
                         <button class="lens-btn lens-btn-outline lens-visual-settings-btn" title="显示与图表配置" data-id="${activeTab.id}">⚙️ 配置</button>

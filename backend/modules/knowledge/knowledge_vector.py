@@ -67,11 +67,36 @@ class KnowledgeVectorStore:
         # 注意：此处必须与数据库中已持久化的名称一致，否则会报错
         return "sentence_transformer"
 
-    def __call__(self, input):
-        """实现 EmbeddingFunction 接口，支持懒加载调用"""
+    def embed_documents(self, input: List[str]) -> List[List[float]]:
+        """实现 EmbeddingFunction 接口，支持批量文本编码"""
+        if not input:
+            return []
+            
+        # 预处理：确保输入是 List[str]，防止嵌套列表引发 IndexError
+        # sentence-transformers 收到 List[List[str]] 会将其视为句子对进行编码
+        processed_input = []
+        for item in input:
+            if isinstance(item, list):
+                # 如果意外收到列表，取第一个元素或拼成字符串
+                processed_input.append(str(item[0]) if item else "")
+            else:
+                processed_input.append(str(item))
+                
         if self._embedding_fn is None:
             self._init_embedding_fn()
-        return self._embedding_fn(input)
+        return self._embedding_fn(processed_input)
+
+    def embed_query(self, input: Any) -> Any:
+        """为查询提供编码。ChromaDB 可能传入 str 或 List[str]"""
+        if isinstance(input, list):
+            return self.embed_documents(input)
+        # 兼容其他库的单条查询接口
+        results = self.embed_documents([input])
+        return results[0] if results else []
+
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        """实现 ChromaDB EmbeddingFunction 协议"""
+        return self.embed_documents(input)
 
     def _init_embedding_fn(self):
         """延迟初始化语义向量模型"""
@@ -111,22 +136,34 @@ class KnowledgeVectorStore:
             results = self.collection.query(
                 query_texts=[query_text],
                 n_results=n_results,
-                where=where
+                where=where,
+                include=["documents", "metadatas", "distances"]
             )
             
-            # 格式化结果
+            # 格式化结果 (增强健壮性)
             formatted_results = []
-            if results['ids'] and results['ids'][0]:
-                for i in range(len(results['ids'][0])):
-                    formatted_results.append({
-                        "id": results['ids'][0][i],
-                        "content": results['documents'][0][i],
-                        "metadata": results['metadatas'][0][i],
-                        "distance": results['distances'][0][i] if 'distances' in results else None
-                    })
+            
+            # 提取第一组结果 (Chroma 为批量请求返回嵌套列表)
+            ids = results.get('ids', [[]])[0]
+            documents = results.get('documents', [[]])[0] if results.get('documents') else []
+            metadatas = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
+            distances = results.get('distances', [[]])[0] if results.get('distances') else []
+            
+            for i in range(len(ids)):
+                # 确保索引在所有列表中均有效
+                res_item = {
+                    "id": ids[i],
+                    "content": documents[i] if i < len(documents) else "",
+                    "metadata": metadatas[i] if i < len(metadatas) else {},
+                    "distance": distances[i] if i < len(distances) else None
+                }
+                formatted_results.append(res_item)
+                
             return formatted_results
         except Exception as e:
-            logger.error(f"查询向量失败: {e}")
+            logger.error(f"查询语义向量失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return []
 
     def delete_by_node_id(self, node_id: int):

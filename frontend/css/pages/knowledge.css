@@ -427,28 +427,31 @@
 }
 
 /* 搜索过滤面板样式 */
-.search-input-group {
+.kb-search-input-group.search-group {
     display: flex;
     gap: 8px;
     margin-bottom: 0;
     position: relative;
+    align-items: center;
 }
 
-.btn-filter {
+.kb-search-input-group .btn-filter {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px !important;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;
+    padding: 0;
+    flex-shrink: 0;
 }
 
-.btn-filter:hover {
+.kb-search-input-group .btn-filter:hover {
     background: var(--bg-tertiary);
     border-color: var(--color-primary);
 }

@@ -18,6 +18,23 @@
     z-index: 1;
 }
 
+/* 侧边栏搜索框适配 */
+.ai-sidebar .search-group {
+    width: 100%;
+}
+
+.ai-sidebar .search-group .form-input,
+.ai-sidebar .search-group input {
+    min-width: 0 !important;
+    /* 覆盖全局的最小宽度限制，允许在窄侧边栏中缩小 */
+}
+
+.ai-sidebar .search-group .btn {
+    padding: 0 12px !important;
+    /* 减少按钮内边距 */
+    min-width: 40px;
+}
+
 .sidebar-header {
     padding: 20px;
 }
@@ -798,17 +815,4 @@
     margin-bottom: 8px;
     font-size: 13px;
     color: var(--color-text-secondary);
-}
-
-.close-btn {
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary);
-    font-size: 20px;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.close-btn:hover {
-    color: var(--color-text-primary);
 }

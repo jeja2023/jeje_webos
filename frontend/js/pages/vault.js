@@ -1178,7 +1178,10 @@ class VaultPage extends Component {
     }
 
     search(keyword) {
-        this.setState({ keyword, page: 1 }, () => this.loadData({ keyword, page: 1 }));
+        // 直接更新状态并调用 loadData，不使用回调（Component 基类不支持）
+        this.state.keyword = keyword;
+        this.state.page = 1;
+        this.loadData({ keyword, page: 1 });
     }
 
     renderSetupView() {
@@ -1323,16 +1326,18 @@ class VaultPage extends Component {
         return `
             <div class="vault-list">
                 <div class="list-header">
-                    <div class="search-bar">
-                        <i class="ri-search-line"></i>
-                        <input type="text" class="search-input" id="vault-search" 
+                    <div class="search-group">
+                        <input type="text" class="form-input" id="vault-search" 
                                placeholder="搜索密码..." value="${Utils.escapeHtml(keyword)}">
+                        <button class="btn btn-primary" id="btn-vault-search">
+                            <i class="ri-search-line"></i> 查找
+                        </button>
                     </div>
                     <div class="header-actions">
-                        <button class="btn btn-ghost" id="btn-change-password" title="修改主密码">
-                            <i class="ri-key-2-line"></i>
+                        <button class="btn btn-secondary" id="btn-change-password" title="修改主密码">
+                            <i class="ri-key-2-line"></i> 修改主密码
                         </button>
-                        <button class="btn btn-ghost" id="btn-lock" title="锁定">
+                        <button class="btn btn-secondary" id="btn-lock" title="锁定">
                             <i class="ri-lock-line"></i> 锁定
                         </button>
                         ${ModuleHelp.createHelpButton('vault', '帮助')}
@@ -1689,10 +1694,19 @@ class VaultPage extends Component {
             this.togglePasswordVisibility(parseInt(el.dataset.togglePwd));
         });
 
-        // 搜索框需要单独处理，因为是 input 事件
-        this.delegate('input', '#vault-search', (e, el) => {
-            if (this._searchTimeout) clearTimeout(this._searchTimeout);
-            this._searchTimeout = setTimeout(() => this.search(el.value), 300);
+        // 搜索按钮点击
+        this.delegate('click', '#btn-vault-search', (e) => {
+            e.preventDefault();
+            const input = this.container.querySelector('#vault-search');
+            if (input) this.search(input.value.trim());
+        });
+
+        // 搜索框回车触发
+        this.delegate('keydown', '#vault-search', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.search(e.target.value.trim());
+            }
         });
 
         // 导出数据

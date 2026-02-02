@@ -251,20 +251,20 @@ class DataLensPage extends Component {
             this.setState({ ...newState, views: res.data || [] });
         });
 
-        // Hub 搜索
-        this.delegate('input', '#lens-hub-search', (e, el) => {
-            const val = el.value.trim();
-            // 仅更新内存中的 searchQuery，不触发全量重绘
+        // Hub 搜索 - 改为按钮点击和回车触发
+        this.delegate('click', '#lens-hub-search-btn', () => {
+            const val = this.$('#lens-hub-search')?.value.trim() || '';
             this.state.searchQuery = val;
+            this._loadViews(this.state.currentCategory, val);
+        });
 
-            if (this._hubSearchTimer) clearTimeout(this._hubSearchTimer);
-            this._hubSearchTimer = setTimeout(async () => {
-                const res = await LensApi.getViews({
-                    category_id: this.state.currentCategory,
-                    search: val
-                });
-                this.setState({ views: res.data || [] });
-            }, 300);
+        this.delegate('keydown', '#lens-hub-search', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = e.target.value.trim();
+                this.state.searchQuery = val;
+                this._loadViews(this.state.currentCategory, val);
+            }
         });
 
         // 视图卡片点击
@@ -343,16 +343,25 @@ class DataLensPage extends Component {
             }
         });
 
-        // Viewer 搜索 (防抖)
-        this.delegate('input', '.lens-viewer-search-input', (e, el) => {
+        // Viewer 搜索 - 改为按钮点击和回车触发
+        this.delegate('click', '#lens-viewer-search-btn', () => {
             const { activeTabId, openTabs } = this.state;
             const tab = openTabs.find(t => t.id === activeTabId);
             if (!tab) return;
-            const val = el.value.trim();
-            if (this._viewerSearchTimer) clearTimeout(this._viewerSearchTimer);
-            this._viewerSearchTimer = setTimeout(() => {
+            const input = this.$('.lens-viewer-search-input');
+            const val = input ? input.value.trim() : '';
+            this._loadViewData(activeTabId, 1, tab.pageSize, val, tab.sortField, tab.sortOrder, tab.sorts, tab.filters);
+        });
+
+        this.delegate('keydown', '.lens-viewer-search-input', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const { activeTabId, openTabs } = this.state;
+                const tab = openTabs.find(t => t.id === activeTabId);
+                if (!tab) return;
+                const val = e.target.value.trim();
                 this._loadViewData(activeTabId, 1, tab.pageSize, val, tab.sortField, tab.sortOrder, tab.sorts, tab.filters);
-            }, 500);
+            }
         });
 
         this.delegate('click', '.lens-search-clear', (e, el) => {

@@ -168,6 +168,9 @@ class KnowledgeGraphService:
     @staticmethod
     async def _get_or_create_entity(db: AsyncSession, base_id: int, node_id: int, name: str, e_type: str) -> int:
         """根据名称获取或创建实体，同名实体在同一知识库下视为同一个"""
+        # 数据库 name 字段限制 100 字符，截断以防报错
+        name = name[:100]
+        
         stmt = select(KnowledgeEntity).where(
             KnowledgeEntity.base_id == base_id,
             KnowledgeEntity.name == name
@@ -180,7 +183,7 @@ class KnowledgeGraphService:
                 base_id=base_id,
                 node_id=node_id,
                 name=name,
-                entity_type=e_type
+                entity_type=e_type[:50]  # 类型也做截断保护
             )
             db.add(entity)
             await db.flush()
@@ -189,6 +192,9 @@ class KnowledgeGraphService:
     @staticmethod
     async def _create_relation(db: AsyncSession, base_id: int, s_id: int, t_id: int, r_type: str, desc: str):
         """创建实体关系，自动去重"""
+        # 关系类型限制 100 字符
+        r_type = r_type[:100]
+        
         stmt = select(KnowledgeRelation).where(
             KnowledgeRelation.base_id == base_id,
             KnowledgeRelation.source_id == s_id,

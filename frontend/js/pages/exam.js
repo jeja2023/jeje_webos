@@ -571,20 +571,38 @@ class ExamPage extends Component {
         this.delegate('click', '[data-action="publish-paper"]', (e, el) => this.publishPaper(parseInt(el.dataset.id)));
         this.delegate('click', '[data-action="view-ranking"]', (e, el) => this.loadRanking(parseInt(el.dataset.id)));
 
-        // 题目搜索
-        this.delegate('input', '#questionSearch', (e, el) => {
-            if (this._searchTimeout) clearTimeout(this._searchTimeout);
-            this._searchTimeout = setTimeout(() => {
-                this.loadQuestions(el.value.trim());
-            }, 500);
+        // 题目搜索按钮
+        this.delegate('click', '#btn-search-question', () => {
+            const input = this.container.querySelector('#questionSearch');
+            const value = input ? input.value.trim() : '';
+            this.setState({ questionKeyword: value });
+            this.loadQuestions(value);
         });
 
-        // 试卷搜索
-        this.delegate('input', '#paperSearch', (e, el) => {
-            if (this._paperSearchTimeout) clearTimeout(this._paperSearchTimeout);
-            this._paperSearchTimeout = setTimeout(() => {
-                this.loadPapers(el.value.trim());
-            }, 500);
+        // 试卷搜索按钮
+        this.delegate('click', '#btn-search-paper', () => {
+            const input = this.container.querySelector('#paperSearch');
+            const value = input ? input.value.trim() : '';
+            this.setState({ paperKeyword: value });
+            this.loadPapers(value);
+        });
+
+        // 题目搜索按键 (Enter)
+        this.delegate('keydown', '#questionSearch', (e) => {
+            if (e.key === 'Enter') {
+                const value = e.target.value.trim();
+                this.setState({ questionKeyword: value });
+                this.loadQuestions(value);
+            }
+        });
+
+        // 试卷搜索按键 (Enter)
+        this.delegate('keydown', '#paperSearch', (e) => {
+            if (e.key === 'Enter') {
+                const value = e.target.value.trim();
+                this.setState({ paperKeyword: value });
+                this.loadPapers(value);
+            }
         });
 
         // 考试操作
@@ -1128,9 +1146,9 @@ class ExamPage extends Component {
                             <button class="btn btn-primary" data-action="create-question"><i class="ri-add-line"></i> 新增题目</button>
                             <button class="btn btn-ghost" data-action="import-questions"><i class="ri-upload-2-line"></i> 批量导入</button>
                         ` : ''}
-                        <div class="search-box">
-                            <i class="ri-search-line"></i>
-                            <input type="text" placeholder="搜索题目内容..." id="questionSearch">
+                        <div class="search-group">
+                            <input type="text" class="form-input" placeholder="搜索题目内容..." id="questionSearch" value="${this.state.questionKeyword || ''}">
+                            <button class="btn btn-primary" id="btn-search-question">搜索</button>
                         </div>
                     </div>
                     <div class="question-list">
@@ -1211,9 +1229,9 @@ class ExamPage extends Component {
                         <button class="btn btn-primary" data-action="create-paper"><i class="ri-add-line"></i> 创建试卷</button>
                         <button class="btn btn-ghost" data-action="smart-paper"><i class="ri-magic-line"></i> 智能组卷</button>
                     ` : ''}
-                    <div class="search-box">
-                        <i class="ri-search-line"></i>
-                        <input type="text" placeholder="搜索试卷标题..." id="paperSearch">
+                    <div class="search-group">
+                        <input type="text" class="form-input" placeholder="搜索试卷标题..." id="paperSearch" value="${this.state.paperKeyword || ''}">
+                        <button class="btn btn-primary" id="btn-search-paper">搜索</button>
                     </div>
                 </div>
                 <div class="paper-list">

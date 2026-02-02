@@ -203,63 +203,21 @@
 /* 搜索容器 */
 .map-search-container {
     position: relative;
-}
-
-.map-search-box {
-    display: flex;
-    background: var(--color-bg-hover);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    overflow: hidden;
-    transition: all 0.2s;
-}
-
-.map-search-box:focus-within {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
-}
-
-.map-search-box i {
-    padding: 10px 0 10px 12px;
-    color: var(--color-text-secondary);
-}
-
-.map-search-box input {
-    background: transparent;
-    border: none;
-    color: var(--color-text);
-    padding: 10px 12px;
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
-    outline: none;
-}
-
-.map-search-box button {
-    background: var(--color-primary);
-    border: none;
-    color: white;
-    padding: 0 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.map-search-box button:hover {
-    opacity: 0.9;
+    width: 100%;
 }
 
 /* 搜索结果下拉 */
 .search-dropdown {
     position: absolute;
-    top: calc(100% + 8px);
+    top: 48px;
+    /* 适配 search-group 的高度 */
     left: 0;
     right: 0;
-    background: var(--color-bg-container);
+    max-height: 280px;
+    background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    max-height: 300px;
+    box-shadow: var(--shadow-lg);
     overflow-y: auto;
     z-index: 1000;
 }
@@ -547,7 +505,7 @@
 }
 
 .mode-tab.active {
-    background: var(--color-bg-container);
+    background: var(--color-bg-secondary);
     color: var(--color-primary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     font-weight: 600;
@@ -682,14 +640,20 @@
 }
 
 .leaflet-popup-content-wrapper {
-    background: var(--color-bg-container) !important;
-    color: var(--color-text) !important;
+    background: var(--color-bg-primary) !important;
+    color: var(--color-text-primary) !important;
     border: 1px solid var(--color-border);
     backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.leaflet-popup-content {
+    color: var(--color-text-primary) !important;
+    font-weight: 500;
 }
 
 .leaflet-popup-tip {
-    background: var(--color-bg-container) !important;
+    background: var(--color-bg-primary) !important;
 }
 
 /* 测量工具提示框 */

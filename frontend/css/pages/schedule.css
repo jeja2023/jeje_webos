@@ -728,55 +728,26 @@
     }
 }
 
-/* ========== 搜索框样式 ========== */
+/* ========== 搜索区域 ========== */
 .sidebar-search {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-search .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--bg-primary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.sidebar-search .search-box i {
-    color: var(--text-tertiary);
-    font-size: 16px;
-}
-
-.sidebar-search .search-box input {
-    flex: 1;
-    min-width: 0;
-    /* 防止flex子元素溢出 */
+.sidebar-search .search-group {
     width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 13px;
-    outline: none;
 }
 
-.sidebar-search .search-box input::placeholder {
-    color: var(--text-tertiary);
+.sidebar-search .search-group .form-input,
+.sidebar-search .search-group input {
+    min-width: 0 !important;
+    /* 覆盖全局 160px 限制，适应窄侧边栏 */
+    flex: 1;
 }
 
-.sidebar-search .search-clear {
-    border: none;
-    background: transparent;
-    color: var(--text-tertiary);
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-}
-
-.sidebar-search .search-clear:hover {
-    color: var(--text-primary);
+.sidebar-search .search-group .btn {
+    padding: 0 12px !important;
+    /* 缩小按钮内边距，确保图标完整显示 */
 }
 
 /* ========== 分类筛选样式 ========== */

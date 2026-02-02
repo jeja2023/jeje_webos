@@ -110,12 +110,12 @@ class SchedulePage extends Component {
                         </div>
                     </div>
                     
-                    <!-- 搜索框 -->
                     <div class="sidebar-search">
-                        <div class="search-box">
-                            <i class="ri-search-line"></i>
-                            <input type="text" id="schedule-search" placeholder="搜索日程..." value="${Utils.escapeHtml(searchQuery)}">
-                            ${searchQuery ? '<button class="search-clear" id="btn-clear-search"><i class="ri-close-line"></i></button>' : ''}
+                        <div class="search-group">
+                            <input type="text" class="form-input" id="schedule-search" placeholder="搜索日程..." value="${Utils.escapeHtml(searchQuery)}">
+                            <button class="btn btn-primary btn-sm" id="btn-search-schedule">
+                                <i class="ri-search-line"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -532,19 +532,19 @@ class SchedulePage extends Component {
         });
 
         // 搜索功能
-        this.delegate('input', '#schedule-search', (e) => {
-            this.setState({ searchQuery: e.target.value });
-            this._debounceSearch();
-        });
-
-        this.delegate('keydown', '#schedule-search', (e) => {
-            if (e.key === 'Enter') {
+        this.delegate('click', '#btn-search-schedule', () => {
+            const input = this.container.querySelector('#schedule-search');
+            if (input) {
+                this.setState({ searchQuery: input.value.trim() });
                 this.handleSearch();
             }
         });
 
-        this.delegate('click', '#btn-clear-search', () => {
-            this.setState({ searchQuery: '', filteredEvents: [] });
+        this.delegate('keydown', '#schedule-search', (e) => {
+            if (e.key === 'Enter') {
+                this.setState({ searchQuery: e.target.value.trim() });
+                this.handleSearch();
+            }
         });
 
         // 分类筛选

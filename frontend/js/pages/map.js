@@ -143,10 +143,9 @@ class MapPage extends Component {
                             </div>
                             
                             <div class="map-search-container">
-                                <div class="map-search-box">
-                                    <i class="ri-search-line"></i>
-                                    <input type="text" id="mapSearchInput" placeholder="查找地点或坐标..." value="${escape(searchQuery || '')}">
-                                    <button id="btnMapSearch">查找</button>
+                                <div class="search-group">
+                                    <input type="text" class="form-input" id="mapSearchInput" placeholder="查找地点或坐标..." value="${escape(searchQuery || '')}">
+                                    <button class="btn btn-primary" id="btnMapSearch">查找</button>
                                 </div>
                                 ${searchResults && searchResults.length > 0 ? `
                                     <div class="search-dropdown">
@@ -376,8 +375,39 @@ class MapPage extends Component {
      * 局部刷新侧边栏内容
      */
     updateSidebarContent() {
-        const { datasets, markers, isMarkersVisible } = this.state;
+        const { datasets, markers, isMarkersVisible, searchResults, searchQuery } = this.state;
         const escape = (str) => (window.Utils && window.Utils.escapeHtml) ? window.Utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+
+        // 更新搜索框和搜索结果
+        const searchContainer = this.container?.querySelector('.map-search-container');
+        if (searchContainer) {
+            const input = searchContainer.querySelector('#mapSearchInput');
+            if (input && input.value !== searchQuery) {
+                input.value = searchQuery || '';
+            }
+
+            // 更新下拉列表
+            let dropdown = searchContainer.querySelector('.search-dropdown');
+            if (searchResults && searchResults.length > 0) {
+                const dropdownHtml = `
+                    <div class="search-dropdown">
+                        ${searchResults.map((res, i) => `
+                            <div class="search-item" data-index="${i}">
+                                <i class="ri-map-pin-2-line"></i>
+                                <span class="text-truncate" title="${escape(res.display_name)}">${escape(res.display_name)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                if (dropdown) {
+                    dropdown.outerHTML = dropdownHtml;
+                } else {
+                    searchContainer.insertAdjacentHTML('beforeend', dropdownHtml);
+                }
+            } else if (dropdown) {
+                dropdown.remove();
+            }
+        }
 
         // 更新图层列表
         const datasetSection = this.container.querySelector('.dataset-list .list-section:first-child');
@@ -536,6 +566,10 @@ class MapPage extends Component {
         if (this.map) {
             this.map.remove();
             this.map = null;
+        }
+        if (this._outsideClickHandler) {
+            document.removeEventListener('click', this._outsideClickHandler);
+            this._outsideClickHandler = null;
         }
         super.destroy();
     }
@@ -806,6 +840,16 @@ class MapPage extends Component {
         this.delegate('click', '.marker-delete', (e, el) => {
             this.removeMarker(parseInt(el.dataset.id));
         });
+
+        // 点击外部隐藏搜索结果
+        this._outsideClickHandler = (e) => {
+            if (!this.state.searchResults || this.state.searchResults.length === 0) return;
+            const container = this.container?.querySelector('.map-search-container');
+            if (container && !container.contains(e.target)) {
+                this.setState({ searchResults: [] });
+            }
+        };
+        document.addEventListener('click', this._outsideClickHandler);
     }
 
     /** 创建标记点引导 **/

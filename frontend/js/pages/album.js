@@ -54,13 +54,19 @@ class AlbumPage extends Component {
         }
 
         // 搜索相册
-        this.delegate('input', '#albumSearchInput', (e) => {
-            this.setState({ keyword: e.target.value });
+        this.delegate('click', '#albumSearchBtn', () => {
+            const val = this.container.querySelector('#albumSearchInput')?.value.trim() || '';
+            this.setState({ keyword: val });
+            this.loadAlbums();
         });
+
         this.delegate('keydown', '#albumSearchInput', (e) => {
-            if (e.key === 'Enter') this.loadAlbums();
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                this.setState({ keyword: val });
+                this.loadAlbums();
+            }
         });
-        this.delegate('click', '[data-action="search-album"]', () => this.loadAlbums());
         this.delegate('click', '.album-card', (e, el) => {
             // 如果点击的是操作按钮，不触发打开相册
             if (e.target.closest('[data-action="edit-album"]') || e.target.closest('[data-action="delete-album"]')) {
@@ -526,9 +532,9 @@ class AlbumPage extends Component {
                         <h1 class="page-title">我的相册</h1>
                     </div>
                     <div class="header-right d-flex align-items-center gap-3">
-                        <div class="input-group search-box" style="width: 240px;">
+                        <div class="search-group search-box" style="width: 240px;">
                             <input type="text" id="albumSearchInput" class="form-control" placeholder="搜索相册..." value="${Utils.escapeHtml(keyword)}">
-                            <button class="btn btn-outline-secondary" data-action="search-album">
+                            <button class="btn btn-primary" id="albumSearchBtn">
                                 <i class="ri-search-line"></i>
                             </button>
                         </div>
@@ -667,15 +673,6 @@ class AlbumPage extends Component {
         const dimension = selectedPhoto.width ? `${selectedPhoto.width} × ${selectedPhoto.height} ` : '未知尺寸';
 
         return `
-    < div class="photo-viewer-overlay" >
-                <div class="viewer-header">
-                    <div class="viewer-info">
-                        <div class="viewer-counter">PHOTO ${selectedIndex + 1} OF ${photos.length}</div>
-                        <div class="viewer-title">${Utils.escapeHtml(selectedPhoto.filename)}</div>
-                        <div class="viewer-meta" style="font-size: 11px; opacity: 0.5;">
-                            ${dimension} • ${fileSize} • ${new Date(selectedPhoto.created_at).toLocaleString()}
-                        </div>
-                    </div>
                     <button class="viewer-close-btn" data-action="close-viewer">
                         <i class="ri-close-line"></i>
                     </button>
@@ -694,7 +691,7 @@ class AlbumPage extends Component {
                         <i class="ri-arrow-right-s-line"></i>
                     </button>
                 </div>
-            </div >
+            </div>
     `;
     }
 
@@ -753,7 +750,7 @@ class AlbumPage extends Component {
                     name: form.name.value.trim(),
                     description: form.description.value.trim()
                 };
-                const res = await Api.put(`/ album / ${albumId} `, data);
+                const res = await Api.put(`/album/${albumId}`, data);
                 if (this.isApiSuccess(res)) {
                     Toast.success('修改已保存');
                     await this.loadAlbums();

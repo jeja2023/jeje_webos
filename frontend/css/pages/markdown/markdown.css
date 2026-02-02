@@ -126,70 +126,8 @@
     gap: var(--spacing-md);
 }
 
-/* Markdown页面搜索框 - 一体化精致设计 */
-.markdown-header .markdown-actions .search-box {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 17px !important;
-    padding: 0 12px !important;
-    width: 180px;
-    height: 34px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-sizing: border-box;
-    box-shadow: none !important;
-}
-
-.markdown-header .markdown-actions .search-box:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-.markdown-header .markdown-actions .search-box:focus-within {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: var(--color-primary) !important;
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2) !important;
-    width: 220px;
-}
-
-/* 搜索图标样式 - 修复位置偏出的问题 */
-.markdown-header .markdown-actions .search-box>i {
-    position: static !important;
-    transform: none !important;
-    font-size: 16px;
-    color: var(--color-text-muted);
-    margin-right: 8px !important;
-    transition: color 0.3s;
-    pointer-events: none;
-}
-
-.markdown-header .markdown-actions .search-box:focus-within>i {
-    color: var(--color-primary);
-}
-
-/* 输入框样式 - 彻底透明化 */
-.markdown-header .markdown-actions .search-box input {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100%;
-    height: 100%;
-    color: var(--color-text-primary) !important;
-    font-size: 13px !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.markdown-header .markdown-actions .search-box input::placeholder {
-    color: var(--color-text-muted) !important;
-    font-size: 13px;
-}
-
-.markdown-header .markdown-actions .search-box:focus-within>i {
-    color: var(--color-primary);
+.markdown-actions .search-group {
+    width: 320px;
 }
 
 .markdown-content {

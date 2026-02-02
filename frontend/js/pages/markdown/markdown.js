@@ -63,7 +63,9 @@ class MarkdownListPage extends Component {
         this.loadData();
     }
 
-    search(keyword) {
+    search() {
+        const input = this.container.querySelector('#search-input');
+        const keyword = input ? input.value.trim() : '';
         this.setState({ keyword, page: 1 });
         this.loadData();
     }
@@ -133,10 +135,12 @@ class MarkdownListPage extends Component {
                             <span class="doc-count">共 ${total} 篇文档</span>
                         </div>
                         <div class="markdown-actions">
-                            <div class="search-box">
-                                <i class="ri-search-line"></i>
-                                <input type="text" id="search-input" placeholder="搜索文档..." 
-                                       value="${this.state.keyword}">
+                            <div class="search-group">
+                                <input type="text" class="form-input" id="search-input" placeholder="搜索文档..." 
+                                       value="${this.state.keyword || ''}">
+                                <button class="btn btn-primary" id="btn-search">
+                                    <i class="ri-search-line"></i> 查找
+                                </button>
                             </div>
                             ${window.ModuleHelp ? window.ModuleHelp.createHelpButton('markdown', 'Markdown 编辑器') : ''}
                         </div>
@@ -235,13 +239,19 @@ class MarkdownListPage extends Component {
             btnNew.onclick = () => Router.push('/markdown/edit');
         }
 
-        // 搜索
+        // 搜索按钮点击
+        const btnSearch = this.container.querySelector('#btn-search');
+        if (btnSearch) {
+            btnSearch.onclick = () => this.search();
+        }
+
+        // 搜索输入框回车触发
         const searchInput = this.container.querySelector('#search-input');
         if (searchInput) {
-            let timer;
-            searchInput.oninput = (e) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => this.search(e.target.value), 300);
+            searchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    this.search();
+                }
             };
         }
 

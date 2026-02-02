@@ -24,7 +24,7 @@ const AnalysisCompareMixin = {
                     <div class="compare-card compare-source-card">
                         <div class="compare-card-title">
                             <span>🔵 数据集 1 (源)</span>
-                            <select id="compare-source" class="form-control-sm" style="width: 150px; border: none; background: transparent; font-weight: bold;">
+                            <select id="compare-source" class="dataset-select">
                                 <option value="">选择数据集...</option>
                                 ${this.state.datasets.map(d => `<option value="${d.id}" ${compareSourceId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
                             </select>
@@ -38,7 +38,7 @@ const AnalysisCompareMixin = {
                     <div class="compare-card compare-target-card">
                         <div class="compare-card-title">
                             <span>🟠 数据集 2 (目标)</span>
-                            <select id="compare-target" class="form-control-sm" style="width: 150px; border: none; background: transparent; font-weight: bold;">
+                            <select id="compare-target" class="dataset-select">
                                 <option value="">选择数据集...</option>
                                 ${this.state.datasets.map(d => `<option value="${d.id}" ${compareTargetId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
                             </select>

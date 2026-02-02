@@ -126,13 +126,12 @@ class FileManagerPage extends Component {
                         </div>
                         ` : ''}
                         
-                        <!-- 搜索 -->
-                        <div class="fm-search">
-                            <span class="fm-search-icon">🔍</span>
-                            <input type="text" class="fm-search-input" 
+                        <div class="fm-search search-group">
+                            <input type="text" class="form-input fm-search-input" 
                                    placeholder="搜索文件..." 
                                    id="fmSearchInput"
                                    value="${Utils.escapeHtml(searchKeyword)}">
+                            <button class="btn btn-primary" id="fmSearchBtn">搜索</button>
                         </div>
                         
                         <!-- 视图切换 -->
@@ -438,24 +437,30 @@ class FileManagerPage extends Component {
                 this.setState({ viewMode: view });
             });
 
-            // 搜索
-            const searchInput = this.$('#fmSearchInput');
-            if (searchInput && !searchInput._bindedSearch) {
-                searchInput._bindedSearch = true;
-                let searchTimer;
-                searchInput.addEventListener('input', (e) => {
-                    clearTimeout(searchTimer);
-                    searchTimer = setTimeout(() => {
-                        const keyword = e.target.value.trim();
-                        this.setState({ searchKeyword: keyword });
-                        if (keyword) {
-                            this.search(keyword);
-                        } else {
-                            this.loadDirectory(this.state.currentFolderId);
-                        }
-                    }, 300);
-                });
-            }
+            // 搜索 - 改为按钮点击和回车触发
+            this.delegate('click', '#fmSearchBtn', () => {
+                const input = this.$('#fmSearchInput');
+                const keyword = input ? input.value.trim() : '';
+                this.setState({ searchKeyword: keyword });
+                if (keyword) {
+                    this.search(keyword);
+                } else {
+                    this.loadDirectory(this.state.currentFolderId);
+                }
+            });
+
+            this.delegate('keydown', '#fmSearchInput', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const keyword = e.target.value.trim();
+                    this.setState({ searchKeyword: keyword });
+                    if (keyword) {
+                        this.search(keyword);
+                    } else {
+                        this.loadDirectory(this.state.currentFolderId);
+                    }
+                }
+            });
 
             // 新建文件夹
             this.delegate('click', '#btnNewFolder', () => this.createFolder());

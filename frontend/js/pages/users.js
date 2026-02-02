@@ -652,7 +652,7 @@ class UserListPage extends Component {
                 
                 <!-- 筛选器 -->
                 <div class="card" style="margin-bottom: var(--spacing-lg)">
-                    <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: var(--spacing-md); align-items: end">
+                    <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 3fr; gap: var(--spacing-md);">
                         <div class="form-group">
                             <label class="form-label">角色</label>
                             <select class="form-input form-select" id="filterRole" value="${filters.role}">
@@ -671,14 +671,12 @@ class UserListPage extends Component {
                                 <option value="false" ${filters.is_active === 'false' ? 'selected' : ''}>待审核</option>
                             </select>
                         </div>
-                        <div class="form-group" style="display:flex; gap:8px; align-items:flex-end;">
-                            <div style="flex:1;">
-                                <label class="form-label">搜索</label>
-                                <input type="text" class="form-input" id="usersFilterKeyword" 
+                        <div class="form-group">
+                            <label class="form-label">搜索</label>
+                            <div class="search-group">
+                                <input type="text" class="form-input" id="usersSearchInput" 
                                        placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
-                            </div>
-                            <div style="padding-bottom: 0;">
-                                <button class="btn btn-primary" id="searchBtn" style="margin-top:auto;">搜索</button>
+                                <button class="btn btn-primary" id="usersSearchBtn">搜索</button>
                             </div>
                         </div>
                     </div>
@@ -1250,14 +1248,14 @@ class UserListPage extends Component {
 
         bind('#filterRole', 'change', 'roleChange', (e) => this.handleFilter('role', e.target.value));
         bind('#filterStatus', 'change', 'statusChange', (e) => this.handleFilter('is_active', e.target.value));
-        bind('#searchBtn', 'click', 'searchClick', () => {
-            const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
+        bind('#usersSearchBtn', 'click', 'searchClick', () => {
+            const keyword = this.$('#usersSearchInput')?.value.trim() || '';
             this.handleFilter('keyword', keyword);
         });
-        bind('#usersFilterKeyword', 'keydown', 'searchEnter', (e) => {
+        bind('#usersSearchInput', 'keydown', 'searchEnter', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
+                const keyword = this.$('#usersSearchInput')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             }
         });
@@ -1281,7 +1279,7 @@ class UserListPage extends Component {
                 this.$('#filterStatus')?.removeEventListener('change', this._handlers.statusHandler);
             }
             if (this._handlers.searchHandler) {
-                this.$('#searchBtn')?.removeEventListener('click', this._handlers.searchHandler);
+                this.$('#usersSearchBtn')?.removeEventListener('click', this._handlers.searchHandler);
             }
             if (this._handlers.clickHandler) {
                 this.container.removeEventListener('click', this._handlers.clickHandler);

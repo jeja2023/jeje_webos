@@ -146,10 +146,10 @@ class FeedbackListPage extends Component {
                 </div>
 
                 <div class="card" style="margin-bottom: var(--spacing-lg)">
-                    <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: var(--spacing-md); align-items: end">
+                    <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: var(--spacing-md);">
                         <div class="form-group">
                             <label class="form-label">状态</label>
-                            <select class="form-input form-select" id="filterStatus" value="${filters.status}">
+                            <select class="form-input form-select" id="filterStatus" value="${filters.status}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="pending" ${filters.status === 'pending' ? 'selected' : ''}>待处理</option>
                                 <option value="processing" ${filters.status === 'processing' ? 'selected' : ''}>处理中</option>
@@ -159,7 +159,7 @@ class FeedbackListPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">类型</label>
-                            <select class="form-input form-select" id="filterType" value="${filters.type}">
+                            <select class="form-input form-select" id="filterType" value="${filters.type}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="suggestion" ${filters.type === 'suggestion' ? 'selected' : ''}>建议</option>
                                 <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>建议</option>
@@ -170,7 +170,7 @@ class FeedbackListPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">优先级</label>
-                            <select class="form-input form-select" id="filterPriority" value="${filters.priority}">
+                            <select class="form-input form-select" id="filterPriority" value="${filters.priority}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="low" ${filters.priority === 'low' ? 'selected' : ''}>低</option>
                                 <option value="normal" ${filters.priority === 'normal' ? 'selected' : ''}>普通</option>
@@ -180,9 +180,9 @@ class FeedbackListPage extends Component {
                         </div>
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">搜索</label>
-                            <div class="input-group" style="display: flex; gap: 8px; align-items: center; max-width: 380px;">
-                                <input type="text" class="form-input" id="fbFilterKeyword" placeholder="标题、内容" value="${filters.keyword || ''}" style="flex: 1; min-width: 160px;">
-                                <button class="btn btn-primary" id="searchBtn">搜索</button>
+                            <div class="search-group" style="max-width: 380px;">
+                                <input type="text" class="form-input" id="fbSearchInput" placeholder="标题、内容" value="${filters.keyword || ''}">
+                                <button class="btn btn-primary" id="fbSearchBtn">搜索</button>
                             </div>
                         </div>
                     </div>
@@ -260,9 +260,20 @@ class FeedbackListPage extends Component {
         this.delegate('change', '#filterStatus', (e) => this.handleFilter('status', e.target.value));
         this.delegate('change', '#filterType', (e) => this.handleFilter('type', e.target.value));
         this.delegate('change', '#filterPriority', (e) => this.handleFilter('priority', e.target.value));
-        this.delegate('click', '#searchBtn', () => {
-            const keyword = this.$('#fbFilterKeyword')?.value.trim() || '';
+
+        // 搜索按钮点击触发
+        this.delegate('click', '#fbSearchBtn', () => {
+            const keyword = this.$('#fbSearchInput')?.value.trim() || '';
             this.handleFilter('keyword', keyword);
+        });
+
+        // 搜索框回车触发
+        this.delegate('keydown', '#fbSearchInput', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const keyword = this.$('#fbSearchInput')?.value.trim() || '';
+                this.handleFilter('keyword', keyword);
+            }
         });
         this.delegate('click', '[data-view]', (e) => {
             const id = Number(e.target.dataset.view);
@@ -550,10 +561,10 @@ class FeedbackAdminPage extends Component {
                 ${this.renderStats()}
 
                 <div class="card" style="margin-bottom: var(--spacing-lg)">
-                    <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: var(--spacing-md); align-items: end">
+                    <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: var(--spacing-md);">
                         <div class="form-group">
                             <label class="form-label">状态</label>
-                            <select class="form-input form-select" id="adFilterStatus" value="${filters.status}">
+                            <select class="form-input form-select" id="adFilterStatus" value="${filters.status}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="pending" ${filters.status === 'pending' ? 'selected' : ''}>待处理</option>
                                 <option value="processing" ${filters.status === 'processing' ? 'selected' : ''}>处理中</option>
@@ -563,7 +574,7 @@ class FeedbackAdminPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">类型</label>
-                            <select class="form-input form-select" id="adFilterType" value="${filters.type}">
+                            <select class="form-input form-select" id="adFilterType" value="${filters.type}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="suggestion" ${filters.type === 'suggestion' ? 'selected' : ''}>建议</option>
                                 <option value="opinion" ${filters.type === 'opinion' ? 'selected' : ''}>建议</option>
@@ -574,7 +585,7 @@ class FeedbackAdminPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">优先级</label>
-                            <select class="form-input form-select" id="adFilterPriority" value="${filters.priority}">
+                            <select class="form-input form-select" id="adFilterPriority" value="${filters.priority}" style="height: 40px;">
                                 <option value="">全部</option>
                                 <option value="low" ${filters.priority === 'low' ? 'selected' : ''}>低</option>
                                 <option value="normal" ${filters.priority === 'normal' ? 'selected' : ''}>普通</option>
@@ -584,8 +595,8 @@ class FeedbackAdminPage extends Component {
                         </div>
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">搜索</label>
-                            <div class="input-group" style="display: flex; gap: 8px; align-items: center; max-width: 380px;">
-                                <input type="text" class="form-input" id="adFilterKeyword" placeholder="标题、内容" value="${filters.keyword || ''}" style="flex: 1; min-width: 160px;">
+                            <div class="search-group" style="max-width: 380px;">
+                                <input type="text" class="form-input" id="adSearchInput" placeholder="标题、内容" value="${filters.keyword || ''}">
                                 <button class="btn btn-primary" id="adSearchBtn">搜索</button>
                             </div>
                         </div>
@@ -659,9 +670,21 @@ class FeedbackAdminPage extends Component {
         this.delegate('change', '#adFilterStatus', (e) => this.handleFilter('status', e.target.value));
         this.delegate('change', '#adFilterType', (e) => this.handleFilter('type', e.target.value));
         this.delegate('change', '#adFilterPriority', (e) => this.handleFilter('priority', e.target.value));
+        this.delegate('change', '#adFilterPriority', (e) => this.handleFilter('priority', e.target.value));
+
+        // 搜索按钮点击触发
         this.delegate('click', '#adSearchBtn', () => {
-            const keyword = this.$('#adFilterKeyword')?.value.trim() || '';
+            const keyword = this.$('#adSearchInput')?.value.trim() || '';
             this.handleFilter('keyword', keyword);
+        });
+
+        // 搜索框回车触发
+        this.delegate('keydown', '#adSearchInput', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const keyword = this.$('#adSearchInput')?.value.trim() || '';
+                this.handleFilter('keyword', keyword);
+            }
         });
         this.delegate('click', '[data-view]', (e) => {
             const id = Number(e.target.dataset.view);

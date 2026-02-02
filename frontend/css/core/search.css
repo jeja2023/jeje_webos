@@ -242,3 +242,45 @@
         width: 100%;
     }
 }
+
+/* ==================== 新版搜索组合 ==================== */
+.search-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.search-group .form-input,
+.search-group input {
+    flex: 1;
+    min-width: 160px;
+    height: 40px !important;
+    /* 强制统一高度 */
+    margin: 0 !important;
+    /* 强制去除边距 */
+    box-sizing: border-box !important;
+}
+
+.search-group .btn {
+    height: 40px !important;
+    margin: 0 !important;
+    padding: 0 20px;
+    box-sizing: border-box !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+    .search-group {
+        width: 100%;
+    }
+
+    .search-group .form-input,
+    .search-group input {
+        width: auto;
+        min-width: 0;
+    }
+}

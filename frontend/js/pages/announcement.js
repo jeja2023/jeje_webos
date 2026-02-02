@@ -109,7 +109,7 @@ class AnnouncementListPage extends Component {
                 
                 <!-- 筛选器 -->
                 <div class="card" style="margin-bottom: var(--spacing-lg)">
-                    <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: var(--spacing-md); align-items: end">
+                    <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 3fr; gap: var(--spacing-md);">
                         <div class="form-group">
                             <label class="form-label">状态</label>
                             <select class="form-input form-select" id="filterStatus" value="${filters.is_published}">
@@ -130,12 +130,11 @@ class AnnouncementListPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">搜索</label>
-                            <input type="text" class="form-input" id="annFilterKeyword" 
-                                   placeholder="标题、内容" value="${filters.keyword || ''}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" style="visibility: hidden">操作</label>
-                            <button class="btn btn-primary" id="searchBtn" style="width: 100%">搜索</button>
+                            <div class="search-group">
+                                <input type="text" class="form-input" id="annSearchInput" 
+                                       placeholder="标题、内容" value="${filters.keyword || ''}">
+                                <button class="btn btn-primary" id="annSearchBtn">搜索</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -230,9 +229,17 @@ class AnnouncementListPage extends Component {
                 this.handleFilter('type', e.target.value);
             });
 
-            this.delegate('click', '#searchBtn', () => {
-                const keyword = this.$('#annFilterKeyword')?.value.trim() || '';
+            this.delegate('click', '#annSearchBtn', () => {
+                const keyword = this.$('#annSearchInput')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
+            });
+
+            this.delegate('keydown', '#annSearchInput', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const keyword = this.$('#annSearchInput')?.value.trim() || '';
+                    this.handleFilter('keyword', keyword);
+                }
             });
 
             // 分页

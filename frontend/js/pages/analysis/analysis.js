@@ -523,24 +523,19 @@ class AnalysisPage extends Component {
 
         // --- 数据集管理事件增强 ---
 
-        // 搜索框 (实时更新Table而不重新渲染整个页面，避免失去焦点)
-        this.delegate('input', '#dataset-list-search', (e) => {
-            const val = e.target.value.trim();
-            // 静默更新状态
-            this.state.datasetSearch = val;
+        // 搜索框 (按钮触发)
+        this.delegate('click', '#btn-dataset-search', (e) => {
+            e.preventDefault();
+            const val = this.$('#dataset-list-search')?.value.trim() || '';
+            this.setState({ datasetSearch: val });
+        });
 
-            // 过滤并局部更新 DOM
-            const { datasets } = this.state;
-            const list = datasets.filter(d => {
-                if (!val) return true;
-                const term = val.toLowerCase();
-                return d.name.toLowerCase().includes(term) ||
-                    (d.config?.description || '').toLowerCase().includes(term);
-            });
-
-            const tbody = document.getElementById('dataset-list-body');
-            if (tbody) {
-                tbody.innerHTML = this.renderDatasetRows(list);
+        // 搜索框 (回车触发)
+        this.delegate('keydown', '#dataset-list-search', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = e.target.value.trim();
+                this.setState({ datasetSearch: val });
             }
         });
 
@@ -745,10 +740,14 @@ class AnalysisPage extends Component {
                 <div class="flex-between mb-20 gap-15">
                     <div class="flex align-center gap-15" style="flex: 1;">
                         <h2 class="m-0">数据管理</h2>
-                        <div class="search-wrapper" style="max-width: 300px; flex: 1;">
-                            <i class="ri-search-line"></i>
-                            <input type="text" class="form-control" id="dataset-list-search" 
-                                placeholder="搜索名称或描述..." value="${datasetSearch || ''}">
+                        <div class="search-group" style="width: 360px;">
+                            <div class="search-box">
+                                <i class="ri-search-line"></i>
+                                <input type="text" id="dataset-list-search" placeholder="搜索名称或描述..." value="${datasetSearch || ''}">
+                            </div>
+                            <button class="btn btn-primary" id="btn-dataset-search">
+                                <i class="ri-search-line"></i> 查找
+                            </button>
                         </div>
                     </div>
                     <div class="flex gap-10">

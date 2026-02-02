@@ -255,3 +255,34 @@
         transform: translateY(0);
     }
 }
+
+/* 顶部选择框增强样式 */
+.dataset-select {
+    width: 160px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.dataset-select:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-bg-hover);
+}
+
+.dataset-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+.dataset-select option {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}

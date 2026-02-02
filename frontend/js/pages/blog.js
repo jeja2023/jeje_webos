@@ -8,10 +8,16 @@ class BlogListPage extends Component {
         super(container);
         this.state = {
             posts: [],
+            categories: [],
             total: 0,
             page: 1,
             size: 10,
-            loading: true
+            keyword: '',
+            categoryId: null,
+            status: '',  // 'draft', 'published', '' (全部)
+            loading: true,
+            batchMode: false,
+            selectedIds: new Set()
         };
     }
 
@@ -19,16 +25,26 @@ class BlogListPage extends Component {
         this.setState({ loading: true });
 
         try {
-            // 获取文章列表（管理员可查看所有，普通用户只能查看自己的）
-            const res = await BlogApi.getMyPosts({
+            // 加载分类（用于筛选）
+            const categoriesRes = await BlogApi.getCategories();
+            this.state.categories = categoriesRes.data || [];
+
+            // 获取文章列表
+            const params = {
                 page: this.state.page,
                 size: this.state.size
-            });
+            };
+            if (this.state.keyword) params.keyword = this.state.keyword;
+            if (this.state.categoryId) params.category_id = this.state.categoryId;
+            if (this.state.status) params.status = this.state.status;
+
+            const res = await BlogApi.getMyPosts(params);
 
             this.setState({
                 posts: res.data.items,
                 total: res.data.total,
-                loading: false
+                loading: false,
+                selectedIds: new Set()
             });
         } catch (error) {
             Toast.error('加载文章失败');
@@ -41,9 +57,75 @@ class BlogListPage extends Component {
         this.loadData();
     }
 
+    search(keyword) {
+        this.state.keyword = keyword;
+        this.state.page = 1;
+        this.loadData();
+    }
+
+    filterByCategory(categoryId) {
+        this.state.categoryId = categoryId || null;
+        this.state.page = 1;
+        this.loadData();
+    }
+
+    filterByStatus(status) {
+        this.state.status = status;
+        this.state.page = 1;
+        this.loadData();
+    }
+
+    toggleBatchMode(enabled) {
+        this.setState({
+            batchMode: enabled,
+            selectedIds: new Set()
+        });
+    }
+
+    toggleSelect(id) {
+        const { selectedIds } = this.state;
+        if (selectedIds.has(id)) {
+            selectedIds.delete(id);
+        } else {
+            selectedIds.add(id);
+        }
+        this.setState({ selectedIds });
+    }
+
+    selectAll(checked) {
+        if (checked) {
+            const allIds = new Set(this.state.posts.map(p => p.id.toString()));
+            this.setState({ selectedIds: allIds });
+        } else {
+            this.setState({ selectedIds: new Set() });
+        }
+    }
+
+    async batchDelete() {
+        const ids = [...this.state.selectedIds];
+        if (ids.length === 0) {
+            Toast.warning('请先选择文章');
+            return;
+        }
+
+        Modal.confirm('批量删除', `确定要删除选中的 ${ids.length} 篇文章吗？此操作不可恢复。`, async () => {
+            try {
+                for (const id of ids) {
+                    await BlogApi.deletePost(id);
+                }
+                Toast.success(`已删除 ${ids.length} 篇文章`);
+                this.toggleBatchMode(false);
+                this.loadData();
+            } catch (error) {
+                Toast.error(error.message);
+            }
+        });
+    }
+
     render() {
-        const { posts, total, page, size, loading } = this.state;
+        const { posts, categories, total, page, size, keyword, categoryId, status, loading, batchMode, selectedIds } = this.state;
         const pages = Math.ceil(total / size);
+        const selectedCategory = categoryId ? categories.find(c => c.id == categoryId) : null;
 
         if (loading) {
             return '<div class="loading"></div>';
@@ -51,19 +133,66 @@ class BlogListPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h1 class="page-title">文章列表</h1>
-                        <p class="page-desc">共 ${total} 篇文章</p>
+                        <h1 class="page-title">📝 文章管理</h1>
+                        <p class="page-desc">
+                            共 ${total} 篇文章
+                            ${selectedCategory ? ` · 分类: ${Utils.escapeHtml(selectedCategory.name)}` : ''}
+                            ${status === 'draft' ? ' · 草稿' : status === 'published' ? ' · 已发布' : ''}
+                        </p>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('blog', '博客') : ''}
-                        <a href="#/blog/category" class="btn btn-secondary">📁 分类管理</a>
+                        <a href="#/blog/category" class="btn btn-ghost">📁 分类管理</a>
+                        <button class="btn btn-ghost" id="toggleBatch">
+                            ${batchMode ? '取消批量' : '📦 批量操作'}
+                        </button>
                         <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
                             ➕ 发布文章
                         </button>
                     </div>
                 </div>
+
+                <!-- 筛选栏 -->
+                <div class="blog-filters card" style="padding: 16px; margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <div class="search-group">
+                        <input type="text" class="form-input" id="blogSearchInput" 
+                               placeholder="搜索文章标题..." value="${Utils.escapeHtml(keyword)}">
+                        <button class="btn btn-primary" data-action="search">
+                            <i class="ri-search-line"></i> 查找
+                        </button>
+                    </div>
+                    <select class="form-input form-select" data-filter="category" style="width: auto; min-width: 120px;">
+                        <option value="">全部分类</option>
+                        ${categories.map(c => `
+                            <option value="${c.id}" ${categoryId == c.id ? 'selected' : ''}>
+                                ${Utils.escapeHtml(c.name)}
+                            </option>
+                        `).join('')}
+                    </select>
+                    <select class="form-input form-select" data-filter="status" style="width: auto; min-width: 100px;">
+                        <option value="" ${!status ? 'selected' : ''}>全部状态</option>
+                        <option value="published" ${status === 'published' ? 'selected' : ''}>已发布</option>
+                        <option value="draft" ${status === 'draft' ? 'selected' : ''}>草稿</option>
+                    </select>
+                    ${keyword || categoryId || status ? `
+                        <button class="btn btn-ghost btn-sm" data-action="clear-filters">清除筛选</button>
+                    ` : ''}
+                </div>
+
+                <!-- 批量操作栏 -->
+                ${batchMode ? `
+                    <div class="batch-toolbar card" style="padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="selectAll" ${selectedIds.size === posts.length && posts.length > 0 ? 'checked' : ''}>
+                            全选
+                        </label>
+                        <span style="color: var(--color-text-secondary);">已选 ${selectedIds.size} 篇</span>
+                        <div style="flex: 1;"></div>
+                        <button class="btn btn-danger btn-sm" id="batchDelete">🗑️ 删除选中</button>
+                    </div>
+                ` : ''}
                 
                 ${posts.length > 0 ? `
                     <div class="card">
@@ -71,6 +200,7 @@ class BlogListPage extends Component {
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        ${batchMode ? '<th style="width: 40px;"></th>' : ''}
                                         <th>标题</th>
                                         <th>分类</th>
                                         <th>状态</th>
@@ -82,6 +212,13 @@ class BlogListPage extends Component {
                                 <tbody>
                                     ${posts.map(post => `
                                         <tr>
+                                            ${batchMode ? `
+                                                <td>
+                                                    <input type="checkbox" class="post-select" 
+                                                           data-id="${post.id}" 
+                                                           ${selectedIds.has(post.id.toString()) ? 'checked' : ''}>
+                                                </td>
+                                            ` : ''}
                                             <td>
                                                 <a href="#/blog/view/${post.id}" class="truncate" style="max-width: 300px; display: block">
                                                     ${post.is_top ? '<span class="tag tag-warning" style="margin-right: 4px">置顶</span>' : ''}
@@ -94,11 +231,15 @@ class BlogListPage extends Component {
                                                     ${post.status === 'published' ? '已发布' : '草稿'}
                                                 </span>
                                             </td>
-                                            <td>${post.views}</td>
+                                            <td>👁️ ${post.views}</td>
                                             <td>${Utils.timeAgo(post.published_at || post.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-edit="${post.id}">编辑</button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${post.id}">删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-view="${post.id}" title="查看">👁️</button>
+                                                <button class="btn btn-ghost btn-sm" data-edit="${post.id}" title="编辑">✏️</button>
+                                                <button class="btn btn-ghost btn-sm" data-toggle-top="${post.id}" title="${post.is_top ? '取消置顶' : '置顶'}">
+                                                    ${post.is_top ? '📍' : '📌'}
+                                                </button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${post.id}" title="删除">🗑️</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -112,7 +253,11 @@ class BlogListPage extends Component {
                     <div class="card">
                         <div class="empty-state">
                             <div class="empty-icon">📝</div>
-                            <p class="empty-text">还没有文章，快去发布一篇吧</p>
+                            <p class="empty-text">${keyword || categoryId || status ? '没有找到匹配的文章' : '还没有文章，快去发布一篇吧'}</p>
+                            ${keyword || categoryId || status ?
+                '<button class="btn btn-secondary" data-action="clear-filters">清除筛选</button>' :
+                '<button class="btn btn-primary" onclick="Router.push(\'/blog/edit\')">发布第一篇</button>'
+            }
                         </div>
                     </div>
                 `}
@@ -123,7 +268,6 @@ class BlogListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
-        // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
@@ -131,14 +275,12 @@ class BlogListPage extends Component {
 
     afterUpdate() {
         this.bindEvents();
-        // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
     }
 
     bindEvents() {
-        // 使用事件委托，只需绑定一次
         if (this.container && !this.container._bindedBlogList) {
             this.container._bindedBlogList = true;
 
@@ -148,9 +290,81 @@ class BlogListPage extends Component {
                 if (page > 0) this.changePage(page);
             });
 
+            // 搜索按钮
+            this.delegate('click', '[data-action="search"]', () => {
+                const input = this.$('#blogSearchInput');
+                if (input) this.search(input.value.trim());
+            });
+
+            // 搜索回车
+            this.delegate('keydown', '#blogSearchInput', (e) => {
+                if (e.key === 'Enter') {
+                    this.search(e.target.value.trim());
+                }
+            });
+
+            // 分类筛选
+            this.delegate('change', '[data-filter="category"]', (e, target) => {
+                this.filterByCategory(target.value);
+            });
+
+            // 状态筛选
+            this.delegate('change', '[data-filter="status"]', (e, target) => {
+                this.filterByStatus(target.value);
+            });
+
+            // 清除筛选
+            this.delegate('click', '[data-action="clear-filters"]', () => {
+                this.state.keyword = '';
+                this.state.categoryId = null;
+                this.state.status = '';
+                this.state.page = 1;
+                this.loadData();
+            });
+
+            // 批量模式切换
+            this.delegate('click', '#toggleBatch', () => {
+                this.toggleBatchMode(!this.state.batchMode);
+            });
+
+            // 全选
+            this.delegate('change', '#selectAll', (e) => {
+                this.selectAll(e.target.checked);
+            });
+
+            // 单选
+            this.delegate('change', '.post-select', (e) => {
+                this.toggleSelect(e.target.dataset.id);
+            });
+
+            // 批量删除
+            this.delegate('click', '#batchDelete', () => {
+                this.batchDelete();
+            });
+
+            // 查看
+            this.delegate('click', '[data-view]', (e, target) => {
+                Router.push(`/blog/view/${target.dataset.view}`);
+            });
+
             // 编辑
             this.delegate('click', '[data-edit]', (e, target) => {
                 Router.push(`/blog/edit/${target.dataset.edit}`);
+            });
+
+            // 置顶切换
+            this.delegate('click', '[data-toggle-top]', async (e, target) => {
+                const id = target.dataset.toggleTop;
+                const post = this.state.posts.find(p => p.id == id);
+                if (post) {
+                    try {
+                        await BlogApi.updatePost(id, { is_top: !post.is_top });
+                        Toast.success(post.is_top ? '已取消置顶' : '已置顶');
+                        this.loadData();
+                    } catch (error) {
+                        Toast.error(error.message);
+                    }
+                }
             });
 
             // 删除
@@ -182,6 +396,7 @@ class BlogEditPage extends Component {
             loading: !!postId,
             saving: false
         };
+        this.autoSaveTimer = null;
     }
 
     async loadData() {
@@ -206,10 +421,13 @@ class BlogEditPage extends Component {
         }
     }
 
-    async handleSubmit(e) {
-        e.preventDefault();
+    async handleSubmit(e, options = {}) {
+        if (e) e.preventDefault();
+        const { silent = false } = options;
 
-        const form = e.target;
+        const form = this.$('#postForm');
+        if (!form) return;
+
         const data = {
             title: form.title.value.trim(),
             slug: form.slug.value.trim() || this.generateSlug(form.title.value),
@@ -221,7 +439,7 @@ class BlogEditPage extends Component {
         };
 
         if (!data.title || !data.content) {
-            Toast.error('请填写标题和内容');
+            if (!silent) Toast.error('请填写标题和内容');
             return;
         }
 
@@ -230,16 +448,20 @@ class BlogEditPage extends Component {
         try {
             if (this.postId) {
                 await BlogApi.updatePost(this.postId, data);
-                Toast.success('更新成功');
-                Router.push(`/blog/view/${this.postId}`);
+                if (!silent) {
+                    Toast.success('更新成功');
+                    Router.push(`/blog/view/${this.postId}`);
+                }
             } else {
                 const res = await BlogApi.createPost(data);
-                const newId = res.data?.id;
-                Toast.success('发布成功');
-                Router.push(newId ? `/blog/view/${newId}` : '/blog/list');
+                this.postId = res.data?.id;
+                if (!silent) {
+                    Toast.success('发布成功');
+                    Router.push(this.postId ? `/blog/view/${this.postId}` : '/blog/list');
+                }
             }
         } catch (error) {
-            Toast.error(error.message);
+            if (!silent) Toast.error(error.message);
         } finally {
             this.setState({ saving: false });
         }
@@ -251,9 +473,19 @@ class BlogEditPage extends Component {
             .replace(/^-+|-+$/g, '') + '-' + Date.now().toString(36);
     }
 
+    startAutoSave() {
+        if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+        this.autoSaveTimer = setInterval(() => {
+            if (this.postId) {
+                this.handleSubmit(null, { silent: true });
+            }
+        }, 30000); // 每30秒自动保存
+    }
+
     render() {
         const { post, categories, loading, saving } = this.state;
         const isEdit = !!this.postId;
+        const wordCount = (post?.content || '').length;
 
         if (loading) {
             return '<div class="loading"></div>';
@@ -261,8 +493,27 @@ class BlogEditPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header">
-                    <h1 class="page-title">${isEdit ? '编辑文章' : '发布文章'}</h1>
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <button class="btn btn-ghost" id="btnBack">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
+                        <div>
+                            <h1 class="page-title" style="margin: 0;">${isEdit ? '编辑文章' : '发布文章'}</h1>
+                            <p class="page-desc" style="margin: 4px 0 0 0;">
+                                ${saving ? '保存中...' : (isEdit ? '自动保存已启用' : '填写完成后发布')}
+                                ${wordCount > 0 ? ` · ${wordCount} 字` : ''}
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        ${isEdit ? `
+                            <button class="btn btn-ghost" id="btnPreview">👁️ 预览</button>
+                        ` : ''}
+                        <button type="submit" form="postForm" class="btn btn-primary" ${saving ? 'disabled' : ''}>
+                            ${saving ? '保存中...' : (isEdit ? '💾 更新文章' : '🚀 发布文章')}
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="card">
@@ -306,26 +557,20 @@ class BlogEditPage extends Component {
                         <div class="form-group">
                             <label class="form-label">摘要</label>
                             <textarea name="summary" class="form-input" rows="2"
-                                      placeholder="文章摘要（可选）">${Utils.escapeHtml(post?.summary || '')}</textarea>
+                                      placeholder="文章摘要（可选，用于列表展示）">${Utils.escapeHtml(post?.summary || '')}</textarea>
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label">内容 *</label>
-                            <textarea name="content" class="form-input" rows="15"
-                                      placeholder="请输入文章内容（支持 Markdown）" required>${Utils.escapeHtml(post?.content || '')}</textarea>
+                            <label class="form-label">内容 * <span style="font-weight: normal; color: var(--color-text-tertiary)">（支持 Markdown）</span></label>
+                            <textarea name="content" class="form-input" rows="18"
+                                      placeholder="请输入文章内容..." required>${Utils.escapeHtml(post?.content || '')}</textarea>
                         </div>
                         
                         <div class="form-group">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer">
                                 <input type="checkbox" name="is_top" ${post?.is_top ? 'checked' : ''}>
-                                <span>置顶文章</span>
+                                <span>📌 置顶文章</span>
                             </label>
-                        </div>
-                        
-                        <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
-                            <button type="submit" class="btn btn-primary" ${saving ? 'disabled' : ''}>
-                                ${saving ? '保存中...' : (isEdit ? '更新文章' : '发布文章')}
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -347,7 +592,58 @@ class BlogEditPage extends Component {
         if (form && !form._bindedBlogEdit) {
             form._bindedBlogEdit = true;
             form.addEventListener('submit', (e) => this.handleSubmit(e));
+            if (this.postId) {
+                this.startAutoSave();
+            }
         }
+
+        // 返回按钮
+        const backBtn = this.$('#btnBack');
+        if (backBtn && !backBtn._binded) {
+            backBtn._binded = true;
+            backBtn.addEventListener('click', () => {
+                if (this.postId) {
+                    this.handleSubmit(null, { silent: true }).then(() => {
+                        Router.push('/blog/list');
+                    });
+                } else {
+                    Router.push('/blog/list');
+                }
+            });
+        }
+
+        // 预览按钮
+        const previewBtn = this.$('#btnPreview');
+        if (previewBtn && !previewBtn._binded) {
+            previewBtn._binded = true;
+            previewBtn.addEventListener('click', () => {
+                this.handleSubmit(null, { silent: true }).then(() => {
+                    Router.push(`/blog/view/${this.postId}`);
+                });
+            });
+        }
+
+        // 快捷键
+        if (!this.container._bindedKeyboard) {
+            this.container._bindedKeyboard = true;
+            document.addEventListener('keydown', this._keyboardHandler = (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    this.handleSubmit(null, { silent: false });
+                }
+                if (e.key === 'Escape') {
+                    Router.push('/blog/list');
+                }
+            });
+        }
+    }
+
+    destroy() {
+        if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+        if (this._keyboardHandler) {
+            document.removeEventListener('keydown', this._keyboardHandler);
+        }
+        super.destroy();
     }
 }
 
@@ -371,22 +667,27 @@ class BlogCategoryPage extends Component {
         }
     }
 
-    showAddModal() {
+    showAddModal(category = null) {
         Modal.show({
-            title: '添加分类',
+            title: category ? '编辑分类' : '添加分类',
             content: `
                 <form id="categoryForm">
                     <div class="form-group">
-                        <label class="form-label">名称</label>
-                        <input type="text" name="name" class="form-input" placeholder="分类名称" required>
+                        <label class="form-label">名称 *</label>
+                        <input type="text" name="name" class="form-input" 
+                               value="${category ? Utils.escapeHtml(category.name) : ''}"
+                               placeholder="分类名称" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">别名</label>
-                        <input type="text" name="slug" class="form-input" placeholder="URL别名">
+                        <input type="text" name="slug" class="form-input" 
+                               value="${category ? Utils.escapeHtml(category.slug) : ''}"
+                               placeholder="URL别名，留空自动生成">
                     </div>
                     <div class="form-group">
                         <label class="form-label">描述</label>
-                        <input type="text" name="description" class="form-input" placeholder="分类描述">
+                        <textarea name="description" class="form-input" rows="2"
+                                  placeholder="分类描述（可选）">${category ? Utils.escapeHtml(category.description || '') : ''}</textarea>
                     </div>
                 </form>
             `,
@@ -408,8 +709,13 @@ class BlogCategoryPage extends Component {
             }
 
             try {
-                await BlogApi.createCategory({ name, slug, description });
-                Toast.success('添加成功');
+                if (category) {
+                    await BlogApi.updateCategory(category.id, { name, slug, description });
+                    Toast.success('更新成功');
+                } else {
+                    await BlogApi.createCategory({ name, slug, description });
+                    Toast.success('添加成功');
+                }
                 Modal.closeAll();
                 this.loadData();
             } catch (error) {
@@ -428,9 +734,14 @@ class BlogCategoryPage extends Component {
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
-                    <div>
-                        <h1 class="page-title">分类管理</h1>
-                        <p class="page-desc">管理博客文章分类</p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <button class="btn btn-ghost" id="btnBack">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
+                        <div>
+                            <h1 class="page-title" style="margin: 0;">📁 分类管理</h1>
+                            <p class="page-desc" style="margin: 4px 0 0 0;">共 ${categories.length} 个分类</p>
+                        </div>
                     </div>
                     <button class="btn btn-primary" id="addCategory">
                         ➕ 添加分类
@@ -453,12 +764,13 @@ class BlogCategoryPage extends Component {
                                 <tbody>
                                     ${categories.map(cat => `
                                         <tr>
-                                            <td>${Utils.escapeHtml(cat.name)}</td>
+                                            <td><strong>${Utils.escapeHtml(cat.name)}</strong></td>
                                             <td><code>${Utils.escapeHtml(cat.slug)}</code></td>
                                             <td>${Utils.escapeHtml(cat.description || '-')}</td>
                                             <td>${cat.order}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${cat.id}">删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(cat)}'>✏️ 编辑</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${cat.id}">🗑️ 删除</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -469,6 +781,7 @@ class BlogCategoryPage extends Component {
                         <div class="empty-state">
                             <div class="empty-icon">📁</div>
                             <p class="empty-text">暂无分类</p>
+                            <button class="btn btn-primary" id="addCategoryEmpty">创建第一个分类</button>
                         </div>
                     `}
                 </div>
@@ -486,19 +799,31 @@ class BlogCategoryPage extends Component {
     }
 
     bindEvents() {
-        // 添加分类按钮
-        const addBtn = this.$('#addCategory');
-        if (addBtn && !addBtn._bindedCategory) {
-            addBtn._bindedCategory = true;
-            addBtn.addEventListener('click', () => this.showAddModal());
+        // 返回按钮
+        const backBtn = this.$('#btnBack');
+        if (backBtn && !backBtn._binded) {
+            backBtn._binded = true;
+            backBtn.addEventListener('click', () => Router.push('/blog/list'));
         }
 
-        // 删除按钮使用事件委托
-        if (this.container && !this.container._bindedCategoryDelete) {
-            this.container._bindedCategoryDelete = true;
+        // 添加分类按钮
+        this.delegate('click', '#addCategory, #addCategoryEmpty', () => {
+            this.showAddModal();
+        });
+
+        // 编辑按钮
+        if (this.container && !this.container._bindedCategoryEdit) {
+            this.container._bindedCategoryEdit = true;
+
+            this.delegate('click', '[data-edit]', (e, target) => {
+                const category = JSON.parse(target.dataset.edit);
+                this.showAddModal(category);
+            });
+
+            // 删除按钮
             this.delegate('click', '[data-delete]', (e, target) => {
                 const id = target.dataset.delete;
-                Modal.confirm('删除分类', '确定要删除这个分类吗？', async () => {
+                Modal.confirm('删除分类', '确定要删除这个分类吗？分类下的文章不会被删除。', async () => {
                     try {
                         await BlogApi.deleteCategory(id);
                         Toast.success('删除成功');
@@ -534,6 +859,70 @@ class BlogViewPage extends Component {
         }
     }
 
+    // Markdown 渲染器
+    renderMarkdown(text) {
+        if (!text) return '';
+
+        let html = Utils.escapeHtml(text);
+
+        // 代码块
+        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            return `<pre class="code-block" data-lang="${lang || 'text'}"><code>${code.trim()}</code></pre>`;
+        });
+
+        // 标题
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+        // 粗体、斜体
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+        // 行内代码
+        html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+        // 删除线
+        html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+        // 引用
+        html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+        // 列表
+        html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+
+        // 水平线
+        html = html.replace(/^---$/gm, '<hr>');
+
+        // 链接
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+        // 换行
+        html = html.replace(/\n\n/g, '</p><p>');
+        html = '<p>' + html + '</p>';
+        html = html.replace(/<p><\/p>/g, '');
+
+        return html;
+    }
+
+    async copyContent() {
+        const { post } = this.state;
+        if (!post) return;
+
+        try {
+            await navigator.clipboard.writeText(post.content || '');
+            Toast.success('已复制到剪贴板');
+        } catch (error) {
+            const textarea = document.createElement('textarea');
+            textarea.value = post.content || '';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            Toast.success('已复制到剪贴板');
+        }
+    }
+
     render() {
         const { post, loading } = this.state;
 
@@ -553,31 +942,53 @@ class BlogViewPage extends Component {
             `;
         }
 
+        const wordCount = (post.content || '').length;
+        const readTime = Math.ceil(wordCount / 300);
+
         return `
             <div class="page fade-in">
-                <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                        <h1 class="page-title">${post.title ? Utils.escapeHtml(post.title) : '未命名文章'}</h1>
-                        <p class="page-desc">
-                            ${post.category ? `分类：${Utils.escapeHtml(post.category.name)} · ` : ''}
-                            ${post.status === 'published' ? '已发布' : '草稿'} ·
-                            ${Utils.timeAgo(post.updated_at || post.created_at)}
-                        </p>
+                <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+                    <div style="display:flex;align-items:center;gap:16px;">
+                        <button class="btn btn-ghost" id="backBlog">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
+                        <div>
+                            <h1 class="page-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+                                ${post.is_top ? '<span class="tag tag-warning">置顶</span>' : ''}
+                                ${post.status === 'draft' ? '<span class="tag tag-info">草稿</span>' : ''}
+                                ${Utils.escapeHtml(post.title)}
+                            </h1>
+                            <p class="page-desc" style="margin:4px 0 0 0;">
+                                ${post.category ? `📁 ${Utils.escapeHtml(post.category.name)} · ` : ''}
+                                📝 ${wordCount} 字 · 
+                                ⏱️ ${readTime} 分钟 · 
+                                👁️ ${post.views} 次浏览 ·
+                                ${Utils.timeAgo(post.updated_at || post.created_at)}
+                            </p>
+                        </div>
                     </div>
-                    <div style="display:flex;gap:8px">
-                        <button class="btn btn-primary" id="editBlog">编辑文章</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-ghost" id="copyPost">📋 复制</button>
+                        <button class="btn btn-ghost" id="toggleTop">${post.is_top ? '📍 取消置顶' : '📌 置顶'}</button>
+                        <button class="btn btn-primary" id="editBlog">✏️ 编辑</button>
+                        <button class="btn btn-danger" id="deletePost">🗑️</button>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-body">
+                    <div class="card-body" style="max-width: 800px; padding: var(--spacing-xl);">
                         ${post.tags && post.tags.length ? `
-                            <div style="margin-bottom: 12px; display:flex; gap:6px; flex-wrap:wrap;">
+                            <div style="margin-bottom: 16px; display:flex; gap:8px; flex-wrap:wrap;">
                                 ${post.tags.map(tag => `<span class="tag">${Utils.escapeHtml(tag.name)}</span>`).join('')}
                             </div>
                         ` : ''}
-                        <div class="markdown-body" style="white-space: pre-wrap; line-height:1.6;">
-                            ${Utils.escapeHtml(post.content || '')}
+                        ${post.summary ? `
+                            <div style="padding: 16px; background: var(--color-bg-secondary); border-radius: var(--radius-md); margin-bottom: 24px; color: var(--color-text-secondary); font-style: italic;">
+                                ${Utils.escapeHtml(post.summary)}
+                            </div>
+                        ` : ''}
+                        <div class="markdown-body">
+                            ${this.renderMarkdown(post.content)}
                         </div>
                     </div>
                 </div>
@@ -595,17 +1006,79 @@ class BlogViewPage extends Component {
     }
 
     bindEvents() {
+        // 返回按钮
         const backBtn = this.$('#backBlog');
         if (backBtn && !backBtn._bindedBack) {
             backBtn._bindedBack = true;
-            backBtn.addEventListener('click', () => Router.back());
+            backBtn.addEventListener('click', () => Router.push('/blog/list'));
         }
 
+        // 编辑按钮
         const editBtn = this.$('#editBlog');
         if (editBtn && !editBtn._bindedEdit) {
             editBtn._bindedEdit = true;
             editBtn.addEventListener('click', () => Router.push(`/blog/edit/${this.postId}`));
         }
+
+        // 复制按钮
+        const copyBtn = this.$('#copyPost');
+        if (copyBtn && !copyBtn._binded) {
+            copyBtn._binded = true;
+            copyBtn.addEventListener('click', () => this.copyContent());
+        }
+
+        // 置顶按钮
+        const topBtn = this.$('#toggleTop');
+        if (topBtn && !topBtn._binded) {
+            topBtn._binded = true;
+            topBtn.addEventListener('click', async () => {
+                const { post } = this.state;
+                try {
+                    await BlogApi.updatePost(this.postId, { is_top: !post.is_top });
+                    Toast.success(post.is_top ? '已取消置顶' : '已置顶');
+                    this.loadData();
+                } catch (error) {
+                    Toast.error(error.message);
+                }
+            });
+        }
+
+        // 删除按钮
+        const deleteBtn = this.$('#deletePost');
+        if (deleteBtn && !deleteBtn._binded) {
+            deleteBtn._binded = true;
+            deleteBtn.addEventListener('click', () => {
+                Modal.confirm('删除文章', '确定要删除这篇文章吗？此操作不可恢复。', async () => {
+                    try {
+                        await BlogApi.deletePost(this.postId);
+                        Toast.success('删除成功');
+                        Router.push('/blog/list');
+                    } catch (error) {
+                        Toast.error(error.message);
+                    }
+                });
+            });
+        }
+
+        // 快捷键
+        if (!this.container._bindedKeyboard) {
+            this.container._bindedKeyboard = true;
+            document.addEventListener('keydown', this._keyboardHandler = (e) => {
+                if (e.key === 'e' && !e.ctrlKey && !e.metaKey && !e.target.closest('input, textarea')) {
+                    Router.push(`/blog/edit/${this.postId}`);
+                }
+                if (e.key === 'Escape') {
+                    Router.push('/blog/list');
+                }
+            });
+        }
+    }
+
+    destroy() {
+        if (this._keyboardHandler) {
+            document.removeEventListener('keydown', this._keyboardHandler);
+        }
+        super.destroy();
     }
 }
 

@@ -11,7 +11,7 @@ import secrets
 import string
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, and_, update
+from sqlalchemy import select, func, delete, and_, or_, update
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -502,8 +502,10 @@ class VaultService:
         if keyword:
             keyword = f"%{keyword}%"
             conditions.append(
-                (VaultItem.title.ilike(keyword)) |
-                (VaultItem.website.ilike(keyword))
+                or_(
+                    VaultItem.title.ilike(keyword),
+                    VaultItem.website.ilike(keyword)
+                )
             )
         
         # 总数查询

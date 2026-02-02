@@ -70,25 +70,43 @@ class KnowledgeService:
 
     @staticmethod
     async def delete_base(db: AsyncSession, base_id: int):
-        """删除知识库及其所有关联数据"""
-        # 获取知识库下所有节点ID，用于清理向量数据
+        """删除知识库及其所有关联数据（包括物理文件）"""
+        # 1. 获取知识库信息（为了拿到 owner_id 用于定位文件目录）
+        base = await db.get(KnowledgeBase, base_id)
+        if not base:
+            return  # 已经被删除了
+            
+        owner_id = base.owner_id
+        
+        # 2. 获取知识库下所有节点ID，用于清理向量数据
         stmt = select(KnowledgeNode.id).where(KnowledgeNode.base_id == base_id)
         result = await db.execute(stmt)
         node_ids = [row[0] for row in result.fetchall()]
         
-        # 批量清理向量索引
+        # 3. 批量清理向量索引
         for node_id in node_ids:
             try:
                 vector_store.delete_by_node_id(node_id)
             except Exception as e:
                 logger.warning(f"清理节点 {node_id} 向量时出错: {e}")
         
-        # 删除数据库记录（级联删除节点、实体、关系）
+        # 4. 删除物理文件目录
+        try:
+            # 路径结构: modules/knowledge/uploads/user_{owner_id}/{base_id}
+            user_uploads_dir = storage_manager.get_module_dir("knowledge", "uploads", owner_id)
+            base_dir = user_uploads_dir / str(base_id)
+            if base_dir.exists() and base_dir.is_dir():
+                shutil.rmtree(base_dir)
+                logger.info(f"已清理知识库物理目录: {base_dir}")
+        except Exception as e:
+            logger.warning(f"清理知识库 {base_id} 物理目录失败: {e}")
+            
+        # 5. 删除数据库记录（级联删除节点、实体、关系）
         stmt = delete(KnowledgeBase).where(KnowledgeBase.id == base_id)
         await db.execute(stmt)
         await db.commit()
         
-        # 清理相关搜索缓存
+        # 6. 清理搜索缓存
         KnowledgeService._invalidate_search_cache(base_id)
         
         logger.info(f"已删除知识库 {base_id}，共清理 {len(node_ids)} 个节点的向量数据")
@@ -200,8 +218,9 @@ class KnowledgeService:
         实际的文件解析在后台异步执行
         """
         # 构建存储路径 (符合标准 uploads/outputs 规范)
-        relative_path = f"uploads/{base_id}"
-        save_dir = storage_manager.get_module_dir("knowledge", relative_path)
+        # 修正：使用 user_id 进行分层，结构为 modules/knowledge/uploads/user_{id}/{base_id}
+        user_uploads_dir = storage_manager.get_module_dir("knowledge", "uploads", user_id)
+        save_dir = user_uploads_dir / str(base_id)
         os.makedirs(save_dir, exist_ok=True)
         
         # 使用时间戳防止文件名冲突

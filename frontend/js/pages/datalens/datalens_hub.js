@@ -192,9 +192,9 @@ const DataLensHubMixin = {
                 
                 <div class="lens-main">
                     <div class="lens-hub-header">
-                        <div class="lens-search-bar">
-                            <span class="lens-search-icon">🔍</span>
+                        <div class="lens-search-bar search-group">
                             <input type="text" id="lens-hub-search" placeholder="搜索视图名称、描述或作者..." value="${searchQuery || ''}">
+                            <button class="btn btn-primary" id="lens-hub-search-btn">搜索</button>
                         </div>
                     </div>
                     

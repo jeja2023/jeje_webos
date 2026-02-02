@@ -49,7 +49,8 @@ class CoursePage extends Component {
             const { view } = this.state;
 
             if (view === 'list') {
-                const res = await Api.get('/course/list');
+                const { keyword } = this.state;
+                const res = await Api.get(`/course/list?keyword=${encodeURIComponent(keyword || '')}`);
                 this.setState({ courses: res.data?.items || [], loading: false });
             } else if (view === 'learning') {
                 const [learningRes, statsRes] = await Promise.all([
@@ -95,6 +96,14 @@ class CoursePage extends Component {
         } catch (e) {
             Toast.error('加载章节内容失败');
         }
+    }
+
+    async handleSearch() {
+        // 直接从输入框读取关键词
+        const searchInput = this.container?.querySelector('#course-search');
+        const keyword = searchInput?.value || '';
+        this.state.keyword = keyword;  // 直接更新状态，不触发重新渲染
+        await this.loadData();
     }
 
     render() {
@@ -184,9 +193,11 @@ class CoursePage extends Component {
                         <span class="subtitle">发现优质课程，开启学习之旅</span>
                     </div>
                     <div class="header-right d-flex align-items-center gap-3">
-                        <div class="search-box search-animated">
-                            <input type="text" id="course-search" placeholder="搜索课程..." value="${keyword}">
-                            <i class="ri-search-line"></i>
+                        <div class="search-group">
+                            <input type="text" class="form-input" id="course-search" placeholder="搜索课程..." value="${keyword}">
+                            <button class="btn btn-primary" id="btn-search-course">
+                                <i class="ri-search-line"></i> 搜索
+                            </button>
                         </div>
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('course', '课程学习') : ''}
                     </div>
@@ -781,20 +792,20 @@ class CoursePage extends Component {
             }
         });
 
-        // 搜索
-        this.delegate('input', '#course-search', async (e) => {
-            const keyword = e.target.value;
-            this.setState({ keyword });
-            // 防抖搜索
-            clearTimeout(this._searchTimer);
-            this._searchTimer = setTimeout(async () => {
-                try {
-                    const res = await Api.get(`/course/list?keyword=${encodeURIComponent(keyword)}`);
-                    this.setState({ courses: res.data?.items || [] });
-                } catch (err) {
-                    console.error('搜索失败', err);
-                }
-            }, 300);
+        // 注意：不在 input 事件中更新状态，避免触发重新渲染
+        // 搜索关键词在 handleSearch 时直接从输入框读取
+
+        // 搜索按钮点击
+        this.delegate('click', '#btn-search-course', () => {
+            this.handleSearch();
+        });
+
+        // 搜索输入框回车键触发搜索
+        this.delegate('keydown', '#course-search', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.handleSearch();
+            }
         });
 
         // 章节导航点击 (上一章/下一章)

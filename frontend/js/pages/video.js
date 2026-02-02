@@ -78,13 +78,19 @@ class VideoPage extends Component {
         }
 
         // 搜索视频集
-        this.delegate('input', '#videoSearchInput', (e) => {
-            this.setState({ keyword: e.target.value });
+        this.delegate('click', '#videoSearchBtn', () => {
+            const val = this.container.querySelector('#videoSearchInput')?.value.trim() || '';
+            this.setState({ keyword: val });
+            this.loadCollections();
         });
+
         this.delegate('keydown', '#videoSearchInput', (e) => {
-            if (e.key === 'Enter') this.loadCollections();
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                this.setState({ keyword: val });
+                this.loadCollections();
+            }
         });
-        this.delegate('click', '[data-action="search-video"]', () => this.loadCollections());
 
         this.delegate('click', '.collection-card', (e, el) => {
             // 如果点击的是操作按钮，不触发打开视频集
@@ -587,9 +593,9 @@ class VideoPage extends Component {
                         <h1 class="page-title">我的视频</h1>
                     </div>
                     <div class="header-right d-flex align-items-center gap-3">
-                        <div class="input-group search-box" style="width: 240px;">
+                        <div class="search-group search-box" style="width: 240px;">
                             <input type="text" id="videoSearchInput" class="form-control" placeholder="搜索视频集..." value="${Utils.escapeHtml(keyword)}">
-                            <button class="btn btn-outline-secondary" data-action="search-video">
+                            <button class="btn btn-primary" id="videoSearchBtn">
                                 <i class="ri-search-line"></i>
                             </button>
                         </div>

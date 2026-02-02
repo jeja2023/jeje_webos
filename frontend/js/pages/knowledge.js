@@ -30,10 +30,10 @@ const KnowledgeApi = {
 
     // 混合搜索
     search(query, baseId, nodeType = null) {
-        let url = `/api/v1/knowledge/search?q=${encodeURIComponent(query)}`;
+        let url = `/knowledge/search?q=${encodeURIComponent(query)}`;
         if (baseId) url += `&base_id=${baseId}`;
         if (nodeType) url += `&node_type=${nodeType}`;
-        return Api.request({ url });
+        return Api.get(url);
     },
 
     // 获取文件预览URL
@@ -319,8 +319,9 @@ class KnowledgeViewPage extends Component {
                     
                     <div class="kb-search-bar">
                         <input type="file" id="fileUploader" style="display:none" multiple>
-                        <div class="search-input-group">
-                            <input type="text" id="searchInput" placeholder="搜索知识库..." class="form-input" style="flex:1">
+                        <div class="kb-search-input-group search-group">
+                            <input type="text" id="searchInput" placeholder="搜索知识库..." class="form-input">
+                            <button class="btn btn-primary" id="btnSearch" title="搜索"><i class="ri-search-2-line"></i></button>
                             <button class="btn-filter ${showFilters ? 'active' : ''}" id="btnToggleFilter" title="筛选选项">⚙️</button>
                         </div>
 
@@ -732,11 +733,24 @@ class KnowledgeViewPage extends Component {
 
     bindSearchEvent() {
         const searchInput = this.$('#searchInput');
+        const btnSearch = this.$('#btnSearch');
+
+        // 执行搜索的统一函数
+        const triggerSearch = () => {
+            const query = searchInput ? searchInput.value.trim() : '';
+            this.performSearch(query);
+        };
+
+        if (btnSearch) {
+            btnSearch.onclick = triggerSearch;
+        }
+
         if (searchInput) {
-            let timeout;
-            searchInput.oninput = (e) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => this.performSearch(e.target.value), 300);
+            searchInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    triggerSearch();
+                }
             };
         }
 

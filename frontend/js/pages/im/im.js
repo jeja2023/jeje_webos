@@ -207,11 +207,23 @@ class IMPage extends Component {
             this.handlePaste(e);
         });
 
-        // 搜索会话
-        this.delegate('input', '.im-search-input', (e, el) => {
-            const query = el.value.trim().toLowerCase();
-            this.setState({ searchQuery: query });
-            this.filterConversations();
+        // 搜索按钮点击
+        this.delegate('click', '#btnIMSearch', () => {
+            const input = this.container.querySelector('.im-search-input');
+            if (input) {
+                const query = input.value.trim().toLowerCase();
+                this.setState({ searchQuery: query });
+                this.filterConversations();
+            }
+        });
+
+        // 搜索框回车支持
+        this.delegate('keydown', '.im-search-input', (e, el) => {
+            if (e.key === 'Enter') {
+                const query = el.value.trim().toLowerCase();
+                this.setState({ searchQuery: query });
+                this.filterConversations();
+            }
         });
 
         // 图片预览 (Lightbox)
@@ -1250,9 +1262,11 @@ class IMPage extends Component {
                             </div>
                         </div>
                         <div class="im-search-area">
-                            <div class="im-search-input-wrapper">
-                                <i class="ri-search-line"></i>
-                                <input type="text" class="im-search-input" placeholder="搜索会话..." value="${this.state.searchQuery || ''}">
+                            <div class="search-group">
+                                <input type="text" class="form-input im-search-input" placeholder="搜索会话..." value="${this.state.searchQuery || ''}">
+                                <button class="btn btn-primary btn-sm" id="btnIMSearch">
+                                    <i class="ri-search-line"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="im-conversation-list">

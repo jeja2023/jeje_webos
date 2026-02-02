@@ -81,13 +81,14 @@
 
 /* 幽灵按钮 */
 .btn-ghost {
-    background: transparent;
-    border-color: transparent;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--color-text-secondary);
 }
 
 .btn-ghost:hover:not(:disabled) {
-    background: var(--color-bg-hover);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--color-primary);
     color: var(--color-text-primary);
 }
 

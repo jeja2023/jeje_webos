@@ -43,7 +43,7 @@ class AIPage extends Component {
             inputMessage: '',
             selectedKb: null,
             useAnalysis: false,
-            provider: 'local', // 'local' 或 'online'
+            provider: 'local', // '本地' 或 '在线'
             knowledgeBases: [],
             _eventsBound: false, // 标记事件是否已绑定，防止重复绑定
             _saving: false, // 防止重复保存
@@ -118,6 +118,9 @@ class AIPage extends Component {
 
                 // 首次加载完成，标记需要强制置底
                 this._shouldForceScroll = true;
+            } else {
+                // 后端返回空数组，保持默认会话
+                Config.info('后端无会话记录，使用默认会话');
             }
         } catch (e) {
             Config.error('加载会话失败:', e);
@@ -131,11 +134,14 @@ class AIPage extends Component {
                             sessions: parsed.sessions,
                             activeSessionId: parsed.activeSessionId || parsed.sessions[0].id
                         });
+                        return;
                     }
                 } catch (e2) {
                     Config.error('从LocalStorage恢复失败:', e2);
                 }
             }
+            // LocalStorage也没有，保持默认会话（constructor中初始化的）
+            Config.info('使用默认会话');
         }
     }
 
@@ -276,21 +282,26 @@ class AIPage extends Component {
                 <div class="ai-sidebar">
                     <div class="sidebar-header">
                         <button class="btn btn-primary btn-block" id="btnNewChat">➕ 新建对话</button>
-                        <div class="session-search" style="margin-top: 8px;">
-                            <input type="text" class="form-input btn-sm" id="sessionSearch" 
-                                placeholder="🔍 搜索会话..." 
-                                value="${this.state.sessionSearchQuery}"
-                                style="width: 100%;">
+                        <div class="session-search search-group" style="margin-top: 8px;">
+                            <input type="text" class="form-input" id="sessionSearchInput" 
+                                placeholder="搜索会话...">
+                            <button class="btn btn-primary" id="btnSessionSearch"><i class="ri-search-2-line"></i></button>
                         </div>
                     </div>
                     <div class="session-list">
                         ${(() => {
                 // 过滤会话列表
-                const query = this.state.sessionSearchQuery.toLowerCase().trim();
+                const query = (this.state.sessionSearchQuery || '').toLowerCase().trim();
                 const filteredSessions = query
                     ? sessions.filter(s => s.title.toLowerCase().includes(query))
                     : sessions;
 
+                // 无会话时显示提示
+                if (sessions.length === 0) {
+                    return '<div class="session-empty" style="padding: 12px; text-align: center; opacity: 0.6;">暂无会话，点击上方按钮新建</div>';
+                }
+
+                // 有搜索但无匹配结果
                 if (filteredSessions.length === 0 && query) {
                     return '<div class="session-empty" style="padding: 12px; text-align: center; opacity: 0.6;">未找到匹配的会话</div>';
                 }
@@ -806,9 +817,19 @@ class AIPage extends Component {
             this.handleSendMessage();
         });
 
-        // 会话搜索
-        this.delegate('input', '#sessionSearch', (e) => {
-            this.setState({ sessionSearchQuery: e.target.value });
+        // 会话搜索 - 只在点击或回车时触发搜索，不监听input事件以避免重渲染
+        this.delegate('click', '#btnSessionSearch', () => {
+            const inputEl = this.$('#sessionSearchInput');
+            const query = inputEl ? inputEl.value.trim() : '';
+            this.setState({ sessionSearchQuery: query });
+        });
+
+        this.delegate('keydown', '#sessionSearchInput', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = e.target.value.trim();
+                this.setState({ sessionSearchQuery: query });
+            }
         });
 
         // 模式切换
