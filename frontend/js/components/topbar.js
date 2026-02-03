@@ -136,7 +136,7 @@ class TopBarComponent extends Component {
                     
                     <!-- 胶囊 2: 消息中心 -->
                     <div class="status-pill icon-pill" id="messageBtn" title="系统消息">
-                        <span class="status-icon"><i class="ri-notification-3-line"></i></span>
+                        <span class="status-icon"><i class="ri-mail-line"></i></span>
                         ${totalBadge > 0 ? `
                             <span class="notification-badge">
                                 ${totalBadge > 99 ? '99+' : totalBadge}
