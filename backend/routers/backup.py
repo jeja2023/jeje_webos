@@ -5,17 +5,21 @@
 
 import logging
 from typing import Optional
+from datetime import datetime, timedelta
 from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pathlib import Path
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, update, delete
 
 from core.database import get_db
 from core.security import require_admin, TokenData, decode_token
-from models.backup import BackupRecord, BackupType, BackupStatus
-from schemas.backup import BackupInfo, BackupCreate, BackupRestore, BackupListResponse
+from models.backup import BackupRecord, BackupType, BackupStatus, BackupSchedule
+from schemas.backup import (
+    BackupInfo, BackupCreate, BackupRestore, BackupListResponse,
+    ScheduleInfo, ScheduleCreate, ScheduleUpdate, ScheduleListResponse
+)
 from schemas.response import success
 from utils.backup import get_backup_manager
 
@@ -37,100 +41,7 @@ def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
     return token_data
 
 
-def execute_backup_task_sync(backup_id: int, backup_type: str):
-    """执行备份任务（同步方法，在线程池中运行）"""
-    import threading
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from core.config import get_settings
-    
-    logger.info(f"开始执行备份任务（线程 {threading.current_thread().name}）: {backup_id}, 类型: {backup_type}")
-    settings = get_settings()
-    
-    # 使用同步数据库引擎
-    engine = create_engine(settings.db_url_sync, pool_pre_ping=True)
-    SessionLocal = sessionmaker(bind=engine)
-    db = SessionLocal()
-    
-    backup_manager = get_backup_manager()
-    
-    try:
-        # 查询备份记录
-        from models.backup import BackupRecord, BackupStatus
-        backup = db.query(BackupRecord).filter(BackupRecord.id == backup_id).first()
-        if not backup:
-            logger.error(f"备份记录不存在: {backup_id}")
-            return
-        
-        # 更新状态为执行中
-        backup.status = BackupStatus.RUNNING.value
-        backup.started_at = get_beijing_time()
-        db.commit()
-        
-        error_messages = []
-        
-        if backup_type == BackupType.DATABASE.value or backup_type == BackupType.FULL.value:
-            # 备份数据库
-            logger.info(f"备份数据库: {backup_id}")
-            db_success, file_path, file_size = backup_manager.backup_database(str(backup_id))
-            if db_success:
-                backup.file_path = file_path
-                backup.file_size = file_size
-                logger.info(f"数据库备份成功: {file_path}")
-            else:
-                error_messages.append("数据库备份失败（可能需要安装 mysqldump 工具）")
-                logger.error(f"数据库备份失败: {backup_id}")
-        
-        if backup_type == BackupType.FILES.value or backup_type == BackupType.FULL.value:
-            # 备份文件
-            logger.info(f"备份文件: {backup_id}")
-            files_success, file_path, file_size = backup_manager.backup_files(str(backup_id))
-            if files_success:
-                # 如果是全量备份，文件路径会追加
-                if backup.file_path:
-                    backup.file_path += f",{file_path}"
-                else:
-                    backup.file_path = file_path
-                if backup.file_size:
-                    backup.file_size += file_size
-                else:
-                    backup.file_size = file_size
-                logger.info(f"文件备份成功: {file_path}")
-            else:
-                error_messages.append("文件备份失败")
-                logger.error(f"文件备份失败: {backup_id}")
-        
-        # 判断最终状态
-        if error_messages:
-            if backup.file_path:
-                # 部分成功
-                backup.status = BackupStatus.SUCCESS.value
-                backup.error_message = "部分完成: " + "; ".join(error_messages)
-            else:
-                # 完全失败
-                backup.status = BackupStatus.FAILED.value
-                backup.error_message = "; ".join(error_messages)
-        else:
-            backup.status = BackupStatus.SUCCESS.value
-        
-        backup.completed_at = get_beijing_time()
-        db.commit()
-        logger.info(f"备份任务完成: {backup_id}, 状态: {backup.status}")
-        
-    except Exception as e:
-        logger.error(f"备份任务失败: {backup_id}, 错误: {e}", exc_info=True)
-        try:
-            backup = db.query(BackupRecord).filter(BackupRecord.id == backup_id).first()
-            if backup:
-                backup.status = BackupStatus.FAILED.value
-                backup.error_message = f"备份异常: {str(e)}"
-                backup.completed_at = get_beijing_time()
-                db.commit()
-        except Exception as commit_error:
-            logger.error(f"更新备份状态失败: {commit_error}")
-    finally:
-        db.close()
-        engine.dispose()
+from utils.backup_executor import execute_backup_task_sync, calculate_next_run
 
 
 
@@ -151,11 +62,16 @@ async def create_backup(
     if data.backup_type not in [t.value for t in BackupType]:
         raise HTTPException(status_code=400, detail="无效的备份类型")
     
+    # 如果启用加密，必须提供密码
+    if data.is_encrypted and not data.encrypt_password:
+        raise HTTPException(status_code=400, detail="加密备份必须提供密码")
+    
     # 创建备份记录
     backup = BackupRecord(
         backup_type=data.backup_type,
         status=BackupStatus.PENDING.value,
-        description=data.description,
+        description=data.note or data.description,  # 优先使用 note 字段
+        is_encrypted=data.is_encrypted,
         created_by=current_user.user_id
     )
     db.add(backup)
@@ -163,7 +79,8 @@ async def create_backup(
     await db.refresh(backup)
     
     # 在后台执行备份（使用同步包装器，后台任务会创建新的数据库会话）
-    background_tasks.add_task(execute_backup_task_sync, backup.id, data.backup_type)
+    encrypt_password = data.encrypt_password if data.is_encrypted else None
+    background_tasks.add_task(execute_backup_task_sync, backup.id, data.backup_type, encrypt_password)
     
     return success(BackupInfo.model_validate(backup).model_dump(), "备份任务已创建")
 
@@ -210,6 +127,149 @@ async def list_backups(
             size=size
         ).model_dump()
     )
+
+
+# ========== 备份调度 API ==========
+
+@router.get("/schedules")
+async def list_schedules(
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取备份调度列表"""
+    result = await db.execute(
+        select(BackupSchedule).order_by(desc(BackupSchedule.created_at))
+    )
+    schedules = result.scalars().all()
+    
+    return success(ScheduleListResponse(
+        items=[ScheduleInfo.model_validate(s) for s in schedules],
+        total=len(schedules)
+    ).model_dump())
+
+
+@router.post("/schedules")
+async def create_schedule(
+    data: ScheduleCreate,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """创建备份调度计划"""
+    # 验证调度类型
+    if data.schedule_type not in ["daily", "weekly", "monthly"]:
+        raise HTTPException(status_code=400, detail="无效的调度类型")
+    
+    # 验证时间格式
+    try:
+        hour, minute = map(int, data.schedule_time.split(":"))
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError()
+    except:
+        raise HTTPException(status_code=400, detail="无效的时间格式，请使用 HH:MM")
+    
+    # 计算下次执行时间
+    next_run = calculate_next_run(data.schedule_type, data.schedule_time, data.schedule_day)
+    
+    schedule = BackupSchedule(
+        name=data.name,
+        backup_type=data.backup_type,
+        schedule_type=data.schedule_type,
+        schedule_time=data.schedule_time,
+        schedule_day=data.schedule_day,
+        is_encrypted=data.is_encrypted,
+        is_enabled=data.is_enabled,
+        retention_days=data.retention_days,
+        next_run_at=next_run,
+        created_by=current_user.user_id
+    )
+    db.add(schedule)
+    await db.commit()
+    await db.refresh(schedule)
+    
+    return success(ScheduleInfo.model_validate(schedule).model_dump(), "调度计划已创建")
+
+
+@router.put("/schedules/{schedule_id}")
+async def update_schedule(
+    schedule_id: int,
+    data: ScheduleUpdate,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """更新备份调度计划"""
+    result = await db.execute(select(BackupSchedule).where(BackupSchedule.id == schedule_id))
+    schedule = result.scalar_one_or_none()
+    
+    if not schedule:
+        raise HTTPException(status_code=404, detail="调度计划不存在")
+    
+    # 更新字段
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        if value is not None:
+            setattr(schedule, key, value)
+    
+    # 如果更新了时间相关字段，重新计算下次执行时间
+    if any(k in update_data for k in ["schedule_type", "schedule_time", "schedule_day"]):
+        schedule.next_run_at = calculate_next_run(
+            schedule.schedule_type, 
+            schedule.schedule_time, 
+            schedule.schedule_day
+        )
+    
+    await db.commit()
+    await db.refresh(schedule)
+    
+    return success(ScheduleInfo.model_validate(schedule).model_dump(), "调度计划已更新")
+
+
+@router.delete("/schedules/{schedule_id}")
+async def delete_schedule(
+    schedule_id: int,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """删除备份调度计划"""
+    result = await db.execute(select(BackupSchedule).where(BackupSchedule.id == schedule_id))
+    schedule = result.scalar_one_or_none()
+    
+    if not schedule:
+        raise HTTPException(status_code=404, detail="调度计划不存在")
+    
+    await db.delete(schedule)
+    await db.commit()
+    
+    return success(message="调度计划已删除")
+
+
+@router.post("/schedules/{schedule_id}/toggle")
+async def toggle_schedule(
+    schedule_id: int,
+    current_user: TokenData = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db)
+):
+    """切换调度计划启用状态"""
+    result = await db.execute(select(BackupSchedule).where(BackupSchedule.id == schedule_id))
+    schedule = result.scalar_one_or_none()
+    
+    if not schedule:
+        raise HTTPException(status_code=404, detail="调度计划不存在")
+    
+    schedule.is_enabled = not schedule.is_enabled
+    
+    # 如果启用，重新计算下次执行时间
+    if schedule.is_enabled:
+        schedule.next_run_at = calculate_next_run(
+            schedule.schedule_type, 
+            schedule.schedule_time, 
+            schedule.schedule_day
+        )
+    
+    await db.commit()
+    await db.refresh(schedule)
+    
+    status_text = "已启用" if schedule.is_enabled else "已禁用"
+    return success(ScheduleInfo.model_validate(schedule).model_dump(), f"调度计划{status_text}")
 
 
 @router.get("/{backup_id}")
@@ -260,51 +320,85 @@ async def restore_backup(
     if not backup.file_path:
         raise HTTPException(status_code=400, detail="备份文件不存在")
     
-    # 提取所需数据，避免在关闭事务后访问 ORM 对象
+    # 提取所需数据
     backup_type = backup.backup_type
     file_path = backup.file_path
+    is_encrypted = backup.is_encrypted
     
-    # 显式提交事务，释放数据库锁！
-    # 这是防止死锁的关键：如果当前事务未提交，它持有某些表的元数据锁
-    # 而 mysql 恢复进程尝试 DROP/CREATE 这些表时会请求排他锁，导致互相等待
+    # 显式提交事务，释放数据库锁
     await db.commit()
     
     backup_manager = get_backup_manager()
+    temp_decrypted_files = [] 
     
     try:
-        # 根据备份类型恢复
-        file_paths = file_path.split(",")
-        
-        if backup_type == BackupType.DATABASE.value or backup_type == BackupType.FULL.value:
-            # 恢复数据库
-            db_path = file_paths[0] if file_paths else file_path
-            logger.info(f"开始恢复数据库: {db_path}")
+        try:
+            raw_paths = file_path.split(",")
+            restore_paths = [] 
             
-            try:
-                restore_ok, error = backup_manager.restore_database(db_path)
-            except Exception as e:
-                logger.error(f"restore_database 内部异常: {e}")
-                raise
-
-            if not restore_ok:
-                logger.error(f"数据库恢复失败: {error}")
-                raise HTTPException(status_code=500, detail=f"数据库恢复失败: {error}")
-            logger.info("数据库恢复完成")
-        
-        if backup_type == BackupType.FILES.value or backup_type == BackupType.FULL.value:
-            # 恢复文件
-            files_path = file_paths[-1] if len(file_paths) > 1 else (file_paths[0] if backup_type == BackupType.FILES.value else None)
-            if files_path:
-                logger.info(f"开始恢复文件: {files_path}")
-                restore_ok, error = backup_manager.restore_files(files_path)
-                if not restore_ok:
-                    logger.error(f"文件恢复失败: {error}")
-                    raise HTTPException(status_code=500, detail=f"文件恢复失败: {error}")
-                logger.info("文件恢复完成")
-        
-        # 修复数据状态和文件大小：
-        # 由于备份是在 status=RUNNING 且 file_size 未知时进行的，恢复后的数据库中该记录状态会变回 RUNNING 且无大小
-        # 我们需要将其修正为 SUCCESS，并重新计算文件大小
+            # 处理解密
+            if is_encrypted:
+                if not data.decrypt_password:
+                    raise HTTPException(status_code=400, detail="该备份已加密，请提供解密密码")
+                
+                logger.info(f"开始解密备份文件 (ID: {data.backup_id})...")
+                for p in raw_paths:
+                    p_obj = Path(p)
+                    if not p_obj.exists():
+                         logger.warning(f"文件丢失: {p}")
+                         continue
+                         
+                    success_dec, result_dec = backup_manager.decrypt_file(p_obj, data.decrypt_password)
+                    if not success_dec:
+                        raise HTTPException(status_code=400, detail=f"解密失败: {result_dec}")
+                    
+                    restore_paths.append(result_dec)
+                    temp_decrypted_files.append(result_dec)
+            else:
+                restore_paths = raw_paths
+                
+            # 根据备份类型恢复
+            if backup_type == BackupType.DATABASE.value:
+                 # 只有 DB
+                 if restore_paths:
+                     logger.info(f"开始恢复数据库: {restore_paths[0]}")
+                     ok, err = backup_manager.restore_database(restore_paths[0])
+                     if not ok: raise HTTPException(status_code=500, detail=f"数据库恢复失败: {err}")
+                     
+            elif backup_type == BackupType.FILES.value:
+                 # 只有 Files
+                 if restore_paths:
+                     logger.info(f"开始恢复文件: {restore_paths[0]}")
+                     ok, err = backup_manager.restore_files(restore_paths[0])
+                     if not ok: raise HTTPException(status_code=500, detail=f"文件恢复失败: {err}")
+                     
+            elif backup_type == BackupType.FULL.value:
+                 # DB + Files
+                 db_path = restore_paths[0] if len(restore_paths) > 0 else None
+                 files_path = restore_paths[1] if len(restore_paths) > 1 else None
+                 
+                 if db_path:
+                     logger.info(f"开始恢复数据库: {db_path}")
+                     ok, err = backup_manager.restore_database(db_path)
+                     if not ok: raise HTTPException(status_code=500, detail=f"数据库恢复失败: {err}")
+                 
+                 if files_path:
+                     logger.info(f"开始恢复文件: {files_path}")
+                     ok, err = backup_manager.restore_files(files_path)
+                     if not ok: raise HTTPException(status_code=500, detail=f"文件恢复失败: {err}")
+                     
+            logger.info("备份恢复操作完成")
+            
+        finally:
+            # 清理临时解密文件
+            for temp_file in temp_decrypted_files:
+                try:
+                    Path(temp_file).unlink(missing_ok=True)
+                    logger.debug(f"已清理临时文件: {temp_file}")
+                except Exception as e:
+                    logger.warning(f"无法删除临时文件 {temp_file}: {e}")
+            
+        # 修复数据状态和文件大小
         try:
              # 计算文件总大小
              total_size = 0
@@ -320,7 +414,6 @@ async def restore_backup(
              from sqlalchemy import update
              from core.database import async_session
              
-             # 使用新的 Session 执行更新，避免原 Session 因数据库重建导致的状态问题
              async with async_session() as new_session:
                 stmt = (
                     update(BackupRecord)
@@ -390,11 +483,7 @@ async def download_backup(
     """
     # 验证 Token
     current_user = get_user_from_token(token)
-    """
-    下载备份文件
     
-    仅系统管理员可访问
-    """
     result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
     backup = result.scalar_one_or_none()
     
@@ -420,4 +509,6 @@ async def download_backup(
         filename=full_path.name,
         media_type="application/octet-stream"
     )
+
+
 

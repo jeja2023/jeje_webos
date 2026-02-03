@@ -200,6 +200,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ 注册日程提醒任务失败: {e}")
     
+    # 8.3 自动备份调度任务
+    try:
+        # 延迟导入，避免循环依赖
+        from utils.backup_executor import process_schedule_backups
+        
+        await scheduler.schedule_periodic(
+            process_schedule_backups,
+            interval_seconds=60, # 每分钟检查一次
+            name="自动备份调度检查"
+        )
+        logger.info("✅ 自动备份调度任务已就绪")
+    except Exception as e:
+        logger.warning(f"⚠️ 注册自动备份任务失败: {e}")
+    
     # 9. 发送启动完成事件
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")

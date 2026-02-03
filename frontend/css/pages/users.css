@@ -1,18 +1,108 @@
-/**
- * 用户管理页面样式
- */
-
-/* 用户列表过滤器 */
+/* User List Filters */
 .users-filters {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
-    flex-wrap: wrap;
+    align-items: end;
 }
 
 .users-filters .form-group {
     margin-bottom: 0;
-    min-width: 150px;
+    width: 100%;
+}
+
+.users-filters .search-group {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.users-filters .search-group .form-input {
+    flex: 1;
+}
+
+/* Page Header Actions */
+.page-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* 批量操作栏 */
+.users-batch-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(var(--color-primary-rgb), 0.1);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.users-batch-bar .batch-count {
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+.users-batch-bar .batch-actions {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+/* 表格复选框列 */
+.table th:first-child,
+.table td:first-child {
+    width: 40px;
+    text-align: center;
+}
+
+.table input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+/* 操作下拉菜单 */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    min-width: 120px;
+    padding: 4px 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    transition: background 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.dropdown-item i {
+    font-size: 14px;
 }
 
 /* 用户统计卡片 */

@@ -96,11 +96,17 @@ class MonitorPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <h1 class="page-title">📊 系统监控</h1>
+                <div class="page-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <a href="#/system/settings" class="btn btn-ghost btn-sm" title="返回系统设置"><i class="ri-arrow-left-line"></i></a>
+                        <div>
+                            <h1 class="page-title" style="margin:0;"><i class="ri-line-chart-line"></i> 系统监控</h1>
+                            <p class="page-desc" style="margin:0;font-size:13px;color:var(--color-text-secondary);">实时系统资源监控 · 每30秒自动刷新</p>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 12px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('monitor', '系统监控') : ''}
-                        <button class="btn btn-secondary btn-sm" id="refreshMonitor">🔄 刷新</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshMonitor"><i class="ri-refresh-line"></i> 刷新</button>
                     </div>
                 </div>
 

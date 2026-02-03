@@ -136,9 +136,32 @@ const WebSocketClient = {
                 this.handleScheduleReminder(data);
                 break;
 
+            case 'system.settings_updated':
+                // 系统设置变更
+                this.handleSettingsUpdated(data);
+                break;
+
+            case 'system.backup_status':
+                // 备份状态更新 - 触发自定义监听器
+                this.emit('system.backup_status', data);
+                break;
+
             default:
                 // 触发自定义监听器
                 this.emit(type, data);
+        }
+    },
+
+    /**
+     * 处理系统设置更新
+     */
+    handleSettingsUpdated(data) {
+        Config.log('WebSocket: 收到系统设置更新', data);
+
+        // 更新 Store 中的系统设置
+        if (data && typeof Store !== 'undefined') {
+            Store.setSystemSettings(data);
+            Toast.info('系统设置已更新', 3000);
         }
     },
 

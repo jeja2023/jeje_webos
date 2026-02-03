@@ -2,7 +2,7 @@
 数据备份 Schema
 """
 
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
@@ -16,6 +16,7 @@ class BackupInfo(BaseModel):
     file_size: Optional[int] = None
     description: Optional[str] = None
     error_message: Optional[str] = None
+    is_encrypted: bool = False
     created_by: Optional[int] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -28,11 +29,15 @@ class BackupCreate(BaseModel):
     """创建备份请求"""
     backup_type: str = Field(..., description="备份类型: full, database, files")
     description: Optional[str] = None
+    note: Optional[str] = Field(None, description="备份备注")
+    is_encrypted: bool = Field(False, description="是否加密备份")
+    encrypt_password: Optional[str] = Field(None, description="加密密码")
 
 
 class BackupRestore(BaseModel):
     """恢复备份请求"""
     backup_id: int = Field(..., description="备份记录ID")
+    decrypt_password: Optional[str] = Field(None, description="解密密码（加密备份需要）")
 
 
 class BackupListResponse(BaseModel):
@@ -43,6 +48,52 @@ class BackupListResponse(BaseModel):
     size: int
 
 
+# 备份调度相关 Schema
+class ScheduleInfo(BaseModel):
+    """调度计划信息"""
+    id: int
+    name: str
+    backup_type: str
+    schedule_type: str
+    schedule_time: str
+    schedule_day: Optional[int] = None
+    is_encrypted: bool = False
+    is_enabled: bool = True
+    retention_days: int = 30
+    last_run_at: Optional[datetime] = None
+    next_run_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
+class ScheduleCreate(BaseModel):
+    """创建调度计划"""
+    name: str = Field(..., min_length=1, max_length=100, description="计划名称")
+    backup_type: str = Field("full", description="备份类型")
+    schedule_type: str = Field(..., description="调度类型: daily, weekly, monthly")
+    schedule_time: str = Field(..., description="执行时间 HH:MM")
+    schedule_day: Optional[int] = Field(None, description="执行日期（周几或月几）")
+    is_encrypted: bool = Field(False, description="是否加密")
+    is_enabled: bool = Field(True, description="是否启用")
+    retention_days: int = Field(30, ge=1, le=365, description="保留天数")
+
+
+class ScheduleUpdate(BaseModel):
+    """更新调度计划"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    backup_type: Optional[str] = None
+    schedule_type: Optional[str] = None
+    schedule_time: Optional[str] = None
+    schedule_day: Optional[int] = None
+    is_encrypted: Optional[bool] = None
+    is_enabled: Optional[bool] = None
+    retention_days: Optional[int] = Field(None, ge=1, le=365)
+
+
+class ScheduleListResponse(BaseModel):
+    """调度列表响应"""
+    items: List[ScheduleInfo]
+    total: int
 

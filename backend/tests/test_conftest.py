@@ -35,6 +35,37 @@ test_engine = create_async_engine(
     connect_args={"check_same_thread": False}
 )
 
+from sqlalchemy import event
+import sqlite3
+
+# Register custom function for SQLite json_contains compatibility
+def _sqlite_json_contains(json_array, value):
+    # Simplistic implementation: checks if value is in json array string
+    # Assuming json_array is like '[1, 2, 3]' and value is '1'
+    if not json_array:
+        return False
+    try:
+        import json
+        array = json.loads(json_array)
+        # Handle case where value might be passed as string '1' but array has ints
+        try:
+            val_int = int(value)
+            val_str = str(value)
+            return val_int in array or val_str in array
+        except:
+            return value in array
+    except:
+        return str(value) in str(json_array)
+
+@event.listens_for(test_engine.sync_engine, "connect")
+def _add_sqlite_functions(dbapi_connection, connection_record):
+    # if isinstance(dbapi_connection, sqlite3.Connection):
+    #     dbapi_connection.create_function("json_contains", 2, _sqlite_json_contains)
+    try:
+        dbapi_connection.create_function("json_contains", 2, _sqlite_json_contains)
+    except Exception as e:
+        print(f"Failed to register json_contains: {e}")
+
 # 测试用会话工厂
 TestSessionLocal = async_sessionmaker(
     test_engine,

@@ -194,7 +194,7 @@ async def favicon():
     logo_path = os.path.join(FRONTEND_PATH, "images/logo.ico")
     if os.path.exists(logo_path):
         return FileResponse(logo_path)
-    return HTTPException(status_code=404)
+    raise HTTPException(status_code=404)
 
 @app.get("/manifest.json", include_in_schema=False)
 async def manifest():
@@ -202,7 +202,7 @@ async def manifest():
     path = os.path.join(FRONTEND_PATH, "manifest.json")
     if os.path.exists(path):
         return FileResponse(path, media_type="application/json")
-    return HTTPException(status_code=404)
+    raise HTTPException(status_code=404)
 
 @app.get("/sw.js", include_in_schema=False)
 async def service_worker():
@@ -211,7 +211,7 @@ async def service_worker():
     if os.path.exists(path):
         # 从根目录提供 Service Worker 时，作用域自动为根路径
         return FileResponse(path, media_type="application/javascript")
-    return HTTPException(status_code=404)
+    raise HTTPException(status_code=404)
 
 @app.get("/", include_in_schema=False)
 async def root():

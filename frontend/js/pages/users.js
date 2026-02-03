@@ -16,8 +16,10 @@ class UserListPage extends Component {
             filters: {
                 role: '',
                 is_active: '',
-                keyword: ''
+                keyword: '',
+                role_id: ''
             },
+            selectedUsers: [],  // 批量选中的用户ID
             importing: false,
             importResult: null
         };
@@ -69,13 +71,13 @@ class UserListPage extends Component {
                 <div>
                     <input type="file" id="importUserFile" accept=".xlsx,.xls" style="display:none;">
                     <div class="upload-area-compact" id="uploadUserArea" style="padding:40px 20px;border:2px dashed var(--color-border);border-radius:12px;text-align:center;cursor:pointer;">
-                        <div style="font-size:36px;margin-bottom:8px;">📄</div>
+                        <div style="font-size:36px;margin-bottom:8px;"><i class="ri-file-excel-2-line"></i></div>
                         <div>点击或拖放 Excel 文件</div>
                         <small style="color:var(--color-text-secondary);">支持 .xlsx, .xls 格式</small>
                     </div>
                 </div>
                 <div style="background:var(--color-bg-secondary);padding:12px 16px;border-radius:8px;">
-                    <div style="font-weight:500;margin-bottom:8px;">📋 导入说明</div>
+                    <div style="font-weight:500;margin-bottom:8px;"><i class="ri-file-list-line"></i> 导入说明</div>
                     <ul style="margin:0;padding-left:20px;color:var(--color-text-secondary);font-size:13px;line-height:1.8;">
                         <li><b>用户名</b>（必填）：username 或 用户名，需唯一</li>
                         <li><b>手机号</b>（必填）：phone 或 手机号，11位手机号码</li>
@@ -97,7 +99,7 @@ class UserListPage extends Component {
         `;
 
         const { overlay, close } = Modal.show({
-            title: '📥 批量导入用户',
+            title: '<i class="ri-upload-cloud-2-line"></i> 批量导入用户',
             content,
             footer: `<button class="btn btn-secondary" data-action="cancel">关闭</button>`,
             width: '500px'
@@ -121,7 +123,7 @@ class UserListPage extends Component {
                 progressBox.style.display = 'none';
                 resultBox.innerHTML = `
                     <div style="padding:12px;background:rgba(34,197,94,0.1);border-radius:8px;color:var(--color-success);">
-                        <div style="font-weight:500;margin-bottom:8px;">✅ 导入完成</div>
+                        <div style="font-weight:500;margin-bottom:8px;"><i class="ri-checkbox-circle-line"></i> 导入完成</div>
                         <div style="font-size:14px;">
                             共 ${result.total || 0} 条，成功 ${result.imported || 0} 条，跳过 ${result.skipped || 0} 条
                         </div>
@@ -140,7 +142,7 @@ class UserListPage extends Component {
                 progressBox.style.display = 'none';
                 resultBox.innerHTML = `
                     <div style="padding:12px;background:rgba(239,68,68,0.1);border-radius:8px;color:var(--color-error);">
-                        ❌ ${e.message || '导入失败'}
+                        <i class="ri-close-circle-line"></i> ${e.message || '导入失败'}
                     </div>
                 `;
             }
@@ -184,6 +186,12 @@ class UserListPage extends Component {
             if (this.state.filters.role) {
                 params.role = this.state.filters.role;
             }
+            if (this.state.filters.role_id) {
+                const rid = parseInt(this.state.filters.role_id);
+                if (!isNaN(rid)) {
+                    params.role_id = rid;
+                }
+            }
             if (this.state.filters.is_active !== '') {
                 params.is_active = this.state.filters.is_active === 'true';
             }
@@ -216,7 +224,53 @@ class UserListPage extends Component {
         // 直接更新状态对象（不使用回调函数，因为Component.setState不支持）
         this.state.filters = { ...this.state.filters, [key]: value };
         this.state.page = 1;
+        this.state.selectedUsers = [];  // 切换筛选条件时清空选中
         this.loadData();
+    }
+
+    async handleBatchAction(action) {
+        const { selectedUsers } = this.state;
+        if (selectedUsers.length === 0) {
+            Toast.warning('请先选择用户');
+            return;
+        }
+
+        const actionNames = {
+            enable: '启用',
+            disable: '禁用',
+            delete: '删除'
+        };
+        const actionName = actionNames[action] || action;
+
+        // 删除操作需要二次确认
+        if (action === 'delete') {
+            const confirmed = await Modal.confirm(
+                '确认删除',
+                `确定要删除选中的 ${selectedUsers.length} 个用户吗？此操作不可撤销。`
+            );
+            if (!confirmed) return;
+        } else {
+            const confirmed = await Modal.confirm(
+                `批量${actionName}`,
+                `确定要${actionName}选中的 ${selectedUsers.length} 个用户吗？`
+            );
+            if (!confirmed) return;
+        }
+
+        try {
+            const res = await UserApi.batchAction(selectedUsers, action);
+            const { operated, skipped } = res.data;
+            if (operated.length > 0) {
+                Toast.success(`批量${actionName}成功：${operated.length} 个用户`);
+            }
+            if (skipped.length > 0) {
+                Toast.warning(`跳过 ${skipped.length} 个用户（无权限或为管理员）`);
+            }
+            this.setState({ selectedUsers: [] });
+            this.loadData();
+        } catch (error) {
+            Toast.error(`批量${actionName}失败：${error.message}`);
+        }
     }
 
     async handleAudit(userId, isActive) {
@@ -457,7 +511,9 @@ class UserListPage extends Component {
                 
                 <div class="form-group">
                     <label class="form-label">密码 <span style="color:var(--color-error);">*</span></label>
-                    <input type="password" name="password" class="form-input" placeholder="至少6位" required>
+                    <input type="password" name="password" class="form-input" 
+                           placeholder="至少${Store.get('systemSettings')?.password_min_length || 6}位" 
+                           minlength="${Store.get('systemSettings')?.password_min_length || 6}" required>
                 </div>
                 
                 <div class="form-group">
@@ -484,7 +540,7 @@ class UserListPage extends Component {
         `;
 
         const { overlay, close } = Modal.show({
-            title: '➕ 添加用户',
+            title: '<i class="ri-user-add-line"></i> 添加用户',
             content: content,
             footer: `
                 <button type="button" class="btn btn-secondary" data-close>取消</button>
@@ -511,8 +567,11 @@ class UserListPage extends Component {
                     return;
                 }
 
-                if (!password || password.length < 6) {
-                    Toast.error('密码至少6个字符');
+                const settings = Store.getSystemSettings();
+                const minLength = settings?.password_min_length || 6;
+
+                if (!password || password.length < minLength) {
+                    Toast.error(`密码至少${minLength}个字符`);
                     return;
                 }
 
@@ -542,6 +601,9 @@ class UserListPage extends Component {
 
     // 显示重置密码弹窗
     showResetPasswordModal(userId, username) {
+        const settings = Store.getSystemSettings();
+        const minLength = settings?.password_min_length || 6;
+
         const content = `
             <form id="resetPasswordForm" style="display:grid;gap:16px;">
                 <div style="padding:12px;background:var(--color-bg-tertiary);border-radius:8px;margin-bottom:8px;">
@@ -550,8 +612,8 @@ class UserListPage extends Component {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">新密码 <span style="color:var(--color-error);">*</span></label>
-                    <input type="password" name="newPassword" class="form-input" placeholder="至少6位" required>
+                    <label class="form-label">新密码 <span style="color:var(--color-bg-danger);">*</span></label>
+                    <input type="password" name="newPassword" class="form-input" placeholder="至少${minLength}位" required>
                 </div>
                 
                 <div class="form-group">
@@ -566,7 +628,7 @@ class UserListPage extends Component {
         `;
 
         const { overlay, close } = Modal.show({
-            title: '🔐 重置密码',
+            title: '<i class="ri-lock-password-line"></i> 重置密码',
             content: content,
             footer: `
                 <button type="button" class="btn btn-secondary" data-close>取消</button>
@@ -585,8 +647,8 @@ class UserListPage extends Component {
                 const newPassword = form.querySelector('[name="newPassword"]')?.value;
                 const confirmPassword = form.querySelector('[name="confirmPassword"]')?.value;
 
-                if (!newPassword || newPassword.length < 6) {
-                    Toast.error('新密码至少6个字符');
+                if (!newPassword || newPassword.length < minLength) {
+                    Toast.error(`新密码至少${minLength}个字符`);
                     return;
                 }
 
@@ -613,7 +675,7 @@ class UserListPage extends Component {
     }
 
     render() {
-        const { users, total, page, size, loading, filters } = this.state;
+        const { users, total, page, size, loading, filters, groups, selectedUsers } = this.state;
         const pages = Math.ceil(total / size);
 
         if (loading) {
@@ -627,32 +689,32 @@ class UserListPage extends Component {
                         <h1 class="page-title">用户管理</h1>
                         <p class="page-desc">共 ${total} 个用户</p>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div class="page-header-actions">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('users', '用户管理') : ''}
                         <button class="btn btn-primary" id="createUserBtn">
-                            ➕ 添加用户
+                            <i class="ri-user-add-line"></i> 添加用户
                         </button>
                         <button class="btn btn-secondary" id="downloadTemplateBtn">
-                            📋 下载模板
+                            <i class="ri-file-excel-line"></i> 下载模板
                         </button>
                         <button class="btn btn-secondary" id="importUsersBtn">
-                            📥 批量导入
+                            <i class="ri-upload-cloud-2-line"></i> 批量导入
                         </button>
                         <button class="btn btn-secondary" id="exportUsersBtn">
-                            📤 导出列表
+                            <i class="ri-download-cloud-2-line"></i> 导出列表
                         </button>
                         <a href="#/users/pending" class="btn btn-secondary" style="color:var(--color-warning);">
-                            ⏳ 待审核
+                            <i class="ri-time-line"></i> 待审核
                         </a>
                         <a href="#/system/roles" class="btn btn-secondary" style="color:var(--color-info);">
-                            🛡️ 用户组
+                            <i class="ri-shield-user-line"></i> 用户组
                         </a>
                     </div>
                 </div>
                 
                 <!-- 筛选器 -->
                 <div class="card" style="margin-bottom: var(--spacing-lg)">
-                    <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 3fr; gap: var(--spacing-md);">
+                    <div class="card-body users-filters">
                         <div class="form-group">
                             <label class="form-label">角色</label>
                             <select class="form-input form-select" id="filterRole" value="${filters.role}">
@@ -661,6 +723,13 @@ class UserListPage extends Component {
                                 <option value="manager" ${filters.role === 'manager' ? 'selected' : ''}>管理员</option>
                                 <option value="user" ${filters.role === 'user' ? 'selected' : ''}>普通用户</option>
                                 <option value="guest" ${filters.role === 'guest' ? 'selected' : ''}>访客</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">用户组</label>
+                            <select class="form-input form-select" id="filterRoleId">
+                                <option value="">全部</option>
+                                ${groups.map(g => `<option value="${g.id}" ${filters.role_id == g.id ? 'selected' : ''}>${Utils.escapeHtml(g.name)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
@@ -676,11 +745,39 @@ class UserListPage extends Component {
                             <div class="search-group">
                                 <input type="text" class="form-input" id="usersSearchInput" 
                                        placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
-                                <button class="btn btn-primary" id="usersSearchBtn">搜索</button>
+                                <button class="btn btn-primary" id="usersSearchBtn">
+                                    <i class="ri-search-line"></i> 搜索
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- 批量操作栏 -->
+                ${selectedUsers.length > 0 ? `
+                <div class="card" style="margin-bottom: var(--spacing-md); background: rgba(var(--color-primary-rgb), 0.1); border: 1px solid var(--color-primary);">
+                    <div class="card-body" style="display: flex; align-items: center; gap: 16px; padding: 12px 16px;">
+                        <span style="font-weight: 500; color: var(--color-primary);">
+                            <i class="ri-checkbox-multiple-line"></i>
+                            已选择 ${selectedUsers.length} 个用户
+                        </span>
+                        <div style="display: flex; gap: 8px; flex: 1;">
+                            <button class="btn btn-sm btn-secondary" id="batchEnable">
+                                <i class="ri-check-line"></i> 批量启用
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="batchDisable">
+                                <i class="ri-forbid-line"></i> 批量禁用
+                            </button>
+                            <button class="btn btn-sm btn-secondary" style="color: var(--color-error);" id="batchDelete">
+                                <i class="ri-delete-bin-line"></i> 批量删除
+                            </button>
+                        </div>
+                        <button class="btn btn-sm btn-ghost" id="clearSelection">
+                            <i class="ri-close-line"></i> 取消选择
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
                 
                 ${users.length > 0 ? `
                     <div class="card">
@@ -688,6 +785,10 @@ class UserListPage extends Component {
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllUsers" 
+                                                   ${selectedUsers.length === users.filter(u => u.role !== 'admin').length && users.filter(u => u.role !== 'admin').length > 0 ? 'checked' : ''}>
+                                        </th>
                                         <th>ID</th>
                                         <th>用户名</th>
                                         <th>手机号</th>
@@ -695,6 +796,7 @@ class UserListPage extends Component {
                                         <th>角色</th>
                                         <th>存储配额</th>
                                         <th>状态</th>
+                                        <th>最后登录</th>
                                         <th>注册时间</th>
                                         <th>操作</th>
                                     </tr>
@@ -702,6 +804,12 @@ class UserListPage extends Component {
                                 <tbody>
                                     ${users.map(user => `
                                         <tr>
+                                            <td>
+                                                ${user.role !== 'admin' ? `
+                                                    <input type="checkbox" class="user-checkbox" data-user-id="${user.id}" 
+                                                           ${selectedUsers.includes(user.id) ? 'checked' : ''}>
+                                                ` : ''}
+                                            </td>
                                             <td>${user.id}</td>
                                             <td>${Utils.escapeHtml(user.username)}</td>
                                             <td>${user.phone || '-'}</td>
@@ -722,23 +830,42 @@ class UserListPage extends Component {
                                                     ${user.is_active ? '已激活' : '待审核'}
                                                 </span>
                                             </td>
+                                            <td>
+                                                <span style="color:var(--color-text-secondary);font-size:13px;">
+                                                    ${user.last_login ? Utils.formatDate(user.last_login) : '-'}
+                                                </span>
+                                            </td>
                                             <td>${Utils.formatDate(user.created_at)}</td>
                                             <td>
-                                                ${!user.is_active ? `
-                                                    <button class="btn btn-ghost btn-sm" data-audit-pass="${user.id}">通过</button>
-                                                    <button class="btn btn-ghost btn-sm" data-audit-reject="${user.id}">拒绝</button>
-                                                ` : ''}
-                                                ${user.is_active ? `
-                                                    <button class="btn btn-ghost btn-sm" data-disable="${user.id}">禁用</button>
-                                                ` : `
-                                                    ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${user.id}">启用</button>` : ''}
-                                                `}
-                                                <button class="btn btn-ghost btn-sm" data-edit="${user.id}">编辑</button>
-                                                <button class="btn btn-ghost btn-sm" data-reset-pwd="${user.id}" data-username="${Utils.escapeHtml(user.username)}">重置密码</button>
-                                                ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${user.id}">权限</button>` : ''}
-                                                ${user.role !== 'admin' ? `
-                                                    <button class="btn btn-ghost btn-sm" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}">删除</button>
-                                                ` : ''}
+                                                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                                                    ${!user.is_active ? `
+                                                        <button class="btn btn-ghost btn-sm" data-audit-pass="${user.id}" title="通过审核"><i class="ri-check-line"></i></button>
+                                                        <button class="btn btn-ghost btn-sm" data-audit-reject="${user.id}" title="拒绝审核"><i class="ri-close-line"></i></button>
+                                                    ` : ''}
+                                                    ${user.is_active ? `
+                                                        <button class="btn btn-ghost btn-sm" data-disable="${user.id}" title="禁用"><i class="ri-forbid-line"></i></button>
+                                                    ` : `
+                                                        ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${user.id}" title="启用"><i class="ri-check-line"></i></button>` : ''}
+                                                    `}
+                                                    <button class="btn btn-ghost btn-sm" data-edit="${user.id}" title="编辑"><i class="ri-edit-line"></i></button>
+                                                    ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${user.id}" title="权限"><i class="ri-shield-keyhole-line"></i></button>` : ''}
+                                                    <!-- 更多操作下拉菜单 -->
+                                                    ${user.role !== 'admin' ? `
+                                                        <div class="dropdown" style="position: relative; display: inline-block;">
+                                                            <button class="btn btn-ghost btn-sm dropdown-toggle" data-toggle-dropdown="${user.id}" title="更多操作">
+                                                                <i class="ri-more-2-line"></i>
+                                                            </button>
+                                                            <div class="dropdown-menu" id="dropdown-${user.id}" style="display: none; position: absolute; right: 0; top: 100%; background: var(--color-bg-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 100; min-width: 120px;">
+                                                                <button class="dropdown-item" data-reset-pwd="${user.id}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-text-primary);">
+                                                                    <i class="ri-lock-password-line"></i> 重置密码
+                                                                </button>
+                                                                <button class="dropdown-item" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-error);">
+                                                                    <i class="ri-delete-bin-line"></i> 删除用户
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -751,7 +878,7 @@ class UserListPage extends Component {
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">👥</div>
+                            <div class="empty-icon"><i class="ri-group-line"></i></div>
                             <p class="empty-text">暂无用户</p>
                         </div>
                     </div>
@@ -806,19 +933,76 @@ class UserListPage extends Component {
 
             // 筛选器
             this.delegate('change', '#filterRole', (e) => this.handleFilter('role', e.target.value));
+            this.delegate('change', '#filterRoleId', (e) => this.handleFilter('role_id', e.target.value));
             this.delegate('change', '#filterStatus', (e) => this.handleFilter('is_active', e.target.value));
-            this.delegate('click', '#searchBtn', () => {
-                const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
+            this.delegate('click', '#usersSearchBtn', () => {
+                const keyword = this.$('#usersSearchInput')?.value.trim() || '';
                 this.handleFilter('keyword', keyword);
             });
-            this.delegate('keydown', '#usersFilterKeyword', (e) => {
+            this.delegate('keydown', '#usersSearchInput', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    const keyword = this.$('#usersFilterKeyword')?.value.trim() || '';
+                    const keyword = this.$('#usersSearchInput')?.value.trim() || '';
                     this.handleFilter('keyword', keyword);
                 }
             });
             this.delegate('click', '#exportUsersBtn', () => this.handleExport());
+
+            // 批量选择：全选复选框
+            this.delegate('change', '#selectAllUsers', (e) => {
+                const checked = e.target.checked;
+                const selectableUsers = this.state.users.filter(u => u.role !== 'admin');
+                if (checked) {
+                    this.setState({ selectedUsers: selectableUsers.map(u => u.id) });
+                } else {
+                    this.setState({ selectedUsers: [] });
+                }
+            });
+
+            // 批量选择：单个复选框
+            this.delegate('change', '.user-checkbox', (e) => {
+                const userId = parseInt(e.target.dataset.userId);
+                const checked = e.target.checked;
+                let selectedUsers = [...this.state.selectedUsers];
+                if (checked && !selectedUsers.includes(userId)) {
+                    selectedUsers.push(userId);
+                } else if (!checked) {
+                    selectedUsers = selectedUsers.filter(id => id !== userId);
+                }
+                this.setState({ selectedUsers });
+            });
+
+            // 批量操作按钮
+            this.delegate('click', '#batchEnable', () => this.handleBatchAction('enable'));
+            this.delegate('click', '#batchDisable', () => this.handleBatchAction('disable'));
+            this.delegate('click', '#batchDelete', () => this.handleBatchAction('delete'));
+            this.delegate('click', '#clearSelection', () => this.setState({ selectedUsers: [] }));
+
+            // 下拉菜单切换
+            this.delegate('click', '[data-toggle-dropdown]', (e) => {
+                e.stopPropagation();
+                const userId = e.target.closest('[data-toggle-dropdown]').dataset.toggleDropdown;
+                const dropdown = document.getElementById(`dropdown-${userId}`);
+                if (dropdown) {
+                    // 关闭其他下拉菜单
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        if (menu.id !== `dropdown-${userId}`) {
+                            menu.style.display = 'none';
+                        }
+                    });
+                    // 切换当前下拉菜单
+                    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+
+            // 点击其他地方关闭下拉菜单
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.style.display = 'none';
+                    });
+                }
+            });
 
             // 使用单一的事件监听器处理所有点击事件
             const clickHandler = (e) => {
@@ -1299,6 +1483,7 @@ class PendingUsersPage extends Component {
         super(container);
         this.state = {
             users: [],
+            selectedUsers: [], // 批量选中的用户ID
             loading: true
         };
         this._eventsBinded = false;
@@ -1307,7 +1492,7 @@ class PendingUsersPage extends Component {
     }
 
     async loadData() {
-        this.setState({ loading: true });
+        this.setState({ loading: true, selectedUsers: [] });
 
         try {
             const res = await UserApi.getPendingUsers();
@@ -1334,6 +1519,7 @@ class PendingUsersPage extends Component {
 
         try {
             const action = isActive ? '通过' : '拒绝';
+            const actionType = isActive ? 'audit_pass' : 'audit_reject';
             const reason = await Modal.prompt(`审核${action}`, `请输入审核备注（可选）`);
 
             // 如果用户取消，reason 为 null
@@ -1342,27 +1528,13 @@ class PendingUsersPage extends Component {
                 return;
             }
 
-            // 在审核过程中，禁用所有审核按钮，防止重复点击
-            const auditButtons = this.container.querySelectorAll('[data-audit-pass], [data-audit-reject]');
-            auditButtons.forEach(btn => {
-                btn.disabled = true;
-            });
-
             try {
-                await UserApi.auditUser(userId, {
-                    is_active: isActive,
-                    reason: reason || null
-                });
+                // 使用批量接口处理单个审核，统一逻辑
+                await UserApi.batchAction([userId], actionType, reason);
                 Toast.success(`用户审核${action}成功`);
-
-                // 审核成功后，重新加载数据（这会更新 DOM，用户会从列表中移除）
                 await this.loadData();
             } catch (error) {
                 Toast.error(error.message);
-                // 如果审核失败，重新启用按钮
-                auditButtons.forEach(btn => {
-                    btn.disabled = false;
-                });
             }
         } catch (error) {
             Toast.error(error.message || '审核操作失败');
@@ -1371,8 +1543,37 @@ class PendingUsersPage extends Component {
         }
     }
 
+    async handleBatchAudit(isActive) {
+        const { selectedUsers } = this.state;
+        if (selectedUsers.length === 0) {
+            Toast.warning('请先选择用户');
+            return;
+        }
+
+        const action = isActive ? '通过' : '拒绝';
+        const actionType = isActive ? 'audit_pass' : 'audit_reject';
+
+        const reason = await Modal.prompt(`批量审核${action}`, `确定要${action}选中的 ${selectedUsers.length} 个用户吗？\n请输入审核备注（可选）：`);
+        if (reason === null) return;
+
+        try {
+            const res = await UserApi.batchAction(selectedUsers, actionType, reason);
+            const { operated, skipped } = res.data;
+            if (operated.length > 0) {
+                Toast.success(`批量审核${action}成功：${operated.length} 个用户`);
+            }
+            if (skipped.length > 0) {
+                Toast.warning(`跳过 ${skipped.length} 个用户`);
+            }
+            this.setState({ selectedUsers: [] });
+            this.loadData();
+        } catch (error) {
+            Toast.error(`操作失败：${error.message}`);
+        }
+    }
+
     render() {
-        const { users, loading } = this.state;
+        const { users, loading, selectedUsers } = this.state;
 
         if (loading) {
             return '<div class="loading"></div>';
@@ -1380,10 +1581,40 @@ class PendingUsersPage extends Component {
 
         return `
             <div class="page fade-in">
-                <div class="page-header">
-                    <h1 class="page-title">待审核用户</h1>
-                    <p class="page-desc">共 ${users.length} 个待审核用户</p>
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
+                    <div>
+                        <h1 class="page-title">待审核用户</h1>
+                        <p class="page-desc">共 ${users.length} 个待审核用户</p>
+                    </div>
+                    <div class="page-header-actions">
+                        <button class="btn btn-secondary" onclick="window.history.back()">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
+                    </div>
                 </div>
+
+                <!-- 批量操作栏 -->
+                ${selectedUsers.length > 0 ? `
+                <div class="card" style="margin-bottom: var(--spacing-md); background: rgba(var(--color-primary-rgb), 0.1); border: 1px solid var(--color-primary);">
+                    <div class="card-body" style="display: flex; align-items: center; gap: 16px; padding: 12px 16px;">
+                        <span style="font-weight: 500; color: var(--color-primary);">
+                            <i class="ri-checkbox-multiple-line"></i>
+                            已选择 ${selectedUsers.length} 个待审核用户
+                        </span>
+                        <div style="display: flex; gap: 8px; flex: 1;">
+                            <button class="btn btn-sm btn-primary" id="batchAuditPass">
+                                <i class="ri-check-line"></i> 批量通过
+                            </button>
+                            <button class="btn btn-sm btn-secondary" style="color: var(--color-error);" id="batchAuditReject">
+                                <i class="ri-close-line"></i> 批量拒绝
+                            </button>
+                        </div>
+                        <button class="btn btn-sm btn-ghost" id="clearSelection">
+                            <i class="ri-close-line"></i> 取消选择
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
                 
                 ${users.length > 0 ? `
                     <div class="card">
@@ -1391,6 +1622,10 @@ class PendingUsersPage extends Component {
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllPending" 
+                                                   ${selectedUsers.length === users.length && users.length > 0 ? 'checked' : ''}>
+                                        </th>
                                         <th>ID</th>
                                         <th>用户名</th>
                                         <th>手机号</th>
@@ -1402,14 +1637,18 @@ class PendingUsersPage extends Component {
                                 <tbody>
                                     ${users.map(user => `
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" class="pending-checkbox" data-user-id="${user.id}" 
+                                                       ${selectedUsers.includes(user.id) ? 'checked' : ''}>
+                                            </td>
                                             <td>${user.id}</td>
                                             <td>${Utils.escapeHtml(user.username)}</td>
                                             <td>${user.phone || '-'}</td>
                                             <td>${Utils.escapeHtml(user.nickname || '-')}</td>
                                             <td>${Utils.formatDate(user.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-primary btn-sm" data-audit-pass="${user.id}">通过</button>
-                                                <button class="btn btn-danger btn-sm" data-audit-reject="${user.id}">拒绝</button>
+                                                <button class="btn btn-ghost btn-sm" data-audit-pass="${user.id}" title="通过"><i class="ri-check-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-audit-reject="${user.id}" title="拒绝"><i class="ri-close-line"></i></button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -1420,7 +1659,7 @@ class PendingUsersPage extends Component {
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">✅</div>
+                            <div class="empty-icon"><i class="ri-check-double-line"></i></div>
                             <p class="empty-text">暂无待审核用户</p>
                         </div>
                     </div>
@@ -1446,34 +1685,49 @@ class PendingUsersPage extends Component {
         if (this.container && !this._eventsBinded) {
             this._eventsBinded = true;
 
-            // 审核通过 - 使用 once 选项防止重复触发
-            const handlePass = (e, target) => {
-                e.stopPropagation();
-                const userId = parseInt(target.dataset.auditPass);
-                if (userId) {
-                    this.handleAudit(userId, true);
+            // 批量选择：全选复选框
+            this.delegate('change', '#selectAllPending', (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                    this.setState({ selectedUsers: this.state.users.map(u => u.id) });
+                } else {
+                    this.setState({ selectedUsers: [] });
                 }
-            };
+            });
 
-            // 审核拒绝 - 使用 once 选项防止重复触发
-            const handleReject = (e, target) => {
-                e.stopPropagation();
-                const userId = parseInt(target.dataset.auditReject);
-                if (userId) {
-                    this.handleAudit(userId, false);
+            // 批量选择：单个复选框
+            this.delegate('change', '.pending-checkbox', (e) => {
+                const userId = parseInt(e.target.dataset.userId);
+                const checked = e.target.checked;
+                let selectedUsers = [...this.state.selectedUsers];
+                if (checked && !selectedUsers.includes(userId)) {
+                    selectedUsers.push(userId);
+                } else if (!checked) {
+                    selectedUsers = selectedUsers.filter(id => id !== userId);
                 }
-            };
+                this.setState({ selectedUsers });
+            });
 
-            // 使用事件委托，但只绑定一次
+            // 批量操作按钮
+            this.delegate('click', '#batchAuditPass', () => this.handleBatchAudit(true));
+            this.delegate('click', '#batchAuditReject', () => this.handleBatchAudit(false));
+            this.delegate('click', '#clearSelection', () => this.setState({ selectedUsers: [] }));
+
+            // 使用事件委托处理所有点击事件
             const clickHandler = (e) => {
-                const passBtn = e.target.closest('[data-audit-pass]');
-                if (passBtn && this.container.contains(passBtn)) {
-                    handlePass(e, passBtn);
+                // 审核通过
+                const auditPassBtn = e.target.closest('[data-audit-pass]');
+                if (auditPassBtn && this.container.contains(auditPassBtn)) {
+                    const userId = parseInt(auditPassBtn.dataset.auditPass);
+                    if (userId) this.handleAudit(userId, true);
                     return;
                 }
-                const rejectBtn = e.target.closest('[data-audit-reject]');
-                if (rejectBtn && this.container.contains(rejectBtn)) {
-                    handleReject(e, rejectBtn);
+
+                // 审核拒绝
+                const auditRejectBtn = e.target.closest('[data-audit-reject]');
+                if (auditRejectBtn && this.container.contains(auditRejectBtn)) {
+                    const userId = parseInt(auditRejectBtn.dataset.auditReject);
+                    if (userId) this.handleAudit(userId, false);
                     return;
                 }
             };

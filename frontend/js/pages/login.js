@@ -195,15 +195,15 @@ class LoginPage extends Component {
                                 <div class="form-group">
                                     <label class="form-label">密码</label>
                                     <input type="password" name="password" class="form-input" 
-                                           placeholder="${isLogin ? '请输入密码' : '至少8位，含大写/小写/数字/特殊字符'}" 
-                                           minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required>
+                                           placeholder="${isLogin ? '请输入密码' : '至少' + (Store.get('systemSettings')?.password_min_length || 8) + '位，含大写/小写/数字/特殊字符'}" 
+                                           minlength="${Store.get('systemSettings')?.password_min_length || 8}" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required>
                                 </div>
                                 
                                 ${!isLogin ? `
                                     <div class="form-group">
                                         <label class="form-label">确认密码</label>
                                         <input type="password" name="confirm_password" class="form-input" 
-                                               placeholder="请再次输入密码" minlength="8" 
+                                               placeholder="请再次输入密码" minlength="${Store.get('systemSettings')?.password_min_length || 8}" 
                                                autocomplete="new-password" required>
                                     </div>
                                 ` : ''}

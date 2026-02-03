@@ -16,6 +16,15 @@ from .config import get_settings
 
 settings = get_settings()
 
+# 动态配置：JWT 过期时间（允许在运行时更新）
+_jwt_expire_minutes = settings.jwt_expire_minutes
+
+def set_jwt_expire_minutes(minutes: int):
+    """动态更新 JWT 过期时间"""
+    global _jwt_expire_minutes
+    _jwt_expire_minutes = minutes
+
+
 # 权限缓存配置
 # - maxsize: 缓存容量上限（用户数量）
 # - ttl: 缓存过期时间（秒），在此时间内不会重新查询数据库
@@ -115,7 +124,7 @@ def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, tok
             expire = datetime.now(timezone.utc) + timedelta(days=30)
         else:
             # 访问令牌有效期：7天（或配置值）
-            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+            expire = datetime.now(timezone.utc) + timedelta(minutes=_jwt_expire_minutes)
     
     to_encode.update({
         "exp": expire,
@@ -135,7 +144,7 @@ def create_token_pair(data: TokenData) -> tuple[str, str]:
     # 访问令牌：较短有效期（默认7天，可配置）
     access_token = create_token(
         data,
-        expires_delta=timedelta(minutes=settings.jwt_expire_minutes),
+        expires_delta=timedelta(minutes=_jwt_expire_minutes),
         token_type="access"
     )
     

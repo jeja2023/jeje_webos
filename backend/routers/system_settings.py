@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from core.database import get_db
-from core.security import get_current_user, TokenData, require_admin
+from core.security import get_current_user, TokenData, require_admin, set_jwt_expire_minutes
 from core.config import get_settings
 from core.cache import Cache
 from schemas import success
@@ -115,12 +115,18 @@ async def update_system_settings(
     if any(k.startswith("rate_limit") for k in data.model_dump(exclude_unset=True).keys()):
         from core.rate_limit import rate_limiter
         
+
         rate_limiter.configure(
             requests=new_data["rate_limit_requests"],
             window=new_data["rate_limit_window"],
             block_duration=new_data["rate_limit_block_duration"]
         )
         logger.info(f"动态更新速率限制: {new_data['rate_limit_requests']}/{new_data['rate_limit_window']}s")
+
+    # 动态更新 JWT 过期时间
+    if "jwt_expire_minutes" in new_data:
+        set_jwt_expire_minutes(new_data["jwt_expire_minutes"])
+        logger.info(f"动态更新 JWT 有效期: {new_data['jwt_expire_minutes']} 分钟")
 
     # 审计日志
     log = SystemLog(
@@ -136,6 +142,16 @@ async def update_system_settings(
     
     # 清除缓存，下次读取时自动从数据库加载最新值
     await _invalidate_settings_cache()
+    
+    # 通过 WebSocket 广播设置变更
+    try:
+        from core.ws_manager import manager
+        await manager.broadcast({
+            "type": "system.settings_updated",
+            "data": new_data
+        })
+    except Exception as e:
+        logger.warning(f"广播系统设置变更失败: {e}")
     
     return success(new_data, "更新成功")
 
@@ -156,6 +172,10 @@ async def load_settings_on_startup():
                 window=settings.rate_limit_window,
                 block_duration=settings.rate_limit_block_duration
             )
+            
+            # 应用 JWT 设置
+            set_jwt_expire_minutes(settings.jwt_expire_minutes)
+            
             logger.debug(f"✅ 已应用动态速率限制: {settings.rate_limit_requests}次/{settings.rate_limit_window}秒")
             
     except Exception as e:

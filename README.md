@@ -54,8 +54,9 @@
 - **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）
 - **系统监控**：CPU、内存、磁盘实时仪表盘
 - **审计日志**：全量操作行为记录
-- **数据备份**：数据库自动备份与恢复
-- **主题系统**：2 套可选特色主题（日出印象、星夜霓虹）
+- **数据备份**：数据库自动备份与恢复，支持 AES 256 加密
+- **自动化测试**: 核心业务模块 100% 单元测试覆盖
+- **主题系统**：2套可选特色主题（日出印象、星夜霓虹）
 
 ---
 
@@ -63,6 +64,7 @@
 
 ### 后端 (Python / FastAPI)
 - **微内核设计**：核心层仅负责启动、配置、数据库和事件总线
+- **配置与通信**：支持全系统配置动态热更新，基于 WebSocket 实现前后端状态实时同步
 - **模块化架构**：业务逻辑完全解耦在 `modules/` 目录中
 - **性能优化**：
   - 文件上传流式写入，内存占用恒定
@@ -278,7 +280,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.5 |
+| | `APP_VERSION` | 系统版本 | 2.5.9 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |
@@ -289,8 +291,8 @@ python scripts/create_module.py todo_list 待办事项
 | | `REDIS_PORT` | Redis 端口 | 6379 |
 | | `REDIS_PASSWORD` | Redis 密码 | (空) |
 | **安全** | `JWT_SECRET` | JWT 密钥 | (自动生成) |
-| | `JWT_AUTO_ROTATE` | JWT 自动轮换 | True |
-| | `RATE_LIMIT_ENABLED` | 启用速率限制 | True |
+| | `JWT_AUTO_ROTATE` | JWT 自动轮换 | True (可动态配置) |
+| | `RATE_LIMIT_ENABLED` | 启用速率限制 | True (可动态配置) |
 | | `CSRF_ENABLED` | 启用 CSRF 防护 | False |
 | **管理员** | `ADMIN_USERNAME` | 管理员用户名 | admin |
 | | `ADMIN_PASSWORD` | 管理员密码 | (必填) |

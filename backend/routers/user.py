@@ -5,6 +5,7 @@
 
 import logging
 from typing import Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func, and_, update, delete
@@ -13,6 +14,7 @@ from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin, require_manager
 from models import User
 from schemas import UserAudit, UserListItem, UserUpdate, success, paginate
+from schemas.user import UserProfileUpdate, UserBatchAction
 from schemas import success as _success
 from models import Role, ModuleConfig
 from core.security import require_permission
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 
 @router.put("/profile")
 async def update_profile(
-    data: dict,
+    data: UserProfileUpdate,
     current_user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -38,35 +40,34 @@ async def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
-    # 只允许修改昵称和手机号
-    if "nickname" in data and data["nickname"]:
-        user.nickname = data["nickname"]
-        
-    if "avatar" in data:
-        user.avatar = data["avatar"]
+    # 使用 Pydantic Schema 获取已设置的字段
+    update_data = data.model_dump(exclude_unset=True)
     
-    if "phone" in data:
+    if "nickname" in update_data and update_data["nickname"]:
+        user.nickname = update_data["nickname"]
+        
+    if "avatar" in update_data:
+        user.avatar = update_data["avatar"]
+    
+    if "phone" in update_data:
         # 检查手机号是否被其他用户占用
-        if data["phone"]:
+        if update_data["phone"]:
             existing = await db.execute(
-                select(User).where(User.phone == data["phone"], User.id != user.id)
+                select(User).where(User.phone == update_data["phone"], User.id != user.id)
             )
             if existing.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
-        user.phone = data["phone"] or None
+        user.phone = update_data["phone"] or None
 
-    if "settings" in data:
+    if "settings" in update_data and update_data["settings"]:
         # 合并更新用户设置
-        # 确保 user.settings 是字典
         if user.settings is None:
             user.settings = {}
             
-        if isinstance(data["settings"], dict):
-            # 将新设置合并到旧设置
+        if isinstance(update_data["settings"], dict):
             new_settings = user.settings.copy()
-            new_settings.update(data["settings"])
+            new_settings.update(update_data["settings"])
             user.settings = new_settings
-            # 显式标记 JSON 字段为已修改，确保 SQLAlchemy 能够检测到变更
             from sqlalchemy.orm.attributes import flag_modified
             flag_modified(user, "settings")
 
@@ -128,24 +129,27 @@ async def search_users(
 @router.get("")
 async def list_users(
     page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=2000),
+    size: int = Query(10, ge=1, le=100),
     role: Optional[str] = Query(None),
+    role_id: Optional[int] = Query(None),
     is_active: Optional[bool] = Query(None),
     keyword: Optional[str] = Query(None),
+    last_login_after: Optional[datetime] = Query(None),
+    last_login_before: Optional[datetime] = Query(None),
+    created_after: Optional[datetime] = Query(None),
+    created_before: Optional[datetime] = Query(None),
     current_user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     获取用户列表（管理员）
-    支持分页、角色筛选、状态筛选、关键词搜索
+    支持分页、角色筛选、状态筛选、关键词搜索、时间范围筛选
     系统管理员可查看所有用户，业务管理员仅可查看非管理员用户
     """
     # 业务管理员只能查看普通用户和访客
     if current_user.role == "manager":
-        # 业务管理员不能查看其他管理员
         query = select(User).where(User.role.not_in(["manager", "admin"]))
     elif current_user.role == "admin":
-        # 系统管理员可以查看所有用户
         query = select(User)
     else:
         raise HTTPException(status_code=403, detail="仅管理员可访问")
@@ -153,6 +157,11 @@ async def list_users(
     # 角色筛选
     if role:
         query = query.where(User.role == role)
+    
+    # 用户组筛选
+    if role_id:
+        # role_ids 是 JSON 字段，需要特殊处理
+        query = query.where(User.role_ids.contains([role_id]))
     
     # 状态筛选
     if is_active is not None:
@@ -166,6 +175,18 @@ async def list_users(
             User.nickname.like(f"%{keyword}%")
         )
         query = query.where(keyword_filter)
+    
+    # 最后登录时间范围筛选
+    if last_login_after:
+        query = query.where(User.last_login >= last_login_after)
+    if last_login_before:
+        query = query.where(User.last_login <= last_login_before)
+    
+    # 注册时间范围筛选
+    if created_after:
+        query = query.where(User.created_at >= created_after)
+    if created_before:
+        query = query.where(User.created_at <= created_before)
     
     # 总数
     count_query = select(func.count()).select_from(query.subquery())
@@ -775,7 +796,12 @@ async def create_user(
     无需注册审核流程，直接创建已激活的用户
     """
     from core.security import hash_password
+    from routers.system_settings import _get_settings
     import re
+    
+    # 获取系统设置
+    settings = await _get_settings(db)
+    min_len = settings.password_min_length or 6
     
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -790,8 +816,8 @@ async def create_user(
     if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]{2,19}$', username):
         raise HTTPException(status_code=400, detail="用户名只能包含字母、数字和下划线，且以字母开头")
     
-    if not password or len(password) < 6:
-        raise HTTPException(status_code=400, detail="密码至少6个字符")
+    if not password or len(password) < min_len:
+        raise HTTPException(status_code=400, detail=f"密码至少{min_len}个字符")
     
     if role not in ("admin", "manager", "user", "guest"):
         raise HTTPException(status_code=400, detail="无效的角色")
@@ -844,10 +870,15 @@ async def reset_password(
     """
     from core.security import hash_password
     
-    new_password = data.get("password", "").strip()
+    password = data.get("password", "").strip()
     
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="新密码至少6个字符")
+    # 获取系统设置
+    from routers.system_settings import _get_settings
+    settings = await _get_settings(db)
+    min_len = settings.password_min_length or 6
+
+    if not password or len(password) < min_len:
+        raise HTTPException(status_code=400, detail=f"密码至少{min_len}个字符")
     
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -864,10 +895,94 @@ async def reset_password(
         if admin_count.scalar() <= 1:
             raise HTTPException(status_code=400, detail="不能重置唯一系统管理员的密码")
     
-    user.password_hash = hash_password(new_password)
+    user.password_hash = hash_password(password)
     await db.commit()
     
     return success({
         "id": user.id,
         "username": user.username
     }, f"用户 {user.username} 的密码已重置")
+
+
+@router.post("/batch")
+async def batch_action(
+    data: UserBatchAction,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    批量操作用户
+    支持批量启用、禁用、删除、审核通过、审核拒绝
+    """
+    # 检查是否为管理员
+    if current_user.role not in ("manager", "admin"):
+        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+    
+    user_ids = data.user_ids
+    action = data.action
+    reason = data.reason
+    
+    # 验证操作类型
+    valid_actions = ["enable", "disable", "delete", "audit_pass", "audit_reject"]
+    if action not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"无效的操作类型，仅支持：{', '.join(valid_actions)}")
+    
+    # 查询目标用户
+    result = await db.execute(select(User).where(User.id.in_(user_ids)))
+    users = result.scalars().all()
+    
+    if not users:
+        raise HTTPException(status_code=404, detail="未找到指定用户")
+    
+    # 过滤掉不能操作的用户
+    operated_ids = []
+    skipped_ids = []
+    
+    for user in users:
+        # 不能操作自己
+        if user.id == current_user.user_id:
+            skipped_ids.append(user.id)
+            continue
+        
+        # 业务管理员不能操作其他管理员
+        if current_user.role == "manager" and user.role in ("manager", "admin"):
+            skipped_ids.append(user.id)
+            continue
+        
+        # 不能删除管理员账户
+        if action == "delete" and user.role in ("admin", "manager"):
+            skipped_ids.append(user.id)
+            continue
+        
+        # 执行操作
+        if action == "enable":
+            user.is_active = True
+            operated_ids.append(user.id)
+        elif action == "disable":
+            user.is_active = False
+            operated_ids.append(user.id)
+        elif action == "audit_pass":
+            user.is_active = True
+            operated_ids.append(user.id)
+        elif action == "audit_reject":
+            user.is_active = False
+            operated_ids.append(user.id)
+        elif action == "delete":
+            await db.delete(user)
+            operated_ids.append(user.id)
+    
+    await db.commit()
+    
+    action_names = {
+        "enable": "启用",
+        "disable": "禁用",
+        "delete": "删除",
+        "audit_pass": "审核通过",
+        "audit_reject": "审核拒绝"
+    }
+    action_name = action_names.get(action, action)
+    
+    return success({
+        "operated": operated_ids,
+        "skipped": skipped_ids
+    }, f"批量{action_name}完成：成功 {len(operated_ids)} 个，跳过 {len(skipped_ids)} 个")

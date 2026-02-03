@@ -549,8 +549,11 @@ class ChangePasswordPage extends Component {
             Toast.error('请输入新密码');
             return;
         }
-        if (newPassword.length < 6) {
-            Toast.error('新密码长度至少6位');
+        const settings = Store.getSystemSettings();
+        const minLength = settings?.password_min_length || 6;
+
+        if (newPassword.length < minLength) {
+            Toast.error(`新密码长度至少${minLength}位`);
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -606,7 +609,7 @@ class ChangePasswordPage extends Component {
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="margin-bottom: 4px; font-size: 0.85rem; color: var(--color-text-primary); font-weight: 600;">新密码 <span style="color: var(--color-error);">*</span></label>
-                                <input type="password" class="form-input" id="newPassword" placeholder="输入新密码 (至少6位)">
+                                <input type="password" class="form-input" id="newPassword" placeholder="输入新密码 (至少${Store.getSystemSettings()?.password_min_length || 6}位)">
                             </div>
                             <div class="form-group" style="margin-bottom: 24px;">
                                 <label class="form-label" style="margin-bottom: 4px; font-size: 0.85rem; color: var(--color-text-primary); font-weight: 600;">确认新密码 <span style="color: var(--color-error);">*</span></label>

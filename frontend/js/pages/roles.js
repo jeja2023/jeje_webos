@@ -218,13 +218,15 @@ class RolesPage extends Component {
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('roles', '角色管理') : ''}
-                        <button class="btn btn-primary" id="createRole">新建用户组</button>
+                        <button class="btn btn-primary" id="createRole">
+                            <i class="ri-add-line"></i> 新建用户组
+                        </button>
                     </div>
                 </div>
                 <div class="card">
                     ${loading ? '<div class="loading"></div>' : roles.length === 0 ? `
                         <div class="empty-state" style="padding:40px 0;">
-                            <div class="empty-icon">🧩</div>
+                            <div class="empty-icon"><i class="ri-shield-keyhole-line"></i></div>
                             <p class="empty-text">暂无用户组</p>
                         </div>
                     ` : `
@@ -309,7 +311,7 @@ class RolesPage extends Component {
                     const res = await GroupApi.users(id);
                     const users = res.data || [];
                     const content = users.length ? `
-            < div class= "table-wrapper" style = "max-height:320px;overflow:auto;" >
+            <div class="table-wrapper" style="max-height:320px;overflow:auto;">
             <table class="table">
                 <thead>
                     <tr>
@@ -339,7 +341,7 @@ class RolesPage extends Component {
                     Modal.show({
                         title: `用户组成员 - ID ${id}`,
                         content,
-                        footer: `< button class= "btn btn-primary" data - close > 关闭</button > `
+                        footer: `<button class="btn btn-primary" data-close>关闭</button>`
                     });
                 } catch (err) {
                     Toast.error(err.message || '加载用户失败');

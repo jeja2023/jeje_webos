@@ -333,6 +333,11 @@ const SystemApi = {
     getSettings: () => Api.get('/system/settings'),
     updateSettings: (data) => Api.put('/system/settings', data),
     getAuditLogs: (params) => Api.get('/audit', params),
+    // 导出审计日志
+    exportAuditLogs: (params) => {
+        const query = new URLSearchParams(params).toString();
+        return `${Config.api.baseUrl}/audit/export?${query}`;
+    },
     createModule: (data) => Api.post('/system/modules', data),
     deleteModule: (id, params) => Api.delete(`/system/modules/${id}` + (params ? '?' + new URLSearchParams(params).toString() : ''))
 };
@@ -397,7 +402,9 @@ const UserApi = {
     // 管理员创建用户
     createUser: (data) => Api.post('/users', data),
     // 管理员重置用户密码
-    resetPassword: (id, password) => Api.put(`/users/${id}/password`, { password })
+    resetPassword: (id, password) => Api.put(`/users/${id}/password`, { password }),
+    // 批量操作（启用、禁用、删除、审核通过、审核拒绝）
+    batchAction: (userIds, action, reason = null) => Api.post('/users/batch', { user_ids: userIds, action, reason })
 };
 
 const GroupApi = {
@@ -470,12 +477,32 @@ const StorageApi = {
 
 // 数据备份 API
 const BackupApi = {
-    create: (type) => Api.post('/backup/create', { backup_type: type }),
+    create: (type, note = '', isEncrypted = false, encryptPassword = null) => {
+        const payload = { backup_type: type, note };
+        if (isEncrypted && encryptPassword) {
+            payload.is_encrypted = true;
+            payload.encrypt_password = encryptPassword;
+        }
+        return Api.post('/backup/create', payload);
+    },
     list: (params) => Api.get('/backup/list', params),
     info: (backupId) => Api.get(`/backup/${backupId}`),
-    restore: (backupId) => Api.post('/backup/restore', { backup_id: backupId }),
+    restore: (backupId, decryptPassword = null) => {
+        const payload = { backup_id: backupId };
+        if (decryptPassword) {
+            payload.decrypt_password = decryptPassword;
+        }
+        return Api.post('/backup/restore', payload);
+    },
     delete: (backupId) => Api.delete(`/backup/${backupId}`),
-    download: (backupId) => `${Config.apiBase}/backup/${backupId}/download`
+    download: (backupId) => `${Config.apiBase}/backup/${backupId}/download`,
+
+    // 调度管理
+    listSchedules: () => Api.get('/backup/schedules'),
+    createSchedule: (data) => Api.post('/backup/schedules', data),
+    updateSchedule: (scheduleId, data) => Api.put(`/backup/schedules/${scheduleId}`, data),
+    deleteSchedule: (scheduleId) => Api.delete(`/backup/schedules/${scheduleId}`),
+    toggleSchedule: (scheduleId) => Api.post(`/backup/schedules/${scheduleId}/toggle`)
 };
 
 // 系统监控 API

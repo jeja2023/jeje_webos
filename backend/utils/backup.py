@@ -30,6 +30,115 @@ class BackupManager:
         (self.backup_dir / "db").mkdir(parents=True, exist_ok=True)
         (self.backup_dir / "files").mkdir(parents=True, exist_ok=True)
     
+    def encrypt_file(self, file_path: Path, password: str) -> Tuple[bool, Optional[str]]:
+        """
+        使用 AES 加密文件
+        
+        Args:
+            file_path: 要加密的文件路径
+            password: 加密密码
+        
+        Returns:
+            (是否成功, 加密后的文件路径或错误信息)
+        """
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.primitives import padding
+            from cryptography.hazmat.backends import default_backend
+            import hashlib
+            import secrets
+            
+            # 从密码生成密钥（使用 SHA256）
+            key = hashlib.sha256(password.encode()).digest()
+            
+            # 生成随机 IV
+            iv = secrets.token_bytes(16)
+            
+            # 读取原文件
+            with open(file_path, 'rb') as f:
+                plaintext = f.read()
+            
+            # 填充数据
+            padder = padding.PKCS7(128).padder()
+            padded_data = padder.update(plaintext) + padder.finalize()
+            
+            # 加密
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            encryptor = cipher.encryptor()
+            ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+            
+            # 写入加密文件（格式：IV + 密文）
+            encrypted_path = file_path.with_suffix(file_path.suffix + '.enc')
+            with open(encrypted_path, 'wb') as f:
+                f.write(iv + ciphertext)
+            
+            # 删除原文件
+            file_path.unlink()
+            
+            logger.info(f"文件加密成功: {file_path} -> {encrypted_path}")
+            return True, str(encrypted_path)
+            
+        except ImportError:
+            logger.error("cryptography 库未安装，无法进行加密")
+            return False, "cryptography 库未安装，请运行: pip install cryptography"
+        except Exception as e:
+            logger.error(f"文件加密失败: {e}", exc_info=True)
+            return False, str(e)
+    
+    def decrypt_file(self, encrypted_path: Path, password: str) -> Tuple[bool, Optional[str]]:
+        """
+        解密 AES 加密的文件
+        
+        Args:
+            encrypted_path: 加密文件路径
+            password: 解密密码
+        
+        Returns:
+            (是否成功, 解密后的文件路径或错误信息)
+        """
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.primitives import padding
+            from cryptography.hazmat.backends import default_backend
+            import hashlib
+            
+            # 从密码生成密钥
+            key = hashlib.sha256(password.encode()).digest()
+            
+            # 读取加密文件
+            with open(encrypted_path, 'rb') as f:
+                data = f.read()
+            
+            # 提取 IV 和密文
+            iv = data[:16]
+            ciphertext = data[16:]
+            
+            # 解密
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            decryptor = cipher.decryptor()
+            padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            # 移除填充
+            unpadder = padding.PKCS7(128).unpadder()
+            plaintext = unpadder.update(padded_data) + unpadder.finalize()
+            
+            # 写入解密文件
+            decrypted_path = encrypted_path.with_suffix('')  # 移除 .enc 后缀
+            with open(decrypted_path, 'wb') as f:
+                f.write(plaintext)
+            
+            logger.info(f"文件解密成功: {encrypted_path} -> {decrypted_path}")
+            return True, str(decrypted_path)
+            
+        except ImportError:
+            return False, "cryptography 库未安装，请运行: pip install cryptography"
+        except Exception as e:
+            logger.error(f"文件解密失败: {e}", exc_info=True)
+            # 密码错误通常表现为 padding 错误
+            if "padding" in str(e).lower():
+                return False, "解密失败：密码错误"
+            return False, str(e)
+    
     def backup_database(self, backup_id: str) -> Tuple[bool, Optional[str], Optional[int]]:
         """
         备份数据库（使用纯 Python 方案，基于 pymysql）
