@@ -25,29 +25,29 @@ const AnalysisModelingMixin = {
         return `
             <div class="model-list-page p-20">
                 <div class="flex-between mb-20">
-                    <h2>📦 数据模型管理</h2>
+                    <h2><i class="ri-archive-2-line"></i> 数据模型管理</h2>
                     <div>
-                         <button class="btn btn-ghost" id="btn-refresh-models">🔄 刷新</button>
+                         <button class="btn btn-ghost" id="btn-refresh-models"><i class="ri-refresh-line"></i> 刷新</button>
                     </div>
                 </div>
                 
                 <div class="model-grid">
                     ${models.length === 0 ? `
                         <div class="empty-state-placeholder" style="grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 24px; min-height: 400px;">
-                            <div class="empty-illustration" style="width: 120px; height: 120px; background: var(--color-bg-tertiary); border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 56px; opacity: 0.8; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);">🛸</div>
+                            <div class="empty-illustration" style="width: 120px; height: 120px; background: var(--color-bg-tertiary); border-radius: 30px; display: flex; align-items: center; justify-content: center; font-size: 56px; opacity: 0.8; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);"><i class="ri-database-2-line"></i></div>
                             <div style="text-align: center;">
                                 <div style="font-size: 18px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 8px;">开启您的第一个数据模型</div>
                                 <div style="font-size: 14px; color: var(--color-text-tertiary);">通过 ETL 可视化算子，轻松完成数据清洗与转换</div>
                             </div>
                             <div class="new-model-card animate-in btn-create-model-global" style="margin: 0; width: 280px; border-color: var(--color-primary); border-style: solid; background: rgba(var(--color-primary-rgb), 0.02); height: 160px;">
-                                <div class="new-card-icon" style="background: var(--color-primary); color: white;">➕</div>
+                                <div class="new-card-icon" style="background: var(--color-primary); color: white;"><i class="ri-add-line"></i></div>
                                 <span style="font-weight: 600; font-size: 15px; color: var(--color-primary);">立即新建模型</span>
                             </div>
                         </div>
                     ` : `
                         <!-- 新建模型卡片 -->
                         <div class="new-model-card animate-in btn-create-model-global">
-                            <div class="new-card-icon">➕</div>
+                            <div class="new-card-icon"><i class="ri-add-line"></i></div>
                             <span style="font-weight: 600; font-size: 15px;">新建模型</span>
                         </div>
                     `}
@@ -56,20 +56,20 @@ const AnalysisModelingMixin = {
                         <div class="model-card animate-in" data-id="${m.id}" style="animation-delay: ${index * 50}ms">
                             <div class="model-card-top btn-edit-model" data-id="${m.id}">
                                 <div class="model-icon-wrapper">
-                                    <span>🧩</span>
+                                    <span><i class="ri-puzzle-line"></i></span>
                                 </div>
                                 <div class="model-title" title="${Utils.escapeHtml(m.name)}">${Utils.escapeHtml(m.name)}</div>
                                 <div class="model-desc">${Utils.escapeHtml(m.description || '暂无描述信息')}</div>
                             </div>
                             <div class="model-card-bottom">
                                 <div class="model-status-badge ${m.status === 'published' ? 'published' : 'draft'}">
-                                    ${m.status === 'published' ? '✅ 已发布' : '📝 设计中'}
+                                    ${m.status === 'published' ? '<i class="ri-checkbox-circle-line"></i> 已发布' : '<i class="ri-draft-line"></i> 设计中'}
                                 </div>
                                 <div class="flex align-center gap-5">
                                     <span style="margin-right: 5px;">${Utils.formatDate(m.updated_at)}</span>
                                     ${m.status === 'published' ?
-                `<button class="btn-run-model btn-model-action" data-id="${m.id}" title="立即运行" style="color:var(--color-success)">▶️</button>` : ''}
-                                    <button class="btn-delete-model btn-model-action" data-id="${m.id}" title="删除模型">🗑️</button>
+                `<button class="btn-run-model btn-model-action" data-id="${m.id}" title="立即运行" style="color:var(--color-success)"><i class="ri-play-fill"></i></button>` : ''}
+                                    <button class="btn-delete-model btn-model-action" data-id="${m.id}" title="删除模型"><i class="ri-delete-bin-line"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -159,7 +159,7 @@ const AnalysisModelingMixin = {
                 <!-- 顶部工具栏 -->
                 <div class="etl-header flex-between p-10 border-bottom bg-primary align-center">
                     <div class="flex gap-10 align-center">
-                        <button class="btn btn-ghost btn-sm" id="btn-back-models">⬅️ 返回列表</button>
+                        <button class="btn btn-ghost btn-sm" id="btn-back-models"><i class="ri-arrow-left-line"></i> 返回列表</button>
                         <div class="border-left pl-10 flex align-center gap-10">
                             <span class="font-bold text-lg">${currentModel?.name || '未命名模型'}</span>
                             <span class="badge ${currentModel?.status === 'published' ? 'badge-success' : 'badge-secondary'} text-xs" title="当前模型状态">
@@ -168,8 +168,8 @@ const AnalysisModelingMixin = {
                         </div>
                     </div>
                     <div class="flex gap-10">
-                         <button class="btn btn-outline-primary btn-sm" id="btn-save-model-graph">💾 保存设计</button>
-                         <button class="btn btn-primary btn-sm" id="btn-publish-model">🚀 发布模型</button>
+                         <button class="btn btn-outline-primary btn-sm" id="btn-save-model-graph"><i class="ri-save-line"></i> 保存设计</button>
+                         <button class="btn btn-primary btn-sm" id="btn-publish-model"><i class="ri-rocket-line"></i> 发布模型</button>
                     </div>
                 </div>
 
@@ -182,7 +182,7 @@ const AnalysisModelingMixin = {
                 </div>
                 <!-- 搜索框 -->
                 <div class="p-10 border-bottom">
-                    <input type="text" class="form-control form-control-sm w-100" id="etl-op-search" placeholder="🔍 搜索算子...">
+                    <input type="text" class="form-control form-control-sm w-100" id="etl-op-search" placeholder="搜索算子...">
                 </div>
                         <div class="etl-operator-list p-10 overflow-y-auto" style="height: calc(100% - 40px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-content: start;">
                                 ${this._renderOperatorsList()} 
@@ -192,7 +192,7 @@ const AnalysisModelingMixin = {
                     <!-- 2. 画布区域 -->
                     <div class="etl-canvas flex-1 relative bg-secondary" id="etlCanvas" style="background-color: var(--color-bg-hover); overflow: hidden; cursor: grab;">
                         <div class="etl-canvas-toolbar absolute top-10 right-10 flex gap-5 z-10">
-                            <button class="btn btn-ghost btn-sm bg-primary shadow-sm" id="btn-reset-canvas" title="重置画布位置">🔄</button>
+                            <button class="btn btn-ghost btn-sm bg-primary shadow-sm" id="btn-reset-canvas" title="重置画布位置"><i class="ri-refresh-line"></i></button>
                             <button class="btn btn-ghost btn-sm bg-primary shadow-sm" id="btn-toggle-console">
                                 ${isConsoleOpen ? '隐藏日志' : '显示日志'}
                             </button>
@@ -217,7 +217,7 @@ const AnalysisModelingMixin = {
         
                             ${modelNodes.length === 0 ? `
                                 <div class="etl-canvas-empty absolute center-translate text-center text-secondary" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                                    <div class="empty-icon text-3xl mb-10">🔧</div>
+                                    <div class="empty-icon text-3xl mb-10"><i class="ri-tools-line"></i></div>
                                     <p>从左侧拖拽算子到此处开始构建 ETL 流程</p>
                                 </div>
                             ` : ''}
@@ -228,7 +228,7 @@ const AnalysisModelingMixin = {
                              style="height: ${isConsoleOpen ? '200px' : '0'}; overflow: hidden; position: absolute; bottom: 0; left: 0; right: 0;">
                             <div class="console-header flex-between p-5 border-bottom px-10 bg-secondary">
                                 <span class="text-sm font-bold">执行日志</span>
-                                <button class="btn-icon btn-ghost btn-xs" id="btn-clear-console">🗑️</button>
+                                <button class="btn-icon btn-ghost btn-xs" id="btn-clear-console"><i class="ri-delete-bin-line"></i></button>
                             </div>
                             <div class="console-body p-10 overflow-y-auto text-sm font-mono" style="height: calc(100% - 30px);">
                                 ${etlLogs.length === 0 ? '<div class="log-empty text-secondary">等待执行...</div>' :
@@ -250,13 +250,13 @@ const AnalysisModelingMixin = {
                 this.state.selectedConnIndex !== null && modelConnections[this.state.selectedConnIndex] ? `
                                     <div class="conn-config text-center">
                                         <div class="mb-20 text-secondary">
-                                            <div class="text-3xl mb-10">🔗</div>
+                                            <div class="text-3xl mb-10"><i class="ri-link"></i></div>
                                             <div class="font-bold text-primary mb-5">当前选中连线</div>
                                             <div class="text-xs">源: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].sourceId)?.label || '未知'}</div>
-                                            <div class="text-xs text-secondary mb-15">⬇️</div>
+                                            <div class="text-xs text-secondary mb-15"><i class="ri-arrow-down-line"></i></div>
                                             <div class="text-xs">目标: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].targetId)?.label || '未知'}</div>
                                         </div>
-                                        <button class="btn btn-outline-danger btn-block btn-sm" id="btn-delete-conn-panel">🗑️ 移除此连线</button>
+                                        <button class="btn btn-outline-danger btn-block btn-sm" id="btn-delete-conn-panel"><i class="ri-delete-bin-line"></i> 移除此连线</button>
                                     </div>
                                 ` : '<div class="config-empty text-center p-20 text-secondary">选择节点或连线以配置</div>'
             )}

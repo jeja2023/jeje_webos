@@ -359,7 +359,7 @@ class AppCenterMarketPage extends Component {
             'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
         };
 
-        return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || '📦' };
+        return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || 'ri-apps-line' };
     }
 
     // 渲染主页：应用图标网格
@@ -401,7 +401,7 @@ class AppCenterMarketPage extends Component {
                         `;
         }).join('') : `
                         <div class="empty-state">
-                            <i class="ri-inbox-line"></i>
+                            <div class="empty-icon"><i class="ri-inbox-line"></i></div>
                             <p>暂无可用应用，请前往“应用市场”安装。</p>
                         </div>
                     `}
@@ -496,11 +496,11 @@ class AppCenterMarketPage extends Component {
             <div class="view-content fade-in">
                 ${this.renderHeader('应用市场 - 系统管理')}
                 <div class="info-box" style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px;">
-                    💡 作为管理员，您可以在此安装/卸载/启用系统级应用。启用的应用将对所有用户可见。
+                    <i class="ri-lightbulb-line"></i> 作为管理员，您可以在此安装/卸载/启用系统级应用。启用的应用将对所有用户可见。
                 </div>
                 
                 ${availableModules.length > 0 ? `
-                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">📦 可安装的应用</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);"><i class="ri-download-cloud-2-line"></i> 可安装的应用</h3>
                     <div class="card-grid" style="margin-bottom: 40px;">
                         ${availableModules.map(app => {
             const iconSpec = this._getIconSpec(app);
@@ -522,7 +522,7 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                     <div class="module-footer">
                                         <button class="btn btn-primary btn-block" data-install="${app.id}">
-                                            ➕ 系统安装
+                                            <i class="ri-add-line"></i> 系统安装
                                         </button>
                                     </div>
                                 </div>
@@ -533,7 +533,7 @@ class AppCenterMarketPage extends Component {
                 ` : ''}
 
                 ${installedModules.length > 0 ? `
-                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">✅ 已安装的应用</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);"><i class="ri-checkbox-circle-line"></i> 已安装的应用</h3>
                     <div class="card-grid">
                         ${installedModules.map(app => {
             const iconSpec = this._getIconSpec(app);
@@ -557,10 +557,10 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                     <div class="module-footer" style="display: flex; gap: 8px;">
                                         <button class="btn btn-ghost" data-uninstall="${app.id}" style="flex: 1;">
-                                            🗑️ 系统卸载
+                                            <i class="ri-delete-bin-line"></i> 系统卸载
                                         </button>
                                         <button class="btn btn-secondary" data-view-target="manage" style="flex: 1;">
-                                            ⚙️ 管理
+                                            <i class="ri-settings-3-line"></i> 管理
                                         </button>
                                     </div>
                                 </div>
@@ -591,11 +591,11 @@ class AppCenterMarketPage extends Component {
             <div class="view-content fade-in">
                 ${this.renderHeader('应用市场')}
                 <div class="info-box" style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px;">
-                    💡 在这里您可以安装/卸载个人应用，选择适合自己的工具。
+                    <i class="ri-lightbulb-line"></i> 在这里您可以安装/卸载个人应用，选择适合自己的工具。
                 </div>
                 
                 ${availableModules.length > 0 ? `
-                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">📦 可添加的应用</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);"><i class="ri-add-circle-line"></i> 可添加的应用</h3>
                     <div class="card-grid" style="margin-bottom: 40px;">
                         ${availableModules.map(app => {
             const iconSpec = this._getIconSpec(app);
@@ -616,7 +616,7 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                     <div class="module-footer">
                                         <button class="btn btn-primary btn-block" data-user-install="${app.id}">
-                                            ➕ 添加到我的应用
+                                            <i class="ri-add-line"></i> 添加到我的应用
                                         </button>
                                     </div>
                                 </div>
@@ -627,7 +627,7 @@ class AppCenterMarketPage extends Component {
                 ` : ''}
 
                 ${installedModules.length > 0 ? `
-                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);">✅ 我的应用</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 600; color: var(--color-text-primary);"><i class="ri-checkbox-circle-line"></i> 我的应用</h3>
                     <div class="card-grid">
                         ${installedModules.map(app => {
             const iconSpec = this._getIconSpec(app);
@@ -651,10 +651,10 @@ class AppCenterMarketPage extends Component {
                                     </div>
                                     <div class="module-footer" style="display: flex; gap: 8px;">
                                         <button class="btn btn-ghost" data-user-uninstall="${app.id}" style="flex: 1;">
-                                            🗑️ 移除
+                                            <i class="ri-delete-bin-line"></i> 移除
                                         </button>
                                         <button class="btn btn-secondary" data-user-toggle="${app.id}" data-enabled="${!app.user_enabled}" style="flex: 1;">
-                                            ${app.user_enabled ? '⏸️ 禁用' : '▶️ 启用'}
+                                            ${app.user_enabled ? '<i class="ri-pause-circle-line"></i> 禁用' : '<i class="ri-play-circle-line"></i> 启用'}
                                         </button>
                                     </div>
                                 </div>
@@ -698,7 +698,7 @@ class AppCenterMarketPage extends Component {
 
                 <div class="dev-grid">
                     <div class="card module-card">
-                        <div class="card-header"><h3 class="card-title">📖 模块开发指南</h3></div>
+                        <div class="card-header"><h3 class="card-title"><i class="ri-book-open-line"></i> 模块开发指南</h3></div>
                         <div class="card-body">
                              <div class="markdown-body">
                                  <h4>1. 创建模块</h4>
@@ -707,7 +707,7 @@ class AppCenterMarketPage extends Component {
                                  
                                  <h4>2. 后端开发</h4>
                                  <p>在 <code>backend/modules/{id}/</code> 中定义路由、模型和业务逻辑。</p>
-                                 <p><strong>⚠️ 注意：所有文件必须带有包含模块ID的前缀！</strong></p>
+                                 <p><strong><i class="ri-alert-line"></i> 注意：所有文件必须带有包含模块ID的前缀！</strong></p>
                                  
                                  <h4>3. 前端开发</h4>
                                  <p>在 <code>frontend/js/pages/{id}.js</code> 中编写页面组件。组件需继承 <code>Component</code> 类，并实现 <code>render()</code> 方法。</p>
@@ -716,7 +716,7 @@ class AppCenterMarketPage extends Component {
                     </div>
 
                     <div class="card module-card">
-                        <div class="card-header"><h3 class="card-title">📏 开发规范</h3></div>
+                        <div class="card-header"><h3 class="card-title"><i class="ri-ruler-line"></i> 开发规范</h3></div>
                         <div class="card-body">
                              <div class="markdown-body">
                                  <h4>命名规范</h4>
@@ -726,7 +726,7 @@ class AppCenterMarketPage extends Component {
                                      <li><strong>类名</strong>: PascalCase (e.g., <code>TodoListPage</code>)</li>
                                  </ul>
                                  
-                                 <h4>📦 模块打包发布</h4>
+                                 <h4><i class="ri-archive-line"></i> 模块打包发布</h4>
                                  <div style="background: rgba(var(--color-primary-rgb), 0.1); padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 10px;">
                                     <code style="display: block; background: var(--color-bg-tertiary); padding: 8px; border-radius: 4px; user-select: text; font-size: 11px;">
                                         cd backend<br>
@@ -818,7 +818,7 @@ class AppCenterMarketPage extends Component {
         if (installedModules.length > 0) {
             warningHtml += `
                 <div class="info-box" style="background: rgba(255, 204, 0, 0.1); color: #cc9900; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
-                    💡 以下应用已安装，需先在「应用市场」中卸载后才能删除：<br>
+                    <i class="ri-lightbulb-line"></i> 以下应用已安装，需先在「应用市场」中卸载后才能删除：<br>
                     <strong>${installedModules.map(m => m.name).join('、')}</strong>
                 </div>
             `;
@@ -847,7 +847,7 @@ class AppCenterMarketPage extends Component {
                         </label>
                     </div>
                     <div class="alert" style="background: rgba(255, 59, 48, 0.1); color: #ff3b30; padding: 10px; border-radius: 8px; margin-top: 16px; font-size: 13px;">
-                        ⚠️ 警告：删除操作不可恢复！对应的代码文件将被永久删除。
+                        <i class="ri-error-warning-line"></i> 警告：删除操作不可恢复！对应的代码文件将被永久删除。
                     </div>
                 </form>
             `,

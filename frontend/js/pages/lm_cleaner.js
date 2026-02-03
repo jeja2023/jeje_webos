@@ -177,7 +177,7 @@ class LmCleanerPage extends Component {
                             </div>
                         ` : `
                             <div class="upload-text">
-                                <span class="icon">✨</span>
+                                <span class="icon"><i class="ri-sparkling-fill"></i></span>
                                 <span>上传/拖拽文件</span>
                             </div>
                             <span class="upload-hint">支持 PDF, PNG, JPG, WEBP</span>
@@ -189,7 +189,7 @@ class LmCleanerPage extends Component {
                 <!-- 历史记录区域：占据剩余空间 -->
                 <div class="history-section">
                     <div class="history-header">
-                        <h2><span class="icon">📜</span> 历史记录</h2>
+                        <h2><span class="icon"><i class="ri-history-line"></i></span> 历史记录</h2>
                         <span class="text-secondary">${this.state.total || items.length} 条记录</span>
                     </div>
 
@@ -197,7 +197,7 @@ class LmCleanerPage extends Component {
                         ${loading ? '<div class="text-center p-xl">加载记录中...</div>' : `
                             ${items.length === 0 ? `
                                 <div class="text-center p-xl text-secondary">
-                                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;"><i class="ri-inbox-line"></i></div>
                                     暂无处理记录，请在右上角上传文件
                                 </div>
                             ` : `
@@ -215,7 +215,7 @@ class LmCleanerPage extends Component {
                                             <div class="history-grid-row history-item">
                                                 <div class="col-name" title="${item.title}">
                                                     <span class="file-icon">
-                                                        ${item.title.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}
+                                                        ${item.title.toLowerCase().endsWith('.pdf') ? '<i class="ri-file-pdf-line"></i>' : '<i class="ri-image-line"></i>'}
                                                     </span>
                                                     <span>${item.title}</span>
                                                 </div>
@@ -224,10 +224,10 @@ class LmCleanerPage extends Component {
                                                 </div>
                                                 <div class="col-actions">
                                                     <button class="btn btn-sm btn-primary" onclick="window._lm_cleanerPage.previewImage(${item.id}, '${item.title}', 'cleaned')">
-                                                        👁️ 查看
+                                                        <i class="ri-eye-line"></i> 查看
                                                     </button>
                                                     <button class="btn btn-sm btn-success" onclick="window._lm_cleanerPage.downloadFile(${item.id})">
-                                                        📥 下载
+                                                        <i class="ri-download-line"></i> 下载
                                                     </button>
                                                     ${item.source_file ? `
                                                         <button class="btn btn-sm btn-outline-secondary" onclick="window._lm_cleanerPage.previewImage(${item.id}, '${item.title}', 'source')" title="预览原始文件">
@@ -235,7 +235,7 @@ class LmCleanerPage extends Component {
                                                         </button>
                                                     ` : ''}
                                                     <button class="btn btn-sm btn-ghost btn-outline-danger" onclick="window._lm_cleanerPage.deleteRecord(${item.id})">
-                                                        🗑️
+                                                        <i class="ri-delete-bin-line"></i>
                                                     </button>
                                                 </div>
                                             </div>

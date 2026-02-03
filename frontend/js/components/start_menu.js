@@ -86,7 +86,7 @@ class StartMenuComponent extends Component {
                 menuTree.push({
                     id: shortcut.id,
                     title: shortcut.name || shortcut.title,
-                    icon: shortcut.icon || '🔗',
+                    icon: shortcut.icon || 'ri-link',
                     path: shortcut.path,
                     isShortcut: true,
                     type: shortcut.type
@@ -104,7 +104,7 @@ class StartMenuComponent extends Component {
             appItems.push({
                 id: mod.id,
                 title: mod.name,
-                icon: mod.icon || '📦',
+                icon: mod.icon || 'ri-apps-line',
                 path: this._getModulePath(mod)
             });
         }
@@ -120,8 +120,8 @@ class StartMenuComponent extends Component {
 
         // ========== 3. 系统工具分组 - 系统内置应用 ==========
         const systemApps = [
-            { id: 'filemanager', title: '文件管理', icon: '📂', path: '/filemanager' },
-            { id: 'transfer', title: '快传', icon: '⚡', path: '/transfer' }
+            { id: 'filemanager', title: '文件管理', icon: 'ri-folder-5-line', path: '/filemanager' },
+            { id: 'transfer', title: '快传', icon: 'ri-share-forward-line', path: '/transfer' }
         ];
 
         const systemItems = systemApps.filter(app => !pinnedIds.has(app.id));
@@ -144,7 +144,7 @@ class StartMenuComponent extends Component {
     }
 
     // 获取应用对应的图标配置
-    _getIconSpec(id, defaultIcon = '📦') {
+    _getIconSpec(id, defaultIcon = 'ri-apps-line') {
         const iconMap = {
             'blog': { ri: 'ri-article-line' },
             'knowledge': { ri: 'ri-book-read-line' },
@@ -189,6 +189,10 @@ class StartMenuComponent extends Component {
         if (spec.ri) {
             return `<i class="${spec.ri}"></i>`;
         }
+        // 如果是 RI class
+        if (spec.emoji && spec.emoji.startsWith('ri-')) {
+            return `<i class="${spec.emoji}"></i>`;
+        }
         return spec.emoji;
     }
 
@@ -232,7 +236,7 @@ class StartMenuComponent extends Component {
                 <div class="start-menu glass-panel ${this.visible ? 'visible' : ''}">
                     <div class="start-menu-body custom-scrollbar">
                         <div class="menu-empty-state">
-                            <div class="menu-empty-icon">📋</div>
+                            <div class="menu-empty-icon"><i class="ri-clipboard-line"></i></div>
                             <div class="menu-empty-text">暂无可用应用</div>
                             <div class="menu-empty-hint">所有应用已固定在 Dock</div>
                         </div>

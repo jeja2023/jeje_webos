@@ -78,7 +78,7 @@ class NotesListPage extends Component {
             <div class="folder-item ${this.folderId == folder.id ? 'active' : ''}" 
                  style="padding-left: ${16 + level * 16}px"
                  data-folder="${folder.id}">
-                <span class="folder-icon">📁</span>
+                <span class="folder-icon"><i class="ri-folder-line"></i></span>
                 <span class="folder-name">${Utils.escapeHtml(folder.name)}</span>
                 <span class="folder-count">${folder.note_count}</span>
                 <div class="folder-actions">
@@ -100,15 +100,15 @@ class NotesListPage extends Component {
                 <div class="notes-sidebar">
                     <div class="notes-nav">
                         <div class="folder-item ${!this.folderId ? 'active' : ''}" data-folder="">
-                            <span class="folder-icon">📋</span>
+                            <span class="folder-icon"><i class="ri-clipboard-line"></i></span>
                             <span class="folder-name">所有笔记</span>
                         </div>
                         <div class="folder-item" onclick="Router.push('/notes/starred')">
-                            <span class="folder-icon">⭐</span>
+                            <span class="folder-icon"><i class="ri-star-line"></i></span>
                             <span class="folder-name">我的收藏</span>
                         </div>
                         <div class="folder-item" onclick="Router.push('/notes/tags')">
-                            <span class="folder-icon">🏷️</span>
+                            <span class="folder-icon"><i class="ri-price-tag-3-line"></i></span>
                             <span class="folder-name">标签管理</span>
                         </div>
                         <div class="divider" style="margin: 8px 16px; border-top: 1px solid var(--color-border); opacity: 0.5;"></div>
@@ -143,10 +143,10 @@ class NotesListPage extends Component {
                                 </select>
                             ` : ''}
                             <button class="btn btn-primary" id="newNote">
-                                ➕ 新建笔记
+                                <i class="ri-add-line"></i> 新建笔记
                             </button>
                             <button class="btn btn-secondary" id="newFolder">
-                                📁 新建文件夹
+                                <i class="ri-folder-add-line"></i> 新建文件夹
                             </button>
                         </div>
                     </div>
@@ -158,9 +158,9 @@ class NotesListPage extends Component {
                         </label>
                         <span id="selectedCount" style="color: var(--color-text-secondary);">已选 0 条</span>
                         <div style="flex: 1;"></div>
-                        <button class="btn btn-ghost btn-sm" id="batchStar">⭐ 收藏</button>
-                        <button class="btn btn-ghost btn-sm" id="batchMove">📁 移动</button>
-                        <button class="btn btn-danger btn-sm" id="batchDelete">🗑️ 删除</button>
+                        <button class="btn btn-ghost btn-sm" id="batchStar"><i class="ri-star-line"></i> 收藏</button>
+                        <button class="btn btn-ghost btn-sm" id="batchMove"><i class="ri-folder-transfer-line"></i> 移动</button>
+                        <button class="btn btn-danger btn-sm" id="batchDelete"><i class="ri-delete-bin-line"></i> 删除</button>
                         <button class="btn btn-ghost btn-sm" id="cancelBatch">取消</button>
                     </div>
 
@@ -178,13 +178,13 @@ class NotesListPage extends Component {
                                     </h3>
                                     <div class="note-actions">
                                         <button class="btn btn-ghost btn-sm" data-star="${note.id}" title="${note.is_starred ? '取消收藏' : '收藏'}">
-                                            ${note.is_starred ? '⭐' : '☆'}
+                                            <i class="${note.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i>
                                         </button>
                                         <button class="btn btn-ghost btn-sm" data-pin="${note.id}" title="${note.is_pinned ? '取消置顶' : '置顶'}">
-                                            ${note.is_pinned ? '📌' : '📍'}
+                                            <i class="${note.is_pinned ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                                         </button>
-                                        <button class="btn btn-ghost btn-sm" data-edit-note="${note.id}" title="编辑">✏️</button>
-                                        <button class="btn btn-ghost btn-sm" data-delete-note="${note.id}" title="删除">🗑️</button>
+                                        <button class="btn btn-ghost btn-sm" data-edit-note="${note.id}" title="编辑"><i class="ri-edit-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-delete-note="${note.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </div>
                                 <p class="note-summary">${Utils.escapeHtml(note.summary || '暂无内容')}</p>
@@ -201,7 +201,7 @@ class NotesListPage extends Component {
                             </div>
                         `).join('') : `
                             <div class="empty-state">
-                                <div class="empty-icon">📝</div>
+                                <div class="empty-icon"><i class="ri-file-list-line"></i></div>
                                 <p class="empty-text">${keyword || selectedTagId ? '没有找到匹配的笔记' : '暂无笔记'}</p>
                                 ${keyword || selectedTagId ?
                     '<button class="btn btn-secondary" id="clearFilters">清除筛选</button>' :
@@ -736,7 +736,7 @@ class NotesEditPage extends Component {
                             </button>
                         ` : ''}
                         <button class="btn btn-primary" id="saveNote" ${saving ? 'disabled' : ''}>
-                            ${saving ? '保存中...' : '💾 立即保存'}
+                            ${saving ? '保存中...' : '<i class="ri-save-line"></i> 立即保存'}
                         </button>
                     </div>
                 </div>
@@ -763,7 +763,7 @@ class NotesEditPage extends Component {
                             <div></div>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer">
                                 <input type="checkbox" name="is_starred" ${note?.is_starred ? 'checked' : ''}>
-                                <span>⭐ 收藏</span>
+                                <span><i class="ri-star-line"></i> 收藏</span>
                             </label>
                         </div>
                         
@@ -1124,18 +1124,18 @@ class NotesTagsPage extends Component {
                             <i class="ri-arrow-left-line"></i> 返回
                         </button>
                         <div>
-                            <h1 class="page-title" style="margin: 0;">🏷️ 标签管理</h1>
+                            <h1 class="page-title" style="margin: 0;"><i class="ri-price-tag-3-line"></i> 标签管理</h1>
                             <p class="page-desc" style="margin: 4px 0 0 0;">共 ${tags.length} 个标签</p>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <button class="btn btn-secondary" onclick="Router.push('/notes/list')">
-                            📋 所有笔记
+                            <i class="ri-clipboard-line"></i> 所有笔记
                         </button>
                         <button class="btn btn-secondary" onclick="Router.push('/notes/starred')">
-                            ⭐ 我的收藏
+                            <i class="ri-star-line"></i> 我的收藏
                         </button>
-                        <button class="btn btn-primary" id="newTag">➕ 新建标签</button>
+                        <button class="btn btn-primary" id="newTag"><i class="ri-add-line"></i> 新建标签</button>
                     </div>
                 </div>
                 
@@ -1147,17 +1147,17 @@ class NotesTagsPage extends Component {
                                     <span class="tag-color" style="background: ${tag.color}"></span>
                                     <span class="tag-name">${Utils.escapeHtml(tag.name)}</span>
                                     <div class="tag-actions">
-                                        <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(tag)}'>✏️</button>
-                                        <button class="btn btn-ghost btn-sm" data-delete="${tag.id}">🗑️</button>
+                                        <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(tag)}'><i class="ri-edit-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-delete="${tag.id}"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                     ` : `
                         <div class="empty-state">
-                            <div class="empty-icon">🏷️</div>
+                            <div class="empty-icon"><i class="ri-price-tag-3-line"></i></div>
                             <p class="empty-text">暂无标签，创建标签来更好地组织笔记</p>
-                            <button class="btn btn-primary" id="newTagEmpty">➕ 创建第一个标签</button>
+                            <button class="btn btn-primary" id="newTagEmpty"><i class="ri-add-line"></i> 创建第一个标签</button>
                         </div>
                     `}
                 </div>
@@ -1374,7 +1374,7 @@ class NotesViewPage extends Component {
             return `
                 <div class="page fade-in">
                     <div class="empty-state" style="padding-top:80px">
-                        <div class="empty-icon">🔍</div>
+                        <div class="empty-icon"><i class="ri-search-line"></i></div>
                         <p class="empty-text">笔记不存在或已删除</p>
                         <button class="btn btn-primary" onclick="Router.push('/notes/list')">返回列表</button>
                     </div>
@@ -1395,34 +1395,34 @@ class NotesViewPage extends Component {
                         <div>
                             <h1 class="page-title" style="margin:0;display:flex;align-items:center;gap:8px;">
                                 ${note.is_pinned ? '<span class="tag tag-warning">置顶</span>' : ''}
-                                ${note.is_starred ? '<span class="tag tag-primary">⭐</span>' : ''}
+                                ${note.is_starred ? '<span class="tag tag-primary"><i class="ri-star-fill"></i></span>' : ''}
                                 ${Utils.escapeHtml(note.title)}
                             </h1>
                             <p class="page-desc" style="margin:4px 0 0 0;">
-                                <span title="字数">📝 ${wordCount} 字</span> · 
-                                <span title="预计阅读时间">⏱️ ${readTime} 分钟</span> · 
+                                <span title="字数"><i class="ri-file-list-line"></i> ${wordCount} 字</span> · 
+                                <span title="预计阅读时间"><i class="ri-time-line"></i> ${readTime} 分钟</span> · 
                                 <span title="更新时间">${Utils.timeAgo(note.updated_at || note.created_at)}</span>
                             </p>
                         </div>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button class="btn btn-ghost" id="toggleStar" title="${note.is_starred ? '取消收藏' : '收藏'}">
-                            ${note.is_starred ? '💔 取消收藏' : '⭐ 收藏'}
+                            ${note.is_starred ? '<i class="ri-star-unfill"></i> 取消收藏' : '<i class="ri-star-line"></i> 收藏'}
                         </button>
                         <button class="btn btn-ghost" id="togglePin" title="${note.is_pinned ? '取消置顶' : '置顶'}">
-                            ${note.is_pinned ? '📍 取消置顶' : '📌 置顶'}
+                            ${note.is_pinned ? '<i class="ri-pushpin-2-fill"></i> 取消置顶' : '<i class="ri-pushpin-line"></i> 置顶'}
                         </button>
                         <button class="btn btn-ghost" id="copyNote" title="复制内容">
-                            📋 复制
+                            <i class="ri-clipboard-line"></i> 复制
                         </button>
                         <button class="btn btn-ghost" id="exportNote" title="导出为Markdown">
-                            📥 导出
+                            <i class="ri-download-line"></i> 导出
                         </button>
                         <button class="btn btn-primary" id="editNote">
-                            ✏️ 编辑
+                            <i class="ri-edit-line"></i> 编辑
                         </button>
                         <button class="btn btn-danger" id="deleteNote" title="删除笔记">
-                            🗑️
+                            <i class="ri-delete-bin-line"></i>
                         </button>
                     </div>
                 </div>

@@ -86,7 +86,7 @@ class ProfilePage extends Component {
                 `<img src="${user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token')}" alt="Avatar">` :
                 initials
             }
-                                    <div class="avatar-overlay">📷</div>
+                                    <div class="avatar-overlay"><i class="ri-camera-line"></i></div>
                                 </div>
                                 <input type="file" id="avatarInput" accept="image/*" style="display: none;">
                                 <div class="profile-basic">
@@ -118,8 +118,8 @@ class ProfilePage extends Component {
                         <!-- 账户信息 -->
                         <div class="card card-compact">
                             <div class="card-header">
-                                <h3 class="card-title">📋 账户信息</h3>
-                                ${!editing ? `<button class="btn btn-primary btn-sm" id="editBtn">✏️ 编辑</button>` : ''}
+                                <h3 class="card-title"><i class="ri-file-list-line"></i> 账户信息</h3>
+                                ${!editing ? `<button class="btn btn-primary btn-sm" id="editBtn"><i class="ri-edit-line"></i> 编辑</button>` : ''}
                             </div>
                             <div class="card-body">
                                 ${editing ? this.renderEditForm() : this.renderInfoDisplay()}
@@ -129,7 +129,7 @@ class ProfilePage extends Component {
                         <!-- 安全设置 -->
                         <div class="card card-compact">
                             <div class="card-header">
-                                <h3 class="card-title">🔒 安全设置</h3>
+                                <h3 class="card-title"><i class="ri-lock-line"></i> 安全设置</h3>
                             </div>
                             <div class="card-body">
                                 <div class="security-item-compact">
@@ -306,9 +306,9 @@ class ProfilePage extends Component {
                     </div>
                     
                     <div style="display: flex; align-items: center; width: 100%; gap: 12px; padding: 0 20px;">
-                        <span style="font-size: 14px;">➖</span>
+                        <span style="font-size: 14px;"><i class="ri-subtract-line"></i></span>
                         <input type="range" id="cropZoom" min="0.1" max="5" step="0.05" value="1" style="flex: 1; cursor: pointer;">
-                        <span style="font-size: 14px;">➕</span>
+                        <span style="font-size: 14px;"><i class="ri-add-line"></i></span>
                     </div>
 
                     <div style="display: flex; gap: 12px; width: 100%; margin-top: 8px;">
@@ -600,7 +600,7 @@ class ChangePasswordPage extends Component {
                 <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px;">
                     <div class="card" style="width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);">
                         <div class="card-header" style="border-bottom: none; padding-bottom: 0; text-align: center;">
-                            <h3 class="card-title" style="font-size: 1.25rem;">🔐 修改密码</h3>
+                            <h3 class="card-title" style="font-size: 1.25rem;"><i class="ri-lock-password-line"></i> 修改密码</h3>
                         </div>
                         <div class="card-body" style="padding: 24px;">
                             <div class="form-group" style="margin-bottom: 16px;">

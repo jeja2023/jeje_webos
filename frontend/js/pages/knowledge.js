@@ -88,7 +88,7 @@ class KnowledgeListPage extends Component {
                 
                 ${bases.length === 0 ? `
                     <div class="empty-state">
-                        <div class="empty-icon">📚</div>
+                        <div class="empty-icon"><i class="ri-book-3-line"></i></div>
                         <p class="empty-text">创建一个知识库开始整理文档</p>
                     </div>
                 ` : `
@@ -96,15 +96,15 @@ class KnowledgeListPage extends Component {
                         ${bases.map(base => `
                             <div class="kb-card" data-id="${base.id}">
                                 <div class="kb-card-actions">
-                                    <button class="btn-action edit" data-action="edit" title="编辑">✏️</button>
-                                    <button class="btn-action delete" data-action="delete" title="删除">🗑️</button>
+                                    <button class="btn-action edit" data-action="edit" title="编辑"><i class="ri-edit-line"></i></button>
+                                    <button class="btn-action delete" data-action="delete" title="删除"><i class="ri-delete-bin-line"></i></button>
                                 </div>
-                                <div class="kb-card-icon">${base.cover || '📘'}</div>
+                                <div class="kb-card-icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${base.cover}"></i>` : (base.cover || '<i class="ri-book-fill"></i>')}</div>
                                 <div class="kb-card-body">
                                     <h3 class="kb-title">${Utils.escapeHtml(base.name)}</h3>
                                     <p class="kb-desc">${Utils.escapeHtml(base.description || '无描述')}</p>
                                     <div class="kb-meta">
-                                        <span class="meta-item"><i class="time-icon">🕒</i> ${Utils.timeAgo(base.updated_at)}</span>
+                                        <span class="meta-item"><i class="ri-time-line"></i> ${Utils.timeAgo(base.updated_at)}</span>
                                         ${base.is_public ? '<span class="tag tag-success">公开</span>' : '<span class="tag tag-secondary">私有</span>'}
                                     </div>
                                 </div>
@@ -154,11 +154,11 @@ class KnowledgeListPage extends Component {
             fields: [
                 { name: 'name', label: '名称', required: true, placeholder: '输入知识库名称' },
                 { name: 'description', label: '描述', placeholder: '简单的描述一下吧' },
-                { name: 'icon', label: '图标', placeholder: '比如 📚' },
+                { name: 'icon', label: '图标', placeholder: '支持 Emoji 或 Remix Icon 类名 (如 ri-book-fill)' },
                 { name: 'is_public', label: '公开可见', type: 'checkbox' }
             ],
             onSubmit: async (data) => {
-                data.cover = data.icon || '📘';
+                data.cover = data.icon || 'ri-book-fill';
                 delete data.icon;
                 await KnowledgeApi.createBase(data);
                 Toast.success('创建成功');
@@ -173,11 +173,11 @@ class KnowledgeListPage extends Component {
             fields: [
                 { name: 'name', label: '名称', required: true, value: base.name },
                 { name: 'description', label: '描述', value: base.description },
-                { name: 'icon', label: '图标', placeholder: '比如 📚', value: base.cover },
+                { name: 'icon', label: '图标', placeholder: '支持 Emoji 或 Remix Icon 类名 (如 ri-book-fill)', value: base.cover },
                 { name: 'is_public', label: '公开可见', type: 'checkbox', value: base.is_public }
             ],
             onSubmit: async (data) => {
-                data.cover = data.icon || '📘';
+                data.cover = data.icon || 'ri-book-fill';
                 delete data.icon;
                 await KnowledgeApi.updateBase(base.id, data);
                 Toast.success('更新成功');
@@ -304,15 +304,15 @@ class KnowledgeViewPage extends Component {
                 <!-- 左侧侧边栏 -->
                 <div class="kb-sidebar">
                     <div class="kb-sidebar-header">
-                        <button class="btn-icon btn-back-home" id="btnBackHome" title="返回知识库列表">⬅️</button>
+                        <button class="btn-icon btn-back-home" id="btnBackHome" title="返回知识库列表"><i class="ri-arrow-left-line"></i></button>
                         <div class="kb-header-title" style="flex:1">
-                            <span class="icon">${base.cover}</span>
+                            <span class="icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${base.cover}"></i>` : (base.cover || '<i class="ri-book-fill"></i>')}</span>
                             <span class="text-truncate">${Utils.escapeHtml(base.name)}</span>
                         </div>
                         <div class="kb-header-tools">
                             <div class="kb-view-toggles">
-                                <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表">📁</button>
-                                <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱">🕸️</button>
+                                <button class="btn-icon ${viewMode === 'tree' ? 'active' : ''}" id="btnViewTree" title="树形列表"><i class="ri-list-check"></i></button>
+                                <button class="btn-icon ${viewMode === 'graph' ? 'active' : ''}" id="btnViewGraph" title="知识图谱"><i class="ri-node-tree"></i></button>
                             </div>
                         </div>
                     </div>
@@ -322,7 +322,7 @@ class KnowledgeViewPage extends Component {
                         <div class="kb-search-input-group search-group">
                             <input type="text" id="searchInput" placeholder="搜索知识库..." class="form-input">
                             <button class="btn btn-primary" id="btnSearch" title="搜索"><i class="ri-search-2-line"></i></button>
-                            <button class="btn-filter ${showFilters ? 'active' : ''}" id="btnToggleFilter" title="筛选选项">⚙️</button>
+                             <button class="btn-filter ${showFilters ? 'active' : ''}" id="btnToggleFilter" title="筛选选项"><i class="ri-settings-3-line"></i></button>
                         </div>
 
                         ${showFilters ? `
@@ -339,8 +339,8 @@ class KnowledgeViewPage extends Component {
                         ` : ''}
                         
                         <div class="kb-sidebar-actions">
-                            <button class="btn btn-primary btn-sm" style="flex:1" id="btnAddRoot">➕ 新建文档</button>
-                            <button class="btn btn-ghost btn-sm" id="btnUploadRoot" title="上传文件">⬆️ 上传</button>
+                            <button class="btn btn-primary btn-sm" style="flex:1" id="btnAddRoot"><i class="ri-add-line"></i> 新建文档</button>
+                            <button class="btn btn-ghost btn-sm" id="btnUploadRoot" title="上传文件"><i class="ri-upload-2-line"></i> 上传</button>
                         </div>
                     </div>
                     
@@ -360,7 +360,7 @@ class KnowledgeViewPage extends Component {
                             <div class="graph-header">
                                 <h3>知识图谱可视化</h3>
                                 <div class="graph-actions">
-                                    <button class="btn btn-ghost btn-sm" id="btnRefreshGraph">🔄 刷新</button>
+                                    <button class="btn btn-ghost btn-sm" id="btnRefreshGraph"><i class="ri-refresh-line"></i> 刷新</button>
                                 </div>
                             </div>
                             <div id="echartsGraph" style="width: 100%; flex: 1; min-height: 400px;"></div>
@@ -377,18 +377,18 @@ class KnowledgeViewPage extends Component {
                                 <div class="kb-doc-meta">
                                     <span>${Utils.timeAgo(activeNode.updated_at)}</span>
                                     ${activeNode.node_type === 'document' ?
-                    `<button class="btn btn-ghost btn-sm" id="btnEditDoc">✏️ 编辑</button>` : ''
+                    `<button class="btn btn-ghost btn-sm" id="btnEditDoc"><i class="ri-edit-line"></i> 编辑</button>` : ''
                 }
-                                    <button class="btn btn-ghost btn-sm text-danger" id="btnDeleteDoc">🗑️ 删除</button>
+                                    <button class="btn btn-ghost btn-sm text-danger" id="btnDeleteDoc"><i class="ri-delete-bin-line"></i> 删除</button>
                                     ${activeNode.node_type === 'file' ?
-                    `<a href="${KnowledgeApi.getPreviewUrl(activeNode.id)}" target="_blank" class="btn btn-primary btn-sm">📥 下载</a>` : ''
+                    `<a href="${KnowledgeApi.getPreviewUrl(activeNode.id)}" target="_blank" class="btn btn-primary btn-sm"><i class="ri-download-line"></i> 下载</a>` : ''
                 }
                                 </div>
                             </div>
                             <div id="editorContainer" class="kb-editor-area"></div>
                         ` : `
                             <div class="empty-state">
-                                <div class="empty-icon">📤</div>
+                                <div class="empty-icon"><i class="ri-upload-cloud-2-line"></i></div>
                                 <p>选择文档查看，或拖拽文件到此处上传</p>
                             </div>
                         `}
@@ -423,7 +423,7 @@ class KnowledgeViewPage extends Component {
 
         return `
             <div class="kb-breadcrumbs">
-                <span class="breadcrumb-item" data-id="root" title="回到概览">🏠 概览</span>
+                <span class="breadcrumb-item" data-id="root" title="回到概览"><i class="ri-home-line"></i> 概览</span>
                 ${path.map((node, index) => `
                     <span class="breadcrumb-separator">/</span>
                     <span class="breadcrumb-item ${index === path.length - 1 ? 'active' : ''}" 
@@ -453,7 +453,7 @@ class KnowledgeViewPage extends Component {
             <ul class="tree-list search-list">
                 ${results.map(r => {
             const isImage = (r.metadata.node_type === 'image' || r.metadata.type === 'image');
-            const icon = isImage ? '🖼️' : '📄';
+            const icon = isImage ? '<i class="ri-image-line"></i>' : '<i class="ri-file-text-line"></i>';
             const title = r.metadata.title || '无标题';
 
             return `
@@ -489,8 +489,8 @@ class KnowledgeViewPage extends Component {
                             <span class="tree-text">${Utils.escapeHtml(node.title)}</span>
                             ${node.node_type === 'folder' ? `
                                 <div class="tree-actions-hover">
-                                    <button class="btn-icon-tiny" data-action="add-sub" data-id="${node.id}" title="新建子项">+</button>
-                                    <button class="btn-icon-tiny" data-action="upload-sub" data-id="${node.id}" title="上传文件">⬆️</button>
+                                    <button class="btn-icon-tiny" data-action="add-sub" data-id="${node.id}" title="新建子项"><i class="ri-add-line"></i></button>
+                                    <button class="btn-icon-tiny" data-action="upload-sub" data-id="${node.id}" title="上传文件"><i class="ri-upload-2-line"></i></button>
                                 </div>
                             ` : ''}
                         </div>
@@ -502,17 +502,17 @@ class KnowledgeViewPage extends Component {
     }
 
     getNodeIcon(node) {
-        if (node.node_type === 'folder') return '📁';
+        if (node.node_type === 'folder') return '<i class="ri-folder-line"></i>';
         if (node.node_type === 'file') {
             const ext = node.file_meta?.ext?.toLowerCase() || '';
-            if (['pdf'].includes(ext)) return '📕';
-            if (['doc', 'docx'].includes(ext)) return '📘';
-            if (['xls', 'xlsx', 'csv'].includes(ext)) return '📗';
-            if (['ppt', 'pptx'].includes(ext)) return '📙';
-            if (['jpg', 'png', 'jpeg', 'gif'].includes(ext)) return '🖼️';
-            return '📎';
+            if (['pdf'].includes(ext)) return '<i class="ri-file-pdf-line"></i>';
+            if (['doc', 'docx'].includes(ext)) return '<i class="ri-file-word-line"></i>';
+            if (['xls', 'xlsx', 'csv'].includes(ext)) return '<i class="ri-file-excel-line"></i>';
+            if (['ppt', 'pptx'].includes(ext)) return '<i class="ri-file-ppt-line"></i>';
+            if (['jpg', 'png', 'jpeg', 'gif'].includes(ext)) return '<i class="ri-image-line"></i>';
+            return '<i class="ri-attachment-line"></i>';
         }
-        return '📄';
+        return '<i class="ri-file-text-line"></i>';
     }
 
     updateViewer() {
@@ -526,7 +526,7 @@ class KnowledgeViewPage extends Component {
         if (node.status === 'processing') {
             container.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon" style="animation:spin 2s linear infinite">⚙️</div>
+                    <div class="empty-icon" style="animation:spin 2s linear infinite"><i class="ri-settings-3-line"></i></div>
                     <p>文档正在后台解析中...</p>
                     <p class="text-secondary" style="font-size:12px">解析完成后将自动显示内容</p>
                 </div>
@@ -547,7 +547,7 @@ class KnowledgeViewPage extends Component {
         if (node.node_type === 'folder') {
             container.innerHTML = `
                  <div class="folder-view-placeholder">
-                     <div class="empty-icon">📁</div>
+                     <div class="empty-icon"><i class="ri-folder-line"></i></div>
                      <p>文件夹：${Utils.escapeHtml(node.title)}</p>
                      <p class="text-secondary">请在左侧选择子文档或上传文件</p>
                  </div>
@@ -591,7 +591,7 @@ class KnowledgeViewPage extends Component {
                          </div>
                      ` : `
                          <div class="empty-state">
-                             <div class="empty-icon">📎</div>
+                             <div class="empty-icon"><i class="ri-attachment-line"></i></div>
                              <p>此文件不支持在线预览</p>
                              <a href="${previewUrl}" class="btn btn-primary">下载文件</a>
                          </div>

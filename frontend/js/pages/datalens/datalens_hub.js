@@ -74,7 +74,7 @@ const DataLensHubMixin = {
                         type: 'datalens',
                         identifier: view.id,
                         name: view.name,
-                        icon: view.icon || '📊',
+                        icon: view.icon || 'ri-bar-chart-2-line',
                         path: `/lens/view/${view.id}`,
                         metadata: { view_id: view.id }
                     });
@@ -110,7 +110,7 @@ const DataLensHubMixin = {
                     const newShortcut = {
                         id: `datalens_view_${view.id}`,
                         name: view.name,
-                        icon: view.icon || '📊',
+                        icon: view.icon || 'ri-bar-chart-2-line',
                         path: `/lens/view/${view.id}`,
                         type: 'datalens',
                         view_id: view.id
@@ -149,41 +149,45 @@ const DataLensHubMixin = {
                     <div class="lens-sidebar-section">
                         <div class="lens-sidebar-label">常用</div>
                         <div class="lens-sidebar-item ${!currentCategory && !this.state.showFavorites && !this.state.showRecent ? 'active' : ''}" data-category="all">
-                            <span class="lens-sidebar-icon">🏠</span>
+                            <span class="lens-sidebar-icon"><i class="ri-home-line"></i></span>
                             <span class="lens-sidebar-text">全部视图</span>
                         </div>
                         <div class="lens-sidebar-item ${this.state.showFavorites ? 'active' : ''}" data-category="favorites">
-                            <span class="lens-sidebar-icon">⭐</span>
+                            <span class="lens-sidebar-icon"><i class="ri-star-line"></i></span>
                             <span class="lens-sidebar-text">我的收藏</span>
                         </div>
                         <div class="lens-sidebar-item ${this.state.showRecent ? 'active' : ''}" data-category="recent">
-                            <span class="lens-sidebar-icon">🕒</span>
+                            <span class="lens-sidebar-icon"><i class="ri-time-line"></i></span>
                             <span class="lens-sidebar-text">最近浏览</span>
                         </div>
                     </div>
                     
                     <div class="lens-sidebar-section">
                         <div class="lens-sidebar-label">业务分类</div>
-                        ${categories.map(c => `
+                        ${categories.map(c => {
+            const icon = c.icon || 'ri-folder-line';
+            const iconHtml = icon.startsWith('ri-') ? `<i class="${icon}"></i>` : icon;
+            return `
                             <div class="lens-sidebar-item ${currentCategory === c.id ? 'active' : ''}" data-category="${c.id}">
-                                <span class="lens-sidebar-icon">${c.icon || '📁'}</span>
+                                <span class="lens-sidebar-icon">${iconHtml}</span>
                                 <span class="lens-sidebar-text">${c.name}</span>
                                 ${c.view_count ? `<span class="lens-category-count">${c.view_count}</span>` : ''}
                             </div>
-                        `).join('')}
+                        `;
+        }).join('')}
                     </div>
 
                     <div class="lens-sidebar-footer">
                         <div class="lens-sidebar-label">系统管理</div>
                         ${this._hasPermission('datalens.source.manage') || this._hasPermission('datalens.admin') ? `
                             <div class="lens-sidebar-item" id="lens-manage-sources">
-                                <span class="lens-sidebar-icon">🔌</span>
+                                <span class="lens-sidebar-icon"><i class="ri-plug-line"></i></span>
                                 <span class="lens-sidebar-text">数据源管理</span>
                             </div>
                         ` : ''}
                         ${this._hasPermission('datalens.category.manage') || this._hasPermission('datalens.admin') ? `
                             <div class="lens-sidebar-item" id="lens-manage-categories">
-                                <span class="lens-sidebar-icon">📂</span>
+                                <span class="lens-sidebar-icon"><i class="ri-folder-settings-line"></i></span>
                                 <span class="lens-sidebar-text">分类管理</span>
                             </div>
                         ` : ''}
@@ -224,7 +228,7 @@ const DataLensHubMixin = {
         if (views.length === 0) {
             return `
                 <div class="lens-empty" style="grid-column: 1 / -1; width: 100%;">
-                    <div class="lens-empty-icon">📊</div>
+                    <div class="lens-empty-icon"><i class="ri-bar-chart-2-line"></i></div>
                     <div class="lens-empty-text">暂无符合条件的视图</div>
                     <div class="lens-empty-hint" style="font-size: 14px; color: var(--text-muted); margin-top: 8px;">
                         点击右上角「新建视图」创建您的第一个数据视图
@@ -251,32 +255,36 @@ const DataLensHubMixin = {
             const dateStr = view.updated_at ? Utils.formatDate(view.updated_at, 'YYYY-MM-DD HH:mm:ss') : '未知';
             // 获取创建者名称
             const ownerName = view.creator_name || view.created_by_name || view.owner_name || `用户${view.created_by || view.owner_id || ''}`;
+
+            const icon = view.icon || 'ri-bar-chart-2-line';
+            const iconHtml = icon.startsWith('ri-') ? `<i class="${icon}"></i>` : icon;
+
             return `
                 <div class="lens-view-card animate-slide-up" data-id="${view.id}">
-                    <div class="lens-view-card-icon">${view.icon || '📊'}</div>
+                    <div class="lens-view-card-icon">${iconHtml}</div>
                     <div class="lens-view-card-body">
                         <div class="lens-view-card-name">${Utils.escapeHtml(view.name)}</div>
                         <div class="lens-view-card-desc">${Utils.escapeHtml(view.description || '暂无描述')}</div>
                         <div class="lens-view-card-meta">
-                            <span>👤 ${Utils.escapeHtml(ownerName)}</span>
-                            <span>📅 ${dateStr}</span>
+                            <span><i class="ri-user-line"></i> ${Utils.escapeHtml(ownerName)}</span>
+                            <span><i class="ri-calendar-line"></i> ${dateStr}</span>
                         </div>
                     </div>
                     <div class="lens-view-card-actions">
                         <button class="lens-view-card-btn favorite ${view.is_favorited ? 'active' : ''}" 
                                 data-id="${view.id}" 
                                 title="${view.is_favorited ? '取消收藏' : '收藏'}">
-                            ${view.is_favorited ? '⭐' : '☆'}
+                            <i class="${view.is_favorited ? 'ri-star-fill' : 'ri-star-line'}"></i>
                         </button>
                         <button class="lens-view-card-btn pin ${pinned ? 'active' : ''}" 
                                 data-id="${view.id}"
                                 data-active="${pinned}"
                                 title="${pinned ? '从开始菜单移除' : '固定到开始菜单'}">
-                            ${pinned ? '📍' : '📌'}
+                            <i class="${pinned ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                         </button>
                         ${this._hasPermission('datalens.admin') || view.owner_id === Store.get('user')?.id ? `
-                            <button class="lens-view-card-btn edit" data-id="${view.id}" title="编辑">✏️</button>
-                            <button class="lens-view-card-btn delete" data-id="${view.id}" title="删除">🗑️</button>
+                            <button class="lens-view-card-btn edit" data-id="${view.id}" title="编辑"><i class="ri-edit-line"></i></button>
+                            <button class="lens-view-card-btn delete" data-id="${view.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
                         ` : ''}
                     </div>
                 </div>

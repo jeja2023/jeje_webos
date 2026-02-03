@@ -89,10 +89,10 @@ class FileManagerPage extends Component {
                     <div class="fm-toolbar-left">
                         ${currentFolderId ? `
                         <button class="fm-nav-btn" id="btnBack" title="返回上级">
-                            ←
+                            <i class="ri-arrow-left-line"></i>
                         </button>` : ''}
                         <button class="fm-nav-btn" id="btnRefresh" title="刷新">
-                            🔄
+                            <i class="ri-refresh-line"></i>
                         </button>
                         
                         <!-- 面包屑 -->
@@ -111,7 +111,7 @@ class FileManagerPage extends Component {
                         <!-- 存储配额信息 -->
                         ${stats ? `
                         <div class="fm-quota-info" style="display: flex; align-items: center; gap: 8px; margin-right: 16px; padding: 6px 12px; background: var(--color-bg-secondary, rgba(0,0,0,0.05)); border-radius: 8px; font-size: 13px;">
-                            <span style="color: var(--color-text-secondary);">💾 存储:</span>
+                            <span style="color: var(--color-text-secondary);"><i class="ri-hard-drive-line"></i> 存储:</span>
                             <span style="font-weight: 500;">${this.formatSize(stats.total_size)}</span>
                             ${stats.storage_quota && stats.storage_quota > 0 ? `
                             <span style="color: var(--color-text-secondary);">/</span>
@@ -137,26 +137,26 @@ class FileManagerPage extends Component {
                         <!-- 视图切换 -->
                         <div class="fm-view-toggle">
                             <button class="fm-view-btn ${viewMode === 'grid' ? 'active' : ''}" data-view="grid" title="网格视图">
-                                ⊞
+                                <i class="ri-grid-fill"></i>
                             </button>
                             <button class="fm-view-btn ${viewMode === 'list' ? 'active' : ''}" data-view="list" title="列表视图">
-                                ☰
+                                <i class="ri-list-check"></i>
                             </button>
                         </div>
                         
                         <!-- 操作按钮 -->
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('filemanager', '文件管理') : ''}
                         <button class="btn btn-secondary btn-sm" id="btnNewFolder">
-                            📁 新建文件夹
+                            <i class="ri-folder-add-line"></i> 新建文件夹
                         </button>
                         <button class="btn btn-primary btn-sm" id="btnUpload">
-                            📤 上传文件
+                            <i class="ri-upload-cloud-2-line"></i> 上传文件
                         </button>
                         <button class="btn btn-info btn-sm" id="btnDownload" ${!this.canDownload() ? 'disabled' : ''}>
-                            ⬇️ 下载
+                            <i class="ri-download-line"></i> 下载
                         </button>
                         <button class="btn btn-danger btn-sm" id="btnDelete" ${selectedItems.length === 0 ? 'disabled' : ''}>
-                            🗑️ 删除
+                            <i class="ri-delete-bin-line"></i> 删除
                         </button>
                         <input type="file" id="fileInput" multiple style="display: none;">
                     </div>
@@ -169,11 +169,11 @@ class FileManagerPage extends Component {
                         <div class="fm-sidebar-section">
                             <div class="fm-sidebar-title">快捷访问</div>
                             <div class="fm-sidebar-item" data-action="home">
-                                <span class="icon">🏠</span>
+                                <span class="icon"><i class="ri-home-line"></i></span>
                                 <span>全部文件</span>
                             </div>
                             <div class="fm-sidebar-item" data-action="starred">
-                                <span class="icon">⭐</span>
+                                <span class="icon"><i class="ri-star-line"></i></span>
                                 <span>我的收藏</span>
                             </div>
                         </div>
@@ -182,9 +182,9 @@ class FileManagerPage extends Component {
                         <div class="fm-sidebar-section">
                             <div class="fm-sidebar-title">存储统计</div>
                             <div class="fm-storage-stats">
-                                <div class="fm-stat-row">📁 ${stats.total_folders} 个文件夹</div>
-                                <div class="fm-stat-row">📄 ${stats.total_files} 个文件</div>
-                                <div class="fm-stat-row">💾 ${this.formatSize(stats.total_size)}</div>
+                                <div class="fm-stat-row"><i class="ri-folder-line"></i> ${stats.total_folders} 个文件夹</div>
+                                <div class="fm-stat-row"><i class="ri-file-line"></i> ${stats.total_files} 个文件</div>
+                                <div class="fm-stat-row"><i class="ri-hard-drive-line"></i> ${this.formatSize(stats.total_size)}</div>
                                 ${stats.storage_quota ? `
                                 <div class="fm-quota-section">
                                     <div class="fm-quota-label">
@@ -216,7 +216,7 @@ class FileManagerPage extends Component {
                     <div class="fm-content" id="fileContent">
                         ${loading ? `
                             <div class="fm-empty">
-                                <div class="fm-empty-icon">⏳</div>
+                                <div class="fm-empty-icon"><i class="ri-loader-4-line spin"></i></div>
                                 <div class="fm-empty-text">加载中...</div>
                             </div>
                         ` : this.renderContent()}
@@ -224,7 +224,7 @@ class FileManagerPage extends Component {
                         <!-- 拖拽上传提示 -->
                         <div class="fm-dropzone" id="dropzone">
                             <div class="fm-dropzone-content">
-                                <div class="fm-dropzone-icon">📤</div>
+                                <div class="fm-dropzone-icon"><i class="ri-upload-cloud-2-line"></i></div>
                                 <div class="fm-dropzone-text">释放文件以上传</div>
                             </div>
                         </div>
@@ -239,15 +239,15 @@ class FileManagerPage extends Component {
                 
                 <!-- 右键菜单 -->
                 <div class="fm-context-menu" id="contextMenu" style="display: none;">
-                    <div class="fm-context-item" data-menu-action="open"><span class="icon">📂</span> 打开</div>
-                    <div class="fm-context-item" data-menu-action="preview"><span class="icon">👁️</span> 预览</div>
-                    <div class="fm-context-item" data-menu-action="download"><span class="icon">⬇️</span> 下载</div>
+                    <div class="fm-context-item" data-menu-action="open"><span class="icon"><i class="ri-folder-open-line"></i></span> 打开</div>
+                    <div class="fm-context-item" data-menu-action="preview"><span class="icon"><i class="ri-eye-line"></i></span> 预览</div>
+                    <div class="fm-context-item" data-menu-action="download"><span class="icon"><i class="ri-download-line"></i></span> 下载</div>
                     <div class="fm-context-divider"></div>
-                    <div class="fm-context-item" data-menu-action="rename"><span class="icon">✏️</span> 重命名</div>
-                    <div class="fm-context-item" data-menu-action="move"><span class="icon">📦</span> 移动到...</div>
-                    <div class="fm-context-item" data-menu-action="star"><span class="icon">⭐</span> 收藏/取消收藏</div>
+                    <div class="fm-context-item" data-menu-action="rename"><span class="icon"><i class="ri-edit-line"></i></span> 重命名</div>
+                    <div class="fm-context-item" data-menu-action="move"><span class="icon"><i class="ri-folder-transfer-line"></i></span> 移动到...</div>
+                    <div class="fm-context-item" data-menu-action="star"><span class="icon"><i class="ri-star-line"></i></span> 收藏/取消收藏</div>
                     <div class="fm-context-divider"></div>
-                    <div class="fm-context-item danger" data-menu-action="delete"><span class="icon">🗑️</span> 删除</div>
+                    <div class="fm-context-item danger" data-menu-action="delete"><span class="icon"><i class="ri-delete-bin-line"></i></span> 删除</div>
                 </div>
                 
                 <!-- 移动目标选择对话框占位 -->
@@ -262,7 +262,7 @@ class FileManagerPage extends Component {
         if (folders.length === 0 && files.length === 0) {
             return `
                 <div class="fm-empty">
-                    <div class="fm-empty-icon">📂</div>
+                    <div class="fm-empty-icon"><i class="ri-folder-open-line"></i></div>
                     <div class="fm-empty-text">此文件夹为空</div>
                     <button class="btn btn-primary" id="btnUploadEmpty">上传文件</button>
                 </div>
@@ -286,7 +286,7 @@ class FileManagerPage extends Component {
                          data-type="folder" 
                          data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <div class="fm-item-icon">${folder.icon || '📁'}</div>
+                        <div class="fm-item-icon">${folder.icon || '<i class="ri-folder-fill"></i>'}</div>
                         <div class="fm-item-name">${Utils.escapeHtml(folder.name)}</div>
                     </div>
                 `).join('')}
@@ -294,7 +294,7 @@ class FileManagerPage extends Component {
                     <div class="fm-item ${selectedItems.includes('file-' + file.id) ? 'selected' : ''}" 
                          data-type="file" 
                          data-id="${file.id}">
-                        ${file.is_starred ? '<div class="fm-item-star">⭐</div>' : ''}
+                        ${file.is_starred ? '<div class="fm-item-star"><i class="ri-star-fill"></i></div>' : ''}
                         ${this.renderFileIcon(file)}
                         <div class="fm-item-name">${Utils.escapeHtml(file.name)}</div>
                     </div>
@@ -320,14 +320,14 @@ class FileManagerPage extends Component {
                          data-type="folder" 
                          data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <span>${folder.icon || '📁'}</span>
+                        <span>${folder.icon || '<i class="ri-folder-line"></i>'}</span>
                         <span style="${folder.is_virtual ? 'color: var(--color-primary); font-weight: 500;' : ''}">${Utils.escapeHtml(folder.name)}</span>
                         <span>--</span>
                         <span>${Utils.formatDate(folder.updated_at)}</span>
                         <span>
                             ${(!folder.is_virtual && !folder.is_system) ? `
-                            <button class="btn btn-ghost btn-sm" data-action="rename" data-type="folder" data-id="${folder.id}">✏️</button>
-                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="folder" data-id="${folder.id}">🗑️</button>
+                            <button class="btn btn-ghost btn-sm" data-action="rename" data-type="folder" data-id="${folder.id}"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="folder" data-id="${folder.id}"><i class="ri-delete-bin-line"></i></button>
                             ` : `<span style="color: var(--color-primary); font-size: 11px;">系统${folder.is_system ? '文件夹' : '挂载'}</span>`}
                         </span>
                     </div>
@@ -336,14 +336,14 @@ class FileManagerPage extends Component {
                     <div class="fm-list-item ${selectedItems.includes('file-' + file.id) ? 'selected' : ''}" 
                          data-type="file" 
                          data-id="${file.id}">
-                        <span>${file.icon || '📄'}</span>
-                        <span>${file.is_starred ? '⭐ ' : ''}${Utils.escapeHtml(file.name)}</span>
+                        <span>${file.icon || '<i class="ri-file-line"></i>'}</span>
+                        <span>${file.is_starred ? '<i class="ri-star-fill"></i> ' : ''}${Utils.escapeHtml(file.name)}</span>
                         <span>${this.formatSize(file.file_size)}</span>
                         <span>${Utils.formatDate(file.updated_at)}</span>
                         <span>
-                            <button class="btn btn-ghost btn-sm" data-action="download" data-id="${file.id}">💾</button>
-                            <button class="btn btn-ghost btn-sm" data-action="star" data-id="${file.id}">${file.is_starred ? '★' : '☆'}</button>
-                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="file" data-id="${file.id}">🗑️</button>
+                            <button class="btn btn-ghost btn-sm" data-action="download" data-id="${file.id}"><i class="ri-download-line"></i></button>
+                            <button class="btn btn-ghost btn-sm" data-action="star" data-id="${file.id}"><i class="${file.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i></button>
+                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="file" data-id="${file.id}"><i class="ri-delete-bin-line"></i></button>
                         </span>
                     </div>
                 `).join('')}
@@ -355,9 +355,9 @@ class FileManagerPage extends Component {
         // 如果是图片，可以显示缩略图
         if (file.mime_type && file.mime_type.startsWith('image/')) {
             const token = Store.get('token');
-            return `<img class="fm-item-preview" src="${file.preview_url}?token=${token}" alt="${file.name}" onerror="this.outerHTML='<div class=\\'fm-item-icon\\'>${file.icon || '🖼️'}</div>'">`;
+            return `<img class="fm-item-preview" src="${file.preview_url}?token=${token}" alt="${file.name}" onerror="this.outerHTML='<div class=\\'fm-item-icon\\'>${file.icon || '<i class="ri-image-line"></i>'}</div>'">`;
         }
-        return `<div class="fm-item-icon">${file.icon || '📄'}</div>`;
+        return `<div class="fm-item-icon">${file.icon || '<i class="ri-file-line"></i>'}</div>`;
     }
 
     renderFolderTree(nodes, level = 0) {
@@ -368,9 +368,9 @@ class FileManagerPage extends Component {
         return nodes.map(node => `
             <div class="fm-tree-item" data-folder-id="${node.id}" style="padding-left: ${8 + level * 16}px;">
                 ${node.children && node.children.length > 0 ?
-                '<span class="fm-tree-toggle">▶</span>' :
+                '<span class="fm-tree-toggle"><i class="ri-arrow-right-s-line"></i></span>' :
                 '<span style="width: 16px;"></span>'}
-                <span>📁</span>
+                <span><i class="ri-folder-line"></i></span>
                 <span>${Utils.escapeHtml(node.name)}</span>
             </div>
             ${node.children && node.children.length > 0 ?

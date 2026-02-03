@@ -260,9 +260,9 @@ class CoursePage extends Component {
 
     renderCourseCard(course) {
         const difficultyMap = {
-            'beginner': { label: '🌱 入门', class: 'beginner' },
-            'intermediate': { label: '🚀 进阶', class: 'intermediate' },
-            'advanced': { label: '🔥 高级', class: 'advanced' }
+            'beginner': { label: '<i class="ri-seedling-line"></i> 入门', class: 'beginner' },
+            'intermediate': { label: '<i class="ri-rocket-line"></i> 进阶', class: 'intermediate' },
+            'advanced': { label: '<i class="ri-fire-line"></i> 高级', class: 'advanced' }
         };
         const difficulty = difficultyMap[course.difficulty] || difficultyMap.beginner;
 

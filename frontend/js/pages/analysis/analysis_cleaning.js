@@ -46,7 +46,7 @@ const AnalysisCleaningMixin = {
                         </div>
                         
                         <button class="btn btn-sm btn-secondary w-100 mb-15" id="btn-preview-clean-data" style="height: 32px;">
-                            👁️ 预览原始数据
+                            <i class="ri-eye-line"></i> 预览原始数据
                         </button>
                         
                         <div style="height: 1px; background: var(--color-border); margin: 15px 0; opacity: 0.5;"></div>
@@ -56,26 +56,26 @@ const AnalysisCleaningMixin = {
                             <div class="form-group mb-12">
                                 <label class="mb-6" style="display: block; font-size: 11px; color: var(--color-text-secondary); font-weight: 500;">清洗操作</label>
                                 <select id="clean-op" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;">
-                                    <optgroup label="📋 行操作">
-                                        <option value="skip_rows">⏭️ 跳过前N行</option>
-                                        <option value="use_row_as_header">📌 指定行作为标题</option>
-                                        <option value="drop_missing">❌ 删除空值行</option>
-                                        <option value="drop_duplicates">👯 删除重复行</option>
+                                    <optgroup label="行操作">
+                                        <option value="skip_rows">跳过前N行</option>
+                                        <option value="use_row_as_header">指定行作为标题</option>
+                                        <option value="drop_missing">删除空值行</option>
+                                        <option value="drop_duplicates">删除重复行</option>
                                     </optgroup>
-                                    <optgroup label="📊 列操作">
-                                        <option value="rename_column">✏️ 列重命名</option>
-                                        <option value="drop_columns">🗑️ 删除指定列</option>
-                                        <option value="drop_empty_columns">🧹 删除全空列</option>
-                                        <option value="convert_type">🔄 数据类型转换</option>
+                                    <optgroup label="列操作">
+                                        <option value="rename_column">列重命名</option>
+                                        <option value="drop_columns">删除指定列</option>
+                                        <option value="drop_empty_columns">删除全空列</option>
+                                        <option value="convert_type">数据类型转换</option>
                                     </optgroup>
-                                    <optgroup label="✏️ 单元格值处理">
-                                        <option value="fill_missing">🎨 填充空值</option>
-                                        <option value="trim_whitespace">✂️ 去除两端空白</option>
-                                        <option value="replace_text">🔍 文本批量替换</option>
+                                    <optgroup label="单元格值处理">
+                                        <option value="fill_missing">填充空值</option>
+                                        <option value="trim_whitespace">去除两端空白</option>
+                                        <option value="replace_text">文本批量替换</option>
                                         <option value="to_lowercase">abc 转为小写</option>
                                         <option value="to_uppercase">ABC 转为大写</option>
-                                        <option value="format_datetime">📅 时间格式化</option>
-                                        <option value="round_numeric">🔢 数值保留小数</option>
+                                        <option value="format_datetime">时间格式化</option>
+                                        <option value="round_numeric">数值保留小数</option>
                                     </optgroup>
                                 </select>
                             </div>
@@ -154,7 +154,7 @@ const AnalysisCleaningMixin = {
                             </div>
                             
                             <button class="btn btn-sm btn-outline-primary w-100" id="btn-add-clean-task" style="height: 30px; font-size: 12px;">
-                                ➕ 添加到任务清单
+                                <i class="ri-add-line"></i> 添加到任务清单
                             </button>
                         </div>
 
@@ -172,12 +172,12 @@ const AnalysisCleaningMixin = {
                         </div>
                         
                         <button class="btn btn-sm btn-primary w-100 mt-15 h-38 font-600" id="btn-run-clean" ${cleaningTasks.length === 0 ? 'disabled' : ''}>
-                            🚀 执行清洗
+                            <i class="ri-rocket-line"></i> 执行清洗
                         </button>
                         
                         ${cleanResult ? `
                             <div class="clean-result-card">
-                                <div class="text-info mb-8 font-600">✨ ${cleanResult.saved ? '已正式入库' : '任务已执行，见预览'}</div>
+                                <div class="text-info mb-8 font-600"><i class="ri-sparkling-fill"></i> ${cleanResult.saved ? '已正式入库' : '任务已执行，见预览'}</div>
                                 <div class="text-sm">
                                     ${cleanResult.name ? `<div class="mb-4">数据集：<strong>${cleanResult.name}</strong></div>` : ''}
                                     <div>结论：<strong>${cleanResult.row_count}</strong> 行</div>
@@ -185,7 +185,7 @@ const AnalysisCleaningMixin = {
                                 <div class="mt-12" style="display: flex; flex-direction: column; gap: 8px;">
                                     ${!cleanResult.saved ? `
                                         <button class="btn btn-sm btn-primary" id="btn-save-cleaned" style="width: 100%; height: 34px;">
-                                            💾 保存到数据库
+                                            <i class="ri-save-line"></i> 保存到数据库
                                         </button>
                                         <div class="flex gap-5" style="width: 100%;">
                                             <select id="export-format" class="form-control form-control-sm" style="flex: 1; height: 34px; font-size: 12px;">
@@ -194,12 +194,12 @@ const AnalysisCleaningMixin = {
                                                 <option value="json">JSON</option>
                                             </select>
                                             <button class="btn btn-sm btn-secondary" id="btn-export-cleaned" style="flex: 1; height: 34px;">
-                                                📥 导出
+                                                <i class="ri-download-line"></i> 导出
                                             </button>
                                         </div>
                                     ` : `
                                         <div class="text-center w-100 py-4 text-success" style="font-weight: 500; background: rgba(var(--color-success-rgb), 0.1); border-radius: 4px;">
-                                            🎉 已保存至数据管理
+                                            <i class="ri-emotion-laugh-line"></i> 已保存至数据管理
                                         </div>
                                         <div class="flex gap-5" style="width: 100%; margin-top: 4px;">
                                             <select id="export-format-saved" class="form-control form-control-sm" style="flex: 1; height: 34px; font-size: 12px;">
@@ -208,7 +208,7 @@ const AnalysisCleaningMixin = {
                                                 <option value="json">JSON</option>
                                             </select>
                                             <button class="btn btn-sm btn-primary" id="btn-export-cleaned-saved" data-id="${cleanResult.id}" style="flex: 1; height: 34px;">
-                                                📥 导出
+                                                <i class="ri-download-line"></i> 导出
                                             </button>
                                         </div>
                                     `}
@@ -254,7 +254,7 @@ const AnalysisCleaningMixin = {
                             </div>
                         ` : `
                             <div class="empty-state text-center text-secondary" style="padding: 60px 20px;">
-                                <div style="font-size: 32px; margin-bottom: 10px;">📋</div>
+                                <div style="font-size: 32px; margin-bottom: 10px;"><i class="ri-file-list-line"></i></div>
                                 <p style="font-size: 13px;">选择数据集后点击"预览数据"</p>
                             </div>
                         `}
@@ -390,7 +390,7 @@ const AnalysisCleaningMixin = {
 
                 Toast.info('正在生成预览...');
                 const res = await AnalysisApi.clean(payload);
-                Toast.success('✅ 预览已更新，效果见右侧图表');
+                Toast.success('<i class="ri-checkbox-circle-line"></i> 预览已更新，效果见右侧图表');
 
                 this.setState({
                     cleanPreviewData: {
@@ -410,7 +410,7 @@ const AnalysisCleaningMixin = {
                 payload.save_mode = 'new';
                 Toast.info('正在保存数据集...');
                 const res = await AnalysisApi.clean(payload);
-                Toast.success('✅ 任务执行成功，已入库');
+                Toast.success('<i class="ri-checkbox-circle-line"></i> 任务执行成功，已入库');
                 this.setState({
                     cleanResult: { ...res.data, saved: true }
                 });
@@ -434,7 +434,7 @@ const AnalysisCleaningMixin = {
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-                Toast.success('✅ 导出成功');
+                Toast.success('<i class="ri-checkbox-circle-line"></i> 导出成功');
             } catch (err) { Toast.error(err.message || '导出失败'); }
         });
 
@@ -454,7 +454,7 @@ const AnalysisCleaningMixin = {
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-                Toast.success('✅ 导出成功');
+                Toast.success('<i class="ri-checkbox-circle-line"></i> 导出成功');
             } catch (err) { Toast.error(err.message || '导出失败'); }
         });
     }

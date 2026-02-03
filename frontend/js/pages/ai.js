@@ -281,7 +281,7 @@ class AIPage extends Component {
                 <!-- 左侧会话列表 -->
                 <div class="ai-sidebar">
                     <div class="sidebar-header">
-                        <button class="btn btn-primary btn-block" id="btnNewChat">➕ 新建对话</button>
+                        <button class="btn btn-primary btn-block" id="btnNewChat"><i class="ri-add-line"></i> 新建对话</button>
                         <div class="session-search search-group" style="margin-top: 8px;">
                             <input type="text" class="form-input" id="sessionSearchInput" 
                                 placeholder="搜索会话...">
@@ -322,8 +322,8 @@ class AIPage extends Component {
                     </div>
                     <div class="sidebar-footer">
                         <div class="mode-switch">
-                            <button class="mode-btn ${provider === 'local' ? 'active' : ''}" data-mode="local">🏠 本地</button>
-                            <button class="mode-btn ${provider === 'online' ? 'active' : ''}" data-mode="online">☁️ 在线</button>
+                            <button class="mode-btn ${provider === 'local' ? 'active' : ''}" data-mode="local"><i class="ri-home-line"></i> 本地</button>
+                            <button class="mode-btn ${provider === 'online' ? 'active' : ''}" data-mode="online"><i class="ri-cloud-line"></i> 在线</button>
                         </div>
                         ${provider === 'local' && availableModels.length > 0 ? `
                             <div class="model-selector" style="margin-top: 8px;">
@@ -343,8 +343,8 @@ class AIPage extends Component {
                         <div class="ai-title">
 
                             <h3>AI助手 <small style="font-size: 10px; opacity: 0.5;">v3.0</small></h3>
-                            <span class="ai-badge">${provider === 'local' ? '🏠 本地模型' : '☁️ 在线 API'}</span>
-                            ${selectedKb ? '<span class="ai-badge secondary">📚 已挂载知识库</span>' : ''}
+                            <span class="ai-badge">${provider === 'local' ? '<i class="ri-home-line"></i> 本地模型' : '<i class="ri-cloud-line"></i> 在线 API'}</span>
+                            ${selectedKb ? '<span class="ai-badge secondary"><i class="ri-book-mark-line"></i> 已挂载知识库</span>' : ''}
                         </div>
                         <div class="ai-options">
                             <!-- 角色预设选择器 -->
@@ -355,13 +355,13 @@ class AIPage extends Component {
                             </select>
                             
                             <label class="checkbox-label" title="开启将连接数据分析模块">
-                                <input type="checkbox" id="checkAnalysis" ${useAnalysis ? 'checked' : ''}> 📈 数据模式
+                                <input type="checkbox" id="checkAnalysis" ${useAnalysis ? 'checked' : ''}> <i class="ri-line-chart-line"></i> 数据模式
                             </label>
                             
                             <select class="form-input btn-sm" id="kbSelector" style="width: 130px;">
                                 <option value="">无知识库</option>
                                 ${knowledgeBases.map(kb => `
-                                    <option value="${kb.id}" ${selectedKb == kb.id ? 'selected' : ''}>📚 ${kb.name}</option>
+                                    <option value="${kb.id}" ${selectedKb == kb.id ? 'selected' : ''}>知识库: ${kb.name}</option>
                                 `).join('')}
                             </select>
 
@@ -379,11 +379,11 @@ class AIPage extends Component {
                     <div class="chat-container" id="chatContainer">
                         ${activeSession.messages.length === 0 ? `
                             <div class="ai-welcome">
-                                <div class="welcome-icon">🧠</div>
+                                <div class="welcome-icon"><i class="ri-brain-line"></i></div>
                                 <h2>你好，我是AI助手</h2>
                                 <p>当前处于 <b>${provider === 'local' ? '本地离线模式' : '在线 API 模式'}</b></p>
                                 ${provider === 'online' && !this.state.hasOnlineConfig ?
-                    '<p class="text-warning">⚠️ 您尚未配置在线 API Key，请点击右上角设置图标进行配置。</p>' :
+                    '<p class="text-warning"><i class="ri-alert-line"></i> 您尚未配置在线 API Key，请点击右上角设置图标进行配置。</p>' :
                     '<p>我可以帮你总结文档、分析数据或进行通用对话。请选择一个模式开始吧！</p>'}
                                 <div class="welcome-hints">
                                     <div class="hint-card" data-text="什么是 RAG 技术？">"什么是 RAG 技术？"</div>
@@ -400,7 +400,7 @@ class AIPage extends Component {
                         }
                         return `
                                     <div class="message-wrapper ${msg.role === 'user' ? 'user' : msg.role === 'system' ? 'system' : 'ai'}" data-message-idx="${idx}">
-                                        <div class="avatar">${msg.role === 'user' ? '👤' : msg.role === 'system' ? '⚠️' : '🧠'}</div>
+                                        <div class="avatar">${msg.role === 'user' ? '<i class="ri-user-line"></i>' : msg.role === 'system' ? '<i class="ri-alert-line"></i>' : '<i class="ri-brain-line"></i>'}</div>
                                         <div class="message-content-wrapper">
                                             <div class="message-content markdown-body ${msg.isError ? 'error-message' : ''}">
                                                 ${this.renderMarkdown(msg.content)}
@@ -430,7 +430,7 @@ class AIPage extends Component {
                                 `}).join('')}
                                 ${isGenerating && (activeSession.messages.length === 0 || activeSession.messages[activeSession.messages.length - 1].role !== 'assistant' || !activeSession.messages[activeSession.messages.length - 1].content) ? `
                                     <div class="message-wrapper ai">
-                                        <div class="avatar">🧠</div>
+                                        <div class="avatar"><i class="ri-brain-line"></i></div>
                                         <div class="message-content generating">
                                             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
                                         </div>

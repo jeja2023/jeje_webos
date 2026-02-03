@@ -114,7 +114,7 @@ class MonitorPage extends Component {
                     <!-- CPU 使用率 -->
                     <div class="card">
                         <div class="card-header" style="padding: 12px 16px;">
-                            <h3 class="card-title" style="font-size: 15px;">🖥️ CPU</h3>
+                            <h3 class="card-title" style="font-size: 15px;"><i class="ri-cpu-line"></i> CPU</h3>
                         </div>
                         <div class="card-body" style="padding: 16px; padding-top: 4px;">
                             ${this.renderProgressBar(cpu.percent || 0, '使用率')}
@@ -134,7 +134,7 @@ class MonitorPage extends Component {
                     <!-- 内存使用率 -->
                     <div class="card">
                         <div class="card-header" style="padding: 12px 16px;">
-                            <h3 class="card-title" style="font-size: 15px;">💾 内存</h3>
+                            <h3 class="card-title" style="font-size: 15px;"><i class="ri-hard-drive-2-line"></i> 内存</h3>
                         </div>
                         <div class="card-body" style="padding: 16px; padding-top: 4px;">
                             ${this.renderProgressBar(memory.percent || 0, '使用率')}
@@ -154,7 +154,7 @@ class MonitorPage extends Component {
                     <!-- 磁盘使用率 -->
                     <div class="card">
                         <div class="card-header" style="padding: 12px 16px;">
-                            <h3 class="card-title" style="font-size: 15px;">💿 磁盘</h3>
+                            <h3 class="card-title" style="font-size: 15px;"><i class="ri-save-line"></i> 磁盘</h3>
                         </div>
                         <div class="card-body" style="padding: 16px; padding-top: 4px;">
                             ${this.renderProgressBar(disk.percent || 0, '使用率')}
@@ -175,13 +175,13 @@ class MonitorPage extends Component {
                 <!-- 服务健康状态 -->
                 <div class="card" style="margin-top: 16px;">
                     <div class="card-header" style="padding: 12px 16px;">
-                        <h3 class="card-title" style="font-size: 15px;">🏥 服务状态</h3>
+                        <h3 class="card-title" style="font-size: 15px;"><i class="ri-heart-pulse-line"></i> 服务状态</h3>
                     </div>
                     <div class="card-body" style="padding: 16px;">
                         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                             <!-- 数据库状态 -->
                             <div class="health-status-card ${dbStatus === 'ok' ? 'status-ok' : 'status-error'}" style="flex: 1; min-width: 200px; padding: 12px;">
-                                <div class="health-icon" style="font-size: 24px;">💾</div>
+                                <div class="health-icon" style="font-size: 24px;"><i class="ri-database-2-line"></i></div>
                                 <div class="health-info">
                                     <div class="health-name" style="font-size: 14px;">数据库 (${health?.db_type || 'SQLite'})</div>
                                     <div class="health-status" style="font-size: 13px;">
@@ -193,7 +193,7 @@ class MonitorPage extends Component {
                             
                             <!-- Redis 状态 -->
                             <div class="health-status-card ${redisStatus === 'ok' ? 'status-ok' : redisStatus === 'disabled' ? 'status-disabled' : 'status-error'}" style="flex: 1; min-width: 200px; padding: 12px;">
-                                <div class="health-icon" style="font-size: 24px;">🔴</div>
+                                <div class="health-icon" style="font-size: 24px;"><i class="ri-server-line"></i></div>
                                 <div class="health-info">
                                     <div class="health-name" style="font-size: 14px;">Redis 缓存</div>
                                     <div class="health-status" style="font-size: 13px;">
@@ -210,7 +210,7 @@ class MonitorPage extends Component {
                     <!-- 进程信息 -->
                     <div class="card">
                         <div class="card-header" style="padding: 12px 16px;">
-                            <h3 class="card-title" style="font-size: 15px;">📊 进程信息</h3>
+                            <h3 class="card-title" style="font-size: 15px;"><i class="ri-bar-chart-box-line"></i> 进程信息</h3>
                         </div>
                         <div class="card-body" style="padding: 16px;">
                             <div style="display: flex; flex-wrap: wrap; gap: 24px; row-gap: 16px;">
@@ -241,7 +241,7 @@ class MonitorPage extends Component {
                     <!-- 系统信息 -->
                     <div class="card">
                         <div class="card-header" style="padding: 12px 16px;">
-                            <h3 class="card-title" style="font-size: 15px;">ℹ️ 系统信息</h3>
+                            <h3 class="card-title" style="font-size: 15px;"><i class="ri-information-line"></i> 系统信息</h3>
                         </div>
                         <div class="card-body" style="padding: 16px;">
                             <div style="display: grid; gap: 8px; font-size: 13px;">

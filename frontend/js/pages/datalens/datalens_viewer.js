@@ -134,7 +134,7 @@ const DataLensViewerMixin = {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '📥';
+                btn.innerHTML = '<i class="ri-download-line"></i>';
             }
         }
     },
@@ -163,27 +163,27 @@ const DataLensViewerMixin = {
                             ` : ''}
                             <span class="lens-breadcrumb-separator">/</span>
                             <h2 class="lens-viewer-title">${activeTab.name}</h2>
-                            ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}">ℹ️</span>` : ''}
+                            ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}"><i class="ri-information-line"></i></span>` : ''}
                         </div>
                     </div>`}
                     <div class="lens-viewer-toolbar">
                         <div class="lens-mode-selector">
-                            <button class="lens-mode-btn ${activeTab.viewMode === 'table' || !activeTab.viewMode ? 'active' : ''}" data-mode="table" title="表格视图">📋 表格</button>
-                            <button class="lens-mode-btn ${activeTab.viewMode === 'chart' ? 'active' : ''}" data-mode="chart" title="图表视图">📊 图表</button>
+                            <button class="lens-mode-btn ${activeTab.viewMode === 'table' || !activeTab.viewMode ? 'active' : ''}" data-mode="table" title="表格视图"><i class="ri-table-line"></i> 表格</button>
+                            <button class="lens-mode-btn ${activeTab.viewMode === 'chart' ? 'active' : ''}" data-mode="chart" title="图表视图"><i class="ri-bar-chart-2-line"></i> 图表</button>
                         </div>
                         <button class="lens-btn lens-btn-outline lens-filter-btn ${filterCount > 0 ? 'has-filter' : ''}" title="数据筛选">
-                            🔽 筛选${filterCount > 0 ? ` (${filterCount})` : ''}
+                            <i class="ri-filter-3-line"></i> 筛选${filterCount > 0 ? ` (${filterCount})` : ''}
                         </button>
                         <button class="lens-btn lens-btn-outline lens-sort-btn ${sortCount > 0 ? 'has-sort' : ''}" title="多字段排序">
-                            ↕️ 排序${sortCount > 0 ? ` (${sortCount})` : ''}
+                            <i class="ri-arrow-up-down-line"></i> 排序${sortCount > 0 ? ` (${sortCount})` : ''}
                         </button>
                         <div class="lens-search-box search-group">
                             <input type="text" class="lens-viewer-search-input" placeholder="在结果中搜索..." value="${activeTab.search || ''}">
                             <button class="btn btn-primary" id="lens-viewer-search-btn"><i class="ri-search-2-line"></i></button>
                         </div>
-                        <button class="lens-btn lens-btn-outline lens-refresh-btn" title="刷新数据">🔄</button>
-                        <button class="lens-btn lens-btn-outline lens-visual-settings-btn" title="显示与图表配置" data-id="${activeTab.id}">⚙️ 配置</button>
-                        <button class="lens-btn lens-btn-outline lens-export-btn" title="导出数据">📥</button>
+                        <button class="lens-btn lens-btn-outline lens-refresh-btn" title="刷新数据"><i class="ri-refresh-line"></i></button>
+                        <button class="lens-btn lens-btn-outline lens-visual-settings-btn" title="显示与图表配置" data-id="${activeTab.id}"><i class="ri-settings-3-line"></i> 配置</button>
+                        <button class="lens-btn lens-btn-outline lens-export-btn" title="导出数据"><i class="ri-download-line"></i></button>
                     </div>
                 </div>
                 
@@ -412,7 +412,7 @@ const DataLensViewerMixin = {
                                 ${visibleColumns.map(col => `
                                     <th class="lens-sortable-th ${sortField === col ? 'active' : ''}" data-field="${col}">
                                         ${customNames[col] || columnTitles[col] || col}
-                                        ${sortField === col ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
+                                        ${sortField === col ? (sortOrder === 'asc' ? ' <i class="ri-arrow-up-line"></i>' : ' <i class="ri-arrow-down-line"></i>') : ''}
                                     </th>
                                 `).join('')}
                             </tr>
@@ -528,7 +528,7 @@ const DataLensViewerMixin = {
             // 3. 布尔类型
             if (colType === 'bool' || typeof value === 'boolean') {
                 const isTrue = value === true || value === 1 || String(value).toLowerCase() === 'true';
-                return isTrue ? '<span class="lens-cell-bool true">√</span>' : '<span class="lens-cell-bool false">×</span>';
+                return isTrue ? '<span class="lens-cell-bool true"><i class="ri-check-line"></i></span>' : '<span class="lens-cell-bool false"><i class="ri-close-line"></i></span>';
             }
 
             // 4. 日期类型 (简单处理)
@@ -561,7 +561,7 @@ const DataLensViewerMixin = {
         let html = '<div class="pagination">';
 
         // 首页按钮
-        html += `<button class="lens-page-btn" data-action="first" ${current === 1 ? 'disabled' : ''} title="首页">«</button>`;
+        html += `<button class="lens-page-btn" data-action="first" ${current === 1 ? 'disabled' : ''} title="首页"><i class="ri-skip-back-line"></i></button>`;
         html += `<button class="lens-page-btn" data-action="prev" ${current === 1 ? 'disabled' : ''}>上一页</button>`;
 
         const start = Math.max(1, current - 2);
@@ -577,7 +577,7 @@ const DataLensViewerMixin = {
 
         html += `<button class="lens-page-btn" data-action="next" ${current === total ? 'disabled' : ''}>下一页</button>`;
         // 末页按钮
-        html += `<button class="lens-page-btn" data-action="last" ${current === total ? 'disabled' : ''} title="末页">»</button>`;
+        html += `<button class="lens-page-btn" data-action="last" ${current === total ? 'disabled' : ''} title="末页"><i class="ri-skip-forward-line"></i></button>`;
 
         // 页码信息
         html += `<span class="page-info" style="margin-left:12px;color:#888;font-size:12px;">第 ${current} / ${total} 页</span>`;
@@ -621,8 +621,8 @@ const DataLensViewerMixin = {
         return `
             <div class="lens-filter-panel animate-slide-down">
                 <div class="lens-panel-header">
-                    <h4>🔽 筛选</h4>
-                    <button class="lens-btn-icon lens-filter-close" title="关闭面板">✕</button>
+                    <h4><i class="ri-filter-3-line"></i> 筛选</h4>
+                    <button class="lens-btn-icon lens-filter-close" title="关闭面板"><i class="ri-close-line"></i></button>
                 </div>
                 <div class="lens-filter-list" id="lens-filter-list">
                     ${Object.entries(filters).map(([field, cond], idx) => {
@@ -643,13 +643,13 @@ const DataLensViewerMixin = {
                                 ${operators.map(op => `<option value="${op.value}" ${condOp === op.value ? 'selected' : ''}>${op.label}</option>`).join('')}
                             </select>
                             <input type="text" class="form-control lens-filter-value" placeholder="值" value="${Utils.escapeHtml(String(condValue))}">
-                            <button class="lens-btn-icon lens-filter-remove" title="删除">🗑️</button>
+                            <button class="lens-btn-icon lens-filter-remove" title="删除"><i class="ri-delete-bin-line"></i></button>
                         </div>
                     `;
         }).join('')}
                 </div>
                 <div class="lens-panel-actions">
-                    <button class="lens-btn lens-btn-sm lens-filter-add">+ 添加条件</button>
+                    <button class="lens-btn lens-btn-sm lens-filter-add"><i class="ri-add-line"></i> 添加条件</button>
                     <div class="lens-panel-buttons">
                         <button class="lens-btn lens-btn-sm lens-filter-clear">清空</button>
                         <button class="lens-btn lens-btn-sm lens-btn-primary lens-filter-apply">应用筛选</button>
@@ -672,8 +672,8 @@ const DataLensViewerMixin = {
         return `
             <div class="lens-sort-panel animate-slide-down">
                 <div class="lens-panel-header">
-                    <h4>↕️ 多字段排序</h4>
-                    <button class="lens-btn-icon lens-sort-close" title="关闭面板">✕</button>
+                    <h4><i class="ri-arrow-up-down-line"></i> 多字段排序</h4>
+                    <button class="lens-btn-icon lens-sort-close" title="关闭面板"><i class="ri-close-line"></i></button>
                 </div>
                 <div class="lens-sort-list" id="lens-sort-list">
                     ${sorts.map((sort, idx) => `
@@ -691,12 +691,12 @@ const DataLensViewerMixin = {
                                 <option value="asc" ${sort.order === 'asc' ? 'selected' : ''}>升序 ↑</option>
                                 <option value="desc" ${sort.order === 'desc' ? 'selected' : ''}>降序 ↓</option>
                             </select>
-                            <button class="lens-btn-icon lens-sort-remove" title="删除">🗑️</button>
+                            <button class="lens-btn-icon lens-sort-remove" title="删除"><i class="ri-delete-bin-line"></i></button>
                         </div>
                     `).join('')}
                 </div>
                 <div class="lens-panel-actions">
-                    <button class="lens-btn lens-btn-sm lens-sort-add">+ 添加排序</button>
+                    <button class="lens-btn lens-btn-sm lens-sort-add"><i class="ri-add-line"></i> 添加排序</button>
                     <div class="lens-panel-buttons">
                         <button class="lens-btn lens-btn-sm lens-sort-clear">清空</button>
                         <button class="lens-btn lens-btn-sm lens-btn-primary lens-sort-apply">应用排序</button>

@@ -140,7 +140,7 @@ class FeedbackListPage extends Component {
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('feedback', '反馈') : ''}
-                        <button class="btn btn-primary" onclick="Router.push('/feedback/create')">➕ 提交反馈</button>
+                        <button class="btn btn-primary" onclick="Router.push('/feedback/create')"><i class="ri-add-line"></i> 提交反馈</button>
                         <button class="btn btn-ghost" onclick="Router.push('/feedback/list')">管理视图</button>
                     </div>
                 </div>
@@ -226,7 +226,7 @@ class FeedbackListPage extends Component {
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">💬</div>
+                            <div class="empty-icon"><i class="ri-message-3-line"></i></div>
                             <p class="empty-text">暂无反馈</p>
                             <button class="btn btn-primary" onclick="Router.push('/feedback/create')">立即提交</button>
                         </div>
@@ -645,7 +645,7 @@ class FeedbackAdminPage extends Component {
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">📭</div>
+                            <div class="empty-icon"><i class="ri-mail-open-line"></i></div>
                             <p class="empty-text">暂无反馈</p>
                         </div>
                     </div>
@@ -739,7 +739,7 @@ class FeedbackDetailPage extends Component {
     render() {
         const { loading, item } = this.state;
         if (loading) return '<div class="loading"></div>';
-        if (!item) return '<div class="empty-state"><div class="empty-icon">😢</div><p class="empty-text">未找到该反馈</p></div>';
+        if (!item) return '<div class="empty-state"><div class="empty-icon"><i class="ri-emotion-unhappy-line"></i></div><p class="empty-text">未找到该反馈</p></div>';
 
         return `
             <div class="page fade-in">

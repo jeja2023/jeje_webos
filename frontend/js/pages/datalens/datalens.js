@@ -434,14 +434,14 @@ class DataLensPage extends Component {
         return `
             <div class="lens-header">
                 <div class="lens-app-info">
-                    <span class="lens-tab-icon">🏠</span>
+                    <span class="lens-tab-icon"><i class="ri-home-line"></i></span>
                     <span class="lens-tab-name" style="font-weight: 600; font-size: 15px;">数据透镜</span>
                 </div>
                 <div class="lens-header-actions" style="display: flex; gap: 8px; align-items: center;">
                     ${window.ModuleHelp ? ModuleHelp.createHelpButton('datalens', '数据透镜') : ''}
                     ${this._hasPermission('datalens.create') ? `
                         <button class="lens-btn lens-btn-primary" id="lens-create-view" style="padding: 6px 16px; border-radius: 8px;">
-                            <span>➕ 新建视图</span>
+                            <span><i class="ri-add-line"></i> 新建视图</span>
                         </button>
                     ` : ''}
                 </div>

@@ -84,7 +84,7 @@ class UserListPage extends Component {
                         <li><b>昵称</b>（可选）：nickname 或 昵称</li>
                         <li><b>角色</b>（可选）：role 或 角色，默认 guest</li>
                         <li><b>是否激活</b>（可选）：is_active，默认未激活需审核</li>
-                        <li style="margin-top:8px;">💡 密码将使用默认密码 <code style="background:var(--color-bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
+                        <li style="margin-top:8px;"><i class="ri-lightbulb-line"></i> 密码将使用默认密码 <code style="background:var(--color-bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
                         <li>已存在的用户名或手机号会被跳过</li>
                     </ul>
                 </div>
@@ -622,7 +622,7 @@ class UserListPage extends Component {
                 </div>
                 
                 <div style="padding:10px;background:rgba(255,193,7,0.1);border-radius:8px;color:var(--color-warning);font-size:13px;">
-                    ⚠️ 重置密码后，用户需要使用新密码重新登录
+                    <i class="ri-alert-line"></i> 重置密码后，用户需要使用新密码重新登录
                 </div>
             </form>
         `;

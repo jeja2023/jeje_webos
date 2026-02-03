@@ -190,11 +190,11 @@ class TopBarComponent extends Component {
                                 <div class="menu-user-name">${Utils.escapeHtml(user.nickname || user.username)}</div>
                                 <div class="menu-user-role">${user.role === 'admin' ? '系统管理员' : '普通用户'}</div>
                             </div>
-                            <div class="menu-item" onclick="Router.push('/profile')">👤 个人中心</div>
-                            <div class="menu-item" onclick="Router.push('/theme/editor')">🎨 系统主题</div>
-                            <div class="menu-item" onclick="Router.push('/help')">❓ 帮助中心</div>
+                            <div class="menu-item" onclick="Router.push('/profile')"><i class="ri-user-line"></i> 个人中心</div>
+                            <div class="menu-item" onclick="Router.push('/theme/editor')"><i class="ri-palette-line"></i> 系统主题</div>
+                            <div class="menu-item" onclick="Router.push('/help')"><i class="ri-question-line"></i> 帮助中心</div>
                             <div class="menu-divider"></div>
-                            <div class="menu-item danger" id="btnLogout">🚪 退出登录</div>
+                            <div class="menu-item danger" id="btnLogout"><i class="ri-logout-box-line"></i> 退出登录</div>
                         </div>
                     </div>
                 </div>

@@ -44,7 +44,7 @@ class DataReportPage extends Component {
         return `
             <div class="page fade-in compact-page">
                 <div class="page-header compact-header">
-                    <h1 class="page-title">📊 数据报表</h1>
+                    <h1 class="page-title"><i class="ri-bar-chart-2-line"></i> 数据报表</h1>
                     <p class="page-desc">导出系统数据用于分析和查看</p>
                 </div>
 
@@ -52,7 +52,7 @@ class DataReportPage extends Component {
                     <!-- 用户数据 -->
                     <div class="card card-compact">
                         <div class="card-header">
-                            <h3 class="card-title">👥 用户数据</h3>
+                            <h3 class="card-title"><i class="ri-group-line"></i> 用户数据</h3>
                         </div>
                         <div class="card-body">
                             <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
@@ -60,13 +60,13 @@ class DataReportPage extends Component {
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
                                 <button class="btn btn-secondary" data-export="users" data-format="xlsx">
-                                    📗 导出 Excel
+                                    <i class="ri-file-excel-2-line"></i> 导出 Excel
                                 </button>
                                 <button class="btn btn-secondary" data-export="users" data-format="csv">
-                                    📄 导出 CSV
+                                    <i class="ri-file-text-line"></i> 导出 CSV
                                 </button>
                                 <button class="btn btn-secondary" data-export="users" data-format="json">
-                                    📋 导出 JSON
+                                    <i class="ri-braces-line"></i> 导出 JSON
                                 </button>
                             </div>
                         </div>
@@ -75,7 +75,7 @@ class DataReportPage extends Component {
                     <!-- 通知数据 -->
                     <div class="card card-compact">
                         <div class="card-header">
-                            <h3 class="card-title">🔔 通知数据</h3>
+                            <h3 class="card-title"><i class="ri-notification-3-line"></i> 通知数据</h3>
                         </div>
                         <div class="card-body">
                             <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
@@ -83,13 +83,13 @@ class DataReportPage extends Component {
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
                                 <button class="btn btn-secondary" data-export="notifications" data-format="xlsx">
-                                    📗 导出 Excel
+                                    <i class="ri-file-excel-2-line"></i> 导出 Excel
                                 </button>
                                 <button class="btn btn-secondary" data-export="notifications" data-format="csv">
-                                    📄 导出 CSV
+                                    <i class="ri-file-text-line"></i> 导出 CSV
                                 </button>
                                 <button class="btn btn-secondary" data-export="notifications" data-format="json">
-                                    📋 导出 JSON
+                                    <i class="ri-braces-line"></i> 导出 JSON
                                 </button>
                             </div>
                         </div>
@@ -98,7 +98,7 @@ class DataReportPage extends Component {
                     <!-- 文件记录 -->
                     <div class="card card-compact">
                         <div class="card-header">
-                            <h3 class="card-title">📁 文件记录</h3>
+                            <h3 class="card-title"><i class="ri-folder-line"></i> 文件记录</h3>
                         </div>
                         <div class="card-body">
                             <p style="color:var(--color-text-secondary);margin-bottom:16px;font-size:14px;">
@@ -106,13 +106,13 @@ class DataReportPage extends Component {
                             </p>
                             <div class="export-btns" style="display:flex;gap:8px;flex-wrap:wrap;">
                                 <button class="btn btn-secondary" data-export="files" data-format="xlsx">
-                                    📗 导出 Excel
+                                    <i class="ri-file-excel-2-line"></i> 导出 Excel
                                 </button>
                                 <button class="btn btn-secondary" data-export="files" data-format="csv">
-                                    📄 导出 CSV
+                                    <i class="ri-file-text-line"></i> 导出 CSV
                                 </button>
                                 <button class="btn btn-secondary" data-export="files" data-format="json">
-                                    📋 导出 JSON
+                                    <i class="ri-braces-line"></i> 导出 JSON
                                 </button>
                             </div>
                         </div>
@@ -121,7 +121,7 @@ class DataReportPage extends Component {
 
                 <div class="card" style="margin-top:var(--spacing-lg);">
                     <div class="card-body" style="display:flex;align-items:center;gap:12px;">
-                        <span style="font-size:24px;">💡</span>
+                        <span style="font-size:24px;"><i class="ri-lightbulb-line"></i></span>
                         <div>
                             <div style="font-weight:500;">提示</div>
                             <div style="color:var(--color-text-secondary);font-size:14px;">

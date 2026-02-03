@@ -64,7 +64,7 @@ const AnalysisSmartTableMixin = {
                         <p class="text-secondary">自定义字段，在线填报数据</p>
                     </div>
                     <button class="btn btn-primary" id="btn-create-smart-table">
-                        ➕ 新建表格
+                        <i class="ri-add-line"></i> 新建表格
                     </button>
                 </div>
                 
@@ -72,20 +72,20 @@ const AnalysisSmartTableMixin = {
                     ${this.state.smartTables ? this.state.smartTables.map(t => `
                         <div class="smart-table-card">
                             <div class="smart-table-card-header">
-                                <div class="smart-table-card-icon">📋</div>
+                                <div class="smart-table-card-icon"><i class="ri-table-line"></i></div>
                             </div>
                             <div class="smart-table-card-body">
                                 <h4 class="m-0 mb-8 text-truncate font-bold" title="${t.name}">${t.name}</h4>
                                 <div class="text-xs text-secondary mb-12 flex-between">
                                     <div>
-                                        <div>⚙️ ${t.fields.length} 个字段</div>
-                                        <div>📅 ${Utils.formatDate(t.created_at)}</div>
+                                        <div><i class="ri-settings-3-line"></i> ${t.fields.length} 个字段</div>
+                                        <div><i class="ri-calendar-line"></i> ${Utils.formatDate(t.created_at)}</div>
                                     </div>
-                                    ${t.dataset_id ? '<span class="badge badge-primary" title="已同步到数据集" style="font-size: 10px; padding: 2px 5px;">📦 已同步</span>' : ''}
+                                    ${t.dataset_id ? '<span class="badge badge-primary" title="已同步到数据集" style="font-size: 10px; padding: 2px 5px;"><i class="ri-package-line"></i> 已同步</span>' : ''}
                                 </div>
                                 <div class="flex gap-10">
                                     <button class="btn btn-primary btn-sm flex-1 btn-view-smart-table" data-id="${t.id}">查看</button>
-                                    <button class="btn btn-ghost btn-sm btn-delete-smart-table" data-id="${t.id}">🗑️</button>
+                                    <button class="btn btn-ghost btn-sm btn-delete-smart-table" data-id="${t.id}"><i class="ri-delete-bin-line"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -154,18 +154,18 @@ const AnalysisSmartTableMixin = {
                 <div class="p-20 border-bottom bg-primary">
                     <div class="flex-between">
                         <div class="flex-center">
-                            <button class="btn-icon mr-10" id="btn-back-to-smart-tables">⬅️</button>
+                            <button class="btn-icon mr-10" id="btn-back-to-smart-tables"><i class="ri-arrow-left-line"></i></button>
                             <h2 class="m-0">${table.name}</h2>
                         </div>
                         <div class="flex gap-10">
                             <div class="search-box-container mr-10">
                                 <input type="text" id="smart-row-search" class="form-control form-control-sm" placeholder="搜索本表数据..." value="${this.state.smartRowSearch || ''}">
                             </div>
-                            <button class="btn btn-primary btn-sm" id="btn-add-smart-table-row">➕ 添加数据</button>
-                            <button class="btn btn-outline-primary btn-sm" id="btn-edit-smart-table-fields">⚙️ 字段管理</button>
-                            <button class="btn btn-outline-primary btn-sm" id="btn-export-smart-table" title="导出为 CSV">📤 导出 CSV</button>
-                            <button class="btn btn-outline-primary btn-sm" id="btn-sync-smart-table" title="同步数据到数据集">${table.dataset_id ? '🔄 同步数据集' : '📦 导入数据集'}</button>
-                            <button class="btn btn-ghost btn-sm" id="btn-refresh-smart-table" title="刷新数据">🔄 刷新</button>
+                            <button class="btn btn-primary btn-sm" id="btn-add-smart-table-row"><i class="ri-add-line"></i> 添加数据</button>
+                            <button class="btn btn-outline-primary btn-sm" id="btn-edit-smart-table-fields"><i class="ri-settings-3-line"></i> 字段管理</button>
+                            <button class="btn btn-outline-primary btn-sm" id="btn-export-smart-table" title="导出为 CSV"><i class="ri-download-line"></i> 导出 CSV</button>
+                            <button class="btn btn-outline-primary btn-sm" id="btn-sync-smart-table" title="同步数据到数据集">${table.dataset_id ? '<i class="ri-refresh-line"></i> 同步数据集' : '<i class="ri-package-line"></i> 导入数据集'}</button>
+                            <button class="btn btn-ghost btn-sm" id="btn-refresh-smart-table" title="刷新数据"><i class="ri-refresh-line"></i> 刷新</button>
                         </div>
                     </div>
                 </div>
@@ -179,7 +179,7 @@ const AnalysisSmartTableMixin = {
             const sortOrder = this.state.smartTableSort?.order;
             const isSorted = sortField === f.name;
             const sortIcon = isSorted ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-            return `<th class="sortable-smart-th" data-field="${f.name}" style="cursor: pointer;" title="点击排序">${f.label || f.name}${f.type === 'calculated' ? ' ⚡' : ''}${sortIcon}${f.required ? ' <span style="color: var(--color-danger);">*</span>' : ''}</th>`;
+            return `<th class="sortable-smart-th" data-field="${f.name}" style="cursor: pointer;" title="点击排序">${f.label || f.name}${f.type === 'calculated' ? ' <i class="ri-flashlight-line"></i>' : ''}${sortIcon}${f.required ? ' <span style="color: var(--color-danger);">*</span>' : ''}</th>`;
         }).join('')}
                                 <th width="100">操作</th>
                             </tr>
@@ -274,8 +274,8 @@ const AnalysisSmartTableMixin = {
                 }).join('')}
                                         <td>
                                             <div class="flex gap-5">
-                                                <button class="btn btn-ghost btn-xs btn-edit-smart-row" data-id="${row.id}">✏️</button>
-                                                <button class="btn btn-ghost btn-xs btn-delete-smart-row" data-id="${row.id}">🗑️</button>
+                                                <button class="btn btn-ghost btn-xs btn-edit-smart-row" data-id="${row.id}"><i class="ri-edit-line"></i></button>
+                                                <button class="btn btn-ghost btn-xs btn-delete-smart-row" data-id="${row.id}"><i class="ri-delete-bin-line"></i></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -365,7 +365,7 @@ const AnalysisSmartTableMixin = {
                                 <option value="number" ${f.type === 'number' ? 'selected' : ''}>数字</option>
                                 <option value="date" ${f.type === 'date' ? 'selected' : ''}>日期</option>
                                 <option value="select" ${f.type === 'select' ? 'selected' : ''}>下拉选择</option>
-                                <option value="calculated" ${f.type === 'calculated' ? 'selected' : ''}>⚡ 自动计算</option>
+                                <option value="calculated" ${f.type === 'calculated' ? 'selected' : ''}><i class="ri-flashlight-line"></i> 自动计算</option>
                             </select>
                         </div>
                         ${!isCalc ? `
@@ -375,7 +375,7 @@ const AnalysisSmartTableMixin = {
                         </label>
                         ` : ''}
                         ${isNumber ? `
-                        <button class="btn btn-ghost btn-xs" onclick="AnalysisPage.prototype.showConditionalFormatModal(${i})" title="条件格式">🎨</button>
+                        <button class="btn btn-ghost btn-xs" onclick="AnalysisPage.prototype.showConditionalFormatModal(${i})" title="条件格式"><i class="ri-palette-line"></i></button>
                         ` : ''}
                         <button class="btn btn-ghost btn-xs text-danger" onclick="AnalysisPage.prototype.removeField(${i})" title="移除字段">✕</button>
                     </div>
@@ -393,13 +393,13 @@ const AnalysisSmartTableMixin = {
                             <div class="mb-10">
                                 <div class="text-xs text-secondary mb-5">运算方式:</div>
                                 <div class="flex flex-wrap gap-5 mb-10">
-                                    <button class="btn btn-xs ${f.calcMode === 'sum' || !f.calcMode ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'sum')">➕ 求和</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'product' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'product')">✖ 乘积</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'diff' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'diff')">➖ 差值</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'divide' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'divide')">➗ 除法</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'avg' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'avg')">📊 平均值</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'percent' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'percent')">💹 百分比</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'custom')">✍️ 自定义</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'sum' || !f.calcMode ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'sum')"><i class="ri-add-line"></i> 求和</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'product' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'product')"><i class="ri-close-line"></i> 乘积</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'diff' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'diff')"><i class="ri-subtract-line"></i> 差值</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'divide' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'divide')"><i class="ri-divide-line"></i> 除法</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'avg' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'avg')"><i class="ri-bar-chart-line"></i> 平均值</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'percent' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'percent')"><i class="ri-percent-line"></i> 百分比</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'custom')"><i class="ri-edit-2-line"></i> 自定义</button>
                                 </div>
                                 
                                 ${f.calcMode === 'percent' ? `
@@ -469,12 +469,12 @@ const AnalysisSmartTableMixin = {
                             
                             <div class="flex-between align-items-center border-top pt-10" style="border-color: var(--color-border);">
                                 <div class="text-xs font-mono bg-light px-10 py-5 border-radius-sm" style="max-width: 70%; overflow: hidden; text-overflow: ellipsis;">
-                                    📝 ${f.formula || '(请配置公式)'}
+                                    <i class="ri-file-edit-line"></i> ${f.formula || '(请配置公式)'}
                                 </div>
                                 <button class="btn btn-primary btn-xs" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, true)">确定</button>
                             </div>
                         </div>
-                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, false)">📝 ${f.formula || '(未设置)'}${f.showPercent ? '%' : ''}</div>` : ''}
+                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, false)"><i class="ri-file-edit-line"></i> ${f.formula || '(未设置)'}${f.showPercent ? '%' : ''}</div>` : ''}
                     ` : ''}
                 </div>
                 `;
@@ -689,7 +689,7 @@ const AnalysisSmartTableMixin = {
                 <div class="form-group p-x-20">
                     <div class="flex-between align-items-center mb-15">
                         <label class="font-bold m-0">字段定义配置</label>
-                        <button class="btn btn-outline-primary btn-sm" id="btn-add-setup-field">➕ 添加新字段</button>
+                        <button class="btn btn-outline-primary btn-sm" id="btn-add-setup-field"><i class="ri-add-line"></i> 添加新字段</button>
                     </div>
                     <div id="fields-setup-container" class="mt-10 flex flex-wrap gap-10" style="max-height: 480px; overflow-y: auto;">
                         ${renderFields()}

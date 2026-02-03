@@ -1,8 +1,8 @@
-"""initial_schema_production
+"""initial_schema_full_v2.5.9
 
-Revision ID: 215f47284b32
+Revision ID: 22786ca810d7
 Revises: 
-Create Date: 2026-01-18 00:11:11.766258
+Create Date: 2026-02-03 19:39:15.488376
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '215f47284b32'
+revision: str = '22786ca810d7'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -245,6 +245,19 @@ def upgrade() -> None:
     op.create_index('ix_lens_views_category', 'lens_views', ['category_id'], unique=False)
     op.create_index('ix_lens_views_created_by', 'lens_views', ['created_by'], unique=False)
     op.create_index('ix_lens_views_datasource', 'lens_views', ['datasource_id'], unique=False)
+    op.create_table('lm_cleaner_items',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='标题'),
+    sa.Column('content', sa.Text(), nullable=True, comment='内容'),
+    sa.Column('source_file', sa.Text(), nullable=True, comment='原始文件路径'),
+    sa.Column('is_active', sa.Boolean(), nullable=True, comment='是否启用'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True, comment='更新时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='NotebookLM水印清除数据表'
+    )
+    op.create_index(op.f('ix_lm_cleaner_items_user_id'), 'lm_cleaner_items', ['user_id'], unique=False)
     op.create_table('map_markers',
     sa.Column('id', sa.Integer(), nullable=False, comment='主键ID'),
     sa.Column('user_id', sa.Integer(), nullable=True, comment='用户ID'),
@@ -317,6 +330,51 @@ def upgrade() -> None:
     comment='笔记标签表'
     )
     op.create_index(op.f('ix_notes_tags_user_id'), 'notes_tags', ['user_id'], unique=False)
+    op.create_table('pdf_history',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='标题/描述'),
+    sa.Column('filename', sa.String(length=255), nullable=True, comment='原始文件名'),
+    sa.Column('file_id', sa.Integer(), nullable=True, comment='关联的文件ID（文件管理器）'),
+    sa.Column('operation', sa.String(length=50), nullable=True, comment='操作类型: merge, split, convert, read'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='操作时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='PDF 工具操作历史记录表'
+    )
+    op.create_index(op.f('ix_pdf_history_file_id'), 'pdf_history', ['file_id'], unique=False)
+    op.create_index(op.f('ix_pdf_history_user_id'), 'pdf_history', ['user_id'], unique=False)
+    op.create_table('pdf_items',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='标题'),
+    sa.Column('content', sa.Text(), nullable=True, comment='内容'),
+    sa.Column('is_active', sa.Boolean(), nullable=True, comment='是否启用'),
+    sa.Column('created_at', sa.DateTime(), nullable=True, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(), nullable=True, comment='更新时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='PDF 工具扩展项目表'
+    )
+    op.create_index(op.f('ix_pdf_items_user_id'), 'pdf_items', ['user_id'], unique=False)
+    op.create_table('sys_backup_schedules',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('name', sa.String(length=100), nullable=False, comment='计划名称'),
+    sa.Column('backup_type', sa.String(length=20), nullable=False, comment='备份类型'),
+    sa.Column('schedule_type', sa.String(length=20), nullable=False, comment='调度类型: daily, weekly, monthly'),
+    sa.Column('schedule_time', sa.String(length=10), nullable=False, comment='执行时间 HH:MM'),
+    sa.Column('schedule_day', sa.Integer(), nullable=True, comment='执行日期 (周几1-7 或 月几1-31)'),
+    sa.Column('is_encrypted', sa.Boolean(), nullable=False, comment='是否加密'),
+    sa.Column('is_enabled', sa.Boolean(), nullable=False, comment='是否启用'),
+    sa.Column('retention_days', sa.Integer(), nullable=False, comment='保留天数'),
+    sa.Column('last_run_at', sa.DateTime(), nullable=True, comment='上次执行时间'),
+    sa.Column('next_run_at', sa.DateTime(), nullable=True, comment='下次执行时间'),
+    sa.Column('created_by', sa.Integer(), nullable=True, comment='创建者ID'),
+    sa.Column('created_at', sa.DateTime(), nullable=False, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(), nullable=False, comment='更新时间'),
+    sa.PrimaryKeyConstraint('id'),
+    comment='备份调度计划表',
+    mysql_charset='utf8mb4',
+    mysql_engine='InnoDB'
+    )
     op.create_table('sys_backups',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
     sa.Column('backup_type', sa.String(length=20), nullable=False, comment='备份类型'),
@@ -325,6 +383,7 @@ def upgrade() -> None:
     sa.Column('file_size', sa.Integer(), nullable=True, comment='备份文件大小(字节)'),
     sa.Column('description', sa.Text(), nullable=True, comment='备份描述'),
     sa.Column('error_message', sa.Text(), nullable=True, comment='错误信息'),
+    sa.Column('is_encrypted', sa.Boolean(), nullable=False, comment='是否加密'),
     sa.Column('created_by', sa.Integer(), nullable=True, comment='创建者ID'),
     sa.Column('started_at', sa.DateTime(), nullable=True, comment='开始时间'),
     sa.Column('completed_at', sa.DateTime(), nullable=True, comment='完成时间'),
@@ -378,6 +437,22 @@ def upgrade() -> None:
     comment='模块启用状态与配置表'
     )
     op.create_index(op.f('ix_sys_module_configs_module_id'), 'sys_module_configs', ['module_id'], unique=True)
+    op.create_table('sys_secrets',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='关联用户ID'),
+    sa.Column('category', sa.String(length=50), nullable=False, comment='密钥分类(ai, storage, etc)'),
+    sa.Column('key_name', sa.String(length=100), nullable=False, comment='密钥名称标识'),
+    sa.Column('encrypted_value', sa.Text(), nullable=False, comment='加密后的密钥值'),
+    sa.Column('additional_info', sa.JSON(), nullable=True, comment='附加配置信息(如 api_base_url)'),
+    sa.Column('created_at', sa.DateTime(), nullable=False, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(), nullable=False, comment='更新时间'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'key_name', name='uq_user_secret_key'),
+    comment='系统敏感信息存储表（加密存储）'
+    )
+    op.create_index(op.f('ix_sys_secrets_category'), 'sys_secrets', ['category'], unique=False)
+    op.create_index(op.f('ix_sys_secrets_key_name'), 'sys_secrets', ['key_name'], unique=False)
+    op.create_index(op.f('ix_sys_secrets_user_id'), 'sys_secrets', ['user_id'], unique=False)
     op.create_table('sys_settings',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
     sa.Column('key', sa.String(length=100), nullable=False, comment='配置键'),
@@ -629,13 +704,13 @@ def upgrade() -> None:
     sa.Column('parent_id', sa.Integer(), nullable=True, comment='父文件夹ID'),
     sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
     sa.Column('path', sa.String(length=1024), nullable=False, comment='完整路径'),
-    sa.Column('is_virtual', sa.Boolean(), nullable=True, server_default=sa.text('0'), comment='是否为虚拟文件夹'),
-    sa.Column('is_system', sa.Boolean(), nullable=True, server_default=sa.text('0'), comment='是否为系统保护文件夹'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True, comment='更新时间'),
+    sa.Column('is_virtual', sa.Boolean(), nullable=True, comment='是否为虚拟文件夹'),
+    sa.Column('is_system', sa.Boolean(), nullable=True, comment='是否为系统保护文件夹'),
     sa.Column('icon', sa.String(length=50), nullable=True, comment='文件夹图标'),
     sa.Column('module_id', sa.String(length=50), nullable=True, comment='关联模块ID'),
     sa.Column('module_path', sa.String(length=255), nullable=True, comment='模块内部路径'),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='创建时间'),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True, comment='更新时间'),
     sa.ForeignKeyConstraint(['parent_id'], ['fm_folders.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['sys_users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
@@ -705,6 +780,33 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_map_configs_id'), 'map_configs', ['id'], unique=False)
     op.create_index(op.f('ix_map_configs_user_id'), 'map_configs', ['user_id'], unique=True)
+    op.create_table('markdown_docs',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='文档ID'),
+    sa.Column('user_id', sa.Integer(), nullable=False, comment='用户ID'),
+    sa.Column('title', sa.String(length=200), nullable=False, comment='文档标题'),
+    sa.Column('content', sa.Text(), nullable=True, comment='Markdown内容'),
+    sa.Column('summary', sa.String(length=500), nullable=True, comment='文档摘要'),
+    sa.Column('is_public', sa.Boolean(), nullable=False, comment='是否公开'),
+    sa.Column('is_starred', sa.Boolean(), nullable=False, comment='是否收藏'),
+    sa.Column('view_count', sa.Integer(), nullable=False, comment='阅读次数'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, comment='创建时间'),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, comment='更新时间'),
+    sa.ForeignKeyConstraint(['user_id'], ['sys_users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    comment='Markdown文档表'
+    )
+    op.create_table('markdown_templates',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='模板ID'),
+    sa.Column('user_id', sa.Integer(), nullable=True, comment='创建用户ID，NULL表示系统模板'),
+    sa.Column('name', sa.String(length=100), nullable=False, comment='模板名称'),
+    sa.Column('description', sa.String(length=300), nullable=True, comment='模板描述'),
+    sa.Column('content', sa.Text(), nullable=False, comment='模板内容'),
+    sa.Column('is_system', sa.Boolean(), nullable=False, comment='是否为系统模板'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, comment='创建时间'),
+    sa.ForeignKeyConstraint(['user_id'], ['sys_users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    comment='Markdown模板表'
+    )
     op.create_table('notes_notes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
     sa.Column('title', sa.String(length=200), nullable=False, comment='标题'),
@@ -722,31 +824,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_notes_notes_folder_id'), 'notes_notes', ['folder_id'], unique=False)
     op.create_index(op.f('ix_notes_notes_user_id'), 'notes_notes', ['user_id'], unique=False)
-    op.create_table('pdf_history',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
-    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
-    sa.Column('title', sa.String(length=200), nullable=False, comment='标题/描述'),
-    sa.Column('filename', sa.String(length=255), nullable=True, comment='原始文件名'),
-    sa.Column('file_id', sa.Integer(), nullable=True, comment='关联的文件ID（文件管理器）'),
-    sa.Column('operation', sa.String(length=50), nullable=True, comment='操作类型: merge, split, convert, read'),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True, comment='操作时间'),
-    sa.PrimaryKeyConstraint('id'),
-    comment='PDF 工具操作历史记录表'
-    )
-    op.create_index(op.f('ix_pdf_history_file_id'), 'pdf_history', ['file_id'], unique=False)
-    op.create_index(op.f('ix_pdf_history_user_id'), 'pdf_history', ['user_id'], unique=False)
-    op.create_table('pdf_items',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
-    sa.Column('user_id', sa.Integer(), nullable=False, comment='所属用户ID'),
-    sa.Column('title', sa.String(length=200), nullable=False, comment='标题'),
-    sa.Column('content', sa.Text(), nullable=True, comment='内容'),
-    sa.Column('is_active', sa.Boolean(), nullable=True, comment='是否启用'),
-    sa.Column('created_at', sa.DateTime(), nullable=True, comment='创建时间'),
-    sa.Column('updated_at', sa.DateTime(), nullable=True, comment='更新时间'),
-    sa.PrimaryKeyConstraint('id'),
-    comment='PDF 工具扩展项目表'
-    )
-    op.create_index(op.f('ix_pdf_items_user_id'), 'pdf_items', ['user_id'], unique=False)
     op.create_table('schedule_categories',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='主键ID'),
     sa.Column('user_id', sa.Integer(), nullable=False, comment='用户ID'),
@@ -1285,15 +1362,12 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_notes_notes_user_id'), table_name='notes_notes')
     op.drop_index(op.f('ix_notes_notes_folder_id'), table_name='notes_notes')
     op.drop_table('notes_notes')
+    op.drop_table('markdown_templates')
+    op.drop_table('markdown_docs')
     op.drop_index(op.f('ix_map_configs_user_id'), table_name='map_configs')
     op.drop_index(op.f('ix_map_configs_id'), table_name='map_configs')
     op.drop_table('map_configs')
     op.drop_table('knowledge_bases')
-    op.drop_index(op.f('ix_pdf_items_user_id'), table_name='pdf_items')
-    op.drop_table('pdf_items')
-    op.drop_index(op.f('ix_pdf_history_user_id'), table_name='pdf_history')
-    op.drop_index(op.f('ix_pdf_history_file_id'), table_name='pdf_history')
-    op.drop_table('pdf_history')
     op.drop_index(op.f('ix_im_conversations_type'), table_name='im_conversations')
     op.drop_index('idx_im_conv_updated', table_name='im_conversations')
     op.drop_table('im_conversations')
@@ -1338,6 +1412,10 @@ def downgrade() -> None:
     op.drop_table('sys_user_groups')
     op.drop_index(op.f('ix_sys_settings_key'), table_name='sys_settings')
     op.drop_table('sys_settings')
+    op.drop_index(op.f('ix_sys_secrets_user_id'), table_name='sys_secrets')
+    op.drop_index(op.f('ix_sys_secrets_key_name'), table_name='sys_secrets')
+    op.drop_index(op.f('ix_sys_secrets_category'), table_name='sys_secrets')
+    op.drop_table('sys_secrets')
     op.drop_index(op.f('ix_sys_module_configs_module_id'), table_name='sys_module_configs')
     op.drop_table('sys_module_configs')
     op.drop_table('sys_metrics')
@@ -1348,6 +1426,12 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_sys_logs_action'), table_name='sys_logs')
     op.drop_table('sys_logs')
     op.drop_table('sys_backups')
+    op.drop_table('sys_backup_schedules')
+    op.drop_index(op.f('ix_pdf_items_user_id'), table_name='pdf_items')
+    op.drop_table('pdf_items')
+    op.drop_index(op.f('ix_pdf_history_user_id'), table_name='pdf_history')
+    op.drop_index(op.f('ix_pdf_history_file_id'), table_name='pdf_history')
+    op.drop_table('pdf_history')
     op.drop_index(op.f('ix_notes_tags_user_id'), table_name='notes_tags')
     op.drop_table('notes_tags')
     op.drop_index(op.f('ix_notes_folders_user_id'), table_name='notes_folders')
@@ -1361,6 +1445,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_map_markers_user_id'), table_name='map_markers')
     op.drop_index(op.f('ix_map_markers_id'), table_name='map_markers')
     op.drop_table('map_markers')
+    op.drop_index(op.f('ix_lm_cleaner_items_user_id'), table_name='lm_cleaner_items')
+    op.drop_table('lm_cleaner_items')
     op.drop_index('ix_lens_views_datasource', table_name='lens_views')
     op.drop_index('ix_lens_views_created_by', table_name='lens_views')
     op.drop_index('ix_lens_views_category', table_name='lens_views')

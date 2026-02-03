@@ -19,49 +19,49 @@ class HelpPage extends Component {
             {
                 id: 'getting-started',
                 title: '快速入门',
-                icon: '🚀',
+                icon: 'ri-rocket-line',
                 content: this.getGettingStartedContent()
             },
             {
                 id: 'desktop',
                 title: '桌面环境',
-                icon: '🖥️',
+                icon: 'ri-computer-line',
                 content: this.getDesktopContent()
             },
             {
                 id: 'user-management',
                 title: '用户管理',
-                icon: '👥',
+                icon: 'ri-group-line',
                 content: this.getUserManagementContent()
             },
             {
                 id: 'system-settings',
                 title: '系统设置',
-                icon: '⚙️',
+                icon: 'ri-settings-3-line',
                 content: this.getSystemSettingsContent()
             },
             {
                 id: 'security',
                 title: '安全与权限',
-                icon: '🔐',
+                icon: 'ri-shield-keyhole-line',
                 content: this.getSecurityContent()
             },
             {
                 id: 'shortcuts',
                 title: '快捷键',
-                icon: '⌨️',
+                icon: 'ri-keyboard-line',
                 content: this.getShortcutsContent()
             },
             {
                 id: 'faq',
                 title: '常见问题',
-                icon: '❓',
+                icon: 'ri-question-line',
                 content: this.getFAQContent()
             },
             {
                 id: 'system-theme',
                 title: '系统主题',
-                icon: '🎨',
+                icon: 'ri-palette-line',
                 content: this.getSystemThemeContent()
             }
         ];
@@ -72,7 +72,7 @@ class HelpPage extends Component {
             <h3>欢迎使用 JeJe WebOS</h3>
             <p>JeJe WebOS 是一个基于微内核架构的个人工作平台，提供现代化的桌面操作体验。</p>
             
-            <h4>🎯 核心特性</h4>
+            <h4><i class="ri-focus-3-line"></i> 核心特性</h4>
             <ul>
                 <li><strong>桌面化体验</strong> - 精美的桌面布局，直观易用</li>
                 <li><strong>模块化设计</strong> - 按需加载功能模块，灵活扩展</li>
@@ -81,7 +81,7 @@ class HelpPage extends Component {
                 <li><strong>数据安全</strong> - JWT 认证 + 数据加密</li>
             </ul>
             
-            <h4>🏁 快速开始</h4>
+            <h4><i class="ri-flag-line"></i> 快速开始</h4>
             <ol>
                 <li><strong>登录系统</strong> - 使用管理员分配的账号登录</li>
                 <li><strong>熟悉桌面</strong> - 底部是 Dock 栏，左上角是开始菜单</li>
@@ -89,7 +89,7 @@ class HelpPage extends Component {
                 <li><strong>打开应用</strong> - 点击 Dock 图标或开始菜单项启动应用</li>
             </ol>
             
-            <h4>📱 界面布局</h4>
+            <h4><i class="ri-layout-bottom-line"></i> 界面布局</h4>
             <div class="help-layout-diagram">
                 <div class="layout-item header">顶部栏 - 系统状态、时间、控制中心</div>
                 <div class="layout-row">
@@ -105,7 +105,7 @@ class HelpPage extends Component {
             <h3>桌面环境</h3>
             <p>登录后您将进入 JeJe WebOS 桌面，这里是您的工作中心。</p>
             
-            <h4>🖥️ 桌面组件</h4>
+            <h4><i class="ri-computer-line"></i> 桌面组件</h4>
             <ul>
                 <li><strong>Dock 栏</strong> - 位于屏幕底部，放置常用应用图标，支持悬停放大效果。</li>
                 <li><strong>顶部栏 (Top Bar)</strong> - 显示当前活动应用名称、系统时间以及状态图标。</li>
@@ -113,7 +113,7 @@ class HelpPage extends Component {
                 <li><strong>桌面小部件</strong> - 桌面背景显示实时时钟、日期和个性化问候语。</li>
             </ul>
             
-            <h4>🪟 窗口操作</h4>
+            <h4><i class="ri-window-line"></i> 窗口操作</h4>
             <p>应用以窗口形式运行，支持以下操作：</p>
             <ul>
                 <li><strong>最小化</strong> - 点击窗口标题栏的黄色按钮，应用将隐藏至后台。</li>
@@ -121,7 +121,7 @@ class HelpPage extends Component {
                 <li><strong>关闭</strong> - 点击红色按钮退出应用，返回桌面。</li>
             </ul>
             
-            <h4>💡 提示</h4>
+            <h4><i class="ri-lightbulb-line"></i> 提示</h4>
             <ul>
                 <li>按 <kbd>Esc</kbd> 键通常可以关闭当前的模态窗口或返回。</li>
                 <li>点击桌面空白处可以隐藏某些浮层菜单。</li>
@@ -135,7 +135,7 @@ class HelpPage extends Component {
             <h3>用户管理</h3>
             <p>管理员可以在此管理系统用户。位于「系统管理」->「用户与权限」。</p>
             
-            <h4>👤 用户角色</h4>
+            <h4><i class="ri-user-line"></i> 用户角色</h4>
             <table class="help-table">
                 <thead>
                     <tr>
@@ -163,7 +163,7 @@ class HelpPage extends Component {
                 </tbody>
             </table>
             
-            <h4>🔧 用户操作</h4>
+            <h4><i class="ri-tools-line"></i> 用户操作</h4>
             <ul>
                 <li><strong>新建用户</strong> - 创建新的系统用户</li>
                 <li><strong>编辑用户</strong> - 修改用户信息和角色</li>
@@ -171,7 +171,7 @@ class HelpPage extends Component {
                 <li><strong>禁用/启用</strong> - 控制用户账号状态</li>
             </ul>
             
-            <h4>👥 用户组</h4>
+            <h4><i class="ri-group-line"></i> 用户组</h4>
             <p>用户组定义权限模板，用户可以继承用户组的权限设置。</p>
         `;
     }
@@ -181,7 +181,7 @@ class HelpPage extends Component {
             <h3>系统设置</h3>
             <p>管理员可以在此配置系统参数。大多数管理工具现已归类于「系统管理」分组下。</p>
             
-            <h4>⚙️ 基础设置</h4>
+            <h4><i class="ri-settings-3-line"></i> 基础设置</h4>
             <p>位于「系统管理」->「系统设置」。</p>
             <ul>
                 <li><strong>主题模式</strong> - 切换系统显示风格（日出印象/星夜霓虹）</li>
@@ -189,7 +189,7 @@ class HelpPage extends Component {
                 <li><strong>API 限制</strong> - 配置接口访问速率限制</li>
             </ul>
             
-            <h4>📦 应用中心</h4>
+            <h4><i class="ri-archive-line"></i> 应用中心</h4>
             <p>位于「系统管理」->「应用中心」，是管理所有应用模块的门户。</p>
             <ul>
                 <li><strong>应用管理</strong> - 查看已安装模块，启用或禁用特定功能</li>
@@ -197,14 +197,14 @@ class HelpPage extends Component {
                 <li><strong>开发套件</strong> - 开发者工具，支持创建、删除和离线安装模块</li>
             </ul>
             
-            <h4>🏪 应用市场</h4>
+            <h4><i class="ri-store-2-line"></i> 应用市场</h4>
             <p>应用市场展示所有可用和已安装的模块。</p>
             <ul>
                 <li><strong>可安装应用</strong> - 尚未安装的模块，点击「安装」后可在应用管理中启用</li>
                 <li><strong>已安装应用</strong> - 已安装的模块列表，可卸载或跳转管理</li>
             </ul>
             
-            <h4>🛠️ 开发套件</h4>
+            <h4><i class="ri-hammer-line"></i> 开发套件</h4>
             <p>为开发者提供的模块管理工具。</p>
             <ul>
                 <li><strong>创建应用</strong> - 一键生成模块模板，自动创建后端和前端代码</li>
@@ -212,7 +212,7 @@ class HelpPage extends Component {
                 <li><strong>删除应用</strong> - 删除未安装的模块代码和可选的数据库表</li>
             </ul>
             
-            <h4>📤 离线安装流程</h4>
+            <h4><i class="ri-install-line"></i> 离线安装流程</h4>
             <ol>
                 <li>在「开发套件」中点击「离线安装」</li>
                 <li>选择 .jwapp 或 .zip 格式的离线包</li>
@@ -222,7 +222,7 @@ class HelpPage extends Component {
                 <li>刷新页面后即可使用新应用</li>
             </ol>
             
-            <h4>💾 数据备份</h4>
+            <h4><i class="ri-save-line"></i> 数据备份</h4>
             <p>位于「系统管理」->「数据备份」。</p>
             <ul>
                 <li>创建系统快照备份</li>
@@ -230,7 +230,7 @@ class HelpPage extends Component {
                 <li>从备份恢复数据</li>
             </ul>
             
-            <h4>📊 系统监控</h4>
+            <h4><i class="ri-line-chart-line"></i> 系统监控</h4>
             <p>位于「系统管理」->「系统监控」。</p>
             <ul>
                 <li>查看服务器 CPU 和内存实时使用率</li>
@@ -238,7 +238,7 @@ class HelpPage extends Component {
                 <li>查看关键系统进程信息</li>
             </ul>
             
-            <h4>📋 系统日志</h4>
+            <h4><i class="ri-file-list-line"></i> 系统日志</h4>
             <p>位于「系统管理」->「系统日志」。</p>
             <ul>
                 <li>查看用户操作审计日志</li>
@@ -253,14 +253,14 @@ class HelpPage extends Component {
             <h3>安全与权限</h3>
             <p>了解系统的安全机制和权限管理。</p>
             
-            <h4>🔑 认证机制</h4>
+            <h4><i class="ri-key-line"></i> 认证机制</h4>
             <ul>
                 <li><strong>JWT Token</strong> - 采用 JWT 进行身份认证</li>
                 <li><strong>Token 有效期</strong> - 默认 7 天，可配置</li>
                 <li><strong>自动轮换</strong> - 密钥定期自动轮换</li>
             </ul>
             
-            <h4>🛡️ 安全特性</h4>
+            <h4><i class="ri-shield-line"></i> 安全特性</h4>
             <ul>
                 <li><strong>密码加密</strong> - BCrypt 哈希存储</li>
                 <li><strong>速率限制</strong> - 防止暴力破解</li>
@@ -268,14 +268,14 @@ class HelpPage extends Component {
                 <li><strong>XSS 防护</strong> - 输入内容过滤</li>
             </ul>
             
-            <h4>🔐 权限控制</h4>
+            <h4><i class="ri-shield-key-line"></i> 权限控制</h4>
             <ul>
                 <li><strong>角色权限</strong> - 基于角色的访问控制 (RBAC)</li>
                 <li><strong>模块权限</strong> - 按模块分配功能权限</li>
                 <li><strong>操作权限</strong> - 细粒度的 CRUD 权限</li>
             </ul>
             
-            <h4>📝 审计日志</h4>
+            <h4><i class="ri-edit-line"></i> 审计日志</h4>
             <p>系统自动记录用户的操作行为，便于安全审计和问题追溯。</p>
         `;
     }
@@ -285,7 +285,7 @@ class HelpPage extends Component {
             <h3>快捷键</h3>
             <p>使用快捷键可以提高操作效率。</p>
             
-            <h4>🌐 全局快捷键</h4>
+            <h4><i class="ri-global-line"></i> 全局快捷键</h4>
             <table class="help-table">
                 <thead>
                     <tr>
@@ -306,7 +306,7 @@ class HelpPage extends Component {
                 </tbody>
             </table>
             
-            <h4>📝 编辑器快捷键</h4>
+            <h4><i class="ri-edit-line"></i> 编辑器快捷键</h4>
             <table class="help-table">
                 <thead>
                     <tr>
@@ -393,14 +393,14 @@ class HelpPage extends Component {
             <h3>系统主题指南</h3>
             <p>系统主题让您可以个性化定制系统的外观。点击右上角用户菜单 ->「系统主题」即可访问。</p>
             
-            <h4>🎨 预设主题</h4>
+            <h4><i class="ri-palette-line"></i> 预设主题</h4>
             <p>系统提供 2 套精心设计的预设主题：</p>
             <ul>
                 <li><strong>日出印象</strong> - 温暖的晨曦渐变色调，适合日间使用</li>
                 <li><strong>星夜霓虹</strong> - 赛博朋克风格的深蓝霓虹，护眼且沉浸</li>
             </ul>
             
-            <h4>💡 使用技巧</h4>
+            <h4><i class="ri-lightbulb-line"></i> 使用技巧</h4>
             <ul>
                 <li>在右上角的主题选择器中可以快速切换主题</li>
                 <li>主题选择会实时应用，无需刷新页面</li>
@@ -438,7 +438,7 @@ class HelpPage extends Component {
         return `
             <div class="page fade-in help-page">
                 <div class="page-header">
-                    <h1 class="page-title">📖 使用帮助</h1>
+                    <h1 class="page-title"><i class="ri-book-open-line"></i> 使用帮助</h1>
                     <p class="page-desc">了解如何使用 JeJe WebOS 的各项功能</p>
                 </div>
                 
@@ -457,7 +457,7 @@ class HelpPage extends Component {
                                 <a href="javascript:void(0)" 
                                    class="help-nav-item ${activeSection === section.id ? 'active' : ''}"
                                    data-section="${section.id}">
-                                    <span class="help-nav-icon">${section.icon}</span>
+                                    <span class="help-nav-icon"><i class="${section.icon}"></i></span>
                                     <span class="help-nav-title">${section.title}</span>
                                 </a>
                             `).join('')}

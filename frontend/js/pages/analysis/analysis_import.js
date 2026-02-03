@@ -60,7 +60,7 @@ const AnalysisImportMixin = {
                                     <!-- 文件夹列表 -->
                                     ${fileManagerFiles.folders ? fileManagerFiles.folders.map(f => `
                                         <div class="fm-file-item-modern fm-folder-item" data-id="${f.id}">
-                                            <div class="file-icon-box" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">📁</div>
+                                            <div class="file-icon-box" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"><i class="ri-folder-fill"></i></div>
                                             <div class="file-details">
                                                 <span class="file-name">${f.name}</span>
                                                 <span class="file-meta">文件夹 | ${f.file_count || 0} 文件</span>
@@ -76,35 +76,35 @@ const AnalysisImportMixin = {
             return `
                                         <label class="fm-file-item-modern ${isChecked ? 'active' : ''} ${!isSupported ? 'opacity-75' : ''}">
                                             <input type="checkbox" class="fm-file-checkbox" value="${f.id}" data-filename="${f.name}" ${isChecked ? 'checked' : ''} ${!isSupported ? 'disabled' : ''}>
-                                            <div class="file-icon-box">${isSupported ? '📊' : '📄'}</div>
+                                            <div class="file-icon-box">${isSupported ? '<i class="ri-bar-chart-2-line"></i>' : '<i class="ri-file-3-line"></i>'}</div>
                                             <div class="file-details">
                                                 <span class="file-name">${f.name}</span>
                                                 <span class="file-meta">
-                                                    ${!isSupported ? '<span class="text-warning">⚠️ 格式不支持</span> | ' : ''} 
+                                                    ${!isSupported ? '<span class="text-warning"><i class="ri-alert-line"></i> 格式不支持</span> | ' : ''} 
                                                     ${Utils.formatBytes(f.file_size)} | ${Utils.formatDate(f.updated_at)}
                                                 </span>
                                             </div>
                                             <div class="flex gap-5">
                                                 ${isSupported ?
-                    `<button class="btn btn-xs btn-ghost btn-preview-file" data-id="${f.id}" data-source="filemanager" title="预览数据">👁️</button>` :
+                    `<button class="btn btn-xs btn-ghost btn-preview-file" data-id="${f.id}" data-source="filemanager" title="预览数据"><i class="ri-eye-line"></i></button>` :
                     `<span class="text-xs text-secondary p-5">不可预览</span>`
                 }
                                             </div>
                                         </label>
                                     `;
         }).join('') : ''}
-                                ` : '<div class="p-40 text-center text-secondary">📭 目录为空</div>'}
+                                ` : '<div class="p-40 text-center text-secondary"><i class="ri-inbox-line"></i> 目录为空</div>'}
                             </div>
                         `}
                     </div>
                     <button class="btn btn-primary w-100 mt-20" id="btn-import-batch" ${(this.state.cloudSelections || []).length === 0 ? 'disabled' : ''}>
-                        📥 批量导入选中的文件 (${(this.state.cloudSelections || []).length})
+                        <i class="ri-download-line"></i> 批量导入选中的文件 (${(this.state.cloudSelections || []).length})
                     </button>
                 ` : `
                     <div class="file-upload-area" id="file-upload-area">
                         <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" multiple style="display:none">
                         <div class="file-upload-placeholder">
-                            <span class="upload-icon">📁</span>
+                            <span class="upload-icon"><i class="ri-folder-upload-line"></i></span>
                             <h3>点击或拖拽文件到这里</h3>
                             <p class="text-secondary">支持批量选择 CSV、Excel (.xlsx, .xls) 格式</p>
                         </div>
@@ -114,19 +114,19 @@ const AnalysisImportMixin = {
                         <div class="batch-file-list" id="batch-file-list">
                             ${selectedFiles.map((f, index) => `
                                 <div class="batch-file-item" data-index="${index}">
-                                    <div class="file-icon">📄</div>
+                                    <div class="file-icon"><i class="ri-file-3-line"></i></div>
                                     <div class="file-info">
                                         <div class="file-name">${f.name}</div>
                                         <div class="file-size">${(f.size / 1024).toFixed(1)} KB</div>
                                     </div>
                                     <div class="flex gap-10">
-                                        <button class="btn btn-icon btn-sm btn-preview-local" data-index="${index}" title="预览内容">🔍</button>
-                                        <button class="btn btn-icon btn-sm btn-remove-local" data-index="${index}" title="从列表移除">🗑️</button>
+                                        <button class="btn btn-icon btn-sm btn-preview-local" data-index="${index}" title="预览内容"><i class="ri-search-line"></i></button>
+                                        <button class="btn btn-icon btn-sm btn-remove-local" data-index="${index}" title="从列表移除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
-                        <button class="btn btn-primary w-100 mt-20" id="btn-do-upload-batch">🚀 开始批量导入 (${selectedFiles.length}个文件)</button>
+                        <button class="btn btn-primary w-100 mt-20" id="btn-do-upload-batch"><i class="ri-rocket-line"></i> 开始批量导入 (${selectedFiles.length}个文件)</button>
                     ` : ''}
                 `}
             </div>
@@ -211,9 +211,9 @@ const AnalysisImportMixin = {
                         </div>
 
                         <div class="btn-group-full">
-                            <button class="btn btn-ghost" id="btn-test-db" ${dbLoading ? 'disabled' : ''}>🔌 测试</button>
+                            <button class="btn btn-ghost" id="btn-test-db" ${dbLoading ? 'disabled' : ''}><i class="ri-plug-line"></i> 测试</button>
                             <button class="btn btn-primary" id="btn-connect-db" ${dbLoading ? 'disabled' : ''}>
-                                ${dbLoading ? '⏳ 连接中...' : (dbConnected ? '🔄 刷新列表' : '📋 连接数据库')}
+                                ${dbLoading ? '<i class="ri-loader-4-line ri-spin"></i> 连接中...' : (dbConnected ? '<i class="ri-refresh-line"></i> 刷新列表' : '<i class="ri-table-line"></i> 连接数据库')}
                             </button>
                         </div>
                     </div>
@@ -223,7 +223,7 @@ const AnalysisImportMixin = {
                 <div class="db-main-area">
                     ${!dbConnected ? `
                         <div class="db-empty-state">
-                            <div class="illustration">📡</div>
+                            <div class="illustration"><i class="ri-broadcast-line"></i></div>
                             <h3>等待建立通信</h3>
                             <p>连接成功后，这里将展示数据库中所有可导入的数据表</p>
                         </div>
@@ -244,7 +244,7 @@ const AnalysisImportMixin = {
                                 ${filteredTables.length > 0 ? filteredTables.map(table => `
                                     <label class="table-card-item">
                                         <input type="checkbox" class="db-table-checkbox" value="${table}">
-                                        <div class="table-icon">📋</div>
+                                        <div class="table-icon"><i class="ri-table-line"></i></div>
                                         <div class="table-info">
                                             <span class="table-name" title="${table}">${table}</span>
                                         </div>
@@ -351,7 +351,7 @@ const AnalysisImportMixin = {
                 ${style}
                 <div class="preview-modal-content">
                     <div class="mb-15 p-15 bg-tertiary rounded flex-center flex-col text-center" style="height: 100%; min-height: 300px;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <div style="font-size: 48px; margin-bottom: 20px;"><i class="ri-bar-chart-2-line"></i></div>
                         <h3 class="mb-10">本地预览暂不支持 Excel/二进制文件</h3>
                         <p class="text-secondary mb-20">为了查看完整数据内容，请先点击"开始批量导入"将文件上传至服务器。</p>
                         
@@ -614,7 +614,7 @@ const AnalysisImportMixin = {
         try {
             Toast.info('测试中...');
             await AnalysisApi.importDatabase({ name: '_test_', connection_url: url, query: 'SELECT 1', test_only: true });
-            Toast.success('✅ 连接成功');
+            Toast.success('<i class="ri-checkbox-circle-line"></i> 连接成功');
         } catch (e) { Toast.error('失败: ' + e.message); }
     },
 
@@ -641,7 +641,7 @@ const AnalysisImportMixin = {
             for (const table of tables) {
                 await AnalysisApi.importDatabase({ name: table, connection_url: url, query: `SELECT * FROM ${table} ` });
             }
-            Toast.success('✨ 批量入库完成');
+            Toast.success('<i class="ri-sparkling-fill"></i> 批量入库完成');
             this.setState({ activeTab: 'datasets' });
             this.fetchDatasets();
         } catch (e) { Toast.error('处理中断'); }

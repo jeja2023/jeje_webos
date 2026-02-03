@@ -64,7 +64,7 @@ class BackupPage extends Component {
                         <div id="passwordArea" style="display:none;">
                             <label style="display:block;margin-bottom:4px;font-weight:500;">加密密码 <span style="color:var(--color-error)">*</span></label>
                             <input type="password" id="backupPassword" class="form-input" placeholder="请输入加密密码">
-                            <p style="font-size:12px;color:var(--color-warning);margin-top:4px;">⚠️ 请务必牢记密码，恢复时需要使用</p>
+                            <p style="font-size:12px;color:var(--color-warning);margin-top:4px;"><i class="ri-error-warning-line"></i> 请务必牢记密码，恢复时需要使用</p>
                         </div>
                     </div>
                 `,
@@ -162,7 +162,7 @@ class BackupPage extends Component {
             Modal.show({
                 title: '恢复加密备份',
                 content: `
-                    <p style="margin-bottom:12px;color:var(--color-warning);">⚠️ 警告：恢复操作将覆盖现有数据！确定要继续吗？</p>
+                    <p style="margin-bottom:12px;color:var(--color-warning);"><i class="ri-error-warning-line"></i> 警告：恢复操作将覆盖现有数据！确定要继续吗？</p>
                     <div>
                         <label style="display:block;margin-bottom:4px;font-weight:500;">请输入备份密码</label>
                         <input type="password" id="restorePassword" class="form-input" placeholder="输入解密密码">
@@ -180,7 +180,7 @@ class BackupPage extends Component {
             });
         } else {
             // 普通备份确认
-            Modal.confirm('确认恢复', '⚠️ 警告：恢复操作将覆盖现有数据！确定要继续吗？', () => confirmRestore());
+            Modal.confirm('确认恢复', '<i class="ri-error-warning-line"></i> 警告：恢复操作将覆盖现有数据！确定要继续吗？', () => confirmRestore());
         }
     }
 

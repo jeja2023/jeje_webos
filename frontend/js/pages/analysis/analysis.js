@@ -652,32 +652,32 @@ class AnalysisPage extends Component {
                             ${window.ModuleHelp ? ModuleHelp.createHelpButton('analysis', '数据分析') : ''}
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'bi' ? 'active' : ''}" data-tab="bi">
-                            <span>🎯</span> 数据大屏
+                            <span><i class="ri-dashboard-line"></i></span> 数据大屏
                         </div>
                         <div class="analysis-menu-divider"></div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'smart-table' ? 'active' : ''}" data-tab="smart-table">
-                            <span>📋</span> 智能表格
+                            <span><i class="ri-table-line"></i></span> 智能表格
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'datasets' ? 'active' : ''}" data-tab="datasets">
-                            <span>📦</span> 数据管理
+                            <span><i class="ri-database-2-line"></i></span> 数据管理
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'import' ? 'active' : ''}" data-tab="import">
-                            <span>📥</span> 数据导入
+                            <span><i class="ri-import-line"></i></span> 数据导入
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'cleaning' ? 'active' : ''}" data-tab="cleaning">
-                            <span>🧼</span> 数据清洗
+                            <span><i class="ri-magic-line"></i></span> 数据清洗
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'charts' ? 'active' : ''}" data-tab="charts">
-                            <span>📊</span> 图表分析
+                            <span><i class="ri-bar-chart-2-line"></i></span> 图表分析
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'compare' ? 'active' : ''}" data-tab="compare">
-                            <span>🔍</span> 数据比对
+                            <span><i class="ri-file-search-line"></i></span> 数据比对
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'sql' ? 'active' : ''}" data-tab="sql">
-                            <span>🖥️</span> SQL查询
+                            <span><i class="ri-terminal-window-line"></i></span> SQL查询
                         </div>
                         <div class="analysis-menu-item ${this.state.activeTab === 'modeling' ? 'active' : ''}" data-tab="modeling">
-                            <span>📈</span> 数据建模
+                            <span><i class="ri-flow-chart"></i></span> 数据建模
                         </div>
 
                     </div>
@@ -753,14 +753,14 @@ class AnalysisPage extends Component {
                     <div class="flex gap-10">
                         ${datasetSelectedIds.length > 0 ? `
                             <button class="btn btn-danger btn-sm" id="btn-batch-delete-datasets">
-                                🗑️ 删除选中 (${datasetSelectedIds.length})
+                                <i class="ri-delete-bin-line"></i> 删除选中 (${datasetSelectedIds.length})
                             </button>
                         ` : ''}
                         <button class="btn btn-outline-primary btn-sm" id="btn-refresh-datasets">
-                            🔄 刷新
+                            <i class="ri-refresh-line"></i> 刷新
                         </button>
                         <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-tab=import]').click()">
-                            ➕ 新建导入
+                            <i class="ri-add-line"></i> 新建导入
                         </button>
                     </div>
                 </div>
@@ -797,7 +797,7 @@ class AnalysisPage extends Component {
                 <tr>
                     <td colspan="6" class="text-center py-50">
                         <div class="text-secondary">
-                            <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+                            <div style="font-size: 32px; margin-bottom: 10px;"><i class="ri-inbox-line"></i></div>
                             ${datasetSearch ? '未找到匹配的数据集' : '暂无数据集，请先导入'}
                         </div>
                     </td>
@@ -823,7 +823,7 @@ class AnalysisPage extends Component {
                 </td>
                 <td>
                     <span class="badge ${d.source_type === 'file' ? 'bg-secondary' : 'bg-info'}">
-                        ${d.source_type === 'file' ? '📂 文件' : '🗄️ 数据库'}
+                        ${d.source_type === 'file' ? '<i class="ri-folder-open-line"></i> 文件' : '<i class="ri-database-2-line"></i> 数据库'}
                     </span>
                 </td>
                 <td>
@@ -835,13 +835,13 @@ class AnalysisPage extends Component {
                 <td>
                     <div class="flex gap-10">
                         <button class="btn btn-sm btn-ghost btn-view-dataset" data-id="${d.id}" title="查看数据">
-                            👁️
+                            <i class="ri-eye-line"></i>
                         </button>
                         <button class="btn btn-sm btn-ghost btn-edit-dataset" data-id="${d.id}" title="编辑信息">
-                            ✏️
+                            <i class="ri-edit-line"></i>
                         </button>
                         <button class="btn btn-sm btn-ghost text-danger btn-delete-dataset" data-id="${d.id}" title="删除">
-                            🗑️
+                            <i class="ri-delete-bin-line"></i>
                         </button>
                     </div>
                 </td>
@@ -876,7 +876,7 @@ class AnalysisPage extends Component {
                 <div class="p-20 border-bottom bg-primary">
                     <div class="flex-between mb-15">
                         <div class="flex-center">
-                            <button class="btn-icon mr-10 btn-back-to-list">⬅️</button>
+                            <button class="btn-icon mr-10 btn-back-to-list"><i class="ri-arrow-left-line"></i></button>
                             <strong style="font-size: 16px;">${currentDataset?.name}</strong>
                             <span class="text-secondary ml-15" style="font-size: 13px;">
                                 ${search || filterCount > 0 ? `筛选结果: ${displayTotal} / ${total} 条` : `共 ${total} 条数据`}
@@ -892,7 +892,7 @@ class AnalysisPage extends Component {
                                     placeholder="搜索关键词..." 
                                     value="${search || ''}"
                                     style="padding-left: 35px; height: 36px;">
-                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);">🔍</span>
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);"><i class="ri-search-line"></i></span>
                             </div>
                             <button class="btn btn-secondary btn-sm" id="btn-viewer-search" style="height: 36px;">搜索</button>
                             ${search ? '<button class="btn btn-ghost btn-sm" id="btn-viewer-clear-search" style="height: 36px;">清除</button>' : ''}

@@ -87,10 +87,10 @@ const DataLensEditorMixin = {
                                    style="width: 150px !important;">
                             <select class="form-control form-control-sm lens-col-type" data-col="${col}" style="width: 100px !important;">
                                 <option value="default" ${type === 'default' ? 'selected' : ''}>默认</option>
-                                <option value="image" ${type === 'image' ? 'selected' : ''}>🖼️ 图片</option>
-                                <option value="link" ${type === 'link' ? 'selected' : ''}>🔗 链接</option>
-                                <option value="date" ${type === 'date' ? 'selected' : ''}>📅 日期</option>
-                                <option value="bool" ${type === 'bool' ? 'selected' : ''}>🔘 布尔</option>
+                                <option value="image" ${type === 'image' ? 'selected' : ''}><i class="ri-image-line"></i> 图片</option>
+                                <option value="link" ${type === 'link' ? 'selected' : ''}><i class="ri-link"></i> 链接</option>
+                                <option value="date" ${type === 'date' ? 'selected' : ''}><i class="ri-calendar-line"></i> 日期</option>
+                                <option value="bool" ${type === 'bool' ? 'selected' : ''}><i class="ri-checkbox-circle-line"></i> 布尔</option>
                             </select>
                             <label style="display: flex; align-items: center; font-size: 13px; cursor: pointer; user-select: none;">
                                 <input type="checkbox" class="lens-hide-col" data-col="${col}" ${isHidden ? 'checked' : ''} style="margin-right: 4px;"> 隐藏
@@ -133,10 +133,10 @@ const DataLensEditorMixin = {
                         </select>
                         <input type="text" class="form-control form-control-sm lens-status-value" value="${r.value}" placeholder="值" style="width: 80px !important; flex-shrink: 0;">
                         <select class="form-control form-control-sm lens-status-color" style="width: 130px !important; flex-shrink: 0;">
-                            <option value="success" ${r.color === 'success' ? 'selected' : ''}>✅ 成功</option>
-                            <option value="warning" ${r.color === 'warning' ? 'selected' : ''}>⚠️ 警告</option>
-                            <option value="danger" ${r.color === 'danger' ? 'selected' : ''}>❌ 危险</option>
-                            <option value="info" ${r.color === 'info' ? 'selected' : ''}>ℹ️ 信息</option>
+                            <option value="success" ${r.color === 'success' ? 'selected' : ''}><i class="ri-checkbox-circle-line"></i> 成功</option>
+                            <option value="warning" ${r.color === 'warning' ? 'selected' : ''}><i class="ri-alert-line"></i> 警告</option>
+                            <option value="danger" ${r.color === 'danger' ? 'selected' : ''}><i class="ri-close-circle-line"></i> 危险</option>
+                            <option value="info" ${r.color === 'info' ? 'selected' : ''}><i class="ri-information-line"></i> 信息</option>
                         </select>
                         <button class="lens-btn lens-btn-xs lens-btn-danger lens-remove-status" style="width: 28px; padding: 0; flex-shrink: 0;">×</button>
                     </div>
@@ -167,11 +167,11 @@ const DataLensEditorMixin = {
             const modalContent = `
                 <div class="lens-editor" style="display: flex; flex-direction: row; gap: 24px; flex-wrap: wrap;">
                     <div class="lens-editor-section" style="flex: 1; min-width: 280px;">
-                        <h4>📊 图表配置</h4>
+                        <h4><i class="ri-bar-chart-fill"></i> 图表配置</h4>
                         ${chartFormHtml}
                     </div>
                     <div class="lens-editor-section" style="flex: 2; min-width: 480px;">
-                        <h4>📝 表格配置</h4>
+                        <h4><i class="ri-file-text-line"></i> 表格配置</h4>
                         <div style="margin-bottom:16px;">
                             <div class="flex-between align-center mb-8">
                                 <label style="font-weight:600;font-size:13px;">列显示名称</label>
@@ -182,8 +182,8 @@ const DataLensEditorMixin = {
                         </div>
                         <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:12px;">
                             <div class="flex-between align-center mb-8">
-                                <label style="font-weight:600;font-size:13px;">🏷️ 单元格状态</label>
-                                <button class="lens-btn lens-btn-xs" id="lens-add-status">➕ 添加</button>
+                                <label style="font-weight:600;font-size:13px;"><i class="ri-price-tag-3-line"></i> 单元格状态</label>
+                                <button class="lens-btn lens-btn-xs" id="lens-add-status"><i class="ri-add-line"></i> 添加</button>
                             </div>
                             <div id="lens-status-list" style="max-height: 150px; overflow-y: auto;">
                                 ${buildStatusRows()}
@@ -328,10 +328,10 @@ const DataLensEditorMixin = {
                         </select>
                         <input type="text" class="form-control form-control-sm lens-status-value" placeholder="值" style="width: 80px !important; flex-shrink: 0;">
                         <select class="form-control form-control-sm lens-status-color" style="width: 130px !important; flex-shrink: 0;">
-                            <option value="success">✅ 成功</option>
-                            <option value="warning">⚠️ 警告</option>
-                            <option value="danger">❌ 危险</option>
-                            <option value="info">ℹ️ 信息</option>
+                            <option value="success"><i class="ri-checkbox-circle-line"></i> 成功</option>
+                            <option value="warning"><i class="ri-alert-line"></i> 警告</option>
+                            <option value="danger"><i class="ri-close-circle-line"></i> 危险</option>
+                            <option value="info"><i class="ri-information-line"></i> 信息</option>
                         </select>
                         <button class="lens-btn lens-btn-xs lens-btn-danger lens-remove-status" style="width: 28px; padding: 0; flex-shrink: 0;">×</button>
                     `;
@@ -454,7 +454,7 @@ const DataLensEditorMixin = {
                              <div class="form-group" id="lens-joins-section" style="display:none">
                                  <div class="flex-between align-center">
                                      <label class="m-0">关联其他表（可选）</label>
-                                     <button class="lens-btn lens-btn-xs" id="lens-add-join">➕ 添加关联</button>
+                                     <button class="lens-btn lens-btn-xs" id="lens-add-join"><i class="ri-add-line"></i> 添加关联</button>
                                  </div>
                                  <div id="lens-joins-list" class="mt-10">
                                      <!-- 动态添加的关联表配置 -->
@@ -471,7 +471,7 @@ const DataLensEditorMixin = {
                             <div class="form-group" id="lens-filters-section" style="display:none">
                                 <div class="flex-between align-center">
                                     <label class="m-0">筛选条件（可选）</label>
-                                    <button class="lens-btn lens-btn-xs" id="lens-add-filter">➕ 添加条件</button>
+                                    <button class="lens-btn lens-btn-xs" id="lens-add-filter"><i class="ri-add-line"></i> 添加条件</button>
                                 </div>
                                 <div id="lens-filters-list" class="mt-10">
                                     <!-- 动态添加的筛选条件 -->
@@ -536,7 +536,7 @@ const DataLensEditorMixin = {
                         <div class="flex-between mt-10">
                             <label>数据预览</label>
                             <button class="lens-btn lens-btn-sm lens-btn-primary" id="lens-preview-btn">
-                                ▶ 执行预览 (Top 10)
+                                <i class="ri-play-fill"></i> 执行预览 (Top 10)
                             </button>
                         </div>
                         <div id="lens-preview-error" class="lens-preview-error" style="display:none;"></div>

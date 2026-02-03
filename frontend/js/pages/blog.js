@@ -135,7 +135,7 @@ class BlogListPage extends Component {
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h1 class="page-title">📝 文章管理</h1>
+                        <h1 class="page-title"><i class="ri-article-line"></i> 文章管理</h1>
                         <p class="page-desc">
                             共 ${total} 篇文章
                             ${selectedCategory ? ` · 分类: ${Utils.escapeHtml(selectedCategory.name)}` : ''}
@@ -144,12 +144,12 @@ class BlogListPage extends Component {
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('blog', '博客') : ''}
-                        <a href="#/blog/category" class="btn btn-ghost">📁 分类管理</a>
+                        <a href="#/blog/category" class="btn btn-ghost"><i class="ri-folder-line"></i> 分类管理</a>
                         <button class="btn btn-ghost" id="toggleBatch">
-                            ${batchMode ? '取消批量' : '📦 批量操作'}
+                            ${batchMode ? '取消批量' : '<i class="ri-checkbox-multiple-line"></i> 批量操作'}
                         </button>
                         <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
-                            ➕ 发布文章
+                            <i class="ri-add-line"></i> 发布文章
                         </button>
                     </div>
                 </div>
@@ -190,7 +190,7 @@ class BlogListPage extends Component {
                         </label>
                         <span style="color: var(--color-text-secondary);">已选 ${selectedIds.size} 篇</span>
                         <div style="flex: 1;"></div>
-                        <button class="btn btn-danger btn-sm" id="batchDelete">🗑️ 删除选中</button>
+                        <button class="btn btn-danger btn-sm" id="batchDelete"><i class="ri-delete-bin-line"></i> 删除选中</button>
                     </div>
                 ` : ''}
                 
@@ -231,15 +231,15 @@ class BlogListPage extends Component {
                                                     ${post.status === 'published' ? '已发布' : '草稿'}
                                                 </span>
                                             </td>
-                                            <td>👁️ ${post.views}</td>
+                                            <td><i class="ri-eye-line"></i> ${post.views}</td>
                                             <td>${Utils.timeAgo(post.published_at || post.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-view="${post.id}" title="查看">👁️</button>
-                                                <button class="btn btn-ghost btn-sm" data-edit="${post.id}" title="编辑">✏️</button>
+                                                <button class="btn btn-ghost btn-sm" data-view="${post.id}" title="查看"><i class="ri-eye-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-edit="${post.id}" title="编辑"><i class="ri-edit-line"></i></button>
                                                 <button class="btn btn-ghost btn-sm" data-toggle-top="${post.id}" title="${post.is_top ? '取消置顶' : '置顶'}">
-                                                    ${post.is_top ? '📍' : '📌'}
+                                                    <i class="${post.is_top ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                                                 </button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${post.id}" title="删除">🗑️</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${post.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -252,7 +252,7 @@ class BlogListPage extends Component {
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">📝</div>
+                            <div class="empty-icon"><i class="ri-file-list-line"></i></div>
                             <p class="empty-text">${keyword || categoryId || status ? '没有找到匹配的文章' : '还没有文章，快去发布一篇吧'}</p>
                             ${keyword || categoryId || status ?
                 '<button class="btn btn-secondary" data-action="clear-filters">清除筛选</button>' :
@@ -508,10 +508,10 @@ class BlogEditPage extends Component {
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         ${isEdit ? `
-                            <button class="btn btn-ghost" id="btnPreview">👁️ 预览</button>
+                            <button class="btn btn-ghost" id="btnPreview"><i class="ri-eye-line"></i> 预览</button>
                         ` : ''}
                         <button type="submit" form="postForm" class="btn btn-primary" ${saving ? 'disabled' : ''}>
-                            ${saving ? '保存中...' : (isEdit ? '💾 更新文章' : '🚀 发布文章')}
+                            ${saving ? '保存中...' : (isEdit ? '<i class="ri-save-line"></i> 更新文章' : '<i class="ri-send-plane-fill"></i> 发布文章')}
                         </button>
                     </div>
                 </div>
@@ -569,7 +569,7 @@ class BlogEditPage extends Component {
                         <div class="form-group">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer">
                                 <input type="checkbox" name="is_top" ${post?.is_top ? 'checked' : ''}>
-                                <span>📌 置顶文章</span>
+                                <span><i class="ri-pushpin-line"></i> 置顶文章</span>
                             </label>
                         </div>
                     </form>
@@ -739,12 +739,12 @@ class BlogCategoryPage extends Component {
                             <i class="ri-arrow-left-line"></i> 返回
                         </button>
                         <div>
-                            <h1 class="page-title" style="margin: 0;">📁 分类管理</h1>
+                            <h1 class="page-title" style="margin: 0;"><i class="ri-folder-line"></i> 分类管理</h1>
                             <p class="page-desc" style="margin: 4px 0 0 0;">共 ${categories.length} 个分类</p>
                         </div>
                     </div>
                     <button class="btn btn-primary" id="addCategory">
-                        ➕ 添加分类
+                        <i class="ri-add-line"></i> 添加分类
                     </button>
                 </div>
                 
@@ -769,8 +769,8 @@ class BlogCategoryPage extends Component {
                                             <td>${Utils.escapeHtml(cat.description || '-')}</td>
                                             <td>${cat.order}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(cat)}'>✏️ 编辑</button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${cat.id}">🗑️ 删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(cat)}'><i class="ri-edit-line"></i> 编辑</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${cat.id}"><i class="ri-delete-bin-line"></i> 删除</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -779,7 +779,7 @@ class BlogCategoryPage extends Component {
                         </div>
                     ` : `
                         <div class="empty-state">
-                            <div class="empty-icon">📁</div>
+                            <div class="empty-icon"><i class="ri-folder-2-line"></i></div>
                             <p class="empty-text">暂无分类</p>
                             <button class="btn btn-primary" id="addCategoryEmpty">创建第一个分类</button>
                         </div>
@@ -934,7 +934,7 @@ class BlogViewPage extends Component {
             return `
                 <div class="page fade-in">
                     <div class="empty-state" style="padding-top: 80px">
-                        <div class="empty-icon">🔍</div>
+                        <div class="empty-icon"><i class="ri-search-line"></i></div>
                         <p class="empty-text">文章不存在或已删除</p>
                         <button class="btn btn-primary" onclick="Router.push('/blog/list')">返回列表</button>
                     </div>
@@ -959,19 +959,19 @@ class BlogViewPage extends Component {
                                 ${Utils.escapeHtml(post.title)}
                             </h1>
                             <p class="page-desc" style="margin:4px 0 0 0;">
-                                ${post.category ? `📁 ${Utils.escapeHtml(post.category.name)} · ` : ''}
-                                📝 ${wordCount} 字 · 
-                                ⏱️ ${readTime} 分钟 · 
-                                👁️ ${post.views} 次浏览 ·
+                                ${post.category ? `<i class="ri-folder-line"></i> ${Utils.escapeHtml(post.category.name)} · ` : ''}
+                                <i class="ri-file-text-line"></i> ${wordCount} 字 · 
+                                <i class="ri-time-line"></i> ${readTime} 分钟 · 
+                                <i class="ri-eye-line"></i> ${post.views} 次浏览 ·
                                 ${Utils.timeAgo(post.updated_at || post.created_at)}
                             </p>
                         </div>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn btn-ghost" id="copyPost">📋 复制</button>
-                        <button class="btn btn-ghost" id="toggleTop">${post.is_top ? '📍 取消置顶' : '📌 置顶'}</button>
-                        <button class="btn btn-primary" id="editBlog">✏️ 编辑</button>
-                        <button class="btn btn-danger" id="deletePost">🗑️</button>
+                        <button class="btn btn-ghost" id="copyPost"><i class="ri-clipboard-line"></i> 复制</button>
+                        <button class="btn btn-ghost" id="toggleTop">${post.is_top ? '<i class="ri-pushpin-2-fill"></i> 取消置顶' : '<i class="ri-pushpin-line"></i> 置顶'}</button>
+                        <button class="btn btn-primary" id="editBlog"><i class="ri-edit-line"></i> 编辑</button>
+                        <button class="btn btn-danger" id="deletePost"><i class="ri-delete-bin-line"></i></button>
                     </div>
                 </div>
 

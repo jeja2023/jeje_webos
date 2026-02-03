@@ -67,7 +67,7 @@ class RolesPage extends Component {
             featuresHtml = `
                 <div style="padding:12px;background:var(--color-bg-secondary);border-radius:4px;margin-bottom:12px;">
                     <div style="color:var(--color-text-primary);font-weight:500;margin-bottom:4px;">
-                        ⚠️ 系统管理员用户组默认拥有所有功能模块的所有权限
+                        <i class="ri-error-warning-line"></i> 系统管理员用户组默认拥有所有功能模块的所有权限
                     </div>
                     <div style="color:var(--color-text-secondary);font-size:13px;">
                         无需手动设置权限，系统已自动分配全部权限
@@ -81,7 +81,7 @@ class RolesPage extends Component {
             featuresHtml = `
                 <div style="padding:12px;background:var(--color-bg-secondary);border-radius:4px;margin-bottom:12px;">
                     <div style="color:var(--color-text-primary);font-weight:500;margin-bottom:4px;">
-                        ⚠️ 管理员用户组拥有受限的全部权限
+                        <i class="ri-error-warning-line"></i> 管理员用户组拥有受限的全部权限
                     </div>
                     <div style="color:var(--color-text-secondary);font-size:13px;">
                         管理员可以管理普通用户和访客，但无法管理系统管理员和其他管理员。部分系统级权限（如备份、日志审计）不可用。

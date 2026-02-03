@@ -194,7 +194,7 @@ class DockComponent extends Component {
             categories.push({
                 id: 'sys_users',
                 title: '用户管理',
-                icon: '👥',
+                icon: 'ri-group-line',
                 path: '/users/list',
                 children: null
             });
@@ -204,7 +204,7 @@ class DockComponent extends Component {
                 categories.push({
                     id: 'sys_ops',
                     title: '系统管理',
-                    icon: '🖥️',
+                    icon: 'ri-settings-4-line',
                     path: '/system/settings',
                     children: null
                 });
@@ -215,7 +215,7 @@ class DockComponent extends Component {
     }
 
     // 获取应用对应的图标配置（同步设计规约）
-    _getIconSpec(id, defaultIcon = '📦') {
+    _getIconSpec(id, defaultIcon = 'ri-apps-line') {
         const iconMap = {
             'launcher': { ri: 'ri-menu-line', gradient: 'gradient-blue' }, // 开始按钮（菜单图标）
             'notification': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' }, // 通知
@@ -266,6 +266,9 @@ class DockComponent extends Component {
         const spec = this._getIconSpec(id, defaultIcon);
         if (spec.ri) {
             return `<div class="dock-icon-wrapper ${spec.gradient}"><i class="${spec.ri}"></i></div>`;
+        }
+        if (spec.emoji && spec.emoji.startsWith('ri-')) {
+            return `<div class="dock-icon-wrapper ${spec.gradient || 'gradient-default'}"><i class="${spec.emoji}"></i></div>`;
         }
         return `<div class="dock-icon-wrapper">${spec.emoji}</div>`;
     }
@@ -319,7 +322,7 @@ class DockComponent extends Component {
                 return {
                     id: module.id,
                     title: module.name,
-                    icon: module.icon || '📦',
+                    icon: module.icon || 'ri-apps-line',
                     path: config.path,
                     children: null,
                     isPinned: true
@@ -329,7 +332,7 @@ class DockComponent extends Component {
             return {
                 id: module.id,
                 title: module.name,
-                icon: module.icon || '📦',
+                icon: module.icon || 'ri-apps-line',
                 children: config.children,
                 isPinned: true
             };
@@ -340,7 +343,7 @@ class DockComponent extends Component {
             return {
                 id: module.id,
                 title: module.name,
-                icon: module.icon || '📦',
+                icon: module.icon || 'ri-apps-line',
                 path: module.menu.path || `/${module.id}`,
                 children: null, // 强制移除通用模块的子菜单，保持 Dock 简洁
                 isPinned: true
@@ -351,7 +354,7 @@ class DockComponent extends Component {
         return {
             id: module.id,
             title: module.name,
-            icon: module.icon || '📦',
+            icon: module.icon || 'ri-apps-line',
             path: `/${module.id}`,
             children: null,
             isPinned: true
@@ -386,7 +389,7 @@ class DockComponent extends Component {
                 <div class="dock ${hasMaximized ? 'auto-hide' : ''}">
                     <!-- 开始按钮 -->
                     <div class="dock-item" id="dock-launcher" title="开始">
-                        <span class="dock-icon">${this._renderIcon('launcher', '🚀')}</span>
+                        <span class="dock-icon">${this._renderIcon('launcher', 'ri-rocket-2-line')}</span>
                         <div class="dock-tooltip">开始</div>
                     </div>
                     
@@ -401,7 +404,7 @@ class DockComponent extends Component {
                     <div class="dock-item ${isAppsActive ? 'active' : ''}" 
                          onclick="Router.push('/apps')" 
                          title="应用中心">
-                        <span class="dock-icon">${this._renderIcon('market', '🏪')}</span>
+                        <span class="dock-icon">${this._renderIcon('market', 'ri-store-2-line')}</span>
                         <div class="dock-tooltip">应用中心</div>
                     </div>
                 </div>
@@ -445,6 +448,13 @@ class DockComponent extends Component {
             `;
         }
 
+        // 辅助函数：渲染简单图标
+        const renderSimpleIcon = (icon) => {
+            if (!icon) return '';
+            if (icon.startsWith('ri-')) return `<i class="${icon}"></i>`;
+            return icon;
+        };
+
         // 渲染弹出内容
         let popupContent = '';
         if (hasSubgroups) {
@@ -452,14 +462,14 @@ class DockComponent extends Component {
             popupContent = category.subgroups.map(group => `
                 <div class="folder-subgroup">
                     <div class="folder-subgroup-header">
-                        <span class="subgroup-icon">${group.icon}</span>
+                        <span class="subgroup-icon">${renderSimpleIcon(group.icon)}</span>
                         <span class="subgroup-title">${group.title}</span>
                     </div>
                     <div class="folder-subgroup-items">
                         ${group.children.map(child => `
                             <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
                                  data-path="${child.path}">
-                                <span class="folder-app-icon">${child.icon}</span>
+                                <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
                                 <span class="folder-app-title">${child.title}</span>
                             </div>
                         `).join('')}
@@ -471,7 +481,7 @@ class DockComponent extends Component {
             popupContent = category.children.map(child => `
                 <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
                      data-path="${child.path}">
-                    <span class="folder-app-icon">${child.icon}</span>
+                    <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
                     <span class="folder-app-title">${child.title}</span>
                 </div>
             `).join('');
@@ -482,7 +492,7 @@ class DockComponent extends Component {
             <div class="dock-folder ${isOpen ? 'open' : ''} ${hasActiveChild ? 'active' : ''}" 
                  data-folder="${category.id}">
                 <div class="dock-item dock-folder-trigger" title="${category.title}">
-                    <span class="dock-icon">${category.icon}</span>
+                    <span class="dock-icon">${renderSimpleIcon(category.icon)}</span>
                     <div class="dock-tooltip">${category.title}</div>
                 </div>
                 
