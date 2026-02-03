@@ -1,5 +1,7 @@
 /**
  * 公告管理页面
+ * 包含公告列表、编辑、查看功能
+ * 支持批量操作（删除、发布、取消发布）
  */
 
 // 公告列表页
@@ -10,36 +12,23 @@ class AnnouncementListPage extends Component {
             announcements: [],
             total: 0,
             page: 1,
-            size: 10,
-            loading: true,
+            size: 20,
             filters: {
                 is_published: '',
                 type: '',
                 keyword: ''
-            }
+            },
+            loading: true,
+            selectedIds: [],      // 已选中的公告ID
+            selectAll: false      // 是否全选
         };
     }
 
     async loadData() {
-        this.setState({ loading: true });
-
+        this.setState({ loading: true, selectedIds: [], selectAll: false });
         try {
-            const params = {
-                page: this.state.page,
-                size: this.state.size
-            };
-
-            if (this.state.filters.is_published !== '') {
-                params.is_published = this.state.filters.is_published === 'true';
-            }
-            if (this.state.filters.type) {
-                params.type = this.state.filters.type;
-            }
-            if (this.state.filters.keyword) {
-                params.keyword = this.state.filters.keyword;
-            }
-
-            const res = await AnnouncementApi.list(params);
+            const { page, size, filters } = this.state;
+            const res = await AnnouncementApi.list(page, size, filters);
             this.setState({
                 announcements: res.data.items,
                 total: res.data.total,
@@ -52,7 +41,7 @@ class AnnouncementListPage extends Component {
     }
 
     changePage(page) {
-        this.state.page = page;
+        this.setState({ page });
         this.loadData();
     }
 
@@ -62,16 +51,77 @@ class AnnouncementListPage extends Component {
         this.loadData();
     }
 
+    // 切换单个选中状态
+    toggleSelect(id) {
+        const { selectedIds, announcements } = this.state;
+        const newSelected = selectedIds.includes(id)
+            ? selectedIds.filter(i => i !== id)
+            : [...selectedIds, id];
+
+        this.setState({
+            selectedIds: newSelected,
+            selectAll: newSelected.length === announcements.length
+        });
+    }
+
+    // 切换全选状态
+    toggleSelectAll() {
+        const { selectAll, announcements } = this.state;
+        if (selectAll) {
+            this.setState({ selectedIds: [], selectAll: false });
+        } else {
+            this.setState({
+                selectedIds: announcements.map(a => a.id),
+                selectAll: true
+            });
+        }
+    }
+
+    // 批量操作
+    async handleBatchAction(action) {
+        const { selectedIds } = this.state;
+        if (selectedIds.length === 0) {
+            Toast.warning('请先选择公告');
+            return;
+        }
+
+        const actionLabels = {
+            'delete': '删除',
+            'publish': '发布',
+            'unpublish': '取消发布'
+        };
+
+        const title = `批量${actionLabels[action]}`;
+        const content = `确定要${actionLabels[action]}选中的 ${selectedIds.length} 条公告吗？`;
+
+        const confirmed = await Modal.confirm(title, content);
+
+        if (confirmed) {
+            try {
+                const res = await AnnouncementApi.batch(selectedIds, action);
+                Toast.success(`成功${actionLabels[action]} ${res.data?.affected || selectedIds.length} 条公告`);
+                this.loadData();
+            } catch (error) {
+                Toast.error(`批量${actionLabels[action]}失败`);
+            }
+        }
+    }
+
     async handleDelete(id, title) {
-        Modal.confirm('删除公告', `确定要删除公告 "${title}" 吗？此操作不可恢复。`, async () => {
+        const confirmed = await Modal.confirm(
+            '确认删除',
+            `确定要删除公告 "${title}" 吗？此操作无法撤销。`
+        );
+
+        if (confirmed) {
             try {
                 await AnnouncementApi.delete(id);
                 Toast.success('删除成功');
                 this.loadData();
             } catch (error) {
-                Toast.error(error.message);
+                Toast.error('删除失败');
             }
-        });
+        }
     }
 
     getTypeLabel(type) {
@@ -85,25 +135,28 @@ class AnnouncementListPage extends Component {
     }
 
     render() {
-        const { announcements, total, page, size, loading, filters } = this.state;
+        const { announcements, total, page, size, filters, loading, selectedIds, selectAll } = this.state;
         const pages = Math.ceil(total / size);
+        const hasSelected = selectedIds.length > 0;
 
-        if (loading) {
-            return '<div class="loading"></div>';
-        }
+        // 权限判断
+        const user = Store.get('user');
+        const isAdmin = user?.role === 'admin';
 
         return `
             <div class="page fade-in">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
                     <div>
                         <h1 class="page-title">公告管理</h1>
-                        <p class="page-desc">共 ${total} 条公告</p>
+                        <p class="page-desc">共 ${total} 条公告${hasSelected ? `，已选择 ${selectedIds.length} 条` : ''}</p>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('announcement', '公告') : ''}
+                        ${isAdmin ? `
                         <button class="btn btn-primary" onclick="Router.push('/announcement/edit')">
-                            ➕ 发布公告
+                            <i class="ri-add-line"></i> 发布公告
                         </button>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -112,16 +165,16 @@ class AnnouncementListPage extends Component {
                     <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr 3fr; gap: var(--spacing-md);">
                         <div class="form-group">
                             <label class="form-label">状态</label>
-                            <select class="form-input form-select" id="filterStatus" value="${filters.is_published}">
-                                <option value="">全部</option>
+                            <select class="form-input form-select" id="filterStatus">
+                                <option value="" ${filters.is_published === '' ? 'selected' : ''}>全部</option>
                                 <option value="true" ${filters.is_published === 'true' ? 'selected' : ''}>已发布</option>
                                 <option value="false" ${filters.is_published === 'false' ? 'selected' : ''}>未发布</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">类型</label>
-                            <select class="form-input form-select" id="filterType" value="${filters.type}">
-                                <option value="">全部</option>
+                            <select class="form-input form-select" id="filterType">
+                                <option value="" ${filters.type === '' ? 'selected' : ''}>全部</option>
                                 <option value="info" ${filters.type === 'info' ? 'selected' : ''}>信息</option>
                                 <option value="success" ${filters.type === 'success' ? 'selected' : ''}>成功</option>
                                 <option value="warning" ${filters.type === 'warning' ? 'selected' : ''}>警告</option>
@@ -133,37 +186,76 @@ class AnnouncementListPage extends Component {
                             <div class="search-group">
                                 <input type="text" class="form-input" id="annSearchInput" 
                                        placeholder="标题、内容" value="${filters.keyword || ''}">
-                                <button class="btn btn-primary" id="annSearchBtn">搜索</button>
+                                <button class="btn btn-primary" id="annSearchBtn"><i class="ri-search-line"></i> 搜索</button>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- 批量操作工具栏 -->
+                ${hasSelected && isAdmin ? `
+                    <div class="batch-toolbar" style="margin-bottom: var(--spacing-md); display: flex; gap: 8px; align-items: center; padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        <span style="color: var(--text-secondary); margin-right: 8px;">
+                            <i class="ri-checkbox-multiple-line"></i> 已选 <strong>${selectedIds.length}</strong> 项
+                        </span>
+                        <button class="btn btn-sm btn-success" id="batchPublish">
+                            <i class="ri-send-plane-line"></i> 批量发布
+                        </button>
+                        <button class="btn btn-sm btn-secondary" id="batchUnpublish">
+                            <i class="ri-inbox-archive-line"></i> 批量取消发布
+                        </button>
+                        <button class="btn btn-sm btn-danger" id="batchDelete">
+                            <i class="ri-delete-bin-line"></i> 批量删除
+                        </button>
+                        <button class="btn btn-sm btn-ghost" id="clearSelection" style="margin-left: auto;">
+                            <i class="ri-close-line"></i> 取消选择
+                        </button>
+                    </div>
+                ` : ''}
                 
-                ${announcements.length > 0 ? `
+                ${loading ? '<div class="loading"></div>' : announcements.length > 0 ? `
                     <div class="card">
                         <div class="table-wrapper">
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        ${isAdmin ? `
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllCheckbox" ${selectAll ? 'checked' : ''}>
+                                        </th>
+                                        ` : ''}
                                         <th>标题</th>
+                                        <th>摘要</th>
                                         <th>类型</th>
                                         <th>状态</th>
-                                        <th>置顶</th>
-                                        <th>浏览次数</th>
+                                        <th>浏览</th>
                                         <th>发布时间</th>
-                                        <th>操作</th>
+                                        ${isAdmin ? '<th>操作</th>' : ''}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${announcements.map(announcement => {
             const typeInfo = this.getTypeLabel(announcement.type);
+            const isSelected = selectedIds.includes(announcement.id);
             return `
-                                            <tr>
+                                            <tr class="${isSelected ? 'row-selected' : ''}">
+                                                ${isAdmin ? `
                                                 <td>
-                                                    ${announcement.is_top ? '<span class="tag tag-warning" style="margin-right: 4px">置顶</span>' : ''}
-                                                    <a href="#/announcement/view/${announcement.id}" class="truncate" style="max-width: 300px; display: block">
+                                                    <input type="checkbox" class="row-checkbox" 
+                                                           data-id="${announcement.id}" 
+                                                           ${isSelected ? 'checked' : ''}>
+                                                </td>
+                                                ` : ''}
+                                                <td>
+                                                    ${announcement.is_top ? '<span class="tag tag-warning" style="margin-right: 4px"><i class="ri-pushpin-fill"></i> 置顶</span>' : ''}
+                                                    <a href="#/announcement/view/${announcement.id}" class="truncate" style="max-width: 200px; display: inline-block; vertical-align: middle;">
                                                         ${Utils.escapeHtml(announcement.title)}
                                                     </a>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted truncate" style="max-width: 200px; display: inline-block; font-size: 12px;">
+                                                        ${Utils.escapeHtml(announcement.summary || '')}
+                                                    </span>
                                                 </td>
                                                 <td><span class="tag ${typeInfo.cls}">${typeInfo.label}</span></td>
                                                 <td>
@@ -171,13 +263,18 @@ class AnnouncementListPage extends Component {
                                                         ${announcement.is_published ? '已发布' : '未发布'}
                                                     </span>
                                                 </td>
-                                                <td>${announcement.is_top ? '是' : '否'}</td>
                                                 <td>${announcement.views}</td>
                                                 <td>${Utils.formatDate(announcement.created_at)}</td>
+                                                ${isAdmin ? `
                                                 <td>
-                                                    <button class="btn btn-ghost btn-sm" data-edit="${announcement.id}">编辑</button>
-                                                    <button class="btn btn-ghost btn-sm" data-delete="${announcement.id}" data-title="${Utils.escapeHtml(announcement.title)}">删除</button>
+                                                    <button class="btn btn-ghost btn-sm btn-icon" data-edit="${announcement.id}" title="编辑">
+                                                        <i class="ri-edit-line"></i>
+                                                    </button>
+                                                    <button class="btn btn-ghost btn-sm btn-icon" data-delete="${announcement.id}" data-title="${Utils.escapeHtml(announcement.title)}" title="删除">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
                                                 </td>
+                                                ` : ''}
                                             </tr>
                                         `;
         }).join('')}
@@ -185,12 +282,13 @@ class AnnouncementListPage extends Component {
                             </table>
                         </div>
                     </div>
+
                     
                     ${Utils.renderPagination(page, pages)}
                 ` : `
                     <div class="card">
                         <div class="empty-state">
-                            <div class="empty-icon">📢</div>
+                            <div class="empty-icon"><i class="ri-notification-off-line"></i></div>
                             <p class="empty-text">暂无公告</p>
                         </div>
                     </div>
@@ -202,7 +300,6 @@ class AnnouncementListPage extends Component {
     afterMount() {
         this.loadData();
         this.bindEvents();
-        // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
@@ -210,7 +307,6 @@ class AnnouncementListPage extends Component {
 
     afterUpdate() {
         this.bindEvents();
-        // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
@@ -259,6 +355,35 @@ class AnnouncementListPage extends Component {
                 const title = target.dataset.title;
                 if (id && title) this.handleDelete(id, title);
             });
+
+            // 全选
+            this.delegate('change', '#selectAllCheckbox', () => {
+                this.toggleSelectAll();
+            });
+
+            // 单选
+            this.delegate('change', '.row-checkbox', (e, target) => {
+                const id = parseInt(target.dataset.id);
+                if (id) this.toggleSelect(id);
+            });
+
+            // 批量操作
+            this.delegate('click', '#batchPublish', () => {
+                this.handleBatchAction('publish');
+            });
+
+            this.delegate('click', '#batchUnpublish', () => {
+                this.handleBatchAction('unpublish');
+            });
+
+            this.delegate('click', '#batchDelete', () => {
+                this.handleBatchAction('delete');
+            });
+
+            // 取消选择
+            this.delegate('click', '#clearSelection', () => {
+                this.setState({ selectedIds: [], selectAll: false });
+            });
         }
     }
 }
@@ -273,6 +398,7 @@ class AnnouncementEditPage extends Component {
             loading: !!announcementId,
             saving: false
         };
+        this.editor = null;
     }
 
     async loadData() {
@@ -294,9 +420,11 @@ class AnnouncementEditPage extends Component {
         e.preventDefault();
 
         const form = e.target;
+        const content = this.editor ? this.editor.getMarkdown() : '';
+
         const data = {
             title: form.title.value.trim(),
-            content: form.content.value.trim(),
+            content: content,
             type: form.type.value,
             is_published: form.is_published.checked,
             is_top: form.is_top.checked,
@@ -357,7 +485,7 @@ class AnnouncementEditPage extends Component {
                 <div class="card">
                     <form id="announcementForm" class="card-body">
                         <div class="form-group">
-                            <label class="form-label">标题 *</label>
+                            <label class="form-label">标题 <span class="required">*</span></label>
                             <input type="text" name="title" class="form-input" 
                                    value="${Utils.escapeHtml(announcement?.title || '')}"
                                    placeholder="请输入公告标题" required>
@@ -397,9 +525,10 @@ class AnnouncementEditPage extends Component {
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label">内容 *</label>
-                            <textarea name="content" class="form-input" rows="15"
-                                      placeholder="请输入公告内容（支持 Markdown）" required>${Utils.escapeHtml(announcement?.content || '')}</textarea>
+                            <label class="form-label">内容 <span class="required">*</span></label>
+                            <div class="editor-container-wrapper">
+                                <div id="announcement-editor" style="height: 500px;"></div>
+                            </div>
                         </div>
                         
                         <div class="form-group">
@@ -411,8 +540,10 @@ class AnnouncementEditPage extends Component {
                         
                         <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg)">
                             <button type="submit" class="btn btn-primary" ${saving ? 'disabled' : ''}>
+                                <i class="${saving ? 'ri-loader-4-line spin' : 'ri-save-line'}"></i>
                                 ${saving ? '保存中...' : (isEdit ? '更新公告' : '发布公告')}
                             </button>
+                            <button type="button" class="btn btn-secondary" onclick="Router.back()">取消</button>
                         </div>
                     </form>
                 </div>
@@ -421,8 +552,45 @@ class AnnouncementEditPage extends Component {
     }
 
     afterMount() {
-        this.loadData();
+        this.loadData().then(() => {
+            this.initEditor();
+        });
         this.bindEvents();
+    }
+
+    async initEditor() {
+        try {
+            // 动态加载 Markdown 编辑器资源
+            await ResourceLoader.loadCSS('/static/css/pages/markdown/markdown_wysiwyg.css');
+            await ResourceLoader.loadJS('/static/js/pages/markdown/markdown_wysiwyg.js');
+
+            if (window.MarkdownWysiwygEditor) {
+                const editorEl = this.container.querySelector('#announcement-editor');
+                if (editorEl) {
+                    this.editor = new window.MarkdownWysiwygEditor(editorEl, {
+                        initialValue: this.state.announcement?.content || '',
+                        placeholder: '请输入公告内容...',
+                        autofocus: !this.announcementId, // 新建时自动聚焦
+                        // 配置图片上传
+                        uploadImage: async (file) => {
+                            try {
+                                const res = await StorageApi.upload(file);
+                                if (res.code === 200 && res.data) {
+                                    return res.data.url; // 返回图片 URL
+                                }
+                                throw new Error(res.message || '上传失败');
+                            } catch (e) {
+                                Toast.error('图片上传失败: ' + e.message);
+                                throw e;
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('加载编辑器失败', e);
+            Toast.error('编辑器加载失败');
+        }
     }
 
     afterUpdate() {
@@ -447,6 +615,7 @@ class AnnouncementViewPage extends Component {
             announcement: null,
             loading: true
         };
+        this.viewer = null;
     }
 
     async loadData() {
@@ -463,12 +632,12 @@ class AnnouncementViewPage extends Component {
 
     getTypeLabel(type) {
         const types = {
-            'info': { label: '信息', cls: 'tag-info' },
-            'success': { label: '成功', cls: 'tag-primary' },
-            'warning': { label: '警告', cls: 'tag-warning' },
-            'error': { label: '错误', cls: 'tag-danger' }
+            'info': { label: '信息', cls: 'tag-info', icon: 'ri-information-line' },
+            'success': { label: '成功', cls: 'tag-primary', icon: 'ri-checkbox-circle-line' },
+            'warning': { label: '警告', cls: 'tag-warning', icon: 'ri-error-warning-line' },
+            'error': { label: '错误', cls: 'tag-danger', icon: 'ri-close-circle-line' }
         };
-        return types[type] || { label: type, cls: 'tag-default' };
+        return types[type] || { label: type, cls: 'tag-default', icon: 'ri-notification-line' };
     }
 
     render() {
@@ -482,9 +651,11 @@ class AnnouncementViewPage extends Component {
             return `
                 <div class="page fade-in">
                     <div class="empty-state" style="padding-top: 80px">
-                        <div class="empty-icon">🔍</div>
+                        <div class="empty-icon"><i class="ri-file-warning-line"></i></div>
                         <p class="empty-text">公告不存在或已删除</p>
-                        <button class="btn btn-primary" onclick="Router.push('/announcement/list')">返回列表</button>
+                        <button class="btn btn-primary" onclick="Router.push('/announcement/list')">
+                            <i class="ri-arrow-left-line"></i> 返回列表
+                        </button>
                     </div>
                 </div>
             `;
@@ -498,22 +669,37 @@ class AnnouncementViewPage extends Component {
                     <div>
                         <h1 class="page-title">${announcement.title ? Utils.escapeHtml(announcement.title) : '未命名公告'}</h1>
                         <p class="page-desc">
-                            <span class="tag ${typeInfo.cls}" style="margin-right: 8px">${typeInfo.label}</span>
-                            ${announcement.is_published ? '已发布' : '未发布'} ·
-                            ${Utils.timeAgo(announcement.updated_at || announcement.created_at)} ·
-                            浏览 ${announcement.views} 次
+                            <span class="tag ${typeInfo.cls}" style="margin-right: 8px">
+                                <i class="${typeInfo.icon}"></i> ${typeInfo.label}
+                            </span>
+                            <span style="margin-right: 12px;">
+                                <i class="ri-flag-${announcement.is_published ? 'fill' : 'line'}"></i>
+                                ${announcement.is_published ? '已发布' : '未发布'}
+                            </span>
+                            <span style="margin-right: 12px;">
+                                <i class="ri-time-line"></i>
+                                ${Utils.timeAgo(announcement.updated_at || announcement.created_at)}
+                            </span>
+                            <span>
+                                <i class="ri-eye-line"></i>
+                                浏览 ${announcement.views} 次
+                            </span>
                         </p>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-primary" id="editBtn">编辑公告</button>
+                        <button class="btn btn-secondary" id="backBtn">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
+                        <button class="btn btn-primary" id="editBtn">
+                            <i class="ri-edit-line"></i> 编辑公告
+                        </button>
                     </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-body">
-                        <div class="markdown-body" style="white-space: pre-wrap; line-height:1.6;">
-                            ${Utils.escapeHtml(announcement.content || '')}
-                        </div>
+                        <!-- 使用专门的 div 作为查看器容器 -->
+                        <div id="announcement-viewer" class="markdown-body" style="min-height: 200px;"></div>
                     </div>
                 </div>
             </div>
@@ -521,8 +707,32 @@ class AnnouncementViewPage extends Component {
     }
 
     afterMount() {
-        this.loadData();
+        this.loadData().then(() => {
+            this.initViewer();
+        });
         this.bindEvents();
+    }
+
+    async initViewer() {
+        try {
+            // 动态加载 Markdown 资源
+            await ResourceLoader.loadCSS('/static/css/pages/markdown/markdown_wysiwyg.css');
+            await ResourceLoader.loadJS('/static/js/pages/markdown/markdown_wysiwyg.js');
+
+            if (window.MarkdownWysiwygEditor) {
+                const viewerEl = this.container.querySelector('#announcement-viewer');
+                if (viewerEl && this.state.announcement) {
+                    // 初始化为只读模式
+                    this.viewer = new window.MarkdownWysiwygEditor(viewerEl, {
+                        initialValue: this.state.announcement.content || '',
+                        readOnly: true,
+                        placeholder: ''
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('加载查看器失败', e);
+        }
     }
 
     afterUpdate() {
@@ -543,10 +753,3 @@ class AnnouncementViewPage extends Component {
         }
     }
 }
-
-
-
-
-
-
-

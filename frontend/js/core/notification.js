@@ -11,18 +11,17 @@ const SystemNotification = {
      * @param {string} url 跳转链接 (可选)
      */
     async push(title, content = '', type = 'info', url = null) {
-        // 显示即时 Toast 消息
-        // 映射 type 到 Toast 支持的方法
-        const toastType = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
-
-        // 如果是 success 类型，且没有具体 content，只显示 title
-        const toastMsg = content ? `${title}: ${content}` : title;
-        Toast[toastType](toastMsg);
-
-        // 2. 持久化到消息中心
+        // 1. 持久化到消息中心
+        // 注意：不再直接显示 Toast，而是等待后端 WebSocket 推送，避免双重通知
         try {
             const user = Store.get('user');
-            if (!user) return; // 未登录不保存
+            if (!user) {
+                // 未登录情况下，回退到直接显示 Toast
+                const toastType = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
+                const toastMsg = content ? `${title}: ${content}` : title;
+                Toast[toastType](toastMsg);
+                return;
+            }
 
             // 发送给当前用户自己
             await NotificationApi.create({
@@ -35,10 +34,13 @@ const SystemNotification = {
 
             // 3. 更新未读计数
             // 后端 WebSocket 或轮询逻辑会更新 Store，这里也可以乐观更新
-            this.refreshUnreadCount();
+            // this.refreshUnreadCount(); 
 
         } catch (e) {
             console.warn('保存通知失败', e);
+            // 失败时降级显示 Toast
+            const toastType = type === 'error' ? 'error' : 'info';
+            Toast[toastType](title + (content ? `: ${content}` : ''));
         }
     },
 

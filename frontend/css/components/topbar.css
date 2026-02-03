@@ -471,6 +471,8 @@
     cursor: pointer;
     transition: background 0.2s;
     align-items: flex-start;
+    position: relative;
+    /* 为绝对定位按钮准备 */
 }
 
 .msg-item:hover {
@@ -493,6 +495,8 @@
 .msg-body {
     flex: 1;
     overflow: hidden;
+    padding-right: 4px;
+    /* 防止内容过于贴近右侧 */
 }
 
 .msg-title {
@@ -511,6 +515,53 @@
     font-size: 11px;
     color: var(--color-text-tertiary);
 }
+
+/* 消息操作按钮样式 */
+.msg-actions {
+    display: none;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    gap: 4px;
+    z-index: 5;
+    background: inherit;
+    /* 继承背景，或者半透明 */
+    padding-left: 8px;
+    /* 增加一点间隔 */
+    /* 添加一点背景遮罩效果让按钮更突出，如果是未读状态背景是蓝色的，这里继承就好 */
+}
+
+.msg-item:hover .msg-actions {
+    display: flex;
+}
+
+.msg-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.msg-action-btn:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+.msg-action-btn.delete:hover {
+    background: #ff3b30;
+    color: white;
+}
+
 
 .msg-footer {
     padding: 10px;

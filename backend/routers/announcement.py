@@ -14,7 +14,7 @@ from core.database import get_db
 from core.security import get_current_user, require_admin, TokenData
 from models.announcement import Announcement
 from schemas.announcement import (
-    AnnouncementCreate, AnnouncementUpdate, AnnouncementInfo, AnnouncementListItem
+    AnnouncementCreate, AnnouncementUpdate, AnnouncementInfo, AnnouncementListItem, BatchOperationRequest
 )
 from schemas.response import success, paginate
 
@@ -90,14 +90,29 @@ async def list_announcements(
     return paginate(items, total, page, size)
 
 
+def _generate_summary(content: str, max_length: int = 100) -> str:
+    """生成内容摘要，去除 Markdown 格式"""
+    import re
+    # 去除 Markdown 标记
+    text = re.sub(r'[#*`~>\[\]\(\)\-_|]', '', content)
+    text = re.sub(r'\n+', ' ', text)
+    text = text.strip()
+    if len(text) > max_length:
+        return text[:max_length] + '...'
+    return text
+
+
 def _enrich_announcement(a: Announcement, schema):
-    """填充公告的作者名称等关联数据"""
+    """填充公告的作者名称和摘要等关联数据"""
     data = schema.model_validate(a).model_dump()
     if a.author:
         data["author_name"] = a.author.nickname or a.author.username
     else:
         # 如果是作者 ID 为 0 或 1(通常是系统管理员)，或者作者被删除了
         data["author_name"] = "管理员"
+    # 为列表项生成摘要
+    if schema == AnnouncementListItem and a.content:
+        data["summary"] = _generate_summary(a.content)
     return data
 
 
@@ -210,21 +225,52 @@ async def view_announcement(
     announcement_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """增加公告浏览次数（公开接口）"""
-    result = await db.execute(
-        select(Announcement).where(Announcement.id == announcement_id)
-    )
-    announcement = result.scalar_one_or_none()
-    if not announcement:
-        return success(None)
-    
-    announcement.views += 1
+    """增加公告浏览次数（公开接口，使用原子操作避免并发问题）"""
+    from sqlalchemy import update
+    stmt = update(Announcement).where(
+        Announcement.id == announcement_id
+    ).values(views=Announcement.views + 1)
+    await db.execute(stmt)
     await db.commit()
     return success(None)
 
 
-
-
+@router.post("/batch")
+async def batch_operation(
+    data: BatchOperationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(require_admin())
+):
+    """批量操作公告（仅系统管理员）"""
+    from sqlalchemy import update, delete
+    
+    if data.action == "delete":
+        # 批量删除
+        stmt = delete(Announcement).where(Announcement.id.in_(data.ids))
+        result = await db.execute(stmt)
+        await db.commit()
+        return success({"affected": result.rowcount})
+    
+    elif data.action == "publish":
+        # 批量发布
+        stmt = update(Announcement).where(
+            Announcement.id.in_(data.ids)
+        ).values(is_published=True)
+        result = await db.execute(stmt)
+        await db.commit()
+        return success({"affected": result.rowcount})
+    
+    elif data.action == "unpublish":
+        # 批量取消发布
+        stmt = update(Announcement).where(
+            Announcement.id.in_(data.ids)
+        ).values(is_published=False)
+        result = await db.execute(stmt)
+        await db.commit()
+        return success({"affected": result.rowcount})
+    
+    else:
+        raise HTTPException(status_code=400, detail="不支持的操作类型")
 
 
 

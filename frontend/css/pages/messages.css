@@ -12,8 +12,9 @@
     align-items: flex-start;
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
-    transition: background 0.2s;
+    transition: all 0.2s ease;
     gap: 16px;
+    position: relative;
 }
 
 .notification-item:last-child {
@@ -45,6 +46,8 @@
 
 .notification-content {
     flex: 1;
+    min-width: 0;
+    /* 防止子元素溢出撑开 */
 }
 
 .notification-header {
@@ -52,11 +55,19 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
+    flex-wrap: wrap;
+    /* 允许小屏幕换行 */
 }
 
 .notification-title {
     font-size: 15px;
     color: var(--text-primary);
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.notification-icon i {
+    font-size: 18px;
 }
 
 .notification-message {
@@ -64,6 +75,8 @@
     color: var(--text-secondary);
     line-height: 1.5;
     margin-bottom: 8px;
+    word-break: break-word;
+    /* 防止长文本溢出 */
 }
 
 .notification-meta {
@@ -76,8 +89,61 @@
     gap: 8px;
     opacity: 0;
     transition: opacity 0.2s;
+    /* 默认 PC 端逻辑 */
 }
 
-.notification-item:hover .notification-actions {
-    opacity: 1;
+/* PC 端悬停显示 */
+@media (min-width: 769px) {
+    .notification-item:hover .notification-actions {
+        opacity: 1;
+    }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .notification-item {
+        padding: 12px 16px;
+        gap: 12px;
+    }
+
+    .notification-icon {
+        min-width: 28px;
+        height: 28px;
+        font-size: 20px;
+    }
+
+    .notification-icon i {
+        font-size: 16px;
+    }
+
+    .notification-title {
+        font-size: 14px;
+    }
+
+    .notification-message {
+        font-size: 13px;
+    }
+
+    /* 移动端按钮常显，并调整位置 */
+    .notification-actions {
+        opacity: 1;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+    }
+
+    .notification-header {
+        padding-right: 60px;
+        /* 为绝对定位的按钮留出空间 */
+    }
+
+    /* 按钮适当缩小 */
+    .notification-actions .btn-icon {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }

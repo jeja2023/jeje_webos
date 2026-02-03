@@ -1,67 +1,210 @@
 /**
  * 公告管理页面样式
+ * 优化版本：精简未使用样式，添加批量操作和选中状态样式
  */
 
-.announcement-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.announcement-item {
-    padding: 16px;
-    background: var(--bg-secondary);
+/* 编辑器容器 */
+.editor-container-wrapper {
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.announcement-item:hover {
-    border-color: var(--color-primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.announcement-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.announcement-meta {
-    font-size: 12px;
-    color: var(--text-muted);
-    display: flex;
-    gap: 16px;
-}
-
-/* 公告详情 */
-.announcement-view {
-    padding: 24px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    min-height: 400px;
     background: var(--bg-primary);
 }
 
-.announcement-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
+/* 搜索框组合 */
+.search-group {
+    display: flex;
+    gap: 8px;
 }
 
-.announcement-content {
-    line-height: 1.8;
-    font-size: 15px;
-    color: var(--text-primary);
+.search-group .form-input {
+    flex: 1;
 }
 
-/* 状态样式 */
-.announcement-unread {
-    border-left: 4px solid var(--color-primary);
+/* 行选中状态 */
+.row-selected {
+    background: var(--color-primary-light, rgba(59, 130, 246, 0.08)) !important;
 }
 
-.announcement-important {
-    border-left: 4px solid var(--color-error);
+.row-selected:hover {
+    background: var(--color-primary-light, rgba(59, 130, 246, 0.12)) !important;
+}
+
+/* 复选框样式优化 */
+.table th input[type="checkbox"],
+.table td input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+/* 批量操作工具栏 */
+.batch-toolbar {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 成功按钮样式 */
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* 摘要文本样式 */
+.text-muted {
+    color: var(--text-muted);
+}
+
+/* 公告类型标签配色优化 */
+.tag-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15));
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.tag-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15));
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.tag-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* 表格操作按钮优化 */
+.table .btn-icon {
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.table tr:hover .btn-icon {
+    opacity: 1;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .batch-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .batch-toolbar .btn {
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .search-group {
+        flex-direction: column;
+    }
+
+    /* 移动端卡片式表格 */
+    .table thead {
+        display: none;
+    }
+
+    .table tr {
+        display: block;
+        margin-bottom: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border: none;
+        border-bottom: 1px dashed var(--border-color);
+    }
+
+    .table td:last-child {
+        border-bottom: none;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    /* 为每一列添加标签（伪元素） */
+    .table td:nth-of-type(1)::before {
+        content: "选择";
+        font-weight: bold;
+        color: var(--text-muted);
+        display: none;
+    }
+
+    /* 移动端通常不需要批量选择 */
+    .table td:nth-of-type(2)::before {
+        content: "标题";
+        font-weight: bold;
+        color: var(--text-muted);
+        margin-right: 8px;
+    }
+
+    .table td:nth-of-type(3) {
+        display: none;
+    }
+
+    /* 移动端隐藏摘要 */
+    .table td:nth-of-type(4)::before {
+        content: "类型";
+        font-weight: bold;
+        color: var(--text-muted);
+    }
+
+    .table td:nth-of-type(5)::before {
+        content: "状态";
+        font-weight: bold;
+        color: var(--text-muted);
+    }
+
+    .table td:nth-of-type(6)::before {
+        content: "浏览";
+        font-weight: bold;
+        color: var(--text-muted);
+    }
+
+    .table td:nth-of-type(7)::before {
+        content: "发布时间";
+        font-weight: bold;
+        color: var(--text-muted);
+    }
+
+    /* 移动端隐藏第一列（复选框），因为操作不便 */
+    .table td:first-child {
+        display: none;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .card-body {
+        grid-template-columns: 1fr !important;
+    }
 }

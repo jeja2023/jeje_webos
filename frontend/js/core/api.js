@@ -509,13 +509,15 @@ const ExportApi = {
 
 // 公告 API
 const AnnouncementApi = {
-    list: (params) => Api.get('/announcements', params),
+    list: (page, size, filters = {}) => Api.get('/announcements', { page, size, ...filters }),
     getPublished: (limit) => Api.get('/announcements/published', { limit }),
     get: (id) => Api.get(`/announcements/${id}`),
     create: (data) => Api.post('/announcements', data),
     update: (id, data) => Api.put(`/announcements/${id}`, data),
     delete: (id) => Api.delete(`/announcements/${id}`),
-    view: (id) => Api.post(`/announcements/${id}/view`)
+    view: (id) => Api.post(`/announcements/${id}/view`),
+    // 批量操作：action 可选值 delete, publish, unpublish
+    batch: (ids, action) => Api.post('/announcements/batch', { ids, action })
 };
 
 // 暴露到全局对象

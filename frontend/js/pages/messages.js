@@ -179,7 +179,7 @@ class NotificationsPage extends Component {
         `;
 
         const { overlay, close } = Modal.show({
-            title: '📤 发送通知',
+            title: '<i class="ri-send-plane-line"></i> 发送通知',
             content,
             footer: `
                 <button class="btn btn-secondary" data-close>取消</button>
@@ -244,18 +244,18 @@ class NotificationsPage extends Component {
 
     getTypeIcon(type) {
         const icons = {
-            'info': 'ℹ️',
-            'success': '✅',
-            'warning': '⚠️',
-            'error': '❌'
+            'info': '<i class="ri-information-line"></i>',
+            'success': '<i class="ri-checkbox-circle-line"></i>',
+            'warning': '<i class="ri-error-warning-line"></i>',
+            'error': '<i class="ri-close-circle-line"></i>'
         };
-        return icons[type] || 'ℹ️';
+        return icons[type] || '<i class="ri-notification-line"></i>';
     }
 
     getTypeTag(type) {
         const classes = {
             'info': 'tag-info',
-            'success': 'tag-primary',
+            'success': 'tag-success',
             'warning': 'tag-warning',
             'error': 'tag-danger'
         };
@@ -291,10 +291,10 @@ class NotificationsPage extends Component {
                     ${this.isAdmin ? `
                         <div style="display:flex;gap:8px;">
                             <button class="btn btn-primary" id="openSendMsgModal">
-                                📤 发送通知
+                                <i class="ri-send-plane-line"></i> 发送通知
                             </button>
                             <button class="btn btn-secondary" id="exportMsgBtn">
-                                📤 导出列表
+                                <i class="ri-download-line"></i> 导出列表
                             </button>
                         </div>
                     ` : ''}
@@ -312,8 +312,8 @@ class NotificationsPage extends Component {
                                 </button>
                             </div>
                             <div style="display: flex; gap: 8px;">
-                                <button class="btn btn-secondary" id="markAllRead">✓ 全部已读</button>
-                                <button class="btn btn-ghost" id="deleteAllNotif">🗑️ 清空</button>
+                                <button class="btn btn-secondary" id="markAllRead"><i class="ri-check-double-line"></i> 全部已读</button>
+                                <button class="btn btn-ghost" id="deleteAllNotif"><i class="ri-delete-bin-line"></i> 清空</button>
                             </div>
                         </div>
                     </div>
@@ -322,7 +322,7 @@ class NotificationsPage extends Component {
                 <div class="card">
                     ${loading ? '<div class="loading"></div>' : messages.length === 0 ? `
                         <div class="empty-state" style="padding: 60px 0;">
-                            <div class="empty-icon">✉️</div>
+                            <div class="empty-icon"><i class="ri-notification-off-line" style="font-size: 48px; color: var(--text-muted);"></i></div>
                             <p class="empty-text">暂无通知</p>
                         </div>
                     ` : `
@@ -337,14 +337,18 @@ class NotificationsPage extends Component {
                                         </div>
                                         <p class="notification-message">${Utils.escapeHtml(n.content || '')}</p>
                                         <div class="notification-meta">
-                                            <span>${Utils.formatDate(n.created_at)}</span>
+                                            <span>${n.sender_name ? `<i class="ri-user-line"></i> ${Utils.escapeHtml(n.sender_name)} · ` : ''}${Utils.formatDate(n.created_at)}</span>
                                         </div>
                                     </div>
                                     <div class="notification-actions">
                                         ${!n.is_read ? `
-                                            <button class="btn btn-ghost btn-sm" data-mark="${n.id}" title="标记已读">✓</button>
+                                            <button class="btn btn-ghost btn-sm btn-icon" data-mark="${n.id}" title="标记已读">
+                                                <i class="ri-check-line"></i>
+                                            </button>
                                         ` : ''}
-                                        <button class="btn btn-ghost btn-sm" data-delete="${n.id}" title="删除">🗑️</button>
+                                        <button class="btn btn-ghost btn-sm btn-icon" data-delete="${n.id}" title="删除">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -385,7 +389,7 @@ class NotificationsPage extends Component {
             });
 
             // 清空
-            this.delegate('click', '#deleteAllMsg', () => {
+            this.delegate('click', '#deleteAllNotif', () => {
                 this.handleDeleteAll();
             });
 

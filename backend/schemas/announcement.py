@@ -52,6 +52,7 @@ class AnnouncementListItem(BaseModel):
     """公告列表项"""
     id: int
     title: str
+    summary: Optional[str] = None  # 内容摘要
     type: str
     author_id: int
     author_name: Optional[str] = None
@@ -64,6 +65,12 @@ class AnnouncementListItem(BaseModel):
     updated_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class BatchOperationRequest(BaseModel):
+    """批量操作请求"""
+    ids: list[int] = Field(..., min_length=1, description="公告ID列表")
+    action: str = Field(..., description="操作类型：delete, publish, unpublish")
 
 
 

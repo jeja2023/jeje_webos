@@ -194,7 +194,35 @@ class Modal {
     }
 
     // 静态快捷方法
-    static confirm(title, message, onConfirmCallback) {
+    static confirm(titleOrOptions, message, onConfirmCallback) {
+        // 1. 支持对象参数形式: Modal.confirm({ title, content, type... })
+        if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
+            const options = titleOrOptions;
+            return new Promise((resolve) => {
+                new Modal({
+                    title: options.title || '确认',
+                    content: options.content || options.message || '',
+                    ...options, // 传递其他参数，如 width, footer 等
+                    onConfirm: async () => {
+                        if (typeof options.onConfirm === 'function') {
+                            await options.onConfirm();
+                        }
+                        resolve(true);
+                        return true;
+                    },
+                    onCancel: () => {
+                        if (typeof options.onCancel === 'function') {
+                            options.onCancel();
+                        }
+                        resolve(false);
+                    }
+                }).show();
+            });
+        }
+
+        // 2. 原有逻辑: Modal.confirm(title, message, callback)
+        const title = titleOrOptions;
+
         // 如果提供了回调函数，直接使用回调模式
         if (typeof onConfirmCallback === 'function') {
             new Modal({

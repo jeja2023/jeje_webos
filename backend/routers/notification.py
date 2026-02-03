@@ -7,7 +7,7 @@ from typing import Optional
 from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy import select, func, desc, and_, or_, update, delete
 
 from core.database import get_db
 from core.security import get_current_user, require_admin, TokenData
@@ -267,24 +267,24 @@ async def mark_all_as_read(
     """
     标记所有通知为已读
     """
-    result = await db.execute(
-        select(Notification).where(
+    now = get_beijing_time()
+    
+    # 批量更新：不需要先查再更，直接 update
+    stmt = (
+        update(Notification)
+        .where(
             and_(
                 Notification.user_id == current_user.user_id,
                 Notification.is_read == False
             )
         )
+        .values(is_read=True, read_at=now)
     )
-    notifications = result.scalars().all()
     
-    now = get_beijing_time()
-    for notification in notifications:
-        notification.is_read = True
-        notification.read_at = now
-    
+    result = await db.execute(stmt)
     await db.commit()
     
-    return success({"count": len(notifications)}, f"已标记 {len(notifications)} 条通知为已读")
+    return success({"count": result.rowcount}, f"已标记 {result.rowcount} 条通知为已读")
 
 
 @router.delete("/{notification_id}")
@@ -296,22 +296,19 @@ async def delete_notification(
     """
     删除通知
     """
-    result = await db.execute(
-        select(Notification).where(
-            and_(
-                Notification.id == notification_id,
-                Notification.user_id == current_user.user_id
-            )
+    # 直接删除
+    stmt = delete(Notification).where(
+        and_(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.user_id
         )
     )
-    notification = result.scalar_one_or_none()
     
-    if not notification:
-        raise HTTPException(status_code=404, detail="通知不存在")
-    
-    await db.delete(notification)
-    await db.flush()
+    result = await db.execute(stmt)
     await db.commit()
+    
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="通知不存在")
     
     return success(message="通知已删除")
 
@@ -325,21 +322,17 @@ async def delete_all_notifications(
     """
     删除所有通知（可筛选已读/未读）
     """
-    query = select(Notification).where(Notification.user_id == current_user.user_id)
+    where_clause = [Notification.user_id == current_user.user_id]
     
     if is_read is not None:
-        query = query.where(Notification.is_read == is_read)
+        where_clause.append(Notification.is_read == is_read)
+        
+    stmt = delete(Notification).where(and_(*where_clause))
     
-    result = await db.execute(query)
-    notifications = result.scalars().all()
-    
-    for notification in notifications:
-        await db.delete(notification)
-    
+    result = await db.execute(stmt)
     await db.commit()
-    await db.flush()
     
-    return success({"count": len(notifications)}, f"已删除 {len(notifications)} 条通知")
+    return success({"count": result.rowcount}, f"已删除 {result.rowcount} 条通知")
 
 
 

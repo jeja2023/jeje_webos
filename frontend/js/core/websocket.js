@@ -36,6 +36,9 @@ const WebSocketClient = {
                 this.reconnectAttempts = 0;
                 this.startHeartbeat();
                 this.emit('connected');
+
+                // 请求浏览器通知权限
+                this.requestNotificationPermission();
             };
 
             this.ws.onmessage = (event) => {
@@ -194,6 +197,44 @@ const WebSocketClient = {
     },
 
     /**
+     * 请求浏览器通知权限
+     */
+    requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                Config.log('浏览器通知权限:', permission);
+            });
+        }
+    },
+
+    /**
+     * 显示浏览器原生通知
+     */
+    showBrowserNotification(title, body, options = {}) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+                body: body,
+                icon: '/static/images/logo.png',
+                tag: options.tag || `notification-${Date.now()}`,
+                requireInteraction: options.requireInteraction || false
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                if (options.url && window.Router) {
+                    Router.navigate(options.url);
+                } else {
+                    Router.navigate('/notifications');
+                }
+                notification.close();
+            };
+
+            // 5秒后自动关闭
+            setTimeout(() => notification.close(), 5000);
+        }
+    },
+
+    /**
      * 处理通知消息
      */
     async handleNotification(data) {
@@ -226,6 +267,20 @@ const WebSocketClient = {
         };
 
         (typeMap[data.type] || typeMap.info)();
+
+        // 对于重要通知（警告、错误），显示浏览器原生通知
+        if (data.type === 'warning' || data.type === 'error') {
+            const iconPrefix = data.type === 'warning' ? '⚠️ ' : '❌ ';
+            this.showBrowserNotification(
+                iconPrefix + (data.title || '系统通知'),
+                data.content || '',
+                {
+                    tag: `notification-${data.id || Date.now()}`,
+                    url: data.action_url,
+                    requireInteraction: data.type === 'error'
+                }
+            );
+        }
 
         // 触发通知事件（其他组件可以监听此事件）
         this.emit('notification', data);

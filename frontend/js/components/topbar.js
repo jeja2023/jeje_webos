@@ -136,7 +136,7 @@ class TopBarComponent extends Component {
                     
                     <!-- 胶囊 2: 消息中心 -->
                     <div class="status-pill icon-pill" id="messageBtn" title="系统消息">
-                        <span class="status-icon">🔔</span>
+                        <span class="status-icon"><i class="ri-notification-3-line"></i></span>
                         ${totalBadge > 0 ? `
                             <span class="notification-badge">
                                 ${totalBadge > 99 ? '99+' : totalBadge}
@@ -145,6 +145,11 @@ class TopBarComponent extends Component {
 
                         <!-- 下拉面板 -->
                         <div class="user-menu-dropdown message-dropdown" id="messageDropdown" style="width: 320px; right: -60px;">
+                             <div class="msg-header-actions" style="padding: 0 12px 8px; display: flex; justify-content: flex-end; border-bottom: 1px solid var(--border-color); margin-bottom: 5px;">
+                                <button class="btn btn-ghost btn-sm" id="quickMarkReadBtn" title="全部已读" style="font-size: 12px;">
+                                    <i class="ri-check-double-line"></i> 全部已读
+                                </button>
+                            </div>
                             <div class="msg-tabs">
                                 <div class="msg-tab ${msgActiveTab === 'message' ? 'active' : ''}" data-tab="message">
                                     消息 ${unreadMessages > 0 ? `<span class="badge-dot"></span>` : ''}
@@ -200,28 +205,40 @@ class TopBarComponent extends Component {
     renderListItem(item, tab) {
         if (tab === 'message') {
             // 根据类型显示不同图标
-            let icon = '✉️';
-            let iconColor = ''; // 既然是 web component，直接用 style 或 class 吧
+            let iconClass = 'ri-notification-line';
+            let iconStyle = '';
 
             // 兼容 notification.js 中的类型：info, success, warning, error
-            if (item.type === 'success') { icon = '✅'; iconColor = 'color: var(--color-success);'; }
-            else if (item.type === 'warning') { icon = '⚠️'; iconColor = 'color: var(--color-warning);'; }
-            else if (item.type === 'error') { icon = '❌'; iconColor = 'color: var(--color-error);'; }
-            else if (item.type === 'info' && item.sender_id === item.user_id) { icon = '🔔'; }
+            if (item.type === 'success') { iconClass = 'ri-checkbox-circle-fill'; iconStyle = 'color: var(--color-success);'; }
+            else if (item.type === 'warning') { iconClass = 'ri-error-warning-fill'; iconStyle = 'color: var(--color-warning);'; }
+            else if (item.type === 'error') { iconClass = 'ri-close-circle-fill'; iconStyle = 'color: var(--color-error);'; }
+            else if (item.type === 'info' && item.sender_id === item.user_id) { iconClass = 'ri-notification-fill'; }
 
             return `
-                <div class="msg-item ${item.is_read ? '' : 'unread'}" onclick="Router.push('/notifications')">
-                    <div class="msg-icon" style="${iconColor}">${icon}</div>
+                <div class="msg-item ${item.is_read ? '' : 'unread'}" data-id="${item.id}" onclick="Router.push('/notifications')">
+                    <div class="msg-icon" style="${iconStyle}">
+                        <i class="${iconClass}"></i>
+                    </div>
                     <div class="msg-body">
                         <div class="msg-title">${Utils.escapeHtml(item.title)}</div>
                         <div class="msg-time">${Utils.timeAgo(item.created_at)}</div>
+                    </div>
+                    <div class="msg-actions">
+                         ${!item.is_read ? `
+                            <button class="msg-action-btn" data-action="read" title="标记已读">
+                                <i class="ri-check-line"></i>
+                            </button>
+                         ` : ''}
+                        <button class="msg-action-btn delete" data-action="delete" title="删除">
+                            <i class="ri-close-line"></i>
+                        </button>
                     </div>
                 </div>
             `;
         } else if (tab === 'announcement') {
             return `
                 <div class="msg-item" onclick="Router.push('/announcement/view/${item.id}')">
-                    <div class="msg-icon">📢</div>
+                    <div class="msg-icon"><i class="ri-megaphone-fill" style="color: var(--color-primary)"></i></div>
                     <div class="msg-body">
                         <div class="msg-title">${Utils.escapeHtml(item.title)}</div>
                         <div class="msg-time">${Utils.timeAgo(item.created_at)}</div>
@@ -231,7 +248,7 @@ class TopBarComponent extends Component {
         } else if (tab === 'pending') {
             return `
                 <div class="msg-item" onclick="Router.push('/users/pending')">
-                    <div class="msg-icon">👤</div>
+                    <div class="msg-icon"><i class="ri-user-follow-line" style="color: var(--color-info)"></i></div>
                     <div class="msg-body">
                         <div class="msg-title">新用户注册: ${Utils.escapeHtml(item.username)}</div>
                         <div class="msg-time">${Utils.timeAgo(item.created_at)}</div>
@@ -279,7 +296,7 @@ class TopBarComponent extends Component {
 
             if (messageBtn && messageDropdown) {
                 messageBtn.onclick = (e) => {
-                    // 如果点击的是内部元素（如Tab），不要切换显示状态
+                    // 如果点击的是内部元素（如Tab或操作按钮），不要切换显示状态
                     if (e.target.closest('.msg-tab') || e.target.closest('.msg-item') || e.target.closest('.msg-footer')) {
                         return;
                     }
@@ -296,6 +313,51 @@ class TopBarComponent extends Component {
                         messageDropdown.classList.remove('show');
                     }
                 };
+
+                // 绑定消息操作事件代理 (删除/已读)
+                messageDropdown.addEventListener('click', async (e) => {
+                    const btn = e.target.closest('.msg-action-btn');
+                    if (!btn) return;
+
+                    e.stopPropagation(); // 阻止冒泡，防止触发跳转或关闭下拉
+
+                    const item = btn.closest('.msg-item');
+                    if (!item) return;
+
+                    const id = item.dataset.id;
+                    const action = btn.dataset.action;
+
+                    // 防止重复点击
+                    if (btn.disabled) return;
+                    btn.disabled = true;
+
+                    try {
+                        if (action === 'read') {
+                            await NotificationApi.markRead(id);
+                            // 刷新未读数
+                            const newCount = Math.max(0, this.state.unreadMessages - 1);
+                            Store.set('unreadMessages', newCount);
+                            // 局部更新 UI: 移除 "unread" 类和 "已读" 按钮
+                            item.classList.remove('unread');
+                            btn.remove();
+                            Toast.success('已标记为已读');
+                        } else if (action === 'delete') {
+                            await NotificationApi.delete(id);
+                            // 刷新列表和计数
+                            this.loadMessageData(this.state.msgActiveTab);
+                            // 如果是未读的，还要减数
+                            if (item.classList.contains('unread')) {
+                                const newCount = Math.max(0, this.state.unreadMessages - 1);
+                                Store.set('unreadMessages', newCount);
+                            }
+                            Toast.success('删除成功');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        Toast.error('操作失败');
+                        btn.disabled = false;
+                    }
+                });
 
                 // Tab 切换逻辑在下方统一处理
             }
@@ -404,6 +466,22 @@ class TopBarComponent extends Component {
             // 退出登录
             const btnLogout = this.container.querySelector('#btnLogout');
             if (btnLogout) {
+                // 快速全部已读
+                const quickMarkReadBtn = messageDropdown.querySelector('#quickMarkReadBtn');
+                if (quickMarkReadBtn) {
+                    quickMarkReadBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        try {
+                            await NotificationApi.markAllRead();
+                            Toast.success('已全部标记为已读');
+                            this.loadMessageData('message');
+                            Store.set('unreadMessages', 0);
+                        } catch (e) {
+                            Toast.error('操作失败');
+                        }
+                    }
+                }
+
                 btnLogout.onclick = (e) => {
                     e.stopPropagation();
                     this.handleLogout();
