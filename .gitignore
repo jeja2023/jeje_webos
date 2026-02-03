@@ -60,6 +60,12 @@ storage/backups/modules/*
 !storage/backups/modules/.gitkeep
 assets/
 
+# 模块用户数据 (绝对不能提交)
+backend/storage/modules/*/outputs/
+backend/storage/modules/*/uploads/
+storage/modules/*/outputs/
+storage/modules/*/uploads/
+
 # 数据库
 *.db
 *.sqlite3
