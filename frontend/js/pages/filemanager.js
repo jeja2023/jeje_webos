@@ -149,16 +149,22 @@ class FileManagerPage extends Component {
                         <button class="btn btn-secondary btn-sm" id="btnNewFolder">
                             <i class="ri-folder-add-line"></i> 新建文件夹
                         </button>
-                        <button class="btn btn-primary btn-sm" id="btnUpload">
-                            <i class="ri-upload-cloud-2-line"></i> 上传文件
-                        </button>
-                        <button class="btn btn-info btn-sm" id="btnDownload" ${!this.canDownload() ? 'disabled' : ''}>
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm" id="btnUpload">
+                                <i class="ri-upload-cloud-2-line"></i> 上传文件
+                            </button>
+                            <button class="btn btn-primary btn-sm" id="btnUploadFolder" title="上传整个文件夹">
+                                <i class="ri-folder-upload-line"></i> 上传文件夹
+                            </button>
+                        </div>
+                        <button class="btn btn-info btn-sm" id="btnDownload" ${!this.canDownloadAny() ? 'disabled' : ''}>
                             <i class="ri-download-line"></i> 下载
                         </button>
                         <button class="btn btn-danger btn-sm" id="btnDelete" ${selectedItems.length === 0 ? 'disabled' : ''}>
                             <i class="ri-delete-bin-line"></i> 删除
                         </button>
                         <input type="file" id="fileInput" multiple style="display: none;">
+                        <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
                     </div>
                 </div>
                 
@@ -465,16 +471,29 @@ class FileManagerPage extends Component {
             // 新建文件夹
             this.delegate('click', '#btnNewFolder', () => this.createFolder());
 
-            // 上传按钮
+            // 上传文件按钮
             this.delegate('click', '#btnUpload, #btnUploadEmpty', () => {
                 this.$('#fileInput')?.click();
+            });
+
+            // 上传文件夹按钮
+            this.delegate('click', '#btnUploadFolder', () => {
+                this.$('#folderInput')?.click();
+            });
+
+            // 文件夹选择
+            this.delegate('change', '#folderInput', (e) => {
+                if (e.target.files.length > 0) {
+                    this.uploadFolder(e.target.files);
+                    e.target.value = '';
+                }
             });
 
             // 删除按钮
             this.delegate('click', '#btnDelete', () => this.deleteItems());
 
-            // 下载按钮
-            this.delegate('click', '#btnDownload', () => this.downloadFile());
+            // 下载按钮（支持文件和文件夹）
+            this.delegate('click', '#btnDownload', () => this.downloadSelected());
 
             // 列表视图的操作按钮委托
             this.delegate('click', '[data-action="download"]', (e, t) => {
@@ -883,12 +902,38 @@ class FileManagerPage extends Component {
             Toast.error(`删除失败: ${err.message || '网络错误'}`);
         }
     }
+    // 检查是否可以下载（旧方法，保持兼容）
     canDownload() {
         const { selectedItems } = this.state;
         if (selectedItems.length !== 1) return false;
         return selectedItems[0].startsWith('file-');
     }
 
+    // 检查是否可以下载（支持文件和文件夹）
+    canDownloadAny() {
+        const { selectedItems } = this.state;
+        if (selectedItems.length !== 1) return false;
+        // 支持文件或文件夹
+        return selectedItems[0].startsWith('file-') || selectedItems[0].startsWith('folder-');
+    }
+
+    // 下载选中项（文件或文件夹）
+    downloadSelected() {
+        const { selectedItems } = this.state;
+        if (selectedItems.length !== 1) {
+            Toast.warning('请选择一个文件或文件夹进行下载');
+            return;
+        }
+
+        const [type, id] = selectedItems[0].split('-');
+        if (type === 'file') {
+            this.downloadFile(id);
+        } else if (type === 'folder') {
+            this.downloadFolder(id);
+        }
+    }
+
+    // 下载单个文件
     downloadFile(id) {
         // 如果未传入ID，尝试从选中项获取
         if (!id) {
@@ -909,6 +954,93 @@ class FileManagerPage extends Component {
         iframe.src = url;
         document.body.appendChild(iframe);
         setTimeout(() => document.body.removeChild(iframe), 60000);
+    }
+
+    // 下载文件夹（打包为ZIP）
+    async downloadFolder(id) {
+        if (!id) return;
+
+        const folder = this.state.folders.find(f => String(f.id) === String(id));
+        const folderName = folder ? folder.name : '文件夹';
+
+        Toast.info(`正在打包 "${folderName}"，请稍候...`);
+
+        const token = Utils.getToken();
+        const url = `${Config.apiBase}/filemanager/folders/${id}/download?token=${token}`;
+
+        // 使用 iframe 下载
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 120000);
+    }
+
+    // 上传文件夹（保持目录结构）
+    async uploadFolder(files) {
+        if (!files || files.length === 0) return;
+
+        this.setState({ uploading: true });
+        Toast.info(`正在上传文件夹（${files.length} 个文件）...`);
+
+        try {
+            const formData = new FormData();
+
+            // 收集文件和相对路径
+            for (const file of files) {
+                formData.append('files', file);
+                // webkitRelativePath 包含相对于选择的根目录的路径
+                formData.append('relative_paths', file.webkitRelativePath || file.name);
+            }
+
+            if (this.state.currentFolderId) {
+                formData.append('folder_id', this.state.currentFolderId);
+            }
+
+            // 使用文件夹上传接口
+            const res = await Api.upload('/filemanager/upload/folder', formData);
+
+            if (res.code === 200 && res.data) {
+                const summary = res.data.summary || {};
+                const successCount = summary.success || 0;
+                const failCount = summary.failed || 0;
+                const createdFolders = summary.created_folders || 0;
+                const errors = res.data.errors || [];
+
+                this.setState({ uploading: false });
+
+                if (successCount > 0 || createdFolders > 0) {
+                    let message = `上传完成：${successCount} 个文件`;
+                    if (createdFolders > 0) {
+                        message += `，${createdFolders} 个文件夹`;
+                    }
+                    if (failCount > 0) {
+                        message += `，${failCount} 个失败`;
+                        const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                        if (errorMessages) {
+                            Toast.warning(message + '\n' + errorMessages);
+                        } else {
+                            Toast.warning(message);
+                        }
+                    } else {
+                        Toast.success(message);
+                    }
+                    this.loadDirectory(this.state.currentFolderId);
+                    this.loadFolderTree();
+                    this.loadStats();
+                } else {
+                    const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                    Toast.error(`上传失败: ${errorMessages || '未知错误'}`);
+                }
+            } else {
+                this.setState({ uploading: false });
+                Toast.error(`上传失败: ${res.message || res.detail || '未知错误'}`);
+            }
+        } catch (err) {
+            this.setState({ uploading: false });
+            console.error('文件夹上传异常:', err);
+            Toast.error(`上传异常: ${err.message || '网络错误'}`);
+        }
     }
 
     previewFile(id) {
@@ -1065,7 +1197,7 @@ class FileManagerPage extends Component {
             const starItem = menu.querySelector('[data-menu-action="star"]');
 
             if (previewItem) previewItem.style.display = type === 'file' ? 'flex' : 'none';
-            if (downloadItem) downloadItem.style.display = type === 'file' ? 'flex' : 'none';
+            if (downloadItem) downloadItem.style.display = 'flex'; // 文件和文件夹都可以下载
             if (starItem) starItem.style.display = type === 'file' ? 'flex' : 'none';
 
             // 立即保存鼠标坐标
@@ -1144,7 +1276,11 @@ class FileManagerPage extends Component {
                 if (type === 'file') this.previewFile(id);
                 break;
             case 'download':
-                if (type === 'file') this.downloadFile(id);
+                if (type === 'file') {
+                    this.downloadFile(id);
+                } else if (type === 'folder') {
+                    this.downloadFolder(id);
+                }
                 break;
             case 'rename':
                 this.renameItem(type, id);

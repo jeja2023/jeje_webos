@@ -471,6 +471,22 @@
     box-shadow: var(--shadow-sm);
 }
 
+/* 按钮组样式 */
+.fm-toolbar .btn-group {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.fm-toolbar .btn-group .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.fm-toolbar .btn-group .btn:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
 /* 统计卡片 */
 .fm-stats {
     display: grid;

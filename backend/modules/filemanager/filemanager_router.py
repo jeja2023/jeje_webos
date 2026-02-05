@@ -19,6 +19,8 @@ from .filemanager_schemas import (
     FileUpdate, FileMove, FileInfo, DirectoryContents, StorageStats,
     BatchDeleteRequest, BatchDeleteResult
 )
+from .filemanager_models import VirtualFolder, VirtualFile
+from sqlalchemy import select
 import logging
 from .filemanager_services import FileManagerService
 from utils.storage import get_storage_manager
@@ -330,6 +332,122 @@ async def _process_single_file(
         }
 
 
+async def _process_single_file_with_name(
+    file: UploadFile,
+    filename: str,
+    service: FileManagerService,
+    storage,
+    folder_id: Optional[int],
+    description: Optional[str],
+    user_id: int
+) -> dict:
+    """
+    处理单个文件上传（允许覆盖文件名）
+    用于文件夹上传时，提取正确的文件名而非含路径的完整名称
+    """
+    max_size = storage.max_size
+    max_size_mb = max_size / 1024 / 1024
+    
+    # 1. 检查 Content-Length 头
+    content_length = None
+    if hasattr(file, 'headers'):
+        content_length_str = file.headers.get('content-length')
+        if content_length_str:
+            try:
+                content_length = int(content_length_str)
+                if content_length > max_size:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                    )
+            except (ValueError, TypeError):
+                pass
+    
+    # 2. 流式读取并检查大小
+    content_chunks = []
+    total_size = 0
+    chunk_size = 1024 * 1024  # 1MB 块大小
+    
+    try:
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            
+            total_size += len(chunk)
+            
+            if total_size > max_size:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                )
+            
+            content_chunks.append(chunk)
+            
+            if content_length and total_size > content_length:
+                logger.warning(f"文件 {filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
+                break
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"读取文件 {filename} 时发生错误: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+    
+    # 3. 合并所有块
+    content = b''.join(content_chunks)
+    actual_size = len(content)
+    
+    # 4. 最终验证
+    if actual_size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size / 1024 / 1024:.1f}MB）"
+        )
+    
+    # 5. 上传文件（使用指定的文件名）
+    try:
+        uploaded = await service.upload_file(
+            filename=filename,
+            content=content,
+            mime_type=file.content_type or "application/octet-stream",
+            folder_id=folder_id,
+            description=description
+        )
+        
+        logger.info(f"文件上传成功: {filename}, 大小: {actual_size / 1024 / 1024:.2f}MB, 用户: {user_id}")
+        
+        return {
+            "success": True,
+            "file": FileInfo(
+                id=uploaded.id,
+                name=uploaded.name,
+                folder_id=uploaded.folder_id,
+                storage_path=uploaded.storage_path,
+                file_size=uploaded.file_size,
+                mime_type=uploaded.mime_type,
+                description=uploaded.description,
+                is_starred=uploaded.is_starred,
+                created_at=uploaded.created_at,
+                updated_at=uploaded.updated_at,
+                download_url=f"/api/v1/filemanager/download/{uploaded.id}",
+                preview_url=f"/api/v1/filemanager/preview/{uploaded.id}"
+            ).model_dump()
+        }
+    except ValueError as e:
+        return {
+            "success": False,
+            "filename": filename,
+            "error": str(e)
+        }
+    except Exception as e:
+        logger.error(f"保存文件 {filename} 失败: {str(e)}")
+        return {
+            "success": False,
+            "filename": filename,
+            "error": f"保存文件失败: {str(e)}"
+        }
+
 @router.post("/upload")
 async def upload_file(
     files: List[UploadFile] = File(...),
@@ -410,6 +528,253 @@ async def upload_file(
             "failed": fail_count
         }
     }, message)
+
+
+@router.post("/upload/folder")
+async def upload_folder(
+    files: List[UploadFile] = File(...),
+    relative_paths: List[str] = Form(...),
+    folder_id: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("filemanager.upload"))
+):
+    """
+    上传整个文件夹（保持目录结构）
+    
+    - files: 文件列表
+    - relative_paths: 每个文件的相对路径（与 files 一一对应）
+    - folder_id: 目标父文件夹 ID
+    """
+    if not files or not relative_paths:
+        raise HTTPException(status_code=400, detail="请选择文件夹上传")
+    
+    if len(files) != len(relative_paths):
+        raise HTTPException(status_code=400, detail="文件数量与路径数量不匹配")
+    
+    service = get_service(db, user)
+    storage = get_storage_manager()
+    
+    logger.info(f"用户 {user.user_id} 上传文件夹，包含 {len(files)} 个文件，目标文件夹: {folder_id}")
+    logger.info(f"相对路径列表: {relative_paths[:5]}{'...' if len(relative_paths) > 5 else ''}")
+    
+    # 收集所有需要创建的文件夹路径
+    folder_paths = set()
+    for rel_path in relative_paths:
+        # 分解路径，收集所有父目录
+        parts = rel_path.replace("\\", "/").split("/")
+        for i in range(1, len(parts)):  # 不包含文件名本身
+            folder_path = "/".join(parts[:i])
+            if folder_path:
+                folder_paths.add(folder_path)
+    
+    # 按层级排序（先创建父目录）
+    folder_paths = sorted(folder_paths, key=lambda x: x.count("/"))
+    logger.info(f"需要创建的文件夹路径: {folder_paths}")
+    
+    # 缓存已创建的文件夹：路径 -> ID
+    folder_cache = {}
+    created_folders = 0
+    
+    # 创建文件夹结构
+    for folder_path in folder_paths:
+        parts = folder_path.split("/")
+        folder_name = parts[-1]
+        parent_path = "/".join(parts[:-1]) if len(parts) > 1 else ""
+        
+        # 确定父文件夹 ID
+        if parent_path:
+            parent_id = folder_cache.get(parent_path)
+        else:
+            parent_id = folder_id
+        
+        # 检查文件夹是否已存在
+        try:
+            existing_folder = await db.execute(
+                select(VirtualFolder).where(
+                    VirtualFolder.name == folder_name,
+                    VirtualFolder.parent_id == parent_id,
+                    VirtualFolder.user_id == user.user_id
+                )
+            )
+            existing = existing_folder.scalar_one_or_none()
+            
+            if existing:
+                folder_cache[folder_path] = existing.id
+                logger.debug(f"文件夹已存在: {folder_path} -> ID {existing.id}")
+            else:
+                # 创建新文件夹
+                new_folder = await service.create_folder(FolderCreate(
+                    name=folder_name,
+                    parent_id=parent_id
+                ))
+                folder_cache[folder_path] = new_folder.id
+                created_folders += 1
+                logger.info(f"创建文件夹: {folder_path} -> ID {new_folder.id}")
+        except Exception as e:
+            import traceback
+            logger.error(f"创建文件夹 {folder_path} 失败: {e}\n{traceback.format_exc()}")
+    
+    logger.info(f"文件夹创建完成，共创建 {created_folders} 个，缓存: {folder_cache}")
+    
+    # 上传文件
+    results = []
+    success_count = 0
+    fail_count = 0
+    
+    for file, rel_path in zip(files, relative_paths):
+        try:
+            # 解析相对路径得到目标文件夹和真正的文件名
+            parts = rel_path.replace("\\", "/").split("/")
+            actual_filename = parts[-1] if parts else (file.filename or "unknown")
+            
+            if len(parts) > 1:
+                # 有子目录
+                folder_path = "/".join(parts[:-1])
+                target_folder_id = folder_cache.get(folder_path, folder_id)
+            else:
+                # 直接放在目标目录
+                target_folder_id = folder_id
+            
+            logger.debug(f"处理文件: {rel_path} -> 文件名: {actual_filename}, 目标文件夹ID: {target_folder_id}")
+            
+            # 自定义处理：使用提取的文件名而非 file.filename（可能包含路径）
+            result = await _process_single_file_with_name(
+                file, actual_filename, service, storage, target_folder_id, None, user.user_id
+            )
+            results.append(result)
+            if result["success"]:
+                success_count += 1
+            else:
+                fail_count += 1
+        except HTTPException as e:
+            results.append({
+                "success": False,
+                "filename": file.filename or "unknown",
+                "error": e.detail
+            })
+            fail_count += 1
+        except Exception as e:
+            logger.error(f"处理文件 {file.filename} 失败: {e}")
+            results.append({
+                "success": False,
+                "filename": file.filename or "unknown",
+                "error": str(e)
+            })
+            fail_count += 1
+    
+    uploaded_files = [r["file"] for r in results if r.get("success")]
+    errors = [{"filename": r.get("filename", "unknown"), "error": r.get("error")} for r in results if not r.get("success")]
+    
+    message = f"文件夹上传完成：{success_count} 个文件"
+    if created_folders > 0:
+        message += f"，{created_folders} 个文件夹"
+    if fail_count > 0:
+        message += f"，{fail_count} 个失败"
+    
+    return success({
+        "uploaded": uploaded_files,
+        "errors": errors,
+        "summary": {
+            "total": len(files),
+            "success": success_count,
+            "failed": fail_count,
+            "created_folders": created_folders
+        }
+    }, message)
+
+
+@router.get("/folders/{folder_id}/download")
+async def download_folder(
+    folder_id: int,
+    token: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(require_permission("filemanager.download"))
+):
+    """
+    下载文件夹（打包为 ZIP 文件）
+    
+    递归获取文件夹下所有文件，打包成 ZIP 流式返回
+    """
+    import zipfile
+    import io
+    from datetime import datetime
+    
+    service = get_service(db, user)
+    storage = get_storage_manager()
+    
+    # 获取文件夹信息
+    folder = await service.get_folder(folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail="文件夹不存在")
+    
+    folder_name = folder.name
+    
+    # 递归收集文件夹下所有文件
+    async def collect_files(fid: int, path_prefix: str = "") -> list:
+        """递归收集文件夹下的所有文件"""
+        files = []
+        
+        # 获取当前文件夹的文件
+        from .filemanager_models import VirtualFile, VirtualFolder
+        from sqlalchemy import select
+        
+        file_result = await db.execute(
+            select(VirtualFile).where(
+                VirtualFile.folder_id == fid,
+                VirtualFile.user_id == user.user_id
+            )
+        )
+        for f in file_result.scalars().all():
+            file_path = storage.get_file_path(f.storage_path)
+            if file_path and file_path.exists():
+                files.append({
+                    "name": f"{path_prefix}{f.name}" if path_prefix else f.name,
+                    "path": file_path
+                })
+        
+        # 递归处理子文件夹
+        subfolder_result = await db.execute(
+            select(VirtualFolder).where(
+                VirtualFolder.parent_id == fid,
+                VirtualFolder.user_id == user.user_id
+            )
+        )
+        for sf in subfolder_result.scalars().all():
+            sub_prefix = f"{path_prefix}{sf.name}/" if path_prefix else f"{sf.name}/"
+            files.extend(await collect_files(sf.id, sub_prefix))
+        
+        return files
+    
+    all_files = await collect_files(folder_id)
+    
+    if not all_files:
+        raise HTTPException(status_code=400, detail="文件夹为空，无法下载")
+    
+    # 创建 ZIP 文件到内存
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file_info in all_files:
+            try:
+                # 在 ZIP 中保持目录结构
+                arcname = f"{folder_name}/{file_info['name']}"
+                zf.write(file_info["path"], arcname)
+            except Exception as e:
+                logger.warning(f"添加文件到ZIP失败: {file_info['name']}, 错误: {e}")
+    
+    zip_buffer.seek(0)
+    
+    # 处理文件名编码
+    zip_filename = f"{folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    encoded_filename = encode_filename_for_header(zip_filename)
+    cd_header = f"attachment; filename*={encoded_filename}" if not encoded_filename.startswith('"') else f'attachment; filename={encoded_filename}'
+    
+    logger.info(f"用户 {user.user_id} 下载文件夹: {folder_name}，包含 {len(all_files)} 个文件")
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": cd_header}
+    )
 
 
 @router.get("/files/{file_id}")
