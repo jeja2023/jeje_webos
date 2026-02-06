@@ -268,6 +268,13 @@ const Store = {
     },
 
     /**
+     * 获取系统设置
+     */
+    getSystemSettings() {
+        return this.state.systemSettings;
+    },
+
+    /**
      * 设置系统设置（并应用主题策略）
      */
     setSystemSettings(settings) {
