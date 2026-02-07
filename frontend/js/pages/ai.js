@@ -1095,7 +1095,8 @@ class AIPage extends Component {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${Utils.getToken()}`
+                    'Authorization': `Bearer ${Utils.getToken()}`,
+                    'X-CSRF-Token': Store.get('csrfToken')
                 },
                 signal: this._abortController.signal,
                 body: JSON.stringify({

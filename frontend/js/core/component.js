@@ -144,11 +144,25 @@ class Component {
     setTimeout(handler, timeout) {
         const id = setTimeout(() => {
             // 触发后从队列移除
-            this._timers = this._timers.filter(t => t !== id);
+            if (this._timers) {
+                this._timers = this._timers.filter(t => t !== id);
+            }
             handler();
         }, timeout);
+        if (!this._timers) this._timers = [];
         this._timers.push(id);
         return id;
+    }
+
+    /**
+     * 手动清除受控的 setTimeout
+     */
+    clearTimeout(id) {
+        if (!id) return;
+        clearTimeout(id);
+        if (this._timers) {
+            this._timers = this._timers.filter(t => t !== id);
+        }
     }
 
     /**
@@ -156,8 +170,20 @@ class Component {
      */
     setInterval(handler, timeout) {
         const id = setInterval(handler, timeout);
+        if (!this._intervals) this._intervals = [];
         this._intervals.push(id);
         return id;
+    }
+
+    /**
+     * 手动清除受控的 setInterval
+     */
+    clearInterval(id) {
+        if (!id) return;
+        clearInterval(id);
+        if (this._intervals) {
+            this._intervals = this._intervals.filter(t => t !== id);
+        }
     }
 
     /**

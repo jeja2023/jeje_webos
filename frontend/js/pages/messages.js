@@ -94,7 +94,7 @@ class NotificationsPage extends Component {
     async loadUsers() {
         if (!this.isAdmin) return;
         try {
-            const res = await UserApi.getUsers({ page: 1, size: 1000 });
+            const res = await UserApi.getUsers({ page: 1, size: 100 });
             this.setState({ users: res.data?.items || [] });
         } catch (e) {
             // 忽略错误
