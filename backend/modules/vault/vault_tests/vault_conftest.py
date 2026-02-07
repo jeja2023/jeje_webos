@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 密码保险箱测试夹具和配置
 """
-
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
-
 from core.database import Base
-
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -30,18 +27,14 @@ async def db_session():
     
     await engine.dispose()
 
-
 @pytest.fixture
 def sample_user_id():
     """测试用用户ID"""
     return 1
-
 
 @pytest.fixture
 def another_user_id():
     """另一个测试用用户ID"""
     return 2
 
-# Added by restore script
-
-from tests.test_conftest import *
+# from tests.tests_conftest import *

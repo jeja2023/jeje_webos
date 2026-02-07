@@ -226,6 +226,10 @@ class NotesListPage extends Component {
         }
     }
 
+    destroy() {
+        super.destroy();
+    }
+
     afterUpdate() {
         this.bindEvents();
         // 绑定帮助按钮事件
@@ -342,7 +346,8 @@ class NotesListPage extends Component {
             `
         });
 
-        document.getElementById('confirmMove')?.addEventListener('click', async () => {
+        const confirmBtn = document.getElementById('confirmMove');
+        this.addListener(confirmBtn, 'click', async () => {
             const targetFolderId = document.getElementById('targetFolder')?.value || null;
             try {
                 for (const id of ids) {
@@ -359,8 +364,8 @@ class NotesListPage extends Component {
     }
 
     bindEvents() {
-        if (this.container && !this.container._bindedNotesList) {
-            this.container._bindedNotesList = true;
+        if (this.container && !this.container._bindNotesList) {
+            this.container._bindNotesList = true;
 
             // 新建笔记
             this.delegate('click', '#newNote', () => {
@@ -479,15 +484,11 @@ class NotesListPage extends Component {
             });
 
             // 标签筛选器
-            const tagFilter = this.$('#tagFilter');
-            if (tagFilter && !tagFilter._bindedFilter) {
-                tagFilter._bindedFilter = true;
-                tagFilter.addEventListener('change', (e) => {
-                    this.state.selectedTagId = e.target.value || null;
-                    this.state.page = 1;
-                    this.loadData();
-                });
-            }
+            this.delegate('change', '#tagFilter', (e) => {
+                this.state.selectedTagId = e.target.value || null;
+                this.state.page = 1;
+                this.loadData();
+            });
 
             // 清除筛选
             this.delegate('click', '#clearFilters', () => {
@@ -501,7 +502,7 @@ class NotesListPage extends Component {
             let longPressTimer = null;
             this.delegate('mousedown', '.note-card', (e) => {
                 if (e.target.closest('button') || e.target.closest('.note-checkbox')) return;
-                longPressTimer = setTimeout(() => {
+                longPressTimer = this.setTimeout(() => {
                     this.toggleBatchMode(true);
                     const checkbox = e.target.closest('.note-card').querySelector('.note-select');
                     if (checkbox) checkbox.checked = true;
@@ -523,40 +524,17 @@ class NotesListPage extends Component {
             });
 
             // 全选
-            const selectAll = this.$('#selectAll');
-            if (selectAll && !selectAll._bindedSelectAll) {
-                selectAll._bindedSelectAll = true;
-                selectAll.addEventListener('change', (e) => {
-                    const checkboxes = this.container.querySelectorAll('.note-select');
-                    checkboxes.forEach(cb => cb.checked = e.target.checked);
-                    this.updateSelectedCount();
-                });
-            }
+            this.delegate('change', '#selectAll', (e) => {
+                const checkboxes = this.container.querySelectorAll('.note-select');
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                this.updateSelectedCount();
+            });
 
             // 批量操作按钮
-            const batchStar = this.$('#batchStar');
-            if (batchStar && !batchStar._binded) {
-                batchStar._binded = true;
-                batchStar.addEventListener('click', () => this.batchToggleStar());
-            }
-
-            const batchMove = this.$('#batchMove');
-            if (batchMove && !batchMove._binded) {
-                batchMove._binded = true;
-                batchMove.addEventListener('click', () => this.showMoveModal());
-            }
-
-            const batchDelete = this.$('#batchDelete');
-            if (batchDelete && !batchDelete._binded) {
-                batchDelete._binded = true;
-                batchDelete.addEventListener('click', () => this.batchDelete());
-            }
-
-            const cancelBatch = this.$('#cancelBatch');
-            if (cancelBatch && !cancelBatch._binded) {
-                cancelBatch._binded = true;
-                cancelBatch.addEventListener('click', () => this.toggleBatchMode(false));
-            }
+            this.delegate('click', '#batchStar', () => this.batchToggleStar());
+            this.delegate('click', '#batchMove', () => this.showMoveModal());
+            this.delegate('click', '#batchDelete', () => this.batchDelete());
+            this.delegate('click', '#cancelBatch', () => this.toggleBatchMode(false));
         }
     }
 
@@ -579,7 +557,8 @@ class NotesListPage extends Component {
             `
         });
 
-        document.getElementById('saveFolder')?.addEventListener('click', async () => {
+        const saveBtn = document.getElementById('saveFolder');
+        this.addListener(saveBtn, 'click', async () => {
             const name = document.querySelector('#folderForm [name="name"]').value.trim();
             if (!name) {
                 Toast.error('请输入文件夹名称');
@@ -698,13 +677,17 @@ class NotesEditPage extends Component {
         const form = this.$('#noteForm');
         if (form && !form._autoSaveBinded) {
             form._autoSaveBinded = true;
-            form.addEventListener('input', () => {
-                clearTimeout(this.autoSaveTimer);
-                this.autoSaveTimer = setTimeout(() => {
+            this.addListener(form, 'input', () => {
+                if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+                this.autoSaveTimer = this.setTimeout(() => {
                     this.handleSubmit(null, { silent: true });
                 }, 3000);
             });
         }
+    }
+
+    destroy() {
+        super.destroy();
     }
 
     render() {

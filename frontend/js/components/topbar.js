@@ -9,6 +9,7 @@ class TopBarComponent extends Component {
             user: Store.get('user') || { nickname: 'Guest', username: 'guest' },
             unreadMessages: Store.get('unreadMessages') || 0,
             showTime: false, // 默认为 false，只在有窗口时显示
+            wsConnected: true, // WebSocket 连接状态
 
             // 消息中心状态
             msgActiveTab: 'message', // 消息类型: message (消息), announcement (公告), pending (待审核)
@@ -36,6 +37,16 @@ class TopBarComponent extends Component {
         // 监听系统信息变更
         Store.subscribe('appName', (name) => this.setState({ appName: name }));
         Store.subscribe('version', (ver) => this.setState({ sysVersion: ver }));
+
+        // 监听 WebSocket 连接状态
+        if (typeof WebSocketClient !== 'undefined') {
+            WebSocketClient.on('connected', () => {
+                this.setState({ wsConnected: true });
+            });
+            WebSocketClient.on('disconnected', () => {
+                this.setState({ wsConnected: false });
+            });
+        }
 
         // 初始加载待审核用户数量
         this.checkPendingCount();
@@ -129,6 +140,14 @@ class TopBarComponent extends Component {
                 </div>
 
                 <div class="top-bar-right">
+                    <!-- 连接状态指示器 -->
+                    ${!this.state.wsConnected ? `
+                        <div class="status-pill ws-status-pill offline" title="网络已断开，正在重连...">
+                            <i class="ri-wifi-off-line" style="color: var(--color-error); font-size: 14px;"></i>
+                            <span style="font-size: 12px; color: var(--color-error);">离线</span>
+                        </div>
+                    ` : ''}
+                    
                     <!-- 胶囊 3: 时间 -->
                     <div class="status-pill time-pill">
                         <span>${time}</span>

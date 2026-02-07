@@ -12,7 +12,7 @@ class Modal {
             closable: true,
             confirmText: '确定',
             cancelText: '取消',
-            onConfirm: null, // async function, return true to close, false to keep open
+            onConfirm: null, // 异步函数，返回 true 关闭，false 保持打开
             onCancel: null,
             ...options
         };

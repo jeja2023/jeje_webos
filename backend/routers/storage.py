@@ -61,7 +61,9 @@ async def upload_file(
     # 权限检查 - 细化权限控制
     has_permission = False
     
-    if category == "avatar":
+    if current_user.role == "admin":
+        has_permission = True
+    elif category == "avatar":
         has_permission = True  # 登录用户都可以上传头像
     elif category == "blog":
         has_permission = current_user.permissions and ("*" in current_user.permissions or "blog.create" in current_user.permissions or "blog.update" in current_user.permissions)
@@ -294,7 +296,7 @@ async def list_files(
     需要权限：storage.list
     """
     # 权限检查
-    if not (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions)):
+    if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions))):
         raise HTTPException(status_code=403, detail="无权查看文件列表")
     
     # 构建查询
@@ -342,7 +344,7 @@ async def delete_file(
     需要权限：storage.delete
     """
     # 权限检查
-    if not (current_user.permissions and ("*" in current_user.permissions or "storage.delete" in current_user.permissions)):
+    if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.delete" in current_user.permissions))):
         raise HTTPException(status_code=403, detail="无权删除文件")
     
     # 查询文件记录
@@ -380,7 +382,7 @@ async def get_file_info(
     需要权限：storage.list
     """
     # 权限检查
-    if not (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions)):
+    if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions))):
         raise HTTPException(status_code=403, detail="无权查看文件信息")
     
     # 查询文件记录

@@ -256,13 +256,13 @@ class TransferPage extends Component {
         // 拖放区域
         const dropZone = this.$('#dropZone');
         const fileInput = this.$('#fileInput');
-        if (dropZone && fileInput && !dropZone._bindedDrop) {
-            dropZone._bindedDrop = true;
-            dropZone.onclick = () => fileInput.click();
-            fileInput.onchange = (e) => { if (e.target.files[0]) this.handleFileSelect(e.target.files[0]); };
-            dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
-            dropZone.ondragleave = () => dropZone.classList.remove('dragover');
-            dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.handleFileSelect(e.dataTransfer.files[0]); };
+        if (dropZone && fileInput && !dropZone._bindDrop) {
+            dropZone._bindDrop = true;
+            this.addListener(dropZone, 'click', () => fileInput.click());
+            this.addListener(fileInput, 'change', (e) => { if (e.target.files[0]) this.handleFileSelect(e.target.files[0]); });
+            this.addListener(dropZone, 'dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            this.addListener(dropZone, 'dragleave', () => dropZone.classList.remove('dragover'));
+            this.addListener(dropZone, 'drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.handleFileSelect(e.dataTransfer.files[0]); });
         }
 
         // 发送视图按钮
@@ -275,9 +275,9 @@ class TransferPage extends Component {
 
         // 接收视图
         const codeInput = this.$('#codeInput');
-        if (codeInput && !codeInput._binded) {
-            codeInput._binded = true;
-            codeInput.oninput = (e) => {
+        if (codeInput && !codeInput._bind) {
+            codeInput._bind = true;
+            this.addListener(codeInput, 'input', (e) => {
                 const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                 this.state.inputCode = val; // 直接更新 state
 
@@ -290,7 +290,7 @@ class TransferPage extends Component {
                     if (isValid) btn.classList.remove('disabled');
                     else btn.classList.add('disabled');
                 }
-            };
+            });
         }
         this.delegate('click', '#joinSessionBtn', () => this.joinSession());
         this.delegate('click', '#leaveSessionBtn', () => {
@@ -507,7 +507,7 @@ class TransferPage extends Component {
 
     startPolling() {
         this.stopPolling();
-        this.pollingInterval = setInterval(async () => {
+        this.pollingInterval = this.setInterval(async () => {
             const { sessionCode, joinedSession, currentView, peerConnected, isTransferring } = this.state;
             const code = sessionCode || joinedSession?.session_code;
 
@@ -558,7 +558,6 @@ class TransferPage extends Component {
     }
 
     destroy() {
-        this.stopPolling();
         // 清理WebSocket监听器
         if (typeof WebSocketClient !== 'undefined') {
             this.wsListeners.forEach(([event, handler]) => {

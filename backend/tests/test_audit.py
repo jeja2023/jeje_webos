@@ -59,6 +59,8 @@ class TestAuditLogger:
     async def test_log_immediate(self):
         """测试立即记录日志"""
         mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()  # commit is actually async in our code? wait.
         mock_session.__aenter__.return_value = mock_session
         mock_factory = MagicMock(return_value=mock_session)
         

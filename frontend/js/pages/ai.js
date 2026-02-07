@@ -45,7 +45,7 @@ class AIPage extends Component {
             useAnalysis: false,
             provider: 'local', // '本地' 或 '在线'
             knowledgeBases: [],
-            _eventsBound: false, // 标记事件是否已绑定，防止重复绑定
+            _bindEvents: false, // 标记事件是否已绑定，防止重复绑定
             _saving: false, // 防止重复保存
             rolePreset: 'default', // 当前角色预设
             selectedModel: null, // 选中的本地模型
@@ -718,8 +718,8 @@ class AIPage extends Component {
     }
 
     bindEvents() {
-        if (this.state._eventsBound) return; // 防止重复绑定 delegate
-        this.state._eventsBound = true;
+        if (this.state._bindEvents) return; // 防止重复绑定 delegate
+        this.state._bindEvents = true;
 
         // 由于 innerHTML 会覆盖，对于直接在 DOM 上绑定的事件，需要在 afterUpdate 里单独处理
         this.bindDomEvents();
@@ -960,21 +960,22 @@ class AIPage extends Component {
     // 绑定那些在 update 后会被销毁的非委托事件
     bindDomEvents() {
         const input = this.$('#aiInput');
-        if (input) {
-            input.oninput = (e) => {
+        if (input && !input._bindAI) {
+            input._bindAI = true;
+            this.addListener(input, 'input', (e) => {
                 const value = e.target.value;
                 this.state.inputMessage = value;
                 const btnSend = this.$('#btnSend');
                 if (btnSend && !this.state.isGenerating) {
                     btnSend.disabled = !value.trim();
                 }
-            };
-            input.onkeydown = (e) => {
+            });
+            this.addListener(input, 'keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     this.handleSendMessage();
                 }
-            };
+            });
         }
     }
 
@@ -1076,7 +1077,7 @@ class AIPage extends Component {
 
         // 终极暴力置底：启动一个定时器，在生成期间持续强制置底
         // 这解决了各种因 DOM 高度变化、图片加载或浏览器机制导致的滚动失效问题
-        this._scrollInterval = setInterval(() => {
+        this._scrollInterval = this.setInterval(() => {
             if (this.state.isGenerating) {
                 this.scrollToBottom(true);
             }
@@ -1181,7 +1182,7 @@ class AIPage extends Component {
                     pendingUpdate = false;
                 } else if (!pendingUpdate) {
                     pendingUpdate = true;
-                    setTimeout(() => {
+                    this.setTimeout(() => {
                         if (pendingUpdate) {
                             incrementalUpdate(); // 使用增量更新
                             pendingUpdate = false;
@@ -1261,7 +1262,7 @@ class AIPage extends Component {
             } else if (errorMessage.includes('API Key') || errorMessage.includes('未配置')) {
                 errorMessage = 'API 配置错误，请检查设置';
                 // 自动打开设置弹窗
-                setTimeout(() => this.showConfigModal(), 500);
+                this.setTimeout(() => this.showConfigModal(), 500);
             } else if (errorMessage.includes('timeout') || errorMessage.includes('超时')) {
                 errorMessage = '请求超时，请稍后重试';
             }
@@ -1301,7 +1302,7 @@ class AIPage extends Component {
 
             this.update();
             // 延迟保存，避免频繁请求
-            setTimeout(() => this.saveSessions(), 1000);
+            this.setTimeout(() => this.saveSessions(), 1000);
         }
     }
 
@@ -1340,7 +1341,7 @@ class AIPage extends Component {
             activeSessionId: newId
         }, () => {
             // 异步保存，不阻塞UI
-            setTimeout(() => this.saveSessions(), 500);
+            this.setTimeout(() => this.saveSessions(), 500);
         });
 
         // 新建会话也需要强制置底（虽然内容为空，但为了逻辑统一）
@@ -1397,9 +1398,9 @@ class AIPage extends Component {
             this.scrollToBottom(true);
             // 增加延迟滚动，确保 DOM 布局完成后再次置底，防止“回到顶部”
             requestAnimationFrame(() => this.scrollToBottom(true));
-            setTimeout(() => this.scrollToBottom(true), 100);
-            setTimeout(() => this.scrollToBottom(true), 300);
-            setTimeout(() => this.scrollToBottom(true), 600);
+            this.setTimeout(() => this.scrollToBottom(true), 100);
+            this.setTimeout(() => this.scrollToBottom(true), 300);
+            this.setTimeout(() => this.scrollToBottom(true), 600);
 
             this._shouldForceScroll = false; // 重置标志位
         } else {
@@ -1415,7 +1416,7 @@ class AIPage extends Component {
         if (!inputEl || inputEl._historyBound) return;
         inputEl._historyBound = true;
 
-        inputEl.addEventListener('keydown', (e) => {
+        this.addListener(inputEl, 'keydown', (e) => {
             // 上箭头：切换到上一条历史
             if (e.key === 'ArrowUp' && !e.shiftKey && inputEl.value === '') {
                 e.preventDefault();
@@ -1436,6 +1437,13 @@ class AIPage extends Component {
                 }
             }
         });
+    }
+
+    destroy() {
+        if (this._abortController) {
+            this._abortController.abort();
+        }
+        super.destroy();
     }
 
     /**

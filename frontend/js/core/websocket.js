@@ -4,24 +4,26 @@
  */
 
 const WebSocketClient = {
-    ws: null,
-    reconnectAttempts: 0,
-    maxReconnectAttempts: 5,
-    reconnectDelay: 3000,
-    heartbeatInterval: null,
+    heartbeatTimeout: null,
+    lastPingTime: 0,
     listeners: {},
 
     /**
      * 连接 WebSocket
      */
     connect() {
+        // 如果已经连接或是正在建立，不要重复连接
+        if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+            return;
+        }
+
         const token = localStorage.getItem(Config.storageKeys.token);
         if (!token) {
             Config.log('WebSocket: 无 token，跳过连接');
             return;
         }
 
-        // 构建 WebSocket URL（使用当前页面的主机地址）
+        // 构建 WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         const wsUrl = `${protocol}//${host}/api/v1/ws?token=${token}`;
@@ -44,6 +46,14 @@ const WebSocketClient = {
             this.ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    if (data.type === 'pong') {
+                        // 清除心跳超时器
+                        if (this.heartbeatTimeout) {
+                            clearTimeout(this.heartbeatTimeout);
+                            this.heartbeatTimeout = null;
+                        }
+                        return;
+                    }
                     Config.log('WebSocket: 收到消息', data);
                     this.handleMessage(data);
                 } catch (e) {
@@ -56,8 +66,14 @@ const WebSocketClient = {
                 this.stopHeartbeat();
                 this.emit('disconnected');
 
+                // 1008 是认证失败（由后端关闭），这种情况下不要盲目重连，可能需要刷新 Token
+                if (event.code === 1008) {
+                    Config.error('WebSocket: 认证失败或 Token 过期');
+                    return;
+                }
+
                 // 非正常关闭时尝试重连
-                if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+                if (event.code !== 1000) {
                     this.reconnect();
                 }
             };
@@ -86,22 +102,32 @@ const WebSocketClient = {
      * 重新连接
      */
     reconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            Config.warn('WebSocket: 已达到最大重连次数，停止自动重连');
+            return;
+        }
+
         this.reconnectAttempts++;
-        Config.log(`WebSocket: 尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        // 指数退避：每次重连等待时间翻倍，最高 30s
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
+
+        Config.log(`WebSocket: 将在 ${delay / 1000}s 后尝试第 ${this.reconnectAttempts} 次重连`);
 
         setTimeout(() => {
-            this.connect();
-        }, this.reconnectDelay * this.reconnectAttempts);
+            if (this.reconnectAttempts > 0) { // 避免重置 attempts 后仍触发
+                this.connect();
+            }
+        }, delay);
     },
 
     /**
      * 发送消息
      */
     send(type, data) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && (this.ws.readyState === WebSocket.OPEN)) {
             this.ws.send(JSON.stringify({ type, data }));
         } else {
-            Config.warn('WebSocket: 未连接，无法发送消息');
+            Config.log('WebSocket: 未在线，跳过消息发送', type);
         }
     },
 
@@ -113,7 +139,7 @@ const WebSocketClient = {
 
         switch (type) {
             case 'pong':
-                // 心跳响应
+                // 已在 onmessage 中处理
                 break;
 
             case 'notification':
@@ -323,7 +349,17 @@ const WebSocketClient = {
     startHeartbeat() {
         this.stopHeartbeat();
         this.heartbeatInterval = setInterval(() => {
-            this.send('ping', {});
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.send('ping', {});
+
+                // 设置超时检测：10秒内没收到 pong 就断开重连
+                this.heartbeatTimeout = setTimeout(() => {
+                    Config.warn('WebSocket: 心跳超时，正在断开重连...');
+                    if (this.ws) {
+                        this.ws.close(4000, 'Heartbeat timeout');
+                    }
+                }, 10000);
+            }
         }, 30000); // 每30秒发送心跳
     },
 
@@ -334,6 +370,10 @@ const WebSocketClient = {
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
+        }
+        if (this.heartbeatTimeout) {
+            clearTimeout(this.heartbeatTimeout);
+            this.heartbeatTimeout = null;
         }
     },
 

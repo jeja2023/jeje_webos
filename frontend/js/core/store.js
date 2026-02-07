@@ -26,7 +26,7 @@ const Store = {
         // 当前路由
         currentRoute: '/',
 
-        // CSRF Token
+        // CSRF 令牌
         csrfToken: null
     },
 
@@ -153,15 +153,18 @@ const Store = {
     /**
      * 设置认证信息
      */
-    setAuth(token, user) {
+    setAuth(token, user, refreshToken = null) {
         this.state.token = token;
         this.state.user = user;
         this.state.isLoggedIn = true;
 
         localStorage.setItem(Config.storageKeys.token, token);
+        if (refreshToken) {
+            localStorage.setItem(Config.storageKeys.refreshToken, refreshToken);
+        }
         localStorage.setItem(Config.storageKeys.user, JSON.stringify(user));
 
-        this.notify('auth', { token, user });
+        this.notify('auth', { token, user, refreshToken });
     },
 
     /**
@@ -173,6 +176,7 @@ const Store = {
         this.state.isLoggedIn = false;
 
         localStorage.removeItem(Config.storageKeys.token);
+        localStorage.removeItem(Config.storageKeys.refreshToken);
         localStorage.removeItem(Config.storageKeys.user);
 
         this.notify('auth', null);

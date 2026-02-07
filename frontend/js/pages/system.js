@@ -184,13 +184,11 @@ class SystemSettingsPage extends Component {
     }
 
     bindGlobalEvents() {
-        // 使用一个统一的 click 事件处理器
         if (!this._clickHandler) {
             this._clickHandler = (e) => {
                 const target = e.target;
                 if (!target) return;
 
-                // 保存按钮 - 检查按钮文本
                 if (target.id === 'saveSettings' ||
                     target.closest('#saveSettings') ||
                     (target.tagName === 'BUTTON' && target.textContent?.includes('保存'))) {
@@ -199,13 +197,11 @@ class SystemSettingsPage extends Component {
                     return;
                 }
 
-                // 刷新按钮
                 if (target.id === 'reloadSettings' || target.closest('#reloadSettings')) {
                     this.loadData();
                     return;
                 }
 
-                // API Key 显示/隐藏切换
                 if (target.id === 'toggleApiKey' || target.closest('#toggleApiKey')) {
                     const input = document.getElementById('apiKeyInput');
                     const icon = document.getElementById('toggleApiKeyIcon');
@@ -221,7 +217,7 @@ class SystemSettingsPage extends Component {
                     return;
                 }
             };
-            document.addEventListener('click', this._clickHandler);
+            this.addDocumentEvent('click', this._clickHandler);
         }
     }
 
@@ -265,11 +261,6 @@ class SystemSettingsPage extends Component {
     }
 
     destroy() {
-        // 清理事件监听器
-        if (this._clickHandler) {
-            document.removeEventListener('click', this._clickHandler);
-            this._clickHandler = null;
-        }
         super.destroy();
     }
 }
@@ -512,8 +503,8 @@ class AuditLogsPage extends Component {
     }
 
     bindEvents() {
-        if (this.container && !this.container._bindedAudit) {
-            this.container._bindedAudit = true;
+        if (this.container && !this.container._bindAudit) {
+            this.container._bindAudit = true;
 
             // 分页
             this.delegate('click', '[data-page]', (e, t) => {

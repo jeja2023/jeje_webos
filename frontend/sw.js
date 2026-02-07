@@ -109,14 +109,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // 1. 对于 API 请求，始终使用网络 (Network Only)
+    // 1. 对于 API 请求，始终使用网络 (仅网络)
     if (url.pathname.startsWith('/api/')) {
         return;
     }
 
     // 2. 对于静态资源 (CSS, JS, Images, Fonts) 
-    // 改为：网络优先 (Network First) - 适合开发和频繁更新
-    // 逻辑：优先获取最新文件并更新缓存，网络断开时才用旧缓存
+    // 网络优先 (网络优先) - 适合开发和频繁更新
+    // 优先获取最新文件并更新缓存，网络断开时才用旧缓存
     if (url.pathname.startsWith('/static/')) {
         event.respondWith(
             fetch(event.request)
@@ -138,7 +138,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. 对于页面访问 (HTML)，使用网络优先 (Network First)
+    // 3. 对于页面访问 (HTML)，使用网络优先 (网络优先)
     // 这样可以保证用户获得最新版本，离线时回退到缓存
     if (event.request.mode === 'navigate') {
         event.respondWith(

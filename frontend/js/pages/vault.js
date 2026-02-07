@@ -8,7 +8,7 @@ class VaultPage extends Component {
     constructor(container) {
         super(container);
         this.state = {
-            view: 'list', // list, categories, detail
+            view: 'list', // 列表, 分类, 详情
             items: [],
             categories: [],
             stats: {},
@@ -38,7 +38,7 @@ class VaultPage extends Component {
         this._resetAutoLockTimer();
         // 监听用户活动
         ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
-            document.addEventListener(event, this._activityHandler, { passive: true });
+            this.addDocumentEvent(event, this._activityHandler, { passive: true });
         });
     }
 
@@ -48,9 +48,9 @@ class VaultPage extends Component {
             clearTimeout(this._autoLockTimer);
             this._autoLockTimer = null;
         }
-        ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
-            document.removeEventListener(event, this._activityHandler);
-        });
+        // 不需要手动移除监听器，Component.destroy 会自动处理全局监听器
+        // 这里的逻辑主要是用于手动锁定时的清理
+        this.clearListeners();
     }
 
     // 重置自动锁定定时器
@@ -59,7 +59,7 @@ class VaultPage extends Component {
             clearTimeout(this._autoLockTimer);
         }
         if (this.state.unlocked) {
-            this._autoLockTimer = setTimeout(() => {
+            this._autoLockTimer = this.setTimeout(() => {
                 this._autoLock();
             }, this._autoLockTimeout);
         }
@@ -248,8 +248,9 @@ class VaultPage extends Component {
             }).show();
 
             // 绑定复制按钮
-            setTimeout(() => {
-                const copyBtn = document.getElementById('btn-copy-recovery');
+            this.setTimeout(() => {
+                const modal = document.querySelector('.modal-overlay:last-child');
+                const copyBtn = modal?.querySelector('#btn-copy-recovery');
                 if (copyBtn) {
                     copyBtn.addEventListener('click', async () => {
                         try {
@@ -473,7 +474,7 @@ class VaultPage extends Component {
             }).show();
 
             // 绑定密码显示切换和输入监听
-            setTimeout(() => {
+            this.setTimeout(() => {
                 const modal = document.querySelector('.modal-overlay:last-child');
                 const errorEl = modal?.querySelector('.form-error');
                 const inputs = modal?.querySelectorAll('input');
@@ -483,8 +484,8 @@ class VaultPage extends Component {
                         if (errorEl) errorEl.style.display = 'none';
                     });
                 });
-
-                // 密码强度检测（仅设置模式）
+                // ... (后面还有强度检测逻辑，这里先替换外层定时器)
+                // 强度检测逻辑部分
                 const pwdInput = modal?.querySelector('.vault-master-pwd');
                 const strengthBar = modal?.querySelector('.strength-bar');
                 const strengthText = modal?.querySelector('.strength-text');
@@ -621,18 +622,17 @@ class VaultPage extends Component {
                 }
             }).show();
 
-            setTimeout(() => {
+            this.setTimeout(() => {
+                const overlay = document.querySelector('.modal-overlay:last-child');
                 const closeModal = () => {
-                    // 直接移除Modal DOM元素，确保彻底关闭
-                    const overlay = document.querySelector('.modal-overlay:last-child');
                     if (overlay) overlay.remove();
                 };
 
-                document.getElementById('btn-use-recovery')?.addEventListener('click', () => {
+                overlay?.querySelector('#btn-use-recovery')?.addEventListener('click', () => {
                     closeModal();
                     resolve('recover');
                 });
-                document.getElementById('btn-reset-all')?.addEventListener('click', () => {
+                overlay?.querySelector('#btn-reset-all')?.addEventListener('click', () => {
                     closeModal();
                     resolve('reset');
                 });
@@ -903,10 +903,11 @@ class VaultPage extends Component {
         }).show();
 
         // 绑定密码显示/生成按钮
-        setTimeout(() => {
-            const toggleBtn = document.getElementById('toggle-item-pwd');
-            const generateBtn = document.getElementById('generate-pwd');
-            const pwdInput = document.getElementById('item-pwd');
+        this.setTimeout(() => {
+            const modal = document.querySelector('.modal-overlay:last-child');
+            const toggleBtn = modal?.querySelector('#toggle-item-pwd');
+            const generateBtn = modal?.querySelector('#generate-pwd');
+            const pwdInput = modal?.querySelector('#item-pwd');
 
             if (toggleBtn && pwdInput) {
                 toggleBtn.addEventListener('click', () => {
@@ -1019,17 +1020,13 @@ class VaultPage extends Component {
         navigator.clipboard.writeText(text).then(() => {
             Toast.success(`${label}已复制到剪贴板，30秒后自动清除`);
 
-            // 30秒后清除剪贴板（如果浏览器支持写入空字符串来模拟清除）
-            setTimeout(() => {
-                // 读取剪贴板内容，确认是否还是刚才复制的内容，避免覆盖用户新复制的内容
+            // 30秒后清除剪贴板
+            this.setTimeout(() => {
                 navigator.clipboard.readText().then(currentText => {
                     if (currentText === text) {
                         navigator.clipboard.writeText('').catch(() => { });
-                        // 可选：提示用户已清除
-                        // Toast.info('剪贴板已清除');
                     }
                 }).catch(() => {
-                    // 如果无法读取（通常是因为没有焦点），则尝试直接写入空
                     navigator.clipboard.writeText('').catch(() => { });
                 });
             }, 30000);
@@ -1054,7 +1051,7 @@ class VaultPage extends Component {
             }
             if (!this._pwdTimers) this._pwdTimers = {};
 
-            this._pwdTimers[itemId] = setTimeout(() => {
+            this._pwdTimers[itemId] = this.setTimeout(() => {
                 const currentShow = { ...this.state.showPassword };
                 if (currentShow[itemId]) {
                     currentShow[itemId] = false;
@@ -1594,6 +1591,11 @@ class VaultPage extends Component {
     afterUpdate() {
         this.bindEvents();
         ModuleHelp.bindHelpButtons(this.container);
+    }
+
+    destroy() {
+        this._stopAutoLockTimer();
+        super.destroy();
     }
 
     bindEvents() {

@@ -9,7 +9,7 @@ class AlbumPage extends Component {
     constructor(container) {
         super(container);
         this.state = {
-            view: 'albums',  // albums | photos | viewer
+            view: 'albums',  // 专辑 | 照片 | 查看器
             albums: [],
             photos: [],
             currentAlbum: null,
@@ -161,20 +161,10 @@ class AlbumPage extends Component {
         this.delegate('click', '[data-action="next-photo"]', () => this.nextPhoto());
 
         // 键盘快捷键
-        this._keyHandler = (e) => {
-            if (this.state.view === 'viewer') {
-                if (e.key === 'Escape') this.closeViewer();
-                if (e.key === 'ArrowLeft') this.prevPhoto();
-                if (e.key === 'ArrowRight') this.nextPhoto();
-            }
-        };
-        document.addEventListener('keydown', this._keyHandler);
+        this.addDocumentEvent('keydown', this._keyHandler);
     }
 
     destroy() {
-        if (this._keyHandler) {
-            document.removeEventListener('keydown', this._keyHandler);
-        }
         super.destroy();
     }
 

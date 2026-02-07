@@ -996,7 +996,7 @@ class UserListPage extends Component {
             });
 
             // 点击其他地方关闭下拉菜单
-            document.addEventListener('click', (e) => {
+            this.addDocumentEvent('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     document.querySelectorAll('.dropdown-menu').forEach(menu => {
                         menu.style.display = 'none';
@@ -1455,25 +1455,7 @@ class UserListPage extends Component {
     }
 
     destroy() {
-        if (this._eventsBinded && this.container) {
-            if (this._handlers.roleHandler) {
-                this.$('#filterRole')?.removeEventListener('change', this._handlers.roleHandler);
-            }
-            if (this._handlers.statusHandler) {
-                this.$('#filterStatus')?.removeEventListener('change', this._handlers.statusHandler);
-            }
-            if (this._handlers.searchHandler) {
-                this.$('#usersSearchBtn')?.removeEventListener('click', this._handlers.searchHandler);
-            }
-            if (this._handlers.clickHandler) {
-                this.container.removeEventListener('click', this._handlers.clickHandler);
-            }
-            if (this._handlers.permsClickHandler) {
-                this.container.removeEventListener('click', this._handlers.permsClickHandler);
-            }
-        }
-        this._eventsBinded = false;
-        this._handlers = {};
+        super.destroy();
     }
 }
 
@@ -1714,7 +1696,7 @@ class PendingUsersPage extends Component {
             this.delegate('click', '#clearSelection', () => this.setState({ selectedUsers: [] }));
 
             // 使用事件委托处理所有点击事件
-            const clickHandler = (e) => {
+            this.delegate('click', '*', (e) => {
                 // 审核通过
                 const auditPassBtn = e.target.closest('[data-audit-pass]');
                 if (auditPassBtn && this.container.contains(auditPassBtn)) {
@@ -1730,18 +1712,12 @@ class PendingUsersPage extends Component {
                     if (userId) this.handleAudit(userId, false);
                     return;
                 }
-            };
-            this._handlers.clickHandler = clickHandler;
-            this.container.addEventListener('click', clickHandler);
+            });
         }
     }
 
     destroy() {
-        if (this._eventsBinded && this.container && this._handlers?.clickHandler) {
-            this.container.removeEventListener('click', this._handlers.clickHandler);
-        }
-        this._eventsBinded = false;
-        this._handlers = {};
+        super.destroy();
     }
 }
 

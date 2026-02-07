@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
 
-from core.database import get_db
+from core.database import get_db, get_pool_status
 from core.security import require_admin, TokenData
 from models.monitor import PerformanceMetric
 from schemas.monitor import SystemInfo, ProcessInfo, MetricInfo
@@ -31,6 +31,13 @@ async def get_system_info(
     """
     monitor = get_monitor()
     system_info = monitor.get_system_info()
+    
+    # 添加数据库连接池状态
+    try:
+        system_info["db_pool"] = get_pool_status()
+    except Exception as e:
+        system_info["db_pool"] = {"health": "unknown", "error": str(e)}
+    
     return success(system_info)
 
 

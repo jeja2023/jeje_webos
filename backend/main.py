@@ -17,7 +17,7 @@ import warnings
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, ORJSONResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import SAWarning
 
@@ -80,6 +80,7 @@ app = FastAPI(
     version=settings.app_version,
     description="基于微内核架构的个人平台系统",
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"

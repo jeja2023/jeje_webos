@@ -1,5 +1,5 @@
-"""
-PDF 模块测试配置
+﻿"""
+LM Cleaner 模块测试配置
 """
 import sys
 from pathlib import Path
@@ -10,4 +10,4 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 # 导入共享的测试 fixtures
-from tests.test_conftest import *
+# from tests.tests_conftest import *

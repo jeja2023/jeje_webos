@@ -21,18 +21,31 @@ settings = get_settings()
 # - pool_recycle: 连接最大存活时间（秒），防止 MySQL 主动断开长连接
 # - pool_timeout: 获取连接的最大等待时间（秒），超时抛出异常
 # - pool_pre_ping: 使用前检测连接有效性，自动剔除失效连接
-engine = create_async_engine(
-    settings.db_url,
-    echo=False,  # 禁用 SQL 详细输出，避免日志过多
-    pool_pre_ping=True,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
-    pool_recycle=settings.db_pool_recycle,  # 回收连接，防止 MySQL wait_timeout 导致连接失效
-    pool_timeout=30,    # 获取连接最长等待30秒
-    connect_args={
-        "init_command": f"SET time_zone = '{settings.db_time_zone}'"
-    }
-)
+engine_kwargs = {
+    "echo": False,
+    "pool_pre_ping": True,
+}
+
+# 仅在 MySQL 时使用连接池和时区设置
+if settings.db_url.startswith("mysql"):
+    engine_kwargs.update({
+        "pool_size": settings.db_pool_size,
+        "max_overflow": settings.db_max_overflow,
+        "pool_recycle": settings.db_pool_recycle,
+        "pool_timeout": 30,
+        "connect_args": {
+            "init_command": f"SET time_zone = '{settings.db_time_zone}'"
+        }
+    })
+else:
+    # SQLite 等其他数据库
+    if "sqlite" in settings.db_url:
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+        if ":memory:" in settings.db_url:
+            from sqlalchemy.pool import StaticPool
+            engine_kwargs["poolclass"] = StaticPool
+
+engine = create_async_engine(settings.db_url, **engine_kwargs)
 
 
 @event.listens_for(engine.sync_engine, "connect")
@@ -70,8 +83,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
+        # finally 块由 async with 上下文管理器自动处理，无需显式调用 close()
 
 
 from contextlib import asynccontextmanager
@@ -93,8 +105,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
+        # finally 块由 async with 上下文管理器自动处理，无需显式调用 close()
 
 
 async def ensure_database_exists():
@@ -269,3 +280,36 @@ async def close_db():
     await engine.dispose()
 
 
+def get_pool_status() -> dict:
+    """
+    获取数据库连接池状态
+    
+    Returns:
+        包含连接池健康指标的字典
+    """
+    pool = engine.pool
+    
+    # 基础指标
+    status = {
+        "pool_size": pool.size(),           # 当前连接池大小
+        "checked_in": pool.checkedin(),     # 可用（空闲）连接数
+        "checked_out": pool.checkedout(),   # 正在使用的连接数
+        "overflow": pool.overflow(),         # 溢出连接数
+        "invalid": pool.invalidatedcount() if hasattr(pool, 'invalidatedcount') else 0,  # 失效连接数
+    }
+    
+    # 计算健康状态
+    total_capacity = settings.db_pool_size + settings.db_max_overflow
+    usage_ratio = status["checked_out"] / total_capacity if total_capacity > 0 else 0
+    
+    if usage_ratio < 0.5:
+        status["health"] = "healthy"
+    elif usage_ratio < 0.8:
+        status["health"] = "warning"
+    else:
+        status["health"] = "critical"
+    
+    status["usage_percent"] = round(usage_ratio * 100, 1)
+    status["max_capacity"] = total_capacity
+    
+    return status

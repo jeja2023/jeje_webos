@@ -9,7 +9,7 @@ class SchedulePage extends Component {
 
         const today = new Date();
         this.state = {
-            view: 'calendar', // calendar, list, reminders
+            view: 'calendar', // 日历, 列表, 提醒
             currentYear: today.getFullYear(),
             currentMonth: today.getMonth() + 1,
             events: [],
@@ -706,7 +706,7 @@ class SchedulePage extends Component {
                     break;
             }
         };
-        document.addEventListener('keydown', this._keyboardHandler);
+        this.addDocumentEvent('keydown', this._keyboardHandler);
     }
 
     /**
@@ -714,7 +714,7 @@ class SchedulePage extends Component {
      */
     _debounceSearch() {
         if (this._searchTimer) clearTimeout(this._searchTimer);
-        this._searchTimer = setTimeout(() => {
+        this._searchTimer = this.setTimeout(() => {
             this.handleSearch();
         }, 300);
     }
@@ -804,7 +804,7 @@ class SchedulePage extends Component {
                         Toast.success('分类创建成功');
                         this.loadData();
                         Modal.closeAll();
-                        setTimeout(() => this.showCategoryManager(), 300);
+                        this.setTimeout(() => this.showCategoryManager(), 300);
                     } catch (e) {
                         Toast.error('创建失败');
                     }
@@ -820,7 +820,7 @@ class SchedulePage extends Component {
                                 Toast.success('分类已删除');
                                 this.loadData();
                                 Modal.closeAll();
-                                setTimeout(() => this.showCategoryManager(), 300);
+                                this.setTimeout(() => this.showCategoryManager(), 300);
                             } catch (e) {
                                 Toast.error('删除失败');
                             }
@@ -989,5 +989,9 @@ class SchedulePage extends Component {
     async afterMount() {
         this.bindEvents();  // 绑定事件
         await this.loadData();
+    }
+
+    destroy() {
+        super.destroy();
     }
 }

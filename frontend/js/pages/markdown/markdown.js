@@ -14,7 +14,7 @@ class MarkdownListPage extends Component {
             page: 1,
             size: 20,
             keyword: '',
-            filter: 'all', // all, starred, public
+            filter: 'all', // 全部, 收藏, 公开
             loading: true
         };
     }

@@ -273,6 +273,27 @@ python scripts/create_module.py todo_list 待办事项
 
 ---
 
+## 🧪 运行测试
+
+项目包含完整的自动化测试套件（406+ 测试用例）。
+
+```bash
+cd backend
+
+# 运行所有测试（系统测试 + 模块测试）
+python -m pytest tests/ modules/ -v
+
+# 运行单个模块的测试
+python -m pytest modules/blog/blog_tests/ -v
+
+# 运行带覆盖率报告
+python -m pytest tests/ modules/ --cov=. --cov-report=html
+```
+
+详细测试规范请参考 [开发规范.md](./开发规范.md) 第八章。
+
+---
+
 ## ⚙️ 配置说明
 
 在 `backend/.env` 或 `docker/env_docker` 中配置核心参数：
@@ -280,7 +301,7 @@ python scripts/create_module.py todo_list 待办事项
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.12 |
+| | `APP_VERSION` | 系统版本 | 2.5.15 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |
@@ -293,7 +314,7 @@ python scripts/create_module.py todo_list 待办事项
 | **安全** | `JWT_SECRET` | JWT 密钥 | (自动生成) |
 | | `JWT_AUTO_ROTATE` | JWT 自动轮换 | True (可动态配置) |
 | | `RATE_LIMIT_ENABLED` | 启用速率限制 | True (可动态配置) |
-| | `CSRF_ENABLED` | 启用 CSRF 防护 | False |
+| | `CSRF_ENABLED` | 启用 CSRF 防护 | True |
 | **管理员** | `ADMIN_USERNAME` | 管理员用户名 | admin |
 | | `ADMIN_PASSWORD` | 管理员密码 | (必填) |
 | | `ADMIN_PHONE` | 管理员手机号 | (必填) |

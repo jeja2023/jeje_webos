@@ -36,7 +36,7 @@ class TestVersioning:
         assert middleware._extract_version("/api/v1/users") == "v1"
         assert middleware._extract_version("/api/v2/posts") == "v2"
         assert middleware._extract_version("/health") is None
-        # Naive implementation returns segment after 'api', so this returns 'users'
+        # 简单的实现只返回 'api' 之后的段，所以这里返回 'users'
         # assert middleware._extract_version("/api/users") == "users" 
 
     @pytest.mark.asyncio
@@ -46,7 +46,7 @@ class TestVersioning:
         manager = APIVersionManager()
         manager.register_version(APIVersion("v1"))
         
-        # Manually add middleware since we are constructing app
+        # 手动添加中间件，因为我们正在构建 app
         app.add_middleware(VersionHeaderMiddleware, version_manager=manager)
         
         @app.get("/api/v1/test")
@@ -56,8 +56,8 @@ class TestVersioning:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/api/v1/test")
             assert response.status_code == 200
-            # Headers key are case insensitive in httpx, but let's check exact header if possible or lower
-            # FastAPI/Starlette lowercases headers?
+            # httpx 中的 header 键对大小写不敏感，但如果可能的话检查精确的 header 或小写
+            # FastAPI/Starlette 会将 header 转换为小写？
             assert "x-api-version" in response.headers
             assert response.headers["x-api-version"] == "v1"
 

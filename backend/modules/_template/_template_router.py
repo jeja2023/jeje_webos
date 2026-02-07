@@ -61,7 +61,7 @@ async def get_detail(
 
 @router.post("", response_model=dict, summary="创建")
 async def create(
-    data: any, # TemplateCreate
+    data: dict, # TemplateCreate
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("xxx.create"))
 ):
@@ -75,7 +75,7 @@ async def create(
 @router.put("/{item_id}", response_model=dict, summary="更新")
 async def update(
     item_id: int,
-    data: any, # TemplateUpdate
+    data: dict, # TemplateUpdate
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("xxx.update"))
 ):

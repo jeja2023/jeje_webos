@@ -14,7 +14,7 @@ class FileManagerPage extends Component {
             folderTree: [],
             stats: null,
             selectedItems: [],
-            viewMode: 'grid', // grid | list
+            viewMode: 'grid', // 网格 | 列表
             searchKeyword: '',
             loading: true,
             uploading: false
@@ -413,8 +413,8 @@ class FileManagerPage extends Component {
     }
 
     bindEvents() {
-        if (this.container && !this.container._bindedFM) {
-            this.container._bindedFM = true;
+        if (this.container && !this.container._bindFM) {
+            this.container._bindFM = true;
 
             // 返回上级
             this.delegate('click', '#btnBack', () => {
@@ -605,20 +605,18 @@ class FileManagerPage extends Component {
         const dropzone = this.$('#dropzone');
         if (!content || !dropzone || content._bindedDrop) return;
 
-        content._bindedDrop = true;
-
-        content.addEventListener('dragover', (e) => {
+        this.addListener(content, 'dragover', (e) => {
             e.preventDefault();
             dropzone.classList.add('active');
         });
 
-        content.addEventListener('dragleave', (e) => {
+        this.addListener(content, 'dragleave', (e) => {
             if (!content.contains(e.relatedTarget)) {
                 dropzone.classList.remove('active');
             }
         });
 
-        content.addEventListener('drop', (e) => {
+        this.addListener(content, 'drop', (e) => {
             e.preventDefault();
             dropzone.classList.remove('active');
 
@@ -953,7 +951,7 @@ class FileManagerPage extends Component {
         iframe.style.display = 'none';
         iframe.src = url;
         document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 60000);
+        this.setTimeout(() => document.body.removeChild(iframe), 60000);
     }
 
     // 下载文件夹（打包为ZIP）
@@ -973,7 +971,7 @@ class FileManagerPage extends Component {
         iframe.style.display = 'none';
         iframe.src = url;
         document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 120000);
+        this.setTimeout(() => document.body.removeChild(iframe), 120000);
     }
 
     // 上传文件夹（保持目录结构）
@@ -1167,14 +1165,14 @@ class FileManagerPage extends Component {
 
     setupContextMenu() {
         const container = this.container;
-        if (!container || container._bindedContext) return;
-        container._bindedContext = true;
+        if (!container || container._bindContext) return;
+        container._bindContext = true;
 
         // 存储当前右键的目标
         this.contextTarget = null;
 
         // 右键事件
-        container.addEventListener('contextmenu', (e) => {
+        this.addListener(container, 'contextmenu', (e) => {
             const item = e.target.closest('.fm-item, .fm-list-item');
             if (!item) {
                 this.hideContextMenu();
@@ -1245,7 +1243,7 @@ class FileManagerPage extends Component {
         });
 
         // 点击其他地方隐藏菜单
-        document.addEventListener('click', () => this.hideContextMenu());
+        this.addDocumentEvent('click', () => this.hideContextMenu());
 
         // 菜单项点击
         this.delegate('click', '[data-menu-action]', (e, t) => {
@@ -1373,15 +1371,15 @@ class FileManagerPage extends Component {
 
     setupDragMove() {
         const container = this.container;
-        if (!container || container._bindedDragMove) return;
-        container._bindedDragMove = true;
+        if (!container || container._bindDragMove) return;
+        container._bindDragMove = true;
 
         let draggedItem = null;
         let dragType = null;
         let dragId = null;
 
         // 使文件项可拖拽
-        container.addEventListener('dragstart', (e) => {
+        this.addListener(container, 'dragstart', (e) => {
             const item = e.target.closest('.fm-item, .fm-list-item');
             if (!item) return;
 
@@ -1394,7 +1392,7 @@ class FileManagerPage extends Component {
             e.dataTransfer.setData('text/plain', `${dragType}-${dragId}`);
         });
 
-        container.addEventListener('dragend', (e) => {
+        this.addListener(container, 'dragend', (e) => {
             if (draggedItem) {
                 draggedItem.classList.remove('dragging');
                 draggedItem = null;
@@ -1406,7 +1404,7 @@ class FileManagerPage extends Component {
         });
 
         // 文件夹接收拖拽
-        container.addEventListener('dragover', (e) => {
+        this.addListener(container, 'dragover', (e) => {
             const target = e.target.closest('.fm-item[data-type="folder"], .fm-tree-item');
             if (target && draggedItem && target !== draggedItem) {
                 e.preventDefault();
@@ -1415,14 +1413,14 @@ class FileManagerPage extends Component {
             }
         });
 
-        container.addEventListener('dragleave', (e) => {
+        this.addListener(container, 'dragleave', (e) => {
             const target = e.target.closest('.fm-item[data-type="folder"], .fm-tree-item');
             if (target) {
                 target.classList.remove('drag-over');
             }
         });
 
-        container.addEventListener('drop', async (e) => {
+        this.addListener(container, 'drop', async (e) => {
             const target = e.target.closest('.fm-item[data-type="folder"], .fm-tree-item');
             if (!target || !dragType || !dragId) return;
 
@@ -1447,5 +1445,8 @@ class FileManagerPage extends Component {
         container.querySelectorAll('.fm-item, .fm-list-item').forEach(item => {
             item.setAttribute('draggable', 'true');
         });
+    }
+    destroy() {
+        super.destroy();
     }
 }

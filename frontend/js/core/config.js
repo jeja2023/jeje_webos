@@ -13,6 +13,7 @@ const Config = {
     // 存储键名
     storageKeys: {
         token: 'jeje_token',
+        refreshToken: 'jeje_refresh_token',
         user: 'jeje_user',
         theme: 'jeje_theme',
         sidebarCollapsed: 'jeje_sidebar_collapsed'

@@ -190,11 +190,13 @@ async def export_logs(
 
     # 生成文件名
     filename = f"审计日志_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    from urllib.parse import quote
+    encoded_filename = quote(filename)
 
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}"
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
         }
     )

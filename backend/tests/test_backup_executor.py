@@ -37,7 +37,7 @@ class TestBackupExecutor:
         """测试备份任务执行成功"""
         from utils.backup_executor import execute_backup_task_sync
 
-        # 1. Setup Mocks
+        # 1. 设置模拟对象
         mock_settings.return_value.db_url_sync = "sqlite:///:memory:"
         
         mock_db_session = MagicMock()
@@ -54,14 +54,14 @@ class TestBackupExecutor:
         
         mock_manager_instance = MagicMock()
         mock_get_manager.return_value = mock_manager_instance
-        # Simulate successful backup
+        # 模拟成功备份
         mock_manager_instance.backup_database.return_value = (True, "/backup/db.sql", 1024)
         mock_manager_instance.backup_files.return_value = (True, "/backup/files.tar.gz", 2048)
         
-        # 2. Execute Function
+        # 2. 执行函数
         execute_backup_task_sync(123, BackupType.FULL.value)
         
-        # 3. Assertions
+        # 3. 断言
         mock_manager_instance.backup_database.assert_called()
         assert mock_backup.status == BackupStatus.SUCCESS.value
         assert "/backup/db.sql" in mock_backup.file_path
@@ -76,7 +76,7 @@ class TestBackupExecutor:
         """测试备份任务执行失败"""
         from utils.backup_executor import execute_backup_task_sync
         
-        # 1. Setup Mocks
+        # 1. 设置模拟对象
         mock_settings.return_value.db_url_sync = "sqlite:///:memory:"
         
         mock_db_session = MagicMock()
@@ -90,17 +90,17 @@ class TestBackupExecutor:
         
         mock_manager_instance = MagicMock()
         mock_get_manager.return_value = mock_manager_instance
-        # Simulate failure
+        # 模拟失败
         mock_manager_instance.backup_database.return_value = (False, None, None)
         
-        # 2. Execute Function
-        # Explicitly invoke backup_database logic
+        # 2. 执行函数
+        # 显式调用 database 备份逻辑
         execute_backup_task_sync(123, BackupType.DATABASE.value)
         
-        # 3. Assertions
+        # 3. 断言
         mock_manager_instance.backup_database.assert_called()
         
-        # If DB backup failed, status should be FAILED
+        # 如果 DB 备份失败，状态应为 FAILED
         assert mock_backup.status == BackupStatus.FAILED.value
         assert "数据库备份失败" in mock_backup.error_message
         

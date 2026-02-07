@@ -17,6 +17,26 @@ from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 
+
+# ==================== 敏感数据脱敏工具 ====================
+def mask_sensitive_data(data: any) -> any:
+    """
+    递归脱敏敏感数据
+    支持 dict, list, str 类型
+    """
+    if isinstance(data, dict):
+        new_data = {}
+        for k, v in data.items():
+            if isinstance(k, str) and any(s in k.lower() for s in ["password", "token", "secret", "credential", "auth"]):
+                new_data[k] = "******"
+            else:
+                new_data[k] = mask_sensitive_data(v)
+        return new_data
+    elif isinstance(data, list):
+        return [mask_sensitive_data(item) for item in data]
+    else:
+        return data
+
 # 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
 # 需要在所有中间件中跳过，避免客户端断开时触发 "No response returned" 错误
 STREAMING_PATHS = [
@@ -583,6 +603,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     level = "INFO"
                 else:
                     level = "WARNING"
+                
+                # 脱敏敏感路径
+                if any(path.startswith(p) for p in self.SENSITIVE_PATHS):
+                     # 如果是敏感路径，简单记录
+                     message = f"{description} - {method} {path}"
                 
                 # 创建后台任务记录日志（使用 try-except 包裹防止任务失败影响响应）
                 try:

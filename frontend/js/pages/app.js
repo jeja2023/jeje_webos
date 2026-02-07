@@ -71,41 +71,32 @@ const App = {
     },
 
     /**
-     * 动态加载模块资源 (JS/CSS)
+     * 动态加载业务模块资源 (仅 CSS 预加载，JS 由路由懒加载处理)
+     * 
+     * 优化说明：
+     * - CSS 预加载：避免首次进入模块时的样式闪烁
+     * - JS 懒加载：由 Router.handleRoute() 在导航时按需加载
      */
     async loadModuleAssets() {
         const modules = Store.get('modules') || [];
-        const promises = [];
 
+        // 仅预加载业务模块的 CSS（减少首屏 JS 体积）
         modules.forEach(m => {
-            if (m.assets) {
-                // 加载 CSS
-                if (m.assets.css && Array.isArray(m.assets.css)) {
-                    m.assets.css.forEach(url => {
-                        if (!document.querySelector(`link[href="${url}"]`)) {
-                            const link = document.createElement('link');
-                            link.rel = 'stylesheet';
-                            link.href = url;
-                            document.head.appendChild(link);
-                        }
-                    });
-                }
-                // 加载 JS
-                if (m.assets.js && Array.isArray(m.assets.js)) {
-                    m.assets.js.forEach(url => {
-                        promises.push(Utils.loadScript(url).catch(err => {
-                            console.error(`加载模块 ${m.id} 资源失败: ${url}`, err);
-                        }));
-                    });
-                }
+            if (m.assets && m.assets.css && Array.isArray(m.assets.css)) {
+                m.assets.css.forEach(url => {
+                    if (!document.querySelector(`link[href="${url}"]`)) {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = url;
+                        document.head.appendChild(link);
+                    }
+                });
             }
+            // 注意：JS 不再在此处同步加载
+            // 由 ResourceLoader.loadModuleByPath() 在路由导航时按需加载
         });
 
-        if (promises.length > 0) {
-            Config.log(`正在加载 ${promises.length} 个模块脚本...`);
-            await Promise.all(promises);
-            Config.log('模块脚本加载完成');
-        }
+        Config.log('业务模块 CSS 预加载完成');
     },
 
     async updateUnreadCount() {

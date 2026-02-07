@@ -9,7 +9,7 @@ class VideoPage extends Component {
     constructor(container) {
         super(container);
         this.state = {
-            view: 'collections',  // collections | videos | player
+            view: 'collections',  // 合集 | 视频 | 播放器
             collections: [],
             videos: [],
             currentCollection: null,
@@ -207,13 +207,10 @@ class VideoPage extends Component {
                 }
             }
         };
-        document.addEventListener('keydown', this._keyHandler);
+        this.addDocumentEvent('keydown', this._keyHandler);
     }
 
     destroy() {
-        if (this._keyHandler) {
-            document.removeEventListener('keydown', this._keyHandler);
-        }
         super.destroy();
     }
 
@@ -509,7 +506,7 @@ class VideoPage extends Component {
         });
 
         // 预载设置
-        setTimeout(() => this.applyPlaybackSpeed(), 100);
+        this.setTimeout(() => this.applyPlaybackSpeed(), 100);
     }
 
     closePlayer() {

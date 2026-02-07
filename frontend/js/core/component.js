@@ -11,7 +11,10 @@ class Component {
         this.state = {};
         this.props = {};
         this._mounted = false;  // 标记是否已挂载
-        this._listeners = [];   // 存储绑定的事件监听器以便销毁
+        this._listeners = [];   // 存储绑定的 DOM 事件监听器 (针对 container 内元素)
+        this._globalListeners = []; // 存储全局事件 (window/document)
+        this._timers = [];      // 存储 setTimeout ID
+        this._intervals = [];   // 存储 setInterval ID
     }
 
     /**
@@ -71,18 +74,46 @@ class Component {
     afterUpdate() { }
 
     /**
+     * 销毁前钩子
+     */
+    beforeUnmount() { }
+
+    /**
      * 清理所有已绑定的事件监听器
      */
     clearListeners() {
+        // 清理容器内事件
         if (this._listeners) {
             this._listeners.forEach(({ element, event, handler }) => {
                 try {
                     element?.removeEventListener(event, handler);
-                } catch (e) {
-                    console.warn('移除事件监听器失败:', e);
-                }
+                } catch (e) { }
             });
             this._listeners = [];
+        }
+
+        // 清理全局事件 (window/document)
+        if (this._globalListeners) {
+            this._globalListeners.forEach(({ element, event, handler }) => {
+                try {
+                    element?.removeEventListener(event, handler);
+                } catch (e) { }
+            });
+            this._globalListeners = [];
+        }
+    }
+
+    /**
+     * 清理所有定时器
+     */
+    clearTimers() {
+        if (this._timers) {
+            this._timers.forEach(id => clearTimeout(id));
+            this._timers = [];
+        }
+        if (this._intervals) {
+            this._intervals.forEach(id => clearInterval(id));
+            this._intervals = [];
         }
     }
 
@@ -90,14 +121,68 @@ class Component {
      * 销毁组件
      */
     destroy() {
+        // 执行销毁前钩子
+        this.beforeUnmount();
+
+        // 自动清理
         this.clearListeners();
+        this.clearTimers();
 
         if (this.container) {
-            this.container.innerHTML = '';
             // 清除自定义属性绑定标记，允许重建
             const keys = Object.keys(this.container).filter(k => k.startsWith('_bind'));
             keys.forEach(k => delete this.container[k]);
+
+            this.container.innerHTML = '';
         }
+        this._mounted = false;
+    }
+
+    /**
+     * 受控的 setTimeout
+     */
+    setTimeout(handler, timeout) {
+        const id = setTimeout(() => {
+            // 触发后从队列移除
+            this._timers = this._timers.filter(t => t !== id);
+            handler();
+        }, timeout);
+        this._timers.push(id);
+        return id;
+    }
+
+    /**
+     * 受控的 setInterval
+     */
+    setInterval(handler, timeout) {
+        const id = setInterval(handler, timeout);
+        this._intervals.push(id);
+        return id;
+    }
+
+    /**
+     * 绑定 Document 事件 (自动销毁)
+     */
+    addDocumentEvent(event, handler, options) {
+        document.addEventListener(event, handler, options);
+        this._globalListeners.push({ element: document, event, handler });
+    }
+
+    /**
+     * 绑定 Window 事件 (自动销毁)
+     */
+    addWindowEvent(event, handler, options) {
+        window.addEventListener(event, handler, options);
+        this._globalListeners.push({ element: window, event, handler });
+    }
+
+    /**
+     * 绑定普通 DOM 事件并托管
+     */
+    addListener(element, event, handler, options) {
+        if (!element) return;
+        element.addEventListener(event, handler, options);
+        this._listeners.push({ element, event, handler });
     }
 
     /**

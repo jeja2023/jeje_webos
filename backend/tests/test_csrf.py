@@ -14,28 +14,29 @@ from core.csrf import (
     TOKEN_EXPIRE_SECONDS
 )
 
+@pytest.mark.asyncio
 class TestCSRF:
     """CSRF 防护测试"""
     
     def setup_method(self):
         _csrf_tokens.clear()
         
-    def test_token_lifecycle(self):
+    async def test_token_lifecycle(self):
         """测试Token生成和验证"""
-        token = generate_csrf_token()
+        token = await generate_csrf_token()
         assert token in _csrf_tokens
-        assert verify_csrf_token(token) is True
+        assert await verify_csrf_token(token) is True
         
         # 测试不存在的 Token
-        assert verify_csrf_token("invalid") is False
+        assert await verify_csrf_token("invalid") is False
         
-    def test_token_expiration(self):
+    async def test_token_expiration(self):
         """测试Token过期"""
-        token = generate_csrf_token()
+        token = await generate_csrf_token()
         
         # 模拟时间使其过期
         with patch("time.time", return_value=time.time() + TOKEN_EXPIRE_SECONDS + 1):
-            assert verify_csrf_token(token) is False
+            assert await verify_csrf_token(token) is False
             assert token not in _csrf_tokens # 校验时应该被删除
             
     def test_cleanup(self):

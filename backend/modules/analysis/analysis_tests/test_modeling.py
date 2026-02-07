@@ -134,6 +134,7 @@ class TestModelingService:
     async def test_execute_sql_save_as(self):
         """测试SQL保存为数据集"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock() # add 是同步方法
         sql = "SELECT * FROM t"
         
         with patch("modules.analysis.analysis_modeling_service.duckdb_instance") as mock_duck:

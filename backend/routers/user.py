@@ -422,7 +422,7 @@ async def delete_user(
         # 尝试导入IM模型，如果模块不存在则跳过
         from modules.im.im_models import IMConversation, IMConversationMember, IMMessage, IMMessageRead, IMContact
         
-        logger.info(f"Cleaning up IM data for user {user_id}")
+        logger.info(f"正在清理用户 {user_id} 的 IM 数据")
         
         # 1. 更新群主归属: 将该用户创建的群组owner置空
         # 注意: 这里不删除群组，只移除群主身份
@@ -478,7 +478,7 @@ async def delete_user(
         # IM模块未安装或未启用
         pass
     except Exception as e:
-        logger.error(f"Error cleaning up IM data for user {user_id}: {e}")
+        logger.error(f"清理用户 {user_id} 的 IM 数据时出错: {e}")
         # 如果清理IM数据失败，记录日志，但继续尝试删除用户(可能会再次失败抛出异常)
         # 或者可以选择抛出异常终止
         raise HTTPException(status_code=500, detail=f"删除关联数据失败: {str(e)}")
@@ -746,7 +746,7 @@ async def update_user(
     # 注意：如果客户端发送了未定义的字段，Pydantic 默认会忽略，但如果是旧版本的 Pydantic 或者模型定义没更新，可能会有问题
     # 这里我们使用 dict() 或 model_dump() 来安全访问
     update_data = data.model_dump(exclude_unset=True)
-    logger.debug(f"User {user_id} update payload: {update_data}")
+    logger.debug(f"用户 {user_id} 更新负载: {update_data}")
     
     if "nickname" in update_data:
         user.nickname = update_data["nickname"]
@@ -767,7 +767,7 @@ async def update_user(
     
     if "storage_quota" in update_data:
         new_quota = update_data["storage_quota"]
-        logger.debug(f"Updating storage_quota for user {user.id} to {new_quota}")
+        logger.debug(f"正在将用户 {user.id} 的存储配额更新为 {new_quota}")
         user.storage_quota = new_quota
     
     await db.commit()

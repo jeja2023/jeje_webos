@@ -33,6 +33,8 @@ class TestIMService:
     async def test_create_conversation_private(self):
         """测试创建私聊"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+        mock_db.add_all = MagicMock()
         service = IMService(mock_db)
         
         # 模拟 _find_private_conversation 返回 None
@@ -54,6 +56,8 @@ class TestIMService:
     async def test_create_conversation_group(self):
         """测试创建群聊"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+        mock_db.add_all = MagicMock()
         service = IMService(mock_db)
         
         data = ConversationCreate(type="group", name="Group", member_ids=[2, 3])

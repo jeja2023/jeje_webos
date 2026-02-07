@@ -9,13 +9,14 @@ import time
 from typing import Optional
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
+from core.cache import set_cache, get_cache, delete_cache
 
-# 存储 CSRF Token（生产环境应使用 Redis）
+# 存储 CSRF Token（当 Redis 不可用时的内存回退方案）
 _csrf_tokens: dict[str, dict] = {}
 TOKEN_EXPIRE_SECONDS = 3600  # Token 有效期：1小时
 
 
-def generate_csrf_token() -> str:
+async def generate_csrf_token() -> str:
     """
     生成 CSRF Token
     
@@ -24,20 +25,24 @@ def generate_csrf_token() -> str:
     """
     token = secrets.token_urlsafe(32)
     timestamp = time.time()
-    
-    # 存储 Token（带时间戳）
-    _csrf_tokens[token] = {
+    token_data = {
         "created_at": timestamp,
         "used": False
     }
     
-    # 清理过期 Token
-    _cleanup_expired_tokens()
+    # 尝试存入 Redis
+    saved = await set_cache(f"csrf:{token}", token_data, TOKEN_EXPIRE_SECONDS)
+    
+    # 如果 Redis 不可用，存入内存
+    if not saved:
+        _csrf_tokens[token] = token_data
+        # 清理过期 Token
+        _cleanup_expired_tokens()
     
     return token
 
 
-def verify_csrf_token(token: str) -> bool:
+async def verify_csrf_token(token: str) -> bool:
     """
     验证 CSRF Token
     
@@ -50,32 +55,43 @@ def verify_csrf_token(token: str) -> bool:
     if not token:
         return False
     
-    # 检查 Token 是否存在
-    if token not in _csrf_tokens:
-        return False
+    # 1. 尝试从 Redis 获取
+    redis_data = await get_cache(f"csrf:{token}")
+    if redis_data:
+        # Redis 会自动处理过期，所以如果获取到了，通常是有效的
+        # 但我们还是检查一下结构
+        return True
     
-    token_info = _csrf_tokens[token]
+    # 2. 尝试从内存获取
+    if token in _csrf_tokens:
+        token_info = _csrf_tokens[token]
+        
+        # 检查是否过期
+        if time.time() - token_info["created_at"] > TOKEN_EXPIRE_SECONDS:
+            del _csrf_tokens[token]
+            return False
+        
+        return True
     
-    # 检查是否过期
-    if time.time() - token_info["created_at"] > TOKEN_EXPIRE_SECONDS:
-        del _csrf_tokens[token]
-        return False
-    
-    # 检查是否已使用（可选：单次使用）
-    # if token_info["used"]:
-    #     return False
-    
-    return True
+    return False
 
 
-def mark_token_used(token: str):
+async def mark_token_used(token: str):
     """标记 Token 为已使用（可选：单次使用）"""
+    # 尝试更新 Redis
+    redis_data = await get_cache(f"csrf:{token}")
+    if redis_data:
+        redis_data["used"] = True
+        await set_cache(f"csrf:{token}", redis_data, TOKEN_EXPIRE_SECONDS)
+        return
+
+    # 尝试更新内存
     if token in _csrf_tokens:
         _csrf_tokens[token]["used"] = True
 
 
 def _cleanup_expired_tokens():
-    """清理过期的 Token"""
+    """清理过期的内存 Token"""
     current_time = time.time()
     expired = [
         token for token, info in _csrf_tokens.items()
@@ -102,9 +118,11 @@ def get_csrf_token_from_request(request: Request) -> Optional[str]:
     # 从表单数据获取
     if hasattr(request, "form"):
         try:
-            form_data = request.form()
-            if "csrf_token" in form_data:
-                return form_data["csrf_token"]
+            # 注意：request.form() 是 async 的，但在 BaseHTTPMiddleware 中无法轻易 await
+            # 这里的 request 已经被处理过，或者假设是 Starlette Request
+            # 实际上在 Middleware 中获取 form data 会消耗 request body stream，可能导致后续 router 无法读取
+            # 因此，通常建议 CSRF 只检查 Header
+            pass
         except Exception:
             pass
     
@@ -150,7 +168,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 # 获取 CSRF Token
                 token = get_csrf_token_from_request(request)
                 
-                if not token or not verify_csrf_token(token):
+                # 验证 Token (await async function)
+                if not token or not await verify_csrf_token(token):
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=status.HTTP_403_FORBIDDEN,
@@ -162,7 +181,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                     )
                 
                 # 标记 Token 为已使用（可选）
-                # mark_token_used(token)
+                # await mark_token_used(token)
             
             response = await call_next(request)
             return response

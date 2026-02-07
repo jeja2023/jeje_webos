@@ -183,7 +183,7 @@ async def system_init(
     settings = get_settings()
     
     # 生成 CSRF Token（用于状态变更操作）
-    csrf_token = generate_csrf_token()
+    csrf_token = await generate_csrf_token()
     
     # 获取版本更新信息
     from core.changelog import get_version_changes, get_latest_version

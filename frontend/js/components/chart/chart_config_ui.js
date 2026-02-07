@@ -448,7 +448,7 @@ class ChartConfigUI {
             xFields: Array.isArray(xVal) ? xVal : undefined,
             yField: getVal('cfg-w-y'),
 
-            // Sankey Fields
+            // 桑基图字段
             sourceField: getVal('cfg-w-sankey-source'),
             targetField: getVal('cfg-w-sankey-target'),
             valueField: getVal('cfg-w-sankey-value'),

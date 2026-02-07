@@ -349,16 +349,9 @@ class MonitorPage extends Component {
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
-        // 自动刷新（每30秒）- 仅在当前路由是监控页时刷新
-        this.state.refreshInterval = setInterval(() => {
-            // 检查当前路由是否仍在监控页面
-            const currentRoute = Store.get('currentRoute');
-            if (currentRoute === '/system/monitor') {
-                this.loadData();
-            } else {
-                // 不在监控页了，清理定时器
-                this.cleanup();
-            }
+        // 自动刷新（每30秒）
+        this.setInterval(() => {
+            this.loadData();
         }, 30000);
     }
 
@@ -370,21 +363,13 @@ class MonitorPage extends Component {
         }
     }
 
-    cleanup() {
-        if (this.state.refreshInterval) {
-            clearInterval(this.state.refreshInterval);
-            this.state.refreshInterval = null;
-        }
-    }
-
     destroy() {
-        this.cleanup();
         super.destroy();
     }
 
     bindEvents() {
-        if (this.container && !this.container._bindedMonitor) {
-            this.container._bindedMonitor = true;
+        if (this.container && !this.container._bindMonitor) {
+            this.container._bindMonitor = true;
 
             this.delegate('click', '#refreshMonitor', () => {
                 this.loadData();

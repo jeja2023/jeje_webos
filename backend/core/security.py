@@ -16,7 +16,7 @@ from .config import get_settings
 
 settings = get_settings()
 
-# 动态配置：JWT 过期时间（允许在运行时更新）
+# 动态配置: JWT 过期时间(允许在运行时更新)
 _jwt_expire_minutes = settings.jwt_expire_minutes
 
 def set_jwt_expire_minutes(minutes: int):
@@ -26,23 +26,15 @@ def set_jwt_expire_minutes(minutes: int):
 
 
 # 权限缓存配置
-# - maxsize: 缓存容量上限（用户数量）
-# - ttl: 缓存过期时间（秒），在此时间内不会重新查询数据库
-# 注意：修改用户权限后应调用 invalidate_permission_cache() 立即生效
+# - maxsize: 缓存容量上限(用户数量)
+# - ttl: 缓存过期时间(秒), 在此时间内不会重新查询数据库
+# 注意: 修改用户权限后应调用 invalidate_permission_cache() 立即生效
 permission_cache = TTLCache(maxsize=2000, ttl=120)
 
 
 def invalidate_permission_cache(user_id: int = None):
     """
     使权限缓存失效
-    
-    Args:
-        user_id: 指定用户 ID 则仅清除该用户缓存，否则清除全部缓存
-        
-    使用场景：
-        - 管理员修改用户权限后调用
-        - 用户角色变更后调用
-        - 用户组权限变更时，对该组所有用户调用
     """
     if user_id is not None:
         permission_cache.pop(user_id, None)
@@ -112,7 +104,7 @@ def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, tok
     Args:
         data: 令牌数据
         expires_delta: 过期时间增量
-        token_type: 令牌类型（access 或 refresh）
+        token_type: 令牌类型(access 或 refresh)
     """
     to_encode = data.model_dump()
     
@@ -161,11 +153,11 @@ def create_token_pair(data: TokenData) -> tuple[str, str]:
 def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[TokenData]:
     """
     解码JWT令牌
-    支持密钥轮换：先尝试新密钥，失败则尝试旧密钥
+    支持密钥轮换: 先尝试新密钥, 失败则尝试旧密钥
     
     Args:
         token: 待解码的JWT
-        expected_type: 期望的令牌类型（"access"/"refresh"），不匹配则返回None
+        expected_type: 期望的令牌类型("access"/"refresh"), 不匹配则返回None
     """
     def _decode(secret: str):
         payload = jwt.decode(token, secret, algorithms=[settings.jwt_algorithm])
@@ -189,7 +181,7 @@ async def get_current_user(
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> TokenData:
-    """获取当前用户（实时从数据库同步最新权限和角色）"""
+    """获取当前用户(实时从数据库同步最新权限和角色)"""
     jwt_token = None
     if credentials:
         jwt_token = credentials.credentials
@@ -229,7 +221,7 @@ async def get_current_user(
             result = await db.execute(select(User).where(User.id == token_data.user_id))
             user = result.scalar_one_or_none()
             if user and user.is_active:
-                # 动态汇总权限：直接权限 + 角色权限（实现即时同步）
+                # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
                 all_perms = list(user.permissions or [])
                 if user.role_ids:
                     role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
@@ -238,7 +230,7 @@ async def get_current_user(
                         if r.permissions:
                             all_perms.extend(r.permissions)
                 
-                # 更新 token_data 中的权限和角色（内存中更新，不修改原始 JWT）
+                # 更新 token_data 中的权限和角色(内存中更新, 不修改原始 JWT)
                 token_data.permissions = list(set(all_perms))
                 token_data.role = user.role
 
@@ -265,7 +257,7 @@ async def get_optional_user(
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[TokenData]:
-    """获取当前用户（可选，实时同步最新权限）"""
+    """获取当前用户(可选, 实时同步最新权限)"""
     jwt_token = None
     if credentials:
         jwt_token = credentials.credentials
@@ -318,22 +310,22 @@ async def get_optional_user(
 
 def require_permission(permission: str):
     """
-    权限检查装饰器工厂，支持通配符匹配
+    权限检查装饰器工厂, 支持通配符匹配
     
-    权限检查规则：
-    1. role="admin" 的用户自动拥有所有权限（即使 permissions 被收紧）
-    2. role="manager" 的用户根据 permissions 字段判断（可被收紧权限）
+    权限检查规则:
+    1. role="admin" 的用户自动拥有所有权限(即使 permissions 被收紧)
+    2. role="manager" 的用户根据 permissions 字段判断(可被收紧权限)
     3. 其他用户根据 permissions 字段判断
     
-    权限格式支持：
+    权限格式支持:
     - "*" : 所有权限
     - "module.*" : 模块所有权限
     - "module.action" : 具体操作权限
     - "module.submodule.*" : 多层通配符
     """
     async def permission_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
-        # 系统管理员（role="admin"）自动拥有所有权限
-        # 即使 permissions 被收紧，admin 角色仍然拥有所有权限
+        # 系统管理员(role="admin")自动拥有所有权限
+        # 即使 permissions 被收紧, admin 角色仍然拥有所有权限
         if user.role == "admin":
             return user
         
@@ -354,7 +346,7 @@ def require_permission(permission: str):
             if module_wildcard in user.permissions:
                 return user
         
-        # 3. 检查多层通配符（如 datalens.source.* 匹配 datalens.source.manage）
+        # 3. 检查多层通配符(如 datalens.source.* 匹配 datalens.source.manage)
         parts = permission.split(".")
         for i in range(len(parts) - 1, 0, -1):
             wildcard = ".".join(parts[:i]) + ".*"
@@ -371,11 +363,11 @@ def require_permission(permission: str):
 
 def require_admin():
     """
-    仅允许系统管理员访问（role=admin）
+    仅允许系统管理员访问(role=admin)
     
-    说明：
-    - admin: 系统管理员，拥有所有系统级权限，权限不可被收紧
-    - manager: 业务管理员，拥有业务权限，但权限可以被收紧
+    说明:
+    - admin: 系统管理员, 拥有所有系统级权限, 权限不可被收紧
+    - manager: 业务管理员, 拥有业务权限, 但权限可以被收紧
     """
     async def admin_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role != "admin":
@@ -389,12 +381,12 @@ def require_admin():
 
 def require_manager():
     """
-    允许业务管理员及以上访问（role=manager 或 admin）
+    允许业务管理员及以上访问(role=manager 或 admin)
     
-    说明：
-    - admin: 系统管理员，拥有所有权限
-    - manager: 业务管理员，拥有业务权限（可被收紧）
-    - 两者的区别：admin 可以执行系统级操作（如用户管理、系统设置），manager 只能执行业务操作
+    说明:
+    - admin: 系统管理员, 拥有所有权限
+    - manager: 业务管理员, 拥有业务权限(可被收紧)
+    - 两者的区别: admin 可以执行系统级操作(如用户管理, 系统设置), manager 只能执行业务操作
     """
     async def manager_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role not in ("manager", "admin"):

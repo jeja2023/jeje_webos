@@ -21,6 +21,7 @@ class TestBootstrap:
     async def test_init_admin_user_success(self):
         """测试成功创建管理员用户"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
         mock_db_ctx = AsyncMock()
         mock_db_ctx.__aenter__.return_value = mock_db
         mock_db_ctx.__aexit__.return_value = None
@@ -47,7 +48,7 @@ class TestBootstrap:
 
         mock_db.execute.side_effect = ResultSideEffect()
         
-        # Factory return the context manager
+        # 返回上下文管理器的工厂
         mock_factory = MagicMock(return_value=mock_db_ctx)
 
         with patch("core.bootstrap.get_settings", return_value=MockSettings()), \
@@ -58,7 +59,7 @@ class TestBootstrap:
             assert result["created"] is True
             assert result["username"] == "admin"
             
-            # UserGroup(admin) + User(admin) = 2 adds
+            # UserGroup(admin) + User(admin) = 2 次添加
             assert mock_db.add.call_count >= 2 
             mock_db.commit.assert_called()
 
@@ -66,6 +67,7 @@ class TestBootstrap:
     async def test_init_admin_user_exists(self):
         """测试管理员已存在"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
         mock_db_ctx = AsyncMock()
         mock_db_ctx.__aenter__.return_value = mock_db
         mock_db_ctx.__aexit__.return_value = None
@@ -89,7 +91,7 @@ class TestBootstrap:
     async def test_init_admin_invalid_phone(self):
         """测试无效手机号"""
         s = MockSettings()
-        s.admin_phone = "123" # invalid
+        s.admin_phone = "123" # 无效
         
         with patch("core.bootstrap.get_settings", return_value=s):
             result = await init_admin_user()
@@ -100,6 +102,7 @@ class TestBootstrap:
     async def test_ensure_default_roles(self):
         """测试确保默认角色"""
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
         mock_db_ctx = AsyncMock()
         mock_db_ctx.__aenter__.return_value = mock_db
         mock_db_ctx.__aexit__.return_value = None

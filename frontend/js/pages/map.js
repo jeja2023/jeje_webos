@@ -9,7 +9,7 @@ class MapPage extends Component {
         this.state = {
             datasets: [], // { id, name, points, color, visible }
             trailFiles: [], // { id, filename, size, created_at }
-            mapMode: 'offline', // offline | online
+            mapMode: 'offline', // 离线 | 在线
             tileSource: 'amap_offline',
             onlineTileUrl: 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
             loading: false,
@@ -295,8 +295,8 @@ class MapPage extends Component {
             this.container.classList.add('map-window-body');
             this._resizeObserver = new ResizeObserver(() => {
                 if (this.map) {
-                    if (this._invalidateTimer) clearTimeout(this._invalidateTimer);
-                    this._invalidateTimer = setTimeout(() => {
+                    if (this._invalidateTimer) this.clearTimeout(this._invalidateTimer);
+                    this._invalidateTimer = this.setTimeout(() => {
                         if (this.map) this.map.invalidateSize();
                     }, 100);
                 }
@@ -555,7 +555,7 @@ class MapPage extends Component {
     }
 
     destroy() {
-        if (this._invalidateTimer) clearTimeout(this._invalidateTimer);
+        if (this._invalidateTimer) this.clearTimeout(this._invalidateTimer);
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
             this._resizeObserver = null;
@@ -566,10 +566,6 @@ class MapPage extends Component {
         if (this.map) {
             this.map.remove();
             this.map = null;
-        }
-        if (this._outsideClickHandler) {
-            document.removeEventListener('click', this._outsideClickHandler);
-            this._outsideClickHandler = null;
         }
         super.destroy();
     }
@@ -596,7 +592,7 @@ class MapPage extends Component {
                 return;
             }
             this._initRetryCount = (this._initRetryCount || 0) + 1;
-            setTimeout(() => this.initMap(), 200);
+            this.setTimeout(() => this.initMap(), 200);
             return;
         }
         this._initRetryCount = 0;
@@ -628,20 +624,18 @@ class MapPage extends Component {
                 attributionControl: false
             });
 
-            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 100);
-            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 500);
-            setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 1500);
+            this.setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 100);
+            this.setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 500);
+            this.setTimeout(() => { if (this.map) this.map.invalidateSize(); }, 1500);
 
             // 如果处于不可见状态，持续尝试直到可见
-            const checkVisibility = setInterval(() => {
-                if (!this.map) { clearInterval(checkVisibility); return; }
-                const container = this.map.getContainer();
-                if (container && container.clientHeight > 0) {
-                    this.map.invalidateSize();
-                    clearInterval(checkVisibility);
+            const checkVisibility = this.setInterval(() => {
+                if (this.container && this.container.offsetWidth > 0) {
+                    if (this.map) this.map.invalidateSize();
+                    this.clearInterval(checkVisibility);
                 }
-            }, 1000);
-            setTimeout(() => clearInterval(checkVisibility), 5000);
+            }, 300);
+            this.setTimeout(() => this.clearInterval(checkVisibility), 5000);
 
             L.control.zoom({ position: 'bottomright' }).addTo(this.map);
             L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(this.map);
@@ -652,8 +646,8 @@ class MapPage extends Component {
                 const el = this.container.querySelector('.zoom-indicator');
                 if (el) el.innerText = `缩放: ${this.map.getZoom()} `;
 
-                if (this._zoomRenderTimer) clearTimeout(this._zoomRenderTimer);
-                this._zoomRenderTimer = setTimeout(() => {
+                if (this._zoomRenderTimer) this.clearTimeout(this._zoomRenderTimer);
+                this._zoomRenderTimer = this.setTimeout(() => {
                     this.state.datasets.forEach(ds => {
                         if (ds.visible && ds.points.length > 500) this.renderDataset(ds);
                     });
@@ -849,11 +843,15 @@ class MapPage extends Component {
                 this.setState({ searchResults: [] });
             }
         };
-        document.addEventListener('click', this._outsideClickHandler);
+        this.addDocumentEvent('click', this._outsideClickHandler);
     }
 
     /** 创建标记点引导 **/
     handleCreateMarker() {
+        if (!this.map) {
+            Toast.error('地图尚未加载完成');
+            return;
+        }
         const center = this.map.getCenter();
         Modal.prompt({
             title: '在当前位置添加标记',
@@ -1122,7 +1120,7 @@ class MapPage extends Component {
 
     afterUpdate() {
         // 仅在地图不存在时初始化，否则只刷新尺寸
-        setTimeout(() => {
+        this.setTimeout(() => {
             if (!this.map) {
                 this.initMap();
             } else {
@@ -1586,7 +1584,7 @@ class MapPage extends Component {
         } else if (this._heatLibLoading && !this._heatLibLoaded) {
             // 库正在加载中，延时重试
             Toast.info('热力图引擎加载中...');
-            setTimeout(() => this.renderHeatmap(), 500);
+            this.setTimeout(() => this.renderHeatmap(), 500);
         } else {
             Toast.error('热力图引擎加载失败');
             this.state.isHeatmapMode = false;
@@ -1674,21 +1672,26 @@ class MapPage extends Component {
         if (!this.map) return;
         if (this._syncTimer) clearTimeout(this._syncTimer);
 
-        this._syncTimer = setTimeout(async () => {
-            const center = this.map.getCenter();
-            const payload = {
-                map_mode: this.state.mapMode,
-                tile_source: this.state.tileSource,
-                last_center: [center.lat, center.lng],
-                last_zoom: this.map.getZoom()
-            };
+        this._syncTimer = this.setTimeout(async () => {
+            // 安全检查：在异步回调执行时 map 可能已被销毁
+            if (!this.map) return;
 
-            // 暂时仅保存到本地，避免 401 错误干扰
-            this.saveMapConfig();
             try {
+                const center = this.map.getCenter();
+                const payload = {
+                    map_mode: this.state.mapMode,
+                    tile_source: this.state.tileSource,
+                    last_center: [center.lat, center.lng],
+                    last_zoom: this.map.getZoom()
+                };
+
+                // 暂时仅保存到本地，避免 401 错误干扰
+                this.saveMapConfig();
                 // 如果需要恢复 API 调用，请取消注释，并确保已登录
                 // await Api.post('/map/config/save', payload);
-            } catch (e) { }
+            } catch (e) {
+                console.warn('同步地图配置失败:', e);
+            }
         }, 3000);
     }
 
@@ -1763,7 +1766,20 @@ class MapPage extends Component {
             }
         });
     }
+
+    /** 销毁组件 **/
+    destroy() {
+        if (this.map) {
+            this.map.remove();
+            this.map = null;
+        }
+        if (window._currentMap === this) {
+            window._currentMap = null;
+        }
+        super.destroy();
+    }
 }
 
 // 绑定全局引用以便 Popup 中的 inline 事件调用
 window._currentMap = null;
+window._JeJeMap = MapPage; // Expose class if needed

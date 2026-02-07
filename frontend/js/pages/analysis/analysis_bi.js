@@ -72,7 +72,7 @@ class AnalysisBIPage extends Component {
                         widgets: dashboard.widgets || [],
                         editMode: false
                     });
-                    setTimeout(() => this.renderAllCharts(), 100);
+                    this.setTimeout(() => this.renderAllCharts(), 100);
                 }
             } catch (e) {
                 Toast.error('无法打开仪表盘: ' + e.message);
@@ -82,7 +82,7 @@ class AnalysisBIPage extends Component {
         // 切换编辑模式
         this.delegate('click', '#btn-toggle-edit', () => {
             this.setState({ editMode: !this.state.editMode });
-            setTimeout(() => this.renderAllCharts(), 50);
+            this.setTimeout(() => this.renderAllCharts(), 50);
         });
 
         // 添加组件
@@ -146,7 +146,7 @@ class AnalysisBIPage extends Component {
             document.getElementById('fullscreen-exit-btn').classList.remove('display-none');
 
             // 自动强制重绘所有图表以适应尺寸
-            setTimeout(() => this.renderAllCharts(), 500);
+            this.setTimeout(() => this.renderAllCharts(), 500);
         } else {
             // 退出全屏
             if (document.exitFullscreen) {
@@ -157,7 +157,7 @@ class AnalysisBIPage extends Component {
             view.classList.remove('data-screen-mode');
             document.getElementById('fullscreen-exit-btn').classList.add('display-none');
 
-            setTimeout(() => this.renderAllCharts(), 500);
+            this.setTimeout(() => this.renderAllCharts(), 500);
         }
     }
 
@@ -411,13 +411,12 @@ class AnalysisBIPage extends Component {
             // 使用统一的 resize 处理器
             if (!this._resizeHandler) {
                 this._resizeHandler = ChartHelper.createResizeHandler(this.chartInstances, 200);
-                ChartHelper.registerGlobalResize(this._resizeHandler);
+                this.addWindowEvent('resize', this._resizeHandler);
             }
         } catch (e) {
             container.innerHTML = `<div class="flex-center h-100 text-error text-xs">加载失败: ${e.message}</div>`;
         }
     }
-
 
 
     disposeAllCharts() {
@@ -427,12 +426,6 @@ class AnalysisBIPage extends Component {
         });
         this.chartInstances = {};
 
-        // 清理 resize 监听器
-        if (this._resizeHandler) {
-            window.removeEventListener('resize', this._resizeHandler);
-            this._resizeHandler = null;
-        }
-
         // 清理数据缓存
         if (this._dataCache) {
             this._dataCache = {};
@@ -440,6 +433,11 @@ class AnalysisBIPage extends Component {
         if (this._dataCacheTimestamps) {
             this._dataCacheTimestamps = {};
         }
+    }
+
+    destroy() {
+        this.disposeAllCharts();
+        super.destroy();
     }
 
     showCreateDashboardModal() {
@@ -537,7 +535,7 @@ class AnalysisBIPage extends Component {
 
                 const widgets = [...this.state.widgets, widget];
                 this.setState({ widgets });
-                setTimeout(() => this.renderAllCharts(), 50);
+                this.setTimeout(() => this.renderAllCharts(), 50);
                 return true;
             }
         });
@@ -581,7 +579,7 @@ class AnalysisBIPage extends Component {
                 Toast.success('仪表盘已持久化到服务器');
                 this.setState({ currentDashboard: res.data });
                 // 【核心修复】保存触发重绘后，必须重新初始化图表实例
-                setTimeout(() => this.renderAllCharts(), 100);
+                this.setTimeout(() => this.renderAllCharts(), 100);
             } else {
                 throw new Error(res.message);
             }
@@ -667,7 +665,7 @@ class AnalysisBIPage extends Component {
                 } : w);
 
                 this.setState({ widgets: updated });
-                setTimeout(() => this.renderAllCharts(), 50);
+                this.setTimeout(() => this.renderAllCharts(), 50);
                 return true;
             }
         });

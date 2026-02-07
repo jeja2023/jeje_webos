@@ -74,7 +74,7 @@ class AnalysisPage extends Component {
     constructor(container, props) {
         super(container);
         this.state = {
-            activeTab: 'bi', // datasets, import, compare, cleaning, modeling, charts, bi
+            activeTab: 'bi', // 数据集, 导入, 对比, 清洗, 建模, 图表, 仪表盘
             datasets: [],
             datasetSearch: '', // 数据集搜索
             datasetSelectedIds: [], // 数据集多选
@@ -94,8 +94,8 @@ class AnalysisPage extends Component {
             showFilterPanel: false,
             showSortPanel: false,
             compareResult: null,
-            importType: 'file', // file, database
-            fileSource: 'upload', // upload, manager
+            importType: 'file', // 文件, 数据库
+            fileSource: 'upload', // 上传, 文件管理
             fileManagerFiles: null,
             currentFolderId: null,
             folderPath: [], // 存储面包屑 [{id, name}]
@@ -121,13 +121,13 @@ class AnalysisPage extends Component {
             corrData: null,
             aggData: null,
             // 图表专用
-            chartType: 'bar', // bar, pie, line, scatter
+            chartType: 'bar', // 柱状图, 饼图, 折线图, 散点图
             chartDatasetId: '', // 保存已选数据集
             chartConfig: {
                 xField: '',
                 yField: '',
                 groupField: '',
-                aggregationType: 'none' // none, count, sum, avg, max, min
+                aggregationType: 'none' // 无, 计数, 求和, 平均, 最大, 最小
             },
             hasGeneratedChart: false, // 是否已经生成了图表
             cleaningTasks: [], // 多步骤清洗任务
@@ -141,7 +141,7 @@ class AnalysisPage extends Component {
             compareTargetPreview: null,
             activeCompareTab: 'same',
             // SQL 专用
-            sqlMode: 'editor', // editor, visual
+            sqlMode: 'editor', // 编辑器, 可视化
             sqlQuery: '',
             sqlResult: null,
             sqlTables: [],
@@ -210,7 +210,7 @@ class AnalysisPage extends Component {
      */
     _setupErrorHandling() {
         // 捕获未处理的 Promise 错误
-        window.addEventListener('unhandledrejection', (event) => {
+        this.addWindowEvent('unhandledrejection', (event) => {
             // 只在分析页面时处理
             if (this.state && this.state.activeTab) {
                 // 显示错误信息
@@ -230,23 +230,8 @@ class AnalysisPage extends Component {
             if (this.bindModelingEvents) this.bindModelingEvents();
             // 必须每次更新都尝试初始化，因为 DOM 可能已被重绘
             this.initETLCanvasDrop();
-        } else {
-            // 切换到其他标签页时，清理键盘事件监听器（如果存在）
-            if (this._keyboardEventHandler && this._keyboardEventsBound) {
-                document.removeEventListener('keydown', this._keyboardEventHandler);
-                this._keyboardEventsBound = false;
-                this._keyboardEventHandler = null;
-            }
         }
-        if (this.state.activeTab === 'sql') {
-            if (!this.state.sqlTablesLoaded) {
-                this.initSqlQueryPage();
-                this.setState({ sqlTablesLoaded: true });
-            }
-        }
-        if (this.state.activeTab === 'compare') {
-            // 比对事件在 bindEvents 中绑定一次
-        }
+
         if (this.state.activeTab === 'charts') {
             // 绑定图表事件（如果还未绑定）
             if (this.bindChartEvents && !this._chartEventsBound) {
@@ -254,14 +239,12 @@ class AnalysisPage extends Component {
             }
 
             // 每次更新后都初始化图表配置交互（因为 DOM 可能已重新渲染）
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const configPanel = document.querySelector('.chart-config-panel');
-                    if (configPanel) {
-                        ChartConfigUI.initInteractions(configPanel);
-                    }
-                });
-            });
+            this.setTimeout(() => {
+                const configPanel = document.querySelector('.chart-config-panel');
+                if (configPanel) {
+                    ChartConfigUI.initInteractions(configPanel);
+                }
+            }, 0);
 
             // 如果显示 ChartHub，确保列表已更新
             if (this.state.showChartHub) {
@@ -271,15 +254,14 @@ class AnalysisPage extends Component {
                     const loadingText = container.textContent || '';
                     if (loadingText.includes('正在获取同步云端资产') || loadingText.includes('正在获取')) {
                         // 如果还在显示加载状态，触发更新
-                        setTimeout(() => {
+                        this.setTimeout(() => {
                             if (this.updateSavedChartsList) {
                                 this.updateSavedChartsList();
                             }
                         }, 50);
                     }
                 } else {
-                    // 容器不存在，等待一下再尝试
-                    setTimeout(() => {
+                    this.setTimeout(() => {
                         const container = document.getElementById('saved-charts-list');
                         if (container && this.updateSavedChartsList) {
                             this.updateSavedChartsList();
@@ -306,7 +288,36 @@ class AnalysisPage extends Component {
         if (this.state.activeTab === 'smart-table') {
             if (!this.state.smartTables) this.fetchSmartTables();
         }
+    }
 
+    destroy() {
+        // 销毁子组件
+        const biContainer = document.getElementById('bi-container');
+        if (biContainer && biContainer._biInstance) {
+            biContainer._biInstance.destroy();
+            biContainer._biInstance = null;
+        }
+
+        // 销毁图表实例
+        if (this.chartInstance) {
+            if (typeof ChartHelper !== 'undefined') {
+                ChartHelper.disposeChart(this.chartInstance);
+            } else if (this.chartInstance.dispose) {
+                this.chartInstance.dispose();
+            }
+            this.chartInstance = null;
+        }
+
+        if (this.viewerChartInstance) {
+            if (typeof ChartHelper !== 'undefined') {
+                ChartHelper.disposeChart(this.viewerChartInstance);
+            } else if (this.viewerChartInstance.dispose) {
+                this.viewerChartInstance.dispose();
+            }
+            this.viewerChartInstance = null;
+        }
+
+        super.destroy();
     }
 
     async fetchDatasets() {
@@ -709,7 +720,7 @@ class AnalysisPage extends Component {
     // BI 仪表盘渲染（使用独立组件）
     renderBI() {
         // 使用容器方式渲染 BI 组件
-        setTimeout(() => {
+        this.setTimeout(() => {
             const container = document.getElementById('bi-container');
             if (container && !container._biInstance) {
                 container._biInstance = new AnalysisBIPage(container);
@@ -998,7 +1009,6 @@ class AnalysisPage extends Component {
     }
 
     // 比对相关方法在 analysis_compare.js 中定义（通过 Mixin 混入）
-
 }
 
 window.AnalysisPage = AnalysisPage;

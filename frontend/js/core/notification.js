@@ -53,7 +53,7 @@ const SystemNotification = {
             const count = res.data?.count || res.count || 0;
             Store.set('unreadMessages', count);
         } catch (e) {
-            // ignore
+            // 忽略
         }
     },
 

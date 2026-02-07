@@ -10,7 +10,7 @@ class CoursePage extends Component {
         this.isAdmin = user?.role === 'admin';
 
         this.state = {
-            view: 'list', // list, learning, manage, detail, learn
+            view: 'list', // 列表, 学习, 管理, 详情, 学习详情
             courses: [],
             myCourses: [],
             myLearning: [],

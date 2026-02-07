@@ -35,6 +35,8 @@ class ChatRequest(BaseModel):
     api_config: Optional[Dict[str, str]] = None # 允许前端传入临时配置
     session_id: Optional[int] = None # 会话ID，如果提供则保存消息到此会话
 
+    model_config = {"protected_namespaces": ()}
+
 @router.get("/status")
 async def get_status(
     user: TokenData = Depends(get_current_user),

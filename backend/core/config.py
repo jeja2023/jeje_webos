@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_name: str = "jeje_webos"
     db_time_zone: str = "+08:00"  # 数据库会话时区，使用东八区写入
+    database_url: Optional[str] = None  # 允许直接提供完整连接串（环境变量 DATABASE_URL）
     
     # 数据库连接池配置
     db_pool_size: int = 10         # 基础连接池大小
@@ -38,6 +39,8 @@ class Settings(BaseSettings):
     
     @property
     def db_url(self) -> str:
+        if self.database_url:
+            return self.database_url
         encoded_user = quote_plus(self.db_user)
         encoded_pwd = quote_plus(self.db_password)
         return f"mysql+aiomysql://{encoded_user}:{encoded_pwd}@{self.db_host}:{self.db_port}/{self.db_name}"
@@ -96,7 +99,7 @@ class Settings(BaseSettings):
     audit_all_operations: bool = False  # 是否记录所有操作（包括 GET 请求）
     
     # CSRF 防护配置
-    csrf_enabled: bool = False
+    csrf_enabled: bool = True
     
     # 速率限制配置
     rate_limit_enabled: bool = True

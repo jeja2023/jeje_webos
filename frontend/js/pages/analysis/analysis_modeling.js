@@ -408,7 +408,7 @@ const AnalysisModelingMixin = {
             });
 
             // 稍后初始化拖放
-            setTimeout(() => this.initETLCanvasDrop(), 100);
+            this.setTimeout(() => this.initETLCanvasDrop(), 100);
         } catch (e) {
             Toast.error('加载模型失败: ' + e.message);
         }
@@ -973,7 +973,7 @@ const AnalysisModelingMixin = {
             this.setState({ selectedNodeConfigHtml: html });
 
             if (panel) {
-                setTimeout(() => {
+                this.setTimeout(() => {
                     const newPanel = document.getElementById('etl-config-panel-content');
                     if (newPanel) newPanel.scrollTop = scrollPos;
                 }, 0);
@@ -2518,7 +2518,7 @@ const AnalysisModelingMixin = {
         if (container) container.classList.add('connecting-active');
 
         const startX = srcNode.x + 100; // 200/2
-        const startY = srcNode.y + 86;  // bottom
+        const startY = srcNode.y + 86;  // 底部
 
         const move = (ev) => {
             const x2 = (ev.clientX - rect.left) / (this.state.canvasZoom || 1);

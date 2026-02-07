@@ -32,14 +32,14 @@ class KnowledgeVectorStore:
             settings=chromadb.Settings(anonymized_telemetry=False)
         )
         
-        # 1. 文本向量集合 (Text Only)
+        # 1. 文本向量集合 (仅文本)
         # 优化：添加 HNSW 索引参数
         # M: 每个节点的邻居数，ef_construction: 构建索引时的搜索深度
         self.collection = self.client.get_or_create_collection(
             name="jeje_knowledge",
             embedding_function=self,
             metadata={
-                "description": "JeJe Knowledge Base Text Collection",
+                "description": "JeJe 知识库文本集合",
                 "hnsw:space": "cosine",
                 "hnsw:M": 16,
                 "hnsw:construction_ef": 200
@@ -53,7 +53,7 @@ class KnowledgeVectorStore:
             # 这里暂时传 self，后续通过专门的 CLIP 函数处理输入
             embedding_function=self,
             metadata={
-                "description": "JeJe Knowledge Base Image/CLIP Collection", 
+                "description": "JeJe 知识库图像/CLIP 集合", 
                 "hnsw:space": "cosine",
                 "hnsw:M": 16
             }

@@ -43,7 +43,8 @@ class TestSettings:
             db_port=3307,
             db_user="test",
             db_password="testpass",
-            db_name="testdb"
+            db_name="testdb",
+            database_url=None
         )
         
         expected_url = "mysql+aiomysql://test:testpass@127.0.0.1:3307/testdb"

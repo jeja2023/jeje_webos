@@ -321,7 +321,7 @@ const AnalysisChartMixin = {
                     this[instanceKey].resize();
                 }
             };
-            window.addEventListener('resize', this[handlerKey]);
+            this.addWindowEvent('resize', this[handlerKey]);
         }
     },
 
@@ -435,7 +435,7 @@ const AnalysisChartMixin = {
 
                     // 保存成功后刷新图表列表
                     if (this.state.showChartHub) {
-                        setTimeout(() => {
+                        this.setTimeout(() => {
                             this.updateSavedChartsList();
                         }, 300);
                     }
@@ -500,7 +500,7 @@ const AnalysisChartMixin = {
                     </div>`;
 
                 // 绑定"去创建图表"按钮
-                setTimeout(() => {
+                this.setTimeout(() => {
                     const btn = document.getElementById('btn-goto-generator-from-empty');
                     if (btn) {
                         btn.onclick = () => {
@@ -584,7 +584,7 @@ const AnalysisChartMixin = {
         // 切换到图表库
         this.delegate('click', '#btn-open-chart-hub', () => {
             this.setState({ showChartHub: true });
-            setTimeout(() => {
+            this.setTimeout(() => {
                 this._triggerHubUpdate();
             }, 100);
         });
@@ -603,7 +603,7 @@ const AnalysisChartMixin = {
         this.delegate('click', '.btn-view-saved-chart', (e, el) => {
             const id = parseInt(el.dataset.id);
             this.setState({ viewingChartId: id });
-            setTimeout(() => {
+            this.setTimeout(() => {
                 const chart = this.state.savedCharts?.find(c => c.id === id);
                 if (chart) {
                     this.renderChartByConfig('viewer-chart-container', chart);
@@ -696,7 +696,7 @@ const AnalysisChartMixin = {
             if (!chart) return;
             Toast.info('正在刷新图表数据...');
             this.setState({ viewingChartId: chartId });
-            setTimeout(async () => {
+            this.setTimeout(async () => {
                 await this.renderChartByConfig('viewer-chart-container', chart);
                 Toast.success('图表已使用最新数据刷新');
             }, 100);

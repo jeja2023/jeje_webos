@@ -21,6 +21,8 @@ class IMPage extends Component {
             loading: false,
             loadingMore: false,
             page: 1,
+            onlineStatusInterval: null,
+            _bindEvents: false,
             hasMore: true,
             onlineUsers: new Set(),
             searchQuery: '',
@@ -111,7 +113,7 @@ class IMPage extends Component {
         this.bindEvents();
 
         // 绑定refs
-        setTimeout(() => {
+        this.setTimeout(() => {
             this.updateRefs();
         }, 0);
     }
@@ -125,10 +127,32 @@ class IMPage extends Component {
      * 绑定DOM事件
      */
     bindEvents() {
+        if (this.state._bindEvents) return;
+        this.state._bindEvents = true;
+
         // 监听滚动加载更多消息
         this.delegate('scroll', '.im-messages', (e, el) => {
             if (el.scrollTop < 100 && this.state.hasMore && !this.state.loadingMore) {
                 this.loadMoreMessages();
+            }
+        });
+
+        // 搜索框回车支持
+        this.delegate('keydown', '.im-search-input', (e, el) => {
+            if (e.key === 'Enter') {
+                const query = el.value.trim().toLowerCase();
+                this.setState({ searchQuery: query });
+                this.filterConversations();
+            }
+        });
+
+        // 搜索按钮点击
+        this.delegate('click', '#btnIMSearch', () => {
+            const input = this.container.querySelector('.im-search-input');
+            if (input) {
+                const query = input.value.trim().toLowerCase();
+                this.setState({ searchQuery: query });
+                this.filterConversations();
             }
         });
 
@@ -207,32 +231,13 @@ class IMPage extends Component {
             this.handlePaste(e);
         });
 
-        // 搜索按钮点击
-        this.delegate('click', '#btnIMSearch', () => {
-            const input = this.container.querySelector('.im-search-input');
-            if (input) {
-                const query = input.value.trim().toLowerCase();
-                this.setState({ searchQuery: query });
-                this.filterConversations();
-            }
-        });
-
-        // 搜索框回车支持
-        this.delegate('keydown', '.im-search-input', (e, el) => {
-            if (e.key === 'Enter') {
-                const query = el.value.trim().toLowerCase();
-                this.setState({ searchQuery: query });
-                this.filterConversations();
-            }
-        });
-
         // 图片预览 (Lightbox)
         this.delegate('click', '.im-msg-image img', (e, el) => {
             this.showLightbox(el.src);
         });
 
         // 点击外部关闭表情面板
-        this.container.addEventListener('click', (e) => {
+        this.addListener(this.container, 'click', (e) => {
             const panel = this.container.querySelector('.im-emoji-panel');
             if (panel && panel.classList.contains('active')) {
                 if (!e.target.closest('.im-emoji-panel') && !e.target.closest('.im-emoji-btn')) {
@@ -242,7 +247,7 @@ class IMPage extends Component {
         });
 
         // 定时刷新在线状态 (每30秒)
-        this.onlineStatusTimer = setInterval(() => this.loadOnlineUsers(), 30000);
+        this.onlineStatusInterval = this.setInterval(() => this.loadOnlineUsers(), 30000);
     }
 
     /**
@@ -289,7 +294,7 @@ class IMPage extends Component {
 
         overlay.onclick = () => {
             overlay.style.opacity = '0';
-            setTimeout(() => overlay.remove(), 200);
+            this.setTimeout(() => overlay.remove(), 200);
         };
 
         document.body.appendChild(overlay);
@@ -598,7 +603,7 @@ class IMPage extends Component {
                     });
 
                     // 首次加载滚动到底部
-                    setTimeout(() => {
+                    this.setTimeout(() => {
                         this.scrollToBottom();
                     }, 100);
                 }
@@ -779,7 +784,7 @@ class IMPage extends Component {
             this.messagesContainer.appendChild(typingIndicator);
         }
 
-        setTimeout(() => {
+        this.setTimeout(() => {
             this.scrollToBottom();
         }, 50);
 
@@ -843,7 +848,7 @@ class IMPage extends Component {
 
             // 自动清除输入状态（5秒后）
             if (data.is_typing) {
-                setTimeout(() => {
+                this.setTimeout(() => {
                     const newTypingUsers = new Set(this.state.typingUsers);
                     if (newTypingUsers.has(data.user_id)) {
                         newTypingUsers.delete(data.user_id);
@@ -1089,11 +1094,15 @@ class IMPage extends Component {
         menu.style.top = y + 'px';
 
         // 点击其他地方关闭菜单
-        const closeHandler = () => {
+        const closeHandler = (e) => {
+            // 如果点击的是菜单项，由菜单项自身的 click 事件处理
+            // 如果点击的是外部，则关闭菜单
             this.removeContextMenu();
-            document.removeEventListener('click', closeHandler);
         };
-        setTimeout(() => document.addEventListener('click', closeHandler), 0);
+        // 延迟绑定，避免当前 ContextMenu 事件冒泡触发关闭
+        this.setTimeout(() => {
+            this.addDocumentEvent('click', closeHandler, { once: true });
+        }, 0);
     }
 
     removeContextMenu() {

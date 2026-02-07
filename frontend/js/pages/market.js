@@ -12,7 +12,7 @@ class AppCenterMarketPage extends Component {
         this.state = {
             modules: [],
             loading: true,
-            view: 'home', // home, manage, market, dev
+            view: 'home', // 主页, 管理, 市场, 开发
             processingId: null
         };
     }

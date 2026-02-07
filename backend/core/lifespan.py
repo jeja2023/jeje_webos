@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from core.config import get_settings, reload_settings
 from core.database import init_db, close_db, get_db_session
-from core.cache import init_cache, close_cache
+from core.cache import init_cache, close_cache, Cache
 from core.bootstrap import init_admin_user, ensure_default_roles
 from core.loader import get_module_loader
 from core.events import event_bus, Events, Event
@@ -21,6 +21,55 @@ from core.rate_limit import init_rate_limiter
 from utils.jwt_rotate import get_jwt_rotator
 
 logger = logging.getLogger(__name__)
+
+
+async def warm_cache():
+    """
+    缓存预热：在启动时预加载热门数据到 Redis
+    
+    预热内容：
+    - 系统设置
+    - 角色权限列表
+    - 近期公告（最近10条）
+    """
+    from models import UserGroup, SystemSetting
+    from sqlalchemy import select
+    
+    async with get_db_session() as db:
+        # 1. 预热角色权限
+        roles_result = await db.execute(select(UserGroup))
+        roles = roles_result.scalars().all()
+        for role in roles:
+            cache_key = f"role:permissions:{role.id}"
+            await Cache.set(cache_key, role.permissions or [], expire=3600)
+        logger.debug(f"预热角色权限: {len(roles)} 个")
+        
+        # 2. 预热系统设置
+        settings_result = await db.execute(select(SystemSetting))
+        settings = settings_result.scalars().all()
+        settings_dict = {s.key: s.value for s in settings}
+        await Cache.set("system:settings", settings_dict, expire=3600)
+        logger.debug(f"预热系统设置: {len(settings)} 项")
+        
+        # 3. 预热近期公告
+        try:
+            from models import Announcement
+            announcements_result = await db.execute(
+                select(Announcement)
+                .where(Announcement.is_published == True)
+                .order_by(Announcement.created_at.desc())
+                .limit(10)
+            )
+            announcements = announcements_result.scalars().all()
+            await Cache.set("announcements:recent", [
+                {"id": a.id, "title": a.title, "priority": a.priority}
+                for a in announcements
+            ], expire=600)
+            logger.debug(f"预热公告: {len(announcements)} 条")
+        except Exception:
+            # 公告模块可能未安装
+            pass
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -87,6 +136,15 @@ async def lifespan(app: FastAPI):
     if not await init_cache():
         # init_cache 内部已有详细日志，此处不再重复警告
         pass
+    else:
+        # 5.1 可选的缓存预热（通过环境变量控制）
+        import os
+        if os.environ.get("CACHE_WARM_ON_STARTUP", "").lower() in ("true", "1", "yes"):
+            try:
+                await warm_cache()
+                logger.info("✅ 缓存预热完成")
+            except Exception as e:
+                logger.warning(f"⚠️ 缓存预热失败（已忽略）: {e}")
     
     # 6. 初始化默认数据（管理员与角色）
     try:

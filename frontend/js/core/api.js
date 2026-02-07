@@ -44,6 +44,38 @@ const Api = {
 
             // 先检查401状态，即使不是JSON也要处理
             if (response.status === 401) {
+                const refreshToken = localStorage.getItem(Config.storageKeys.refreshToken);
+
+                // 如果有刷新令牌，尝试刷新
+                if (refreshToken && !options._isRetry) {
+                    try {
+                        Config.log('检测到401，尝试刷新令牌...');
+                        const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh_token: refreshToken })
+                        });
+
+                        if (refreshRes.ok) {
+                            const refreshData = await refreshRes.json();
+                            if (refreshData.code === 200 && refreshData.data.access_token) {
+                                // 更新本地存储
+                                localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
+                                if (refreshData.data.refresh_token) {
+                                    localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                                }
+
+                                Config.log('令牌刷新成功，准备重试请求');
+
+                                // 重试原请求
+                                return this.request(url, { ...options, _isRetry: true });
+                            }
+                        }
+                    } catch (e) {
+                        Config.error('刷新令牌失败:', e);
+                    }
+                }
+
                 // 尝试读取错误信息
                 let errorMessage = '登录已过期，请重新登录';
                 if (isJson) {
@@ -133,6 +165,24 @@ const Api = {
 
             return await response.blob();
         } catch (error) {
+            // 检测网络故障（TypeError: Failed to fetch）
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+                // 网络断开或服务器不可达
+                error.isNetworkError = true;
+                error.message = '网络连接失败，请检查网络后重试';
+
+                // 显示统一的网络错误提示（使用防抖避免重复显示）
+                if (!Api._lastNetworkErrorTime || Date.now() - Api._lastNetworkErrorTime > 5000) {
+                    Api._lastNetworkErrorTime = Date.now();
+                    if (typeof Toast !== 'undefined') {
+                        Toast.error('网络连接失败，请检查网络');
+                    }
+                }
+
+                Config.error('网络错误:', error);
+                throw error;
+            }
+
             // 只有非业务类错误（如网络断开、服务器500崩溃）才输出严重的 Error 日志
             if (!error.isBusinessError) {
                 Config.error('请求失败:', error);

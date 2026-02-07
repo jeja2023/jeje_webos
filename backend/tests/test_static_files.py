@@ -31,7 +31,7 @@ class TestCachedStaticFiles:
                 for k, v in message["headers"]:
                     headers[k.decode().lower()] = v.decode()
         
-        # StaticFiles 依赖 receive
+        # StaticFiles 依赖 receive 方法
         async def mock_receive():
             return {"type": "http.request"}
             
@@ -46,7 +46,7 @@ class TestCachedStaticFiles:
         await app(scope_img, mock_receive, mock_send)
         
         assert "max-age=" in headers.get("cache-control", "")
-        # png configured to 2592000
+        # png 配置为 2592000
         assert "2592000" in headers.get("cache-control", "")
 
 
@@ -57,7 +57,7 @@ class TestGzipMiddleware:
     async def test_gzip_compression(self):
         """测试内容压缩"""
         # 模拟会返回长文本的 APP
-        long_text = b"a" * 1000 # > 500 min size
+        long_text = b"a" * 1000 # > 500 最小尺寸
         
         async def mock_app(scope, receive, send):
             await send({

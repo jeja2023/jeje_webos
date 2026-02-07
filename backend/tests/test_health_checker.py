@@ -19,7 +19,7 @@ class TestHealthChecker:
         mock_ctx.__aenter__.return_value = mock_session
         mock_ctx.__aexit__.return_value = None
         
-        # Factory that returns the context manager
+        # 返回上下文管理器的工厂
         mock_factory = MagicMock(return_value=mock_ctx)
         
         with patch("core.health_checker.async_session", mock_factory):
@@ -36,7 +36,7 @@ class TestHealthChecker:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.side_effect = Exception("DB Down")
         
-        # Factory that returns the context manager
+        # 返回上下文管理器的工厂
         mock_factory = MagicMock(return_value=mock_ctx)
         
         with patch("core.health_checker.async_session", mock_factory):
@@ -61,7 +61,7 @@ class TestHealthChecker:
         """测试系统资源检查（磁盘/内存）"""
         checker = HealthChecker()
         
-        # Mock shutil.disk_usage
+        # 模拟 shutil.disk_usage
         with patch("shutil.disk_usage", return_value=(100, 50, 50)), \
              patch("psutil.virtual_memory") as mock_mem:
             
@@ -69,7 +69,7 @@ class TestHealthChecker:
             mock_mem.return_value.total = 100
             mock_mem.return_value.available = 60
             
-            # Mock storage manager root_dir
+            # 模拟 storage manager root_dir
             with patch("utils.storage.get_storage_manager") as mock_sm:
                 mock_sm.return_value.root_dir.exists.return_value = True
                 
@@ -84,7 +84,7 @@ class TestHealthChecker:
         """测试完整健康报告"""
         checker = HealthChecker()
         
-        # Mock all checks
+        # 模拟所有检查
         with patch.object(HealthChecker, "check_database", return_value=MagicMock(status=HealthStatus.HEALTHY)), \
              patch.object(HealthChecker, "check_redis", return_value=MagicMock(status=HealthStatus.HEALTHY)), \
              patch.object(HealthChecker, "check_disk", return_value=MagicMock(status=HealthStatus.HEALTHY)), \

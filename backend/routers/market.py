@@ -155,9 +155,9 @@ async def uninstall_module(
 
 @router.post("/upload")
 async def upload_package(
+    current_user: TokenData = Depends(require_admin()),
     file: UploadFile = File(...),
-    force: bool = False,
-    current_user: TokenData = Depends(require_admin())
+    force: bool = False
 ):
     """
     通过 .jwapp 离线包上传模块

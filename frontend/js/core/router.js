@@ -162,7 +162,36 @@ const Router = {
 
             // 按需加载模块资源（在执行路由处理函数前）
             if (typeof ResourceLoader !== 'undefined') {
-                await ResourceLoader.loadModuleByPath(path);
+                // 显示加载指示器（如果加载时间较长）
+                let loadingTimeout = null;
+                let loadingEl = null;
+
+                loadingTimeout = setTimeout(() => {
+                    loadingEl = document.createElement('div');
+                    loadingEl.className = 'route-loading-overlay';
+                    loadingEl.innerHTML = `
+                        <div class="route-loading-spinner">
+                            <div class="spinner"></div>
+                            <span>加载中...</span>
+                        </div>
+                    `;
+                    document.body.appendChild(loadingEl);
+                }, 200); // 200ms 后才显示，避免闪烁
+
+                try {
+                    await ResourceLoader.loadModuleByPath(path);
+                } catch (err) {
+                    Config.error('模块资源加载失败:', err);
+                    if (typeof Toast !== 'undefined') {
+                        Toast.error('页面资源加载失败，请刷新重试');
+                    }
+                } finally {
+                    // 清除加载指示器
+                    if (loadingTimeout) clearTimeout(loadingTimeout);
+                    if (loadingEl && loadingEl.parentNode) {
+                        loadingEl.parentNode.removeChild(loadingEl);
+                    }
+                }
             }
 
             // 执行处理函数

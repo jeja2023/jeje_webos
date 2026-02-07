@@ -6,7 +6,7 @@ class BackupPage extends Component {
     constructor(container) {
         super(container);
         this.state = {
-            activeTab: 'manual', // manual, schedule
+            activeTab: 'manual', // 手动, 计划
             backups: [],
             schedules: [], // 调度计划列表
             total: 0,
@@ -319,7 +319,7 @@ class BackupPage extends Component {
             };
 
             freq.addEventListener('change', updateDayOptions);
-            updateDayOptions(); // init
+            updateDayOptions(); // 初始化
         }, 100);
     }
 

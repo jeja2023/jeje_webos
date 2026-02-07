@@ -13,7 +13,7 @@ class NotificationsPage extends Component {
             page: 1,
             size: 20,
             loading: true,
-            filter: 'all', // all, unread
+            filter: 'all', // 全部, 未读
             users: [], // 用于发送通知时选择用户
             showSendModal: false
         };

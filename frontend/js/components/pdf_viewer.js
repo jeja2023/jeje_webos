@@ -12,7 +12,7 @@ const PdfViewer = {
         currentPage: 0,
         totalPages: 0,
         zoom: 1.5,
-        source: 'filemanager'  // filemanager | pdf
+        source: 'filemanager'  // 文件管理 | PDF
     },
 
     /**

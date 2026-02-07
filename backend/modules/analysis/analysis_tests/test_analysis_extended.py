@@ -65,17 +65,19 @@ class TestETLExtended:
         """测试扩展的数学运算: SQRT, LOG, ROUND"""
         df = pd.DataFrame({'val': [4, 1, 0, -1], 'float_val': [1.1, 1.9, 2.5, 2.4]})
         
-        # SQRT
-        node_sqrt = {'fieldA': 'val', 'op': 'SQRT', 'newCol': 'sqrt_res'}
-        res_sqrt = ETLExecutionService._execute_math_ops(df, node_sqrt)
-        assert res_sqrt.iloc[0]['sqrt_res'] == 2.0
-        assert pd.isna(res_sqrt.iloc[3]['sqrt_res']) # sqrt(-1) -> Nan
+        # 忽略处理无效值时的 RuntimeWarning (例如 sqrt(-1), log(0))
+        with np.errstate(invalid='ignore', divide='ignore'):
+            # SQRT
+            node_sqrt = {'fieldA': 'val', 'op': 'SQRT', 'newCol': 'sqrt_res'}
+            res_sqrt = ETLExecutionService._execute_math_ops(df, node_sqrt)
+            assert res_sqrt.iloc[0]['sqrt_res'] == 2.0
+            assert pd.isna(res_sqrt.iloc[3]['sqrt_res']) # sqrt(-1) -> Nan
 
-        # LOG
-        node_log = {'fieldA': 'val', 'op': 'LOG', 'newCol': 'log_res'}
-        res_log = ETLExecutionService._execute_math_ops(df, node_log)
-        assert res_log.iloc[1]['log_res'] == 0.0 # log(1)
-        assert pd.isna(res_log.iloc[2]['log_res']) # log(0) -> Nan
+            # LOG
+            node_log = {'fieldA': 'val', 'op': 'LOG', 'newCol': 'log_res'}
+            res_log = ETLExecutionService._execute_math_ops(df, node_log)
+            assert res_log.iloc[1]['log_res'] == 0.0 # log(1)
+            assert pd.isna(res_log.iloc[2]['log_res']) # log(0) -> Nan
 
         # ROUND
         node_round = {'fieldA': 'float_val', 'op': 'ROUND', 'value': 0, 'newCol': 'round_res'}
