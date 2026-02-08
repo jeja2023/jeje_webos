@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jeje-webos-cache';
+const CACHE_NAME = 'jeje-webos-cache-v2';
 
 // 需要预缓存的核心资源
 const PRECACHE_ASSETS = [
@@ -119,9 +119,9 @@ self.addEventListener('fetch', (event) => {
     // 业务代码使用 Network First（保证获取最新版本）
     if (url.pathname.startsWith('/static/')) {
         // 第三方库资源：Cache First（变更频率低，优先使用缓存提升性能）
-        const isCacheable = url.pathname.startsWith('/static/libs/') || 
-                           url.pathname.match(/\.(woff2?|ttf|eot)$/);
-        
+        const isCacheable = url.pathname.startsWith('/static/libs/') ||
+            url.pathname.match(/\.(woff2?|ttf|eot)$/);
+
         if (isCacheable) {
             event.respondWith(
                 caches.match(event.request).then((cachedResponse) => {
