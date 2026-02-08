@@ -311,6 +311,9 @@ class MapPage extends Component {
         // 异步加载其他数据
         this.fetchTrailFiles();
         this.fetchMarkers();
+
+        // 尝试自动定位到用户位置（仅首次加载时）
+        this.tryAutoLocate();
     }
 
     /** 加载地图配置（不触发渲染）**/
@@ -328,7 +331,7 @@ class MapPage extends Component {
             const res = await Api.get('/map/config');
             if (res.code === 200 && res.data) {
                 const config = res.data;
-                this.state.mapMode = config.map_mode || 'online';
+                // 注意：不加载 map_mode，始终默认使用在线地图模式
                 this.state.tileSource = config.tile_source || 'amap_offline';
                 this.state.onlineTileUrl = config.online_tile_url || this.state.onlineTileUrl;
                 this.state.lastCenter = config.last_center;
@@ -342,7 +345,7 @@ class MapPage extends Component {
                     const config = JSON.parse(savedMapConfig);
                     if (config.tileSource) this.state.tileSource = config.tileSource;
                     if (config.onlineTileUrl) this.state.onlineTileUrl = config.onlineTileUrl;
-                    if (config.mapMode) this.state.mapMode = config.mapMode;
+                    // 注意：不加载 mapMode，始终默认使用在线地图模式
                 } catch (e) { }
             }
         }
@@ -620,7 +623,8 @@ class MapPage extends Component {
 
         this._mapInitializing = true;
 
-        const center = this.state.lastCenter || [34.3, 118.5];
+        // 默认显示北京，如果用户有保存的位置则使用保存的位置
+        const center = this.state.lastCenter || [39.9, 116.4];
         const zoom = this.state.lastZoom || 12;
 
         try {
@@ -963,6 +967,55 @@ class MapPage extends Component {
         if (hint) {
             hint.innerHTML = '测量模式: 点击地图添加测量点，再次点击测量按钮退出';
         }
+    }
+
+    /**
+     * 自动定位：首次加载时静默尝试获取用户位置
+     * 成功则定位到用户位置，失败则静默保持默认位置（北京）
+     */
+    tryAutoLocate() {
+        // 如果已有保存的位置，不进行自动定位
+        if (this.state.lastCenter) return;
+
+        if (!navigator.geolocation || !this.map) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // 静默定位到用户位置
+                if (this.map) {
+                    this.map.setView([latitude, longitude], 13);
+
+                    // 添加定位标记
+                    if (this._locationMarker) {
+                        this.map.removeLayer(this._locationMarker);
+                        this.map.removeLayer(this._locationCircle);
+                    }
+
+                    this._locationMarker = L.marker([latitude, longitude], {
+                        icon: L.divIcon({
+                            className: 'location-marker',
+                            html: '<div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        })
+                    }).addTo(this.map);
+
+                    this._locationCircle = L.circle([latitude, longitude], {
+                        radius: Math.min(accuracy, 500), // 限制精度圈最大半径
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.1,
+                        weight: 1
+                    }).addTo(this.map);
+                }
+            },
+            () => {
+                // 静默失败，使用默认位置（北京），不提示用户
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        );
     }
 
     /** 定位到当前位置 **/
