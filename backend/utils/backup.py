@@ -196,6 +196,12 @@ class BackupManager:
                     cursor.execute("SHOW TABLES")
                     tables = [list(row.values())[0] for row in cursor.fetchall()]
                     for table in tables:
+                        # 安全验证：确保表名只包含合法字符
+                        import re as _re
+                        if not _re.match(r'^[a-zA-Z0-9_]+$', table):
+                            logger.warning(f"跳过非法表名: {table}")
+                            continue
+                        
                         f.write(f"-- ----------------------------\n")
                         f.write(f"-- 表结构: {table}\n")
                         f.write(f"-- ----------------------------\n")
@@ -232,8 +238,8 @@ class BackupManager:
                                     elif isinstance(value, bool):
                                         values.append('1' if value else '0')
                                     else:
-                                        # 转义字符串
-                                        escaped = str(value).replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\r', '\\r')
+                                        # 转义字符串（增强版：处理更多特殊字符）
+                                        escaped = str(value).replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\x00', '').replace('\x1a', '\\Z')
                                         values.append(f"'{escaped}'")
                                 
                                 values_str = ', '.join(values)

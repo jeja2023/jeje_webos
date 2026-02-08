@@ -23,7 +23,8 @@ class Scheduler:
         self,
         func: Callable,
         interval_seconds: int,
-        name: str = "periodic_task"
+        name: str = "periodic_task",
+        max_retries: int = 3
     ):
         """
         调度定期任务
@@ -32,15 +33,30 @@ class Scheduler:
             func: 要执行的异步函数
             interval_seconds: 执行间隔（秒）
             name: 任务名称
+            max_retries: 单次执行失败时的最大重试次数
         """
         async def periodic_task():
+            consecutive_failures = 0
             while self.running:
                 try:
-                    # 使用 DEBUG 级别，避免频繁任务日志刷屏
                     logger.debug(f"执行定期任务: {name}")
                     await func()
+                    consecutive_failures = 0  # 成功后重置计数
+                except asyncio.CancelledError:
+                    break
                 except Exception as e:
-                    logger.error(f"定期任务执行失败 {name}: {e}", exc_info=True)
+                    consecutive_failures += 1
+                    logger.error(f"定期任务执行失败 {name}（连续第 {consecutive_failures} 次）: {e}", exc_info=True)
+                    
+                    # 指数退避重试
+                    if consecutive_failures <= max_retries:
+                        retry_delay = min(30, 2 ** consecutive_failures)
+                        logger.info(f"定期任务 {name} 将在 {retry_delay}s 后重试")
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    else:
+                        logger.warning(f"定期任务 {name} 连续失败 {consecutive_failures} 次，等待下次正常周期")
+                        consecutive_failures = 0
                 
                 await asyncio.sleep(interval_seconds)
         
@@ -105,12 +121,31 @@ class Scheduler:
         self.running = True
         logger.debug("任务调度器已启动")
     
-    async def stop(self):
-        """停止调度器"""
+    async def stop(self, timeout: float = 10.0):
+        """
+        停止调度器，等待运行中的任务完成
+        
+        Args:
+            timeout: 等待超时时间（秒），超时后强制取消
+        """
         self.running = False
+        if not self.tasks:
+            logger.debug("任务调度器已停止（无活跃任务）")
+            return
+        
+        # 先尝试优雅等待
         for task in self.tasks:
             task.cancel()
-        await asyncio.gather(*self.tasks, return_exceptions=True)
+        
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*self.tasks, return_exceptions=True),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"调度器停止超时（{timeout}s），强制取消剩余任务")
+        
+        self.tasks.clear()
         logger.debug("任务调度器已停止")
 
 

@@ -48,7 +48,7 @@ class EventBus:
             logger.debug(f"取消订阅: {event_name}")
     
     async def publish(self, event: Event):
-        """发布事件"""
+        """发布事件（异常隔离：单个 handler 失败不影响其他 handler）"""
         # 记录历史
         self._history.append(event)
         if len(self._history) > self._max_history:
@@ -56,16 +56,18 @@ class EventBus:
         
         logger.debug(f"发布事件: {event.name} 来自 {event.source}")
         
-        # 通知所有订阅者
-        handlers = self._handlers.get(event.name, [])
+        # 通知所有订阅者（复制列表，防止遍历时被修改）
+        handlers = list(self._handlers.get(event.name, []))
         for handler in handlers:
             try:
                 if asyncio.iscoroutinefunction(handler):
-                    await handler(event)
+                    await asyncio.wait_for(handler(event), timeout=30.0)
                 else:
                     handler(event)
+            except asyncio.TimeoutError:
+                logger.error(f"事件处理超时 {event.name}: handler={handler.__name__}")
             except Exception as e:
-                logger.error(f"事件处理错误 {event.name}: {e}")
+                logger.error(f"事件处理错误 {event.name}: {e}", exc_info=True)
     
     def emit(self, name: str, source: str, data: Dict[str, Any] = None):
         """便捷发布方法（同步包装）"""

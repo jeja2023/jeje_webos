@@ -248,10 +248,15 @@ class VaultService:
             
         # 派生密钥并验证
         try:
+            import secrets as _secrets
             key = VaultCrypto.derive_key(master_password, master_key.salt)
             decrypted = VaultCrypto.decrypt(master_key.verification_hash, key)
             
-            if decrypted == VaultCrypto.VERIFICATION_STRING:
+            # 使用常量时间比较，防止时序攻击
+            if decrypted and _secrets.compare_digest(
+                decrypted.encode('utf-8'),
+                VaultCrypto.VERIFICATION_STRING.encode('utf-8')
+            ):
                 # 验证成功，重置失败次数
                 if master_key.failed_attempts > 0:
                     master_key.failed_attempts = 0

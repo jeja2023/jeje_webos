@@ -224,6 +224,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # Content-Security-Policy：按实际脚本/样式来源收紧；允许同源与常见内联（SPA 常用）
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'"
+        )
         
         # API 路径禁用缓存，防止浏览器缓存导致数据不更新
         if request.url.path.startswith("/api/"):
@@ -277,7 +288,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 # ==================== 请求统计 ====================
 
 class RequestStats:
-    """请求统计类"""
+    """请求统计类（带内存保护）"""
+    
+    # 最大追踪的路径数量，防止内存无限增长
+    MAX_PATH_ENTRIES = 500
     
     def __init__(self):
         self.total_requests = 0
@@ -304,9 +318,13 @@ class RequestStats:
         else:
             self.error_requests += 1
         
-        # 路径统计
+        # 路径统计（限制最大条目数）
         path_key = f"{method} {path}"
         if path_key not in self.path_stats:
+            # 超过上限时，移除访问次数最少的条目
+            if len(self.path_stats) >= self.MAX_PATH_ENTRIES:
+                min_key = min(self.path_stats, key=lambda k: self.path_stats[k]["count"])
+                del self.path_stats[min_key]
             self.path_stats[path_key] = {
                 "count": 0,
                 "total_duration": 0.0,

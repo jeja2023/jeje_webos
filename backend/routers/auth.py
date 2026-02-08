@@ -9,21 +9,23 @@
 """
 
 import logging
+from typing import Optional
 from utils.timezone import get_beijing_time
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, status, Request
+from fastapi.responses import ORJSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from core.database import get_db
 from core.security import (
-    hash_password, 
-    verify_password, 
-    create_token,
+    hash_password,
+    verify_password,
     create_token_pair,
     decode_token,
-    TokenData, 
-    TokenResponse,
-    get_current_user
+    TokenData,
+    get_current_user,
+    COOKIE_ACCESS_TOKEN,
+    COOKIE_REFRESH_TOKEN,
 )
 from core.events import event_bus, Events
 from core.config import get_settings
@@ -109,7 +111,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     result = await db.execute(select(User).where(User.username == data.username))
     user = result.scalar_one_or_none()
     
-    # 登录失败 - 用户不存在或密码错误
+    # 登录失败：统一返回“用户名或密码错误”，不区分用户是否存在，防止用户名枚举（安全最佳实践）
     if not user or not verify_password(data.password, user.password_hash):
         # 记录失败日志（安全审计）
         fail_log = SystemLog(
@@ -171,13 +173,13 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     await db.commit()
     
     settings = get_settings()
-    
-    return success({
+    body = success({
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "expires_in": settings.jwt_expire_minutes * 60,
         "refresh_expires_in": 30 * 24 * 60 * 60,  # 30天（秒）
+        "use_http_only_cookie": settings.auth_use_httponly_cookie,
         "user": {
             "id": user.id,
             "username": user.username,
@@ -189,6 +191,20 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
             "settings": user.settings or {}
         }
     })
+    if settings.auth_use_httponly_cookie:
+        response = ORJSONResponse(content=body)
+        access_max_age = settings.jwt_expire_minutes * 60
+        refresh_max_age = 30 * 24 * 60 * 60
+        response.set_cookie(
+            COOKIE_ACCESS_TOKEN, access_token, max_age=access_max_age,
+            httponly=True, secure=not settings.debug, samesite="lax", path="/"
+        )
+        response.set_cookie(
+            COOKIE_REFRESH_TOKEN, refresh_token, max_age=refresh_max_age,
+            httponly=True, secure=not settings.debug, samesite="lax", path="/"
+        )
+        return response
+    return body
 
 
 @router.get("/me")
@@ -269,34 +285,38 @@ async def change_password(
 
 
 class RefreshTokenRequest(BaseModel):
-    """刷新令牌请求"""
-    refresh_token: str
+    """刷新令牌请求（body 可选；HttpOnly Cookie 模式下可从 Cookie 读取）"""
+    refresh_token: Optional[str] = None
 
 
 @router.post("/refresh")
 async def refresh_token(
-    data: RefreshTokenRequest,
+    request: Request,
+    data: RefreshTokenRequest = Body(default=RefreshTokenRequest()),
     db: AsyncSession = Depends(get_db)
 ):
     """
     刷新访问令牌
-    
-    使用刷新令牌获取新的访问令牌和刷新令牌
+    使用刷新令牌获取新的访问令牌和刷新令牌；HttpOnly Cookie 模式下可从 Cookie 读取 refresh_token
     """
-    # 解码刷新令牌（验证令牌类型）
-    token_data = decode_token(data.refresh_token, expected_type="refresh")
-    
+    settings = get_settings()
+    refresh_token_str = None
+    if data and data.refresh_token:
+        refresh_token_str = data.refresh_token
+    if not refresh_token_str and settings.auth_use_httponly_cookie:
+        refresh_token_str = request.cookies.get(COOKIE_REFRESH_TOKEN)
+    if not refresh_token_str:
+        raise HTTPException(status_code=401, detail="无效的刷新令牌")
+
+    token_data = decode_token(refresh_token_str, expected_type="refresh")
     if not token_data:
         raise HTTPException(status_code=401, detail="无效的刷新令牌")
-    
-    # 验证用户是否仍然存在且激活
+
     result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
-    
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="用户不存在或已被禁用")
-    
-    # 生成新的令牌对
+
     permissions = await resolve_user_permissions(user, db)
     new_token_data = TokenData(
         user_id=user.id,
@@ -305,20 +325,37 @@ async def refresh_token(
         permissions=permissions
     )
     new_access_token, new_refresh_token = create_token_pair(new_token_data)
-    
-    settings = get_settings()
-    
-    return success({
+
+    body = success({
         "access_token": new_access_token,
         "refresh_token": new_refresh_token,
         "token_type": "bearer",
         "expires_in": settings.jwt_expire_minutes * 60,
         "refresh_expires_in": 30 * 24 * 60 * 60
     })
+    if settings.auth_use_httponly_cookie:
+        response = ORJSONResponse(content=body)
+        response.set_cookie(
+            COOKIE_ACCESS_TOKEN, new_access_token,
+            max_age=settings.jwt_expire_minutes * 60,
+            httponly=True, secure=not settings.debug, samesite="lax", path="/"
+        )
+        response.set_cookie(
+            COOKIE_REFRESH_TOKEN, new_refresh_token,
+            max_age=30 * 24 * 60 * 60,
+            httponly=True, secure=not settings.debug, samesite="lax", path="/"
+        )
+        return response
+    return body
 
 
 @router.post("/logout")
 async def logout(current_user: TokenData = Depends(get_current_user)):
-    """登出（客户端清除令牌）"""
+    """登出（HttpOnly Cookie 模式下会清除 Cookie；否则客户端需自行清除令牌）"""
     event_bus.emit(Events.USER_LOGOUT, "auth", {"user_id": current_user.user_id})
+    if get_settings().auth_use_httponly_cookie:
+        response = ORJSONResponse(content=success(message="登出成功"))
+        response.delete_cookie(COOKIE_ACCESS_TOKEN, path="/")
+        response.delete_cookie(COOKIE_REFRESH_TOKEN, path="/")
+        return response
     return success(message="登出成功")

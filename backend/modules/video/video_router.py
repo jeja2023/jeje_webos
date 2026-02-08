@@ -186,7 +186,7 @@ async def upload_video(
     user: TokenData = Depends(get_current_user)
 ):
     """上传视频到指定视频集"""
-    # 验证文件类型
+    # 验证文件类型（Content-Type + 魔数双重验证）
     if not file.content_type or not file.content_type.startswith('video/'):
         raise HTTPException(status_code=400, detail="只能上传视频文件")
     
@@ -194,6 +194,15 @@ async def upload_video(
     content = await file.read()
     if len(content) > 500 * 1024 * 1024:  # 500MB 限制
         raise HTTPException(status_code=400, detail="文件大小不能超过 500MB")
+    
+    # 验证文件魔数（防止 Content-Type 伪造）
+    try:
+        import filetype
+        kind = filetype.guess(content[:8192])  # 只需前几KB即可判断
+        if kind is None or not kind.mime.startswith('video/'):
+            raise HTTPException(status_code=400, detail="文件内容不是有效的视频格式")
+    except ImportError:
+        pass  # filetype 库未安装时跳过
     
     try:
         video = await VideoService.upload_video(
@@ -291,15 +300,21 @@ async def get_video_file(
         logger.error(f"视频文件未找到: {video.storage_path} (ID: {video_id})")
         raise HTTPException(status_code=404, detail="文件不存在")
     
-    logger.debug(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {video.storage_path}")
+    # 路径安全验证：确保文件在 storage 目录下
+    from core.config import get_settings
+    _settings = get_settings()
+    resolved = os.path.realpath(video.storage_path)
+    storage_root = os.path.realpath(_settings.storage_path)
+    if not resolved.startswith(storage_root):
+        raise HTTPException(status_code=403, detail="文件路径非法")
+    
+    logger.debug(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {resolved}")
     
     # 确定 MIME 类型，对播放最友好的做法是强制 mp4 后缀为 video/mp4
     mime_type = "video/mp4" if video.filename.endswith(".mp4") else (video.mime_type or "video/mp4")
     
-    # 彻底简化：使用 FileResponse 的默认行为，不传 filename 避免触发下载行为
-    # Starlette 会自动根据请求头中的 Range 返回 206 Partial Content
     return FileResponse(
-        video.storage_path,
+        resolved,
         media_type=mime_type,
         content_disposition_type="inline"
     )
@@ -333,8 +348,16 @@ async def get_video_thumbnail(
     
     # 返回缩略图
     if video.thumbnail_path and os.path.exists(video.thumbnail_path):
+        # 路径安全验证：确保文件在 storage 目录下
+        from core.config import get_settings
+        _settings = get_settings()
+        resolved = os.path.realpath(video.thumbnail_path)
+        storage_root = os.path.realpath(_settings.storage_path)
+        if not resolved.startswith(storage_root):
+            raise HTTPException(status_code=403, detail="文件路径非法")
+        
         return FileResponse(
-            video.thumbnail_path,
+            resolved,
             media_type="image/jpeg"
         )
     

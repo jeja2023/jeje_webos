@@ -22,12 +22,12 @@ class TestSystemSettingsAPI:
     async def test_update_dynamic_settings(self, mock_configure, admin_client: AsyncClient):
         """测试更新动态配置"""
         
-        # 1. 准备新配置
+        # 1. 准备新配置（封禁时长须 <= 窗口时长，否则 schema 校验会报错）
         new_settings = {
             "jwt_expire_minutes": 10086,
             "rate_limit_requests": 999,
             "rate_limit_window": 60,
-            "rate_limit_block_duration": 300
+            "rate_limit_block_duration": 30
         }
         
         # 2. 调用 API 更新    
@@ -47,5 +47,5 @@ class TestSystemSettingsAPI:
         mock_configure.assert_called_with(
             requests=999,
             window=60,
-            block_duration=300
+            block_duration=30
         )

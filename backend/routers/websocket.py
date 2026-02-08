@@ -5,12 +5,12 @@ WebSocket 路由
 
 import json
 import logging
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 
 from utils.timezone import get_beijing_time
 
 from core.ws_manager import manager
-from core.security import decode_token, TokenData
+from core.security import decode_token, TokenData, require_manager
 
 router = APIRouter(prefix="/api/v1", tags=["WebSocket"])
 logger = logging.getLogger(__name__)
@@ -155,12 +155,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
 
 
 @router.get("/ws/online-users")
-async def get_online_users():
+async def get_online_users(
+    current_user: TokenData = Depends(require_manager())
+):
     """
     获取在线用户列表
     
-    此接口需要认证，但 WebSocket 路由中无法使用 Depends
-    实际使用时应在业务逻辑中验证权限
+    仅管理员和业务管理员可访问
     """
     from schemas.response import success
     
@@ -176,8 +177,23 @@ async def get_online_users():
 
 # ==================== 快传消息处理 ====================
 
-# 传输会话映射：session_code -> {sender_id, receiver_id}
+# 传输会话映射：session_code -> {sender_id, receiver_id, created_at}
 transfer_sessions: dict = {}
+_MAX_TRANSFER_SESSIONS = 1000  # 最大会话数
+
+
+def _cleanup_transfer_sessions():
+    """清理超过1小时的传输会话"""
+    if len(transfer_sessions) < _MAX_TRANSFER_SESSIONS // 2:
+        return
+    now = get_beijing_time()
+    from datetime import timedelta
+    expired = [
+        code for code, info in transfer_sessions.items()
+        if now - info.get("created_at", now) > timedelta(hours=1)
+    ]
+    for code in expired:
+        del transfer_sessions[code]
 
 
 async def handle_transfer_message(websocket: WebSocket, user_id: int, message_type: str, data: dict):
@@ -198,10 +214,13 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
     if message_type == "transfer_create":
         # 发送方创建会话，进入等待状态
         if session_code:
+            # 定期清理过期会话
+            _cleanup_transfer_sessions()
             transfer_sessions[session_code] = {
                 "sender_id": user_id,
                 "receiver_id": None,
-                "status": "waiting"
+                "status": "waiting",
+                "created_at": get_beijing_time()
             }
             logger.info(f"快传会话已创建: {session_code}, 发送方: {user_id}")
     

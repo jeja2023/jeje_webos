@@ -845,19 +845,19 @@ class MarkdownWysiwygEditor {
                     line.classList.add('md-task-item');
                     if (checked) line.classList.add('md-task-checked');
                     html = html.replace(/^(\s*([-*+]|\d+\.))\s+\[([ xX])\]\s+(.*)/,
-                        `<span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> $4`);
+                        (m, p1, p2, p3, p4) => `<span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> ${this.escapeHtml(p4)}`);
                 } else {
-                    html = html.replace(/^(\s*([-*+]|\d+\.)\s)(.*)/, '$3');
+                    html = html.replace(/^(\s*([-*+]|\d+\.)\s)(.*)/, (m, p1, p2, p3) => `${p1}${this.escapeHtml(p3)}`);
                 }
             }
 
-            // 行内渲染 (只读)
+            // 行内渲染 (只读) — 所有插入 HTML 的捕获组均转义防 XSS
             if (!line.classList.contains('md-code-fence')) {
-                html = html.replace(/(\*\*\*|___)(.*?)\1/g, '<strong><em>$2</em></strong>');
-                html = html.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
-                html = html.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
-                html = html.replace(/~~(.*?)~~/g, '<del>$1</del>');
-                html = html.replace(/`(.*?)`/g, '<code class="md-inline-code">$1</code>');
+                html = html.replace(/(\*\*\*|___)(.*?)\1/g, (m, p1, p2) => `<strong><em>${this.escapeHtml(p2)}</em></strong>`);
+                html = html.replace(/(\*\*|__)(.*?)\1/g, (m, p1, p2) => `<strong>${this.escapeHtml(p2)}</strong>`);
+                html = html.replace(/(\*|_)(.*?)\1/g, (m, p1, p2) => `<em>${this.escapeHtml(p2)}</em>`);
+                html = html.replace(/~~(.*?)~~/g, (m, p1) => `<del>${this.escapeHtml(p1)}</del>`);
+                html = html.replace(/`(.*?)`/g, (m, p1) => `<code class="md-inline-code">${this.escapeHtml(p1)}</code>`);
                 html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
                     const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
                     if (!safeUrl) return '';
@@ -872,18 +872,18 @@ class MarkdownWysiwygEditor {
                     const escapedUrl = this.escapeAttr(safeUrl);
                     return `<a href="${escapedUrl}" target="_blank" class="md-link">${escapedText}</a>`;
                 });
-                html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
+                html = html.replace(/==(.*?)==/g, (m, p1) => `<mark>${this.escapeHtml(p1)}</mark>`);
             }
         } else {
-            // 编辑模式：保留语法高亮
+            // 编辑模式：保留语法高亮 — 插入 HTML 的捕获组均转义防 XSS
             if (text.match(/^#{1,6}\s/)) {
                 const level = text.match(/^(#{1,6})\s/)[1].length;
                 line.classList.add('md-heading', `md-h${level}`);
-                html = html.replace(/^(#{1,6}\s)(.*)/, '<span class="md-syntax">$1</span>$2');
+                html = html.replace(/^(#{1,6}\s)(.*)/, (m, p1, p2) => `<span class="md-syntax">${p1}</span>${this.escapeHtml(p2)}`);
             }
             else if (text.startsWith('> ')) {
                 line.classList.add('md-blockquote');
-                html = html.replace(/^(>\s)(.*)/, '<span class="md-syntax">$1</span><span class="md-blockquote-content">$2</span>');
+                html = html.replace(/^(>\s)(.*)/, (m, p1, p2) => `<span class="md-syntax">${p1}</span><span class="md-blockquote-content">${this.escapeHtml(p2)}</span>`);
             }
             else if (text.startsWith('```')) {
                 line.classList.add('md-code-fence');
@@ -902,9 +902,9 @@ class MarkdownWysiwygEditor {
                     line.classList.add('md-task-item');
                     if (checked) line.classList.add('md-task-checked');
                     html = html.replace(/^(\s*([-*+]|\d+\.))\s+\[([ xX])\]\s+(.*)/,
-                        (m, p1, p2, p3, p4) => `<span class="md-syntax">${p1}</span> <span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> ${p4}`);
+                        (m, p1, p2, p3, p4) => `<span class="md-syntax">${this.escapeHtml(p1)}</span> <span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> ${this.escapeHtml(p4)}`);
                 } else {
-                    html = html.replace(/^(\s*([-*+]|\d+\.)\s)(.*)/, '<span class="md-syntax">$1</span>$3');
+                    html = html.replace(/^(\s*([-*+]|\d+\.)\s)(.*)/, (m, p1, p2, p3) => `<span class="md-syntax">${this.escapeHtml(p1)}</span>${this.escapeHtml(p3)}`);
                 }
             }
             else if (text.startsWith('|') && text.endsWith('|')) {
@@ -914,11 +914,11 @@ class MarkdownWysiwygEditor {
 
             // 行内渲染 (编辑)
             if (!line.classList.contains('md-code-fence')) {
-                html = html.replace(/(\*\*\*|___)(.*?)\1/g, '<strong><em><span class="md-syntax">$1</span>$2<span class="md-syntax">$1</span></em></strong>');
-                html = html.replace(/(\*\*|__)(.*?)\1/g, '<strong><span class="md-syntax">$1</span>$2<span class="md-syntax">$1</span></strong>');
-                html = html.replace(/(\*|_)(.*?)\1/g, '<em><span class="md-syntax">$1</span>$2<span class="md-syntax">$1</span></em>');
-                html = html.replace(/~~(.*?)~~/g, '<del><span class="md-syntax">~~</span>$1<span class="md-syntax">~~</span></del>');
-                html = html.replace(/`(.*?)`/g, '<code class="md-inline-code"><span class="md-syntax">`</span>$1<span class="md-syntax">`</span></code>');
+                html = html.replace(/(\*\*\*|___)(.*?)\1/g, (m, p1, p2) => `<strong><em><span class="md-syntax">${this.escapeHtml(p1)}</span>${this.escapeHtml(p2)}<span class="md-syntax">${this.escapeHtml(p1)}</span></em></strong>`);
+                html = html.replace(/(\*\*|__)(.*?)\1/g, (m, p1, p2) => `<strong><span class="md-syntax">${this.escapeHtml(p1)}</span>${this.escapeHtml(p2)}<span class="md-syntax">${this.escapeHtml(p1)}</span></strong>`);
+                html = html.replace(/(\*|_)(.*?)\1/g, (m, p1, p2) => `<em><span class="md-syntax">${this.escapeHtml(p1)}</span>${this.escapeHtml(p2)}<span class="md-syntax">${this.escapeHtml(p1)}</span></em>`);
+                html = html.replace(/~~(.*?)~~/g, (m, p1) => `<del><span class="md-syntax">~~</span>${this.escapeHtml(p1)}<span class="md-syntax">~~</span></del>`);
+                html = html.replace(/`(.*?)`/g, (m, p1) => `<code class="md-inline-code"><span class="md-syntax">${'`'}</span>${this.escapeHtml(p1)}<span class="md-syntax">${'`'}</span></code>`);
                 html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
                     const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
                     // 对 alt 和 url 进行二次转义确保属性安全
@@ -933,7 +933,7 @@ class MarkdownWysiwygEditor {
                     const escapedUrl = this.escapeHtml(url);
                     return `<span class="md-link"><span class="md-syntax">[</span>${escapedText}<span class="md-syntax">](</span><span class="md-url">${escapedUrl}</span><span class="md-syntax">)</span></span>`;
                 });
-                html = html.replace(/==(.*?)==/g, '<mark><span class="md-syntax">==</span>$1<span class="md-syntax">==</span></mark>');
+                html = html.replace(/==(.*?)==/g, (m, p1) => `<mark><span class="md-syntax">==</span>${this.escapeHtml(p1)}<span class="md-syntax">==</span></mark>`);
             }
         }
 

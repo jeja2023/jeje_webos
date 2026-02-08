@@ -513,10 +513,33 @@ async def map_tile_proxy(url: str):
     """
     地图瓦片反向代理
     解决前端跨域或 HTTP/HTTPS 混合加载限制
+    安全限制：仅允许代理已知的瓦片服务器域名，防止 SSRF 攻击
     """
+    from urllib.parse import urlparse
+    
+    # SSRF 防护：白名单域名限制
+    ALLOWED_TILE_DOMAINS = [
+        "tile.openstreetmap.org",
+        "tiles.stadiamaps.com",
+        "mt0.google.com", "mt1.google.com", "mt2.google.com", "mt3.google.com",
+        "webrd01.is.autonavi.com", "webrd02.is.autonavi.com", "webrd03.is.autonavi.com", "webrd04.is.autonavi.com",
+        "t0.tianditu.gov.cn", "t1.tianditu.gov.cn", "t2.tianditu.gov.cn", "t3.tianditu.gov.cn",
+        "server.arcgisonline.com",
+        "a.tile.openstreetmap.org", "b.tile.openstreetmap.org", "c.tile.openstreetmap.org",
+    ]
+    
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme in ("http", "https"):
+            return Response(status_code=400, content="仅支持 HTTP/HTTPS 协议")
+        if parsed.hostname not in ALLOWED_TILE_DOMAINS:
+            logger.warning(f"地图代理拒绝非白名单域名: {parsed.hostname}")
+            return Response(status_code=403, content="该瓦片服务器不在允许列表中")
+    except Exception:
+        return Response(status_code=400, content="无效的 URL")
+    
     async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
-            # 模拟浏览器 UA
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
             resp = await client.get(url, timeout=10.0, headers=headers)
             if resp.status_code != 200:
@@ -528,4 +551,4 @@ async def map_tile_proxy(url: str):
             )
         except Exception as e:
             logger.error(f"❌ 地图代理连接失败: {str(e)}, URL: {url}")
-            return Response(status_code=502, content=f"Proxy Error: {str(e)}")
+            return Response(status_code=502, content="代理连接失败")

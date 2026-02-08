@@ -5,7 +5,7 @@
 
 from utils.timezone import get_beijing_time
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -17,30 +17,14 @@ from models.notification import Notification
 from models.storage import FileRecord
 from schemas.response import success
 from utils.import_export import DataExporter, DataImporter
+from utils.auth_helpers import get_admin_from_token as get_user_from_token
 
 router = APIRouter(prefix="/api/v1/export", tags=["数据导入导出"])
 
 
-def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
-    """
-    从 URL query 参数中获取 token 并验证
-    用于文件下载等需要在新窗口打开的场景
-    """
-    if not token:
-        raise HTTPException(status_code=401, detail="未登录")
-    
-    token_data = decode_token(token)
-    if token_data is None:
-        raise HTTPException(status_code=401, detail="令牌无效")
-    
-    if token_data.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
-    
-    return token_data
-
-
 @router.get("/users")
 async def export_users(
+    request: Request,
     format: str = "csv",
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
@@ -50,10 +34,10 @@ async def export_users(
     
     仅系统管理员可执行
     支持格式: csv, json, xlsx
-    通过 URL 参数 token 进行认证（用于文件下载）
+    通过 URL 参数 token 或 Cookie 进行认证（用于文件下载）
     """
-    # 验证 token
-    current_user = get_user_from_token(token)
+    # 验证 token（支持 HttpOnly Cookie 或 query token）
+    current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
         raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
     
@@ -102,6 +86,7 @@ async def export_users(
         )
 @router.get("/notification")
 async def export_notifications(
+    request: Request,
     format: str = "csv",
     user_id: Optional[int] = None,
     token: Optional[str] = Query(None),
@@ -112,10 +97,10 @@ async def export_notifications(
     
     仅系统管理员可执行
     支持格式: csv, json, xlsx
-    通过 URL 参数 token 进行认证（用于文件下载）
+    通过 URL 参数 token 或 Cookie 进行认证（用于文件下载）
     """
-    # 验证 token
-    current_user = get_user_from_token(token)
+    # 验证 token（支持 HttpOnly Cookie 或 query token）
+    current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
         raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
     
@@ -171,6 +156,7 @@ async def export_notifications(
 
 @router.get("/files")
 async def export_files(
+    request: Request,
     format: str = "csv",
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
@@ -180,10 +166,10 @@ async def export_files(
     
     仅系统管理员可执行
     支持格式: csv, json, xlsx
-    通过 URL 参数 token 进行认证（用于文件下载）
+    通过 URL 参数 token 或 Cookie 进行认证（用于文件下载）
     """
-    # 验证 token
-    current_user = get_user_from_token(token)
+    # 验证 token（支持 HttpOnly Cookie 或 query token）
+    current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
         raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
     
@@ -422,6 +408,7 @@ async def import_users(
 
 @router.get("/import/users/template")
 async def download_user_import_template(
+    request: Request,
     format: str = Query("xlsx", description="模板格式: xlsx"),
     token: Optional[str] = Query(None)
 ):
@@ -439,8 +426,8 @@ async def download_user_import_template(
     
     默认密码为 Import@123
     """
-    # 验证 token
-    current_user = get_user_from_token(token)
+    # 验证 token（支持 HttpOnly Cookie 或 query token）
+    current_user = get_user_from_token(request, token)
     
     # 模板数据（包含示例和说明）
     template_data = [

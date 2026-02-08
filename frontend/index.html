@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" href="/static/images/logo.png">
     <link rel="shortcut icon" href="/favicon.ico">
     <title>JeJe WebOS</title>
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="manifest" href="/manifest.json">
 
     <!-- ========== DNS 预获取（提前解析第三方域名） ========== -->
@@ -205,6 +207,17 @@
                 navigator.serviceWorker.register('/sw.js')
                     .then(registration => {
                         console.log('ServiceWorker 注册成功，作用域: ', registration.scope);
+                        // 监听 SW 更新，提示用户刷新
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                                        console.log('新版本已就绪，刷新页面可获取最新内容');
+                                    }
+                                });
+                            }
+                        });
                     })
                     .catch(err => {
                         console.log('ServiceWorker 注册失败: ', err);

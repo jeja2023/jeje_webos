@@ -78,9 +78,11 @@ class LoginPage extends Component {
         try {
             if (this.state.mode === 'login') {
                 const res = await AuthApi.login({ username, password });
-                const { access_token, user } = res.data;
-
-                Store.setAuth(access_token, user);
+                const { access_token, refresh_token, user, use_http_only_cookie } = res.data || {};
+                if (typeof use_http_only_cookie === 'boolean') {
+                    Config.useHttpOnlyCookie = use_http_only_cookie;
+                }
+                Store.setAuth(access_token, user, refresh_token);
 
                 // 重新获取系统信息（包含模块和菜单）
                 await Store.refreshSystemInfo();

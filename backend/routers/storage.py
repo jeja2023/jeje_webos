@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
@@ -19,23 +19,12 @@ from models.account import User
 from schemas.storage import FileInfo, FileUploadResponse, FileListResponse
 from schemas.response import success
 from utils.storage import get_storage_manager
+from utils.auth_helpers import get_user_from_token
 from core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/storage", tags=["文件存储"])
 settings = get_settings()
 logger = logging.getLogger(__name__)
-
-
-def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
-    """从URL参数获取Token并验证"""
-    if not token:
-        raise HTTPException(status_code=401, detail="未认证")
-    
-    token_data = decode_token(token)
-    if not token_data:
-        raise HTTPException(status_code=401, detail="无效的令牌")
-    
-    return token_data
 
 
 @router.post("/upload")
@@ -237,6 +226,7 @@ async def upload_file(
 
 @router.get("/download/{file_id}")
 async def download_file(
+    request: Request,
     file_id: int,
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
@@ -246,8 +236,8 @@ async def download_file(
     
     需要权限：storage.download
     """
-    # 验证 Token
-    current_user = get_user_from_token(token)
+    # 验证 Token（支持 HttpOnly Cookie 或 query token）
+    current_user = get_user_from_token(request, token)
 
     # 查询文件记录
     result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))

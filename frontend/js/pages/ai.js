@@ -593,23 +593,24 @@ class AIPage extends Component {
         html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
         html = html.replace(/_(.*?)_/g, '<em>$1</em>');
 
-        // 7. 链接
+        // 7. 链接（转义文本和 URL 防止 XSS）
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
             const safeUrl = url.trim();
+            const safeText = Utils.escapeHtml(text);
             if (/^(javascript|vbscript|data):/i.test(safeUrl)) {
-                return `<a href="javascript:void(0)" title="Blocked dangerous protocol" style="color:var(--color-error);text-decoration:line-through;">${text}</a>`;
+                return `<a href="javascript:void(0)" title="Blocked dangerous protocol" style="color:var(--color-error);text-decoration:line-through;">${safeText}</a>`;
             }
-            // Utils.escapeHtml 已经处理过引号，所以这里拼接到 href 中是安全的
-            return `<a href="${safeUrl}" target="_blank" rel="noopener">${text}</a>`;
+            return `<a href="${Utils.escapeHtml(safeUrl)}" target="_blank" rel="noopener">${safeText}</a>`;
         });
 
-        // 8. 图片
+        // 8. 图片（转义 alt 和 src 防止 XSS）
         html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
             const safeSrc = src.trim();
+            const safeAlt = Utils.escapeHtml(alt);
             if (/^(javascript|vbscript|data):/i.test(safeSrc)) {
-                return `<div class="broken-image" title="Blocked dangerous image source" style="padding:10px;background:var(--color-bg-tertiary);border-radius:4px;color:var(--color-text-secondary);font-size:12px;"><i class="ri-image-off-line"></i> ${alt || '图片无法显示'}</div>`;
+                return `<div class="broken-image" title="Blocked dangerous image source" style="padding:10px;background:var(--color-bg-tertiary);border-radius:4px;color:var(--color-text-secondary);font-size:12px;"><i class="ri-image-off-line"></i> ${safeAlt || '图片无法显示'}</div>`;
             }
-            return `<img src="${safeSrc}" alt="${alt}" style="max-width: 100%;">`;
+            return `<img src="${Utils.escapeHtml(safeSrc)}" alt="${safeAlt}" style="max-width: 100%;">`;
         });
 
         // 9. 列表（无序）

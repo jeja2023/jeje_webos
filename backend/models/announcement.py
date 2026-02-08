@@ -5,7 +5,7 @@
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean, Index
 
 from core.database import Base
 from models.account import User
@@ -43,6 +43,8 @@ class Announcement(Base):
 
     # 索引
     __table_args__ = (
+        # 复合索引：查询已发布公告的常见模式
+        Index('ix_announcements_published_time', 'is_published', 'created_at'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统公告表'},
     )
 

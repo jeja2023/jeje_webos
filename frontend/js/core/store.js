@@ -30,8 +30,9 @@ const Store = {
         csrfToken: null
     },
 
-    // 监听器
+    // 监听器（上限 500，超出时警告并清理无效监听器）
     listeners: [],
+    MAX_LISTENERS: 500,
 
     /**
      * 初始化状态
@@ -49,6 +50,7 @@ const Store = {
         }
 
         if (userStr) {
+            // HttpOnly Cookie 模式下可能只有 user 无 token，仍视为已登录
             try {
                 const parsedUser = JSON.parse(userStr);
                 this.state.user = parsedUser;
@@ -61,6 +63,9 @@ const Store = {
                 }
             } catch (e) {
                 Config.error('解析用户信息失败');
+            }
+            if (!this.state.isLoggedIn) {
+                this.state.isLoggedIn = true;  // 仅有 user 时也视为已登录（如 HttpOnly Cookie 模式）
             }
         }
 
@@ -131,8 +136,29 @@ const Store = {
 
     /**
      * 订阅状态变化
+     * 返回取消订阅函数
      */
     subscribe(key, callback) {
+        // 检查是否已有相同的监听器（避免重复订阅）
+        const exists = this.listeners.some(l => l.key === key && l.callback === callback);
+        if (exists) {
+            return () => {
+                this.listeners = this.listeners.filter(
+                    l => !(l.key === key && l.callback === callback)
+                );
+            };
+        }
+        
+        // 监听器上限保护
+        if (this.listeners.length >= this.MAX_LISTENERS) {
+            console.warn(`[Store] 监听器数量已达上限 (${this.MAX_LISTENERS})，请检查是否有未取消的订阅`);
+            // 移除最早的非通配符监听器
+            const idx = this.listeners.findIndex(l => l.key !== '*');
+            if (idx !== -1) {
+                this.listeners.splice(idx, 1);
+            }
+        }
+        
         this.listeners.push({ key, callback });
         return () => {
             this.listeners = this.listeners.filter(
@@ -154,17 +180,21 @@ const Store = {
      * 设置认证信息
      */
     setAuth(token, user, refreshToken = null) {
-        this.state.token = token;
         this.state.user = user;
         this.state.isLoggedIn = true;
-
-        localStorage.setItem(Config.storageKeys.token, token);
-        if (refreshToken) {
-            localStorage.setItem(Config.storageKeys.refreshToken, refreshToken);
+        // HttpOnly Cookie 模式下不把 Token 存 localStorage，防 XSS 窃取
+        if (!Config.useHttpOnlyCookie) {
+            this.state.token = token;
+            localStorage.setItem(Config.storageKeys.token, token || '');
+            if (refreshToken) {
+                localStorage.setItem(Config.storageKeys.refreshToken, refreshToken);
+            }
+        } else {
+            this.state.token = null;
         }
         localStorage.setItem(Config.storageKeys.user, JSON.stringify(user));
 
-        this.notify('auth', { token, user, refreshToken });
+        this.notify('auth', { token: this.state.token, user, refreshToken });
     },
 
     /**
@@ -186,6 +216,10 @@ const Store = {
      * 设置系统信息
      */
     setSystemInfo(info) {
+        // 是否使用 HttpOnly Cookie 存 Token（前端据此决定是否存 localStorage、是否带 credentials）
+        if (typeof info.use_http_only_cookie === 'boolean') {
+            Config.useHttpOnlyCookie = info.use_http_only_cookie;
+        }
         // 保存 CSRF Token
         if (info.csrf_token) {
             this.set('csrfToken', info.csrf_token);

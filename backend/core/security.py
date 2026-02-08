@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status, Query
+from fastapi import Depends, HTTPException, status, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from cachetools import TTLCache
@@ -41,8 +41,30 @@ def invalidate_permission_cache(user_id: int = None):
     else:
         permission_cache.clear()
 
-# Bearer令牌认证，设置为 auto_error=False 以支持从 Query 参数中读取 token
+# Bearer令牌认证，设置为 auto_error=False 以支持从 Query 参数或 Cookie 中读取 token
 security = HTTPBearer(auto_error=False)
+
+# HttpOnly Cookie 下的 token 键名（与 config.auth_use_httponly_cookie 配合）
+COOKIE_ACCESS_TOKEN = "access_token"
+COOKIE_REFRESH_TOKEN = "refresh_token"
+
+
+def _get_jwt_token_from_request(
+    request: Request,
+    token_query: Optional[str],
+    credentials: Optional[HTTPAuthorizationCredentials],
+) -> Optional[str]:
+    """从请求中解析 JWT：优先 Cookie（HttpOnly 模式），其次 Authorization 头，最后 Query。"""
+    s = get_settings()
+    if s.auth_use_httponly_cookie:
+        cookie_token = request.cookies.get(COOKIE_ACCESS_TOKEN)
+        if cookie_token:
+            return cookie_token
+    if credentials:
+        return credentials.credentials
+    if token_query:
+        return token_query
+    return None
 
 
 
@@ -178,16 +200,13 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[To
 
 
 async def get_current_user(
+    request: Request,
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> TokenData:
-    """获取当前用户(实时从数据库同步最新权限和角色)"""
-    jwt_token = None
-    if credentials:
-        jwt_token = credentials.credentials
-    elif token:
-        jwt_token = token
-    
+    """获取当前用户(实时从数据库同步最新权限和角色)；支持 HttpOnly Cookie / Authorization / Query"""
+    jwt_token = _get_jwt_token_from_request(request, token, credentials)
+
     if not jwt_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -224,11 +243,13 @@ async def get_current_user(
                 # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
                 all_perms = list(user.permissions or [])
                 if user.role_ids:
-                    role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
-                    roles = role_result.scalars().all()
-                    for r in roles:
-                        if r.permissions:
-                            all_perms.extend(r.permissions)
+                    # 只查 permissions 列，批量加载所有角色（避免 N+1）
+                    role_result = await db.execute(
+                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
+                    )
+                    for (role_perms,) in role_result.all():
+                        if role_perms:
+                            all_perms.extend(role_perms)
                 
                 # 更新 token_data 中的权限和角色(内存中更新, 不修改原始 JWT)
                 token_data.permissions = list(set(all_perms))
@@ -254,16 +275,13 @@ async def get_current_user(
 
 
 async def get_optional_user(
+    request: Request,
     token: Optional[str] = Query(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[TokenData]:
-    """获取当前用户(可选, 实时同步最新权限)"""
-    jwt_token = None
-    if credentials:
-        jwt_token = credentials.credentials
-    elif token:
-        jwt_token = token
-    
+    """获取当前用户(可选, 实时同步最新权限)；支持 HttpOnly Cookie / Authorization / Query"""
+    jwt_token = _get_jwt_token_from_request(request, token, credentials)
+
     if not jwt_token:
         return None
 
@@ -289,11 +307,13 @@ async def get_optional_user(
             if user and user.is_active:
                 all_perms = list(user.permissions or [])
                 if user.role_ids:
-                    role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(user.role_ids)))
-                    roles = role_result.scalars().all()
-                    for r in roles:
-                        if r.permissions:
-                            all_perms.extend(r.permissions)
+                    # 只查 permissions 列，避免加载完整 UserGroup 对象
+                    role_result = await db.execute(
+                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
+                    )
+                    for (role_perms,) in role_result.all():
+                        if role_perms:
+                            all_perms.extend(role_perms)
                 token_data.permissions = list(set(all_perms))
                 token_data.role = user.role
                 

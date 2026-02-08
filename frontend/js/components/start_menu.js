@@ -15,11 +15,13 @@ class StartMenuComponent extends Component {
         // 展开/收起状态记录 - 默认全部折叠
         this.expanded = {};
 
-        // 监听变化以刷新菜单
+        // 监听变化以刷新菜单（保存取消订阅函数以便 destroy 时清理）
         const updateVisible = () => { if (this.visible) this.update(); };
-        Store.subscribe('modules', updateVisible);
-        Store.subscribe('pinnedApps', updateVisible);
-        Store.subscribe('user', updateVisible);
+        this._storeUnsubscribes = [
+            Store.subscribe('modules', updateVisible),
+            Store.subscribe('pinnedApps', updateVisible),
+            Store.subscribe('user', updateVisible)
+        ];
     }
 
     /**
@@ -320,5 +322,14 @@ class StartMenuComponent extends Component {
     update() {
         if (!this.container) return;
         this.container.innerHTML = this.render();
+    }
+
+    destroy() {
+        // 取消所有 Store 订阅
+        if (this._storeUnsubscribes) {
+            this._storeUnsubscribes.forEach(unsub => unsub && unsub());
+            this._storeUnsubscribes = [];
+        }
+        super.destroy();
     }
 }

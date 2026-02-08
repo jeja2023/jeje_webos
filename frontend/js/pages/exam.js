@@ -953,8 +953,13 @@ class ExamPage extends Component {
 
     async startGrading(recordId) {
         try {
-            const res = await Api.get(`/exam/records/${recordId}?include_answers=true`);
+            const [res, cheatRes] = await Promise.all([
+                Api.get(`/exam/records/${recordId}?include_answers=true`),
+                Api.get(`/exam/records/${recordId}/cheat-logs`)
+            ]);
+
             const record = res.data;
+            const cheatLogs = cheatRes.data || [];
 
             // 获取题目详情
             const paperRes = await Api.get(`/exam/papers/${record.paper_id}/questions`);
@@ -962,7 +967,8 @@ class ExamPage extends Component {
 
             this.setState({
                 view: 'grading_detail',
-                gradingRecord: record
+                gradingRecord: record,
+                cheatLogs: cheatLogs
             });
         } catch (e) {
             Toast.error('加载试卷失败');
@@ -1568,7 +1574,7 @@ class ExamPage extends Component {
     }
 
     renderGradingDetail() {
-        const { gradingRecord } = this.state;
+        const { gradingRecord, cheatLogs } = this.state;
         if (!gradingRecord) return '';
 
         const { questions, answers, score, total_score } = gradingRecord;
@@ -1583,6 +1589,21 @@ class ExamPage extends Component {
                         <h2>阅卷: ${Utils.escapeHtml(gradingRecord.paper_title)}</h2>
                     </div>
                 </div>
+
+                ${cheatLogs && cheatLogs.length > 0 ? `
+                    <div class="cheat-logs-section">
+                        <h3><i class="ri-alarm-warning-line"></i> 异常行为记录 (${cheatLogs.length})</h3>
+                        <div class="cheat-log-list">
+                            ${cheatLogs.map(log => `
+                                <div class="cheat-log-item">
+                                    <span class="log-time">${Utils.formatDate(log.created_at)}</span>
+                                    <span class="log-action">${Utils.escapeHtml(log.action)}</span>
+                                    <span class="log-count">第 ${log.count} 次</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
                 <form id="gradingForm">
                     <div class="exam-questions">
                         ${questions.map((q, i) => {

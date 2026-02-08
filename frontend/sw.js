@@ -114,15 +114,58 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. 对于静态资源 (CSS, JS, Images, Fonts) 
-    // 网络优先 (网络优先) - 适合开发和频繁更新
-    // 优先获取最新文件并更新缓存，网络断开时才用旧缓存
+    // 2. 对于静态资源 (CSS, JS, Images, Fonts)
+    // 第三方库和字体使用 Cache First（不常更新）
+    // 业务代码使用 Network First（保证获取最新版本）
     if (url.pathname.startsWith('/static/')) {
+        // 第三方库资源：Cache First（变更频率低，优先使用缓存提升性能）
+        const isCacheable = url.pathname.startsWith('/static/libs/') || 
+                           url.pathname.match(/\.(woff2?|ttf|eot)$/);
+        
+        if (isCacheable) {
+            event.respondWith(
+                caches.match(event.request).then((cachedResponse) => {
+                    if (cachedResponse) return cachedResponse;
+                    return fetch(event.request).then((networkResponse) => {
+                        if (networkResponse && networkResponse.status === 200) {
+                            const responseToCache = networkResponse.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+                        }
+                        return networkResponse;
+                    });
+                })
+            );
+        } else {
+            // 业务代码：Network First（保证更新及时）
+            event.respondWith(
+                fetch(event.request)
+                    .then((networkResponse) => {
+                        if (networkResponse && networkResponse.status === 200) {
+                            const responseToCache = networkResponse.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+                        }
+                        return networkResponse;
+                    })
+                    .catch(() => {
+                        return caches.match(event.request);
+                    })
+            );
+        }
+        return;
+    }
+
+    // 3. 对于页面访问 (HTML)，使用 Network First
+    // 保证用户获得最新版本，离线时回退到缓存
+    if (event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
-                    // 如果网络请求成功，克隆一份存入缓存，然后返回最新内容
-                    if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                    // 缓存成功的导航响应
+                    if (networkResponse && networkResponse.status === 200) {
                         const responseToCache = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => {
                             cache.put(event.request, responseToCache);
@@ -131,26 +174,13 @@ self.addEventListener('fetch', (event) => {
                     return networkResponse;
                 })
                 .catch(() => {
-                    // 如果断网，则回退到缓存
-                    return caches.match(event.request);
-                })
-        );
-        return;
-    }
-
-    // 3. 对于页面访问 (HTML)，使用网络优先 (网络优先)
-    // 这样可以保证用户获得最新版本，离线时回退到缓存
-    if (event.request.mode === 'navigate') {
-        event.respondWith(
-            fetch(event.request)
-                .catch(() => {
                     return caches.match(event.request)
                         .then((cachedResponse) => {
                             if (cachedResponse) {
                                 return cachedResponse;
                             }
-                            // 如果离线且缓存也没有，可以返回一个离线页面（如果有）
-                            // return caches.match('/offline.html');
+                            // 离线且无缓存时返回根页面（SPA 回退）
+                            return caches.match('/');
                         });
                 })
         );

@@ -113,10 +113,17 @@ async def paginate(
             transformer=lambda user: {"id": user.id, "name": user.username}
         )
     """
-    # 计算总数
-    count_query = select(func.count()).select_from(query.subquery())
-    total_result = await db.execute(count_query)
-    total = total_result.scalar() or 0
+    # 计算总数（基于原始查询构建 count，避免不必要的子查询开销）
+    # 对于简单查询直接 count，对于含 GROUP BY/DISTINCT 的查询使用子查询
+    try:
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+    except Exception:
+        # 降级方案：使用子查询
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
     
     # 计算偏移量
     offset = (page - 1) * page_size

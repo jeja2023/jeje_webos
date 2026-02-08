@@ -4,7 +4,7 @@
 
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AnnouncementCreate(BaseModel):
@@ -16,6 +16,13 @@ class AnnouncementCreate(BaseModel):
     is_top: bool = Field(default=False, description="是否置顶")
     start_at: Optional[datetime] = Field(None, description="开始时间")
     end_at: Optional[datetime] = Field(None, description="结束时间")
+    
+    @model_validator(mode='after')
+    def validate_time_range(self):
+        """验证结束时间不早于开始时间"""
+        if self.start_at and self.end_at and self.end_at < self.start_at:
+            raise ValueError("结束时间不能早于开始时间")
+        return self
 
 
 class AnnouncementUpdate(BaseModel):
@@ -27,6 +34,13 @@ class AnnouncementUpdate(BaseModel):
     is_top: Optional[bool] = Field(None, description="是否置顶")
     start_at: Optional[datetime] = Field(None, description="开始时间")
     end_at: Optional[datetime] = Field(None, description="结束时间")
+    
+    @model_validator(mode='after')
+    def validate_time_range(self):
+        """验证结束时间不早于开始时间"""
+        if self.start_at and self.end_at and self.end_at < self.start_at:
+            raise ValueError("结束时间不能早于开始时间")
+        return self
 
 
 class AnnouncementInfo(BaseModel):

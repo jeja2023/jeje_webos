@@ -5,7 +5,7 @@
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Index
 
 from core.database import Base
 
@@ -27,6 +27,8 @@ class FileRecord(Base):
     
     # 索引
     __table_args__ = (
+        Index('ix_files_uploader', 'uploader_id'),
+        Index('ix_files_category', 'category'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '文件存储记录表'},
     )
 

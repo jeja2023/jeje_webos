@@ -150,18 +150,27 @@ async def export_logs(
 
     where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword, user_id, username)
 
-    # 查询所有符合条件的数据（限制最多10000条）
-    data_stmt = (
-        select(SystemLog, User.username, User.nickname)
-        .outerjoin(User, SystemLog.user_id == User.id)
-        .order_by(desc(SystemLog.created_at))
-        .limit(10000)
-    )
-    if where_clause is not None:
-        data_stmt = data_stmt.where(where_clause)
+    # 分批查询数据（每批1000条，最多10000条），避免一次性加载全部到内存
+    batch_size = 1000
+    max_rows = 10000
+    rows = []
+    
+    for offset in range(0, max_rows, batch_size):
+        data_stmt = (
+            select(SystemLog, User.username, User.nickname)
+            .outerjoin(User, SystemLog.user_id == User.id)
+            .order_by(desc(SystemLog.created_at))
+            .offset(offset)
+            .limit(batch_size)
+        )
+        if where_clause is not None:
+            data_stmt = data_stmt.where(where_clause)
 
-    result = await db.execute(data_stmt)
-    rows = result.all()
+        result = await db.execute(data_stmt)
+        batch = result.all()
+        if not batch:
+            break
+        rows.extend(batch)
 
     # 创建 Excel 工作簿
     wb = openpyxl.Workbook()

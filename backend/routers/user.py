@@ -898,6 +898,10 @@ async def reset_password(
     user.password_hash = hash_password(password)
     await db.commit()
     
+    # 使该用户的权限缓存失效，迫使下次请求重新验证
+    from core.security import invalidate_permission_cache
+    invalidate_permission_cache(user.id)
+    
     return success({
         "id": user.id,
         "username": user.username
@@ -934,44 +938,48 @@ async def batch_action(
     if not users:
         raise HTTPException(status_code=404, detail="未找到指定用户")
     
-    # 过滤掉不能操作的用户
+    # 过滤掉不能操作的用户（事务保护：全部成功或全部回滚）
     operated_ids = []
     skipped_ids = []
     
-    for user in users:
-        # 不能操作自己
-        if user.id == current_user.user_id:
-            skipped_ids.append(user.id)
-            continue
+    try:
+        for user in users:
+            # 不能操作自己
+            if user.id == current_user.user_id:
+                skipped_ids.append(user.id)
+                continue
+            
+            # 业务管理员不能操作其他管理员
+            if current_user.role == "manager" and user.role in ("manager", "admin"):
+                skipped_ids.append(user.id)
+                continue
+            
+            # 不能删除管理员账户
+            if action == "delete" and user.role in ("admin", "manager"):
+                skipped_ids.append(user.id)
+                continue
+            
+            # 执行操作
+            if action == "enable":
+                user.is_active = True
+                operated_ids.append(user.id)
+            elif action == "disable":
+                user.is_active = False
+                operated_ids.append(user.id)
+            elif action == "audit_pass":
+                user.is_active = True
+                operated_ids.append(user.id)
+            elif action == "audit_reject":
+                user.is_active = False
+                operated_ids.append(user.id)
+            elif action == "delete":
+                await db.delete(user)
+                operated_ids.append(user.id)
         
-        # 业务管理员不能操作其他管理员
-        if current_user.role == "manager" and user.role in ("manager", "admin"):
-            skipped_ids.append(user.id)
-            continue
-        
-        # 不能删除管理员账户
-        if action == "delete" and user.role in ("admin", "manager"):
-            skipped_ids.append(user.id)
-            continue
-        
-        # 执行操作
-        if action == "enable":
-            user.is_active = True
-            operated_ids.append(user.id)
-        elif action == "disable":
-            user.is_active = False
-            operated_ids.append(user.id)
-        elif action == "audit_pass":
-            user.is_active = True
-            operated_ids.append(user.id)
-        elif action == "audit_reject":
-            user.is_active = False
-            operated_ids.append(user.id)
-        elif action == "delete":
-            await db.delete(user)
-            operated_ids.append(user.id)
-    
-    await db.commit()
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"批量操作失败，已回滚: {str(e)}")
     
     action_names = {
         "enable": "启用",

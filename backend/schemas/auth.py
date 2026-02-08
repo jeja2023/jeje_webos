@@ -75,9 +75,9 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    """用户登录"""
-    username: str
-    password: str
+    """用户登录（限制长度以防 DoS/暴力破解载荷过大）"""
+    username: str = Field(..., min_length=1, max_length=128)
+    password: str = Field(..., min_length=1, max_length=256)
 
 
 class UserUpdate(BaseModel):

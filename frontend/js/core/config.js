@@ -40,6 +40,9 @@ const Config = {
         pageSizes: [10, 20, 50, 100]
     },
 
+    // 是否使用 HttpOnly Cookie 存 Token（由 /system/init 返回，可防 XSS 窃取 Token）
+    useHttpOnlyCookie: false,
+
     // 调试模式，生产环境默认关闭，可通过 URL 参数 ?debug=1 临时开启
     debug: new URLSearchParams(window.location.search).get('debug') === '1',
 

@@ -233,9 +233,9 @@ const AnalysisModelingMixin = {
                             <div class="console-body p-10 overflow-y-auto text-sm font-mono" style="height: calc(100% - 30px);">
                                 ${etlLogs.length === 0 ? '<div class="log-empty text-secondary">等待执行...</div>' :
                 etlLogs.map(log => `
-                                    <div class="log-line ${log.type} mb-5">
-                                        <span class="log-time text-secondary mr-5">[${log.time}]</span>
-                                        <span class="log-msg">${log.message}</span>
+                                    <div class="log-line ${Utils.escapeHtml(log.type)} mb-5">
+                                        <span class="log-time text-secondary mr-5">[${Utils.escapeHtml(log.time)}]</span>
+                                        <span class="log-msg">${Utils.escapeHtml(log.message)}</span>
                                     </div>
                                   `).join('')}
                             </div>
@@ -2037,7 +2037,7 @@ const AnalysisModelingMixin = {
             content = `
                 <div class="flex-center flex-col p-30 text-error">
                     <div class="text-3xl mb-10">⚠️</div>
-                    <div>${previewError}</div>
+                    <div>${Utils.escapeHtml(previewError)}</div>
                     <div class="text-xs text-secondary mt-5">请检查上游节点配置或源数据是否可用</div>
                 </div>
             `;

@@ -22,17 +22,64 @@ class FileManagerPage extends Component {
     }
 
     /* 安全地渲染图标，防止 XSS */
+
     _renderSafeIcon(icon, defaultIcon) {
         if (!icon) return defaultIcon;
-        // 检查危险标签和事件处理程序
-        // 允许的标签通常是 i, span, img, 但禁止 script, iframe 等
-        if (/<(script|iframe|object|embed|meta|link|style|frame|frameset|form|input|button)/i.test(icon)) return defaultIcon;
-        // 禁止所有 on* 事件
-        if (/\s+on[a-z]+\s*=/i.test(icon)) return defaultIcon;
-        // 禁止 javascript: 伪协议
-        if (/javascript:/i.test(icon)) return defaultIcon;
+        // 如果是简单的 emoji 或纯文本 (无标签)，直接返回
+        if (!/[<>]/.test(icon)) return icon;
 
-        return icon;
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(icon, 'text/html');
+            const body = doc.body;
+
+            // 如果内容为空
+            if (!body.innerHTML.trim()) return defaultIcon;
+
+            // 允许的标签和属性白名单
+            const allowedTags = ['i', 'span', 'div', 'img', 'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon'];
+            const allowedAttrs = ['class', 'style', 'src', 'alt', 'title', 'width', 'height', 'viewbox', 'fill', 'stroke', 'stroke-width', 'd', 'xmlns', 'opacity', 'fill-rule', 'clip-rule'];
+
+            const allElements = body.querySelectorAll('*');
+            // 检查所有元素
+            for (let i = 0; i < allElements.length; i++) {
+                const el = allElements[i];
+                const tagName = el.tagName.toLowerCase();
+
+                // 1. 检查标签名
+                if (!allowedTags.includes(tagName)) {
+                    return defaultIcon;
+                }
+
+                // 2. 检查属性
+                const attrs = el.attributes;
+                for (let j = 0; j < attrs.length; j++) {
+                    const attr = attrs[j];
+                    const name = attr.name.toLowerCase();
+                    const value = attr.value.toLowerCase().trim();
+
+                    // 检查属性名 (允许 data- 和 aria-)
+                    if (!allowedAttrs.includes(name) && !name.startsWith('data-') && !name.startsWith('aria-')) {
+                        return defaultIcon;
+                    }
+
+                    // 检查 URL 协议 (src)
+                    if (name === 'src' || name === 'href') {
+                        if (value.startsWith('javascript:') || value.startsWith('vbscript:')) {
+                            return defaultIcon;
+                        }
+                    }
+
+                    // 显式禁止事件处理程序 (虽然不在白名单中，但作为双重保障)
+                    if (name.startsWith('on')) return defaultIcon;
+                }
+            }
+
+            return body.innerHTML;
+        } catch (e) {
+            console.warn('Icon parse error:', e);
+            return defaultIcon;
+        }
     }
 
     async init() {
@@ -1149,9 +1196,10 @@ class FileManagerPage extends Component {
                     title: `📄 ${Utils.escapeHtml(file.name)}`,
                     content: `<div style="text-align: center; padding: 40px;">
                         <p style="margin-bottom: 20px;">Word 预览组件未加载</p>
-                        <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
+                        <button class="btn btn-primary" data-download-url="${Utils.escapeHtml(url)}">下载查看</button>
                     </div>`,
-                    width: '500px'
+                    width: '500px',
+                    onConfirm: () => { window.open(url, '_blank'); return true; }
                 });
             }
         } else if (mime.includes('spreadsheet') || mime.includes('excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
@@ -1164,9 +1212,10 @@ class FileManagerPage extends Component {
                     title: `📊 ${Utils.escapeHtml(file.name)}`,
                     content: `<div style="text-align: center; padding: 40px;">
                         <p style="margin-bottom: 20px;">Excel 预览组件未加载</p>
-                        <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
+                        <button class="btn btn-primary" data-download-url="${Utils.escapeHtml(url)}">下载查看</button>
                     </div>`,
-                    width: '500px'
+                    width: '500px',
+                    onConfirm: () => { window.open(url, '_blank'); return true; }
                 });
             }
         } else if (mime.includes('presentation') || mime.includes('powerpoint')) {
@@ -1175,9 +1224,10 @@ class FileManagerPage extends Component {
                 title: `📽️ ${Utils.escapeHtml(file.name)}`,
                 content: `<div style="text-align: center; padding: 40px;">
                     <p style="margin-bottom: 20px;">PPT 文件暂不支持在线预览</p>
-                    <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
+                    <button class="btn btn-primary" data-download-url="${Utils.escapeHtml(url)}">下载查看</button>
                 </div>`,
-                width: '500px'
+                width: '500px',
+                onConfirm: () => { window.open(url, '_blank'); return true; }
             });
         } else {
             // 其他文件直接下载

@@ -128,7 +128,16 @@ async def init_admin_user():
             )
             
             db.add(admin_user)
-            await db.commit()
+            try:
+                await db.commit()
+            except Exception as commit_error:
+                await db.rollback()
+                # 处理并发启动导致的唯一约束冲突
+                error_str = str(commit_error)
+                if "Duplicate" in error_str or "IntegrityError" in error_str or "1062" in error_str:
+                    logger.info("管理员账户已存在（并发创建），跳过")
+                    return {"created": False, "message": "管理员账户已存在（并发创建）"}
+                raise
             await db.refresh(admin_user)
             
             logger.info(f"默认管理员账户创建成功: {settings.admin_username}")

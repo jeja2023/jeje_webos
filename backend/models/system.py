@@ -5,7 +5,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, Boolean, DateTime, JSON, Text, UniqueConstraint
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, Text, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -27,7 +27,13 @@ class ModuleConfig(Base):
 class SystemLog(Base):
     """系统审计日志表"""
     __tablename__ = "sys_logs"
-    __table_args__ = {"comment": "系统审计日志表"}
+    __table_args__ = (
+        # 复合索引：按模块+操作+时间筛选审计日志
+        Index('ix_logs_module_action_time', 'module', 'action', 'created_at'),
+        # 复合索引：按用户+时间筛选审计日志
+        Index('ix_logs_user_time', 'user_id', 'created_at'),
+        {"comment": "系统审计日志表"},
+    )
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="主键ID")
     level: Mapped[str] = mapped_column(String(20), default="INFO", index=True, comment="日志级别")

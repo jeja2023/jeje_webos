@@ -33,19 +33,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 先安装 CPU 版本的 PyTorch 和核心算子库 (体积巨大，稳定)
-# 这能节省约 10GB 的空间，且不会因为 requirements.txt 改变而重新下载
+# 1. 先复制依赖文件（变更频率低，充分利用 Docker 层缓存）
+COPY backend/requirements.txt .
+
+# 2. 安装 CPU 版本的 PyTorch（体积巨大，单独一层以利用缓存）
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# 关键修复：强制从源码编译 llama-cpp-python，并显式禁用所有高性能指令集 (AVX/AVX2/FMA/F16C/AVX512)
-# 针对 NAS 硬件的 Illegal instruction 错误。源码编译较慢，故置于 COPY 之前以利用缓存
+# 3. 编译 llama-cpp-python（显式禁用 AVX 等指令集，兼容 NAS 硬件）
 RUN CMAKE_ARGS="-DGGML_NATIVE=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF -DGGML_AVX512=OFF -DLLAMA_NATIVE=OFF -DLLAMA_AVX=OFF -DLLAMA_AVX2=OFF -DLLAMA_FMA=OFF -DLLAMA_F16C=OFF" \
     pip install --no-cache-dir --no-binary llama-cpp-python llama-cpp-python
 
-# 复制依赖文件
-COPY backend/requirements.txt .
-
-# 安装其余依赖
+# 4. 安装其余 Python 依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================

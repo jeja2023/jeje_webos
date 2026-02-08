@@ -58,8 +58,11 @@ async def verify_csrf_token(token: str) -> bool:
     # 1. 尝试从 Redis 获取
     redis_data = await get_cache(f"csrf:{token}")
     if redis_data:
-        # Redis 会自动处理过期，所以如果获取到了，通常是有效的
-        # 但我们还是检查一下结构
+        # 验证 Token 有效期（双重保障，即使 Redis TTL 未正确设置）
+        if isinstance(redis_data, dict) and "created_at" in redis_data:
+            if time.time() - redis_data["created_at"] > TOKEN_EXPIRE_SECONDS:
+                await delete_cache(f"csrf:{token}")
+                return False
         return True
     
     # 2. 尝试从内存获取

@@ -1,54 +1,67 @@
-fastapi>=0.104.0
+# ========== 核心框架 ==========
+fastapi>=0.104.0,<1.0.0
 orjson>=3.9.0
 uvicorn[standard]>=0.24.0
-sqlalchemy>=2.0.0
+sqlalchemy>=2.0.0,<3.0.0
+pydantic>=2.0.0,<3.0.0
+pydantic-settings>=2.0.0
+
+# ========== 数据库驱动 ==========
 aiomysql>=0.2.0
 pymysql>=1.1.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
+# 注：如需 PostgreSQL/Oracle/ODBC 支持，请取消下方注释
+# psycopg2-binary>=2.9.0
+# asyncpg>=0.29.0
+# oracledb>=2.0.0
+# pyodbc>=5.0.0
+
+# ========== 安全与认证 ==========
 python-jose[cryptography]>=3.3.0
 cryptography>=41.0.0
 bcrypt>=4.0.0
+
+# ========== 基础设施 ==========
 python-dotenv>=1.0.0
 redis>=5.0.0
 psutil>=5.9.0
-openpyxl>=3.1.0
-xlrd>=2.0.1
 alembic>=1.13.0
 nest-asyncio>=1.5.0
+cachetools>=5.3.0
+
+# ========== 文件处理 ==========
 filetype>=1.2.0
 python-multipart>=0.0.6
 aiofiles>=24.0.0
+openpyxl>=3.1.0
+xlrd>=2.0.1
+mammoth>=1.6.0
+
+# ========== 数据分析 ==========
 duckdb>=1.1.0
 pandas>=2.0.0
-numpy>=1.24.0,<2.0.0
-oracledb>=2.0.0
-psycopg2-binary>=2.9.0
-asyncpg>=0.29.0
-pyodbc>=5.0.0
+numpy>=1.24.0
+
+# ========== AI 与知识库 ==========
 xhtml2pdf>=0.2.17
 chromadb>=0.4.0
 sentence-transformers>=2.2.0
-cachetools>=5.3.0
+llama-cpp-python>=0.2.0
 
-# 测试依赖
+# ========== OCR 图文识别 ==========
+opencv-python-headless<4.10.0
+rapidocr-onnxruntime>=1.3.0
+
+# ========== PDF 工具 ==========
+pymupdf>=1.26.0
+pdfminer.six>=20221105
+pdf2docx>=0.5.0
+python-docx>=1.0.0
+
+# ========== 其它功能 ==========
+gpxpy>=1.6.2
+
+# ========== 测试依赖 ==========
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.25.0
 aiosqlite>=0.19.0
-mammoth>=1.6.0
-pdfminer.six>=20221105
-llama-cpp-python>=0.2.0
-
-# OCR 图文识别（轻量级，支持自定义模型路径）
-opencv-python<4.10.0
-opencv-python-headless<4.10.0
-rapidocr-onnxruntime>=1.3.0
-pymupdf>=1.26.0
-
-# PDF 工具扩展（格式转换）
-pdf2docx>=0.5.0
-python-docx>=1.0.0
-
-# 其它功能依赖
-gpxpy>=1.6.2

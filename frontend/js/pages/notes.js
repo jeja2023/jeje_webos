@@ -1271,16 +1271,16 @@ class NotesViewPage extends Component {
         // 水平线
         html = html.replace(/^---$/gm, '<hr>');
 
-        // 链接 - 增加协议检查
+        // 链接 - 协议检查 + HTML 转义防 XSS
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, label, url) => {
             const isSafe = !/^\s*(javascript|vbscript|data):/i.test(url);
-            return `<a href="${isSafe ? url : '#'}" target="_blank" rel="noopener">${label}</a>`;
+            return `<a href="${isSafe ? Utils.escapeHtml(url) : '#'}" target="_blank" rel="noopener">${Utils.escapeHtml(label)}</a>`;
         });
 
-        // 图片 - 增加协议检查
+        // 图片 - 协议检查 + HTML 转义防 XSS
         html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
             const isSafe = !/^\s*(javascript|vbscript|data):/i.test(url);
-            return `<img src="${isSafe ? url : ''}" alt="${alt}" style="max-width:100%;border-radius:8px;margin:8px 0;">`;
+            return `<img src="${isSafe ? Utils.escapeHtml(url) : ''}" alt="${Utils.escapeHtml(alt)}" style="max-width:100%;border-radius:8px;margin:8px 0;">`;
         });
 
         // 换行

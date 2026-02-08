@@ -296,7 +296,7 @@ class IMPage extends Component {
     showLightbox(src) {
         const overlay = document.createElement('div');
         overlay.className = 'im-lightbox-overlay';
-        overlay.innerHTML = `<img src="${src}" class="im-lightbox-content" />`;
+        overlay.innerHTML = `<img src="${Utils.escapeHtml(src)}" class="im-lightbox-content" />`;
 
         overlay.onclick = () => {
             overlay.style.opacity = '0';

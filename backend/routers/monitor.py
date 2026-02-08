@@ -6,7 +6,7 @@
 from typing import Optional
 from utils.timezone import get_beijing_time
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
 
@@ -88,7 +88,7 @@ async def record_metric(
 async def get_metrics(
     metric_type: Optional[str] = None,
     metric_name: Optional[str] = None,
-    hours: int = 24,
+    hours: int = Query(24, ge=1, le=720, description="查询时间范围（小时），最大30天"),
     current_user: TokenData = Depends(require_admin()),
     db: AsyncSession = Depends(get_db)
 ):
@@ -124,7 +124,7 @@ async def get_metrics(
 
 @router.get("/stats")
 async def get_stats(
-    hours: int = 24,
+    hours: int = Query(24, ge=1, le=720, description="统计时间范围（小时）"),
     current_user: TokenData = Depends(require_admin()),
     db: AsyncSession = Depends(get_db)
 ):

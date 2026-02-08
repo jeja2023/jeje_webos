@@ -129,10 +129,14 @@ const Router = {
         return null;
     },
 
+    // 路由处理版本号，用于防止快速导航时旧路由覆盖新路由
+    _routeVersion: 0,
+
     /**
-     * 处理路由变化
+     * 处理路由变化（防竞态：快速导航时取消旧的路由处理）
      */
     async handleRoute() {
+        const routeVersion = ++this._routeVersion;
         const { path, query } = this.current();
         Config.log(`路由变化: ${path}`);
 
@@ -192,6 +196,12 @@ const Router = {
                         loadingEl.parentNode.removeChild(loadingEl);
                     }
                 }
+            }
+
+            // 检查路由版本：如果在资源加载期间发生了新的导航，放弃当前处理
+            if (routeVersion !== this._routeVersion) {
+                Config.log(`路由已被覆盖，放弃处理: ${path}`);
+                return;
             }
 
             // 执行处理函数

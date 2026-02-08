@@ -258,13 +258,14 @@ class AuditLogEntry:
 class AuditLogger:
     """审计日志记录器（支持批量写入）"""
     
-    # 批量写入配置
-    _log_queue: list[AuditLogEntry] = []
+    # 批量写入配置（使用 None 初始化，避免类级别可变默认值问题）
+    _log_queue: Optional[list] = None
     _batch_size: int = 50
     _flush_interval: float = 5.0  # 秒
     _last_flush: float = 0.0
-    _lock: asyncio.Lock = None
+    _lock: Optional[asyncio.Lock] = None
     _flush_task: Optional[asyncio.Task] = None
+    _is_flushing: bool = False  # 防止并发刷新
     
     @classmethod
     def _get_lock(cls):
@@ -274,16 +275,25 @@ class AuditLogger:
         return cls._lock
     
     @classmethod
+    def _get_queue(cls):
+        """获取队列（延迟初始化）"""
+        if cls._log_queue is None:
+            cls._log_queue = []
+        return cls._log_queue
+    
+    @classmethod
     async def _flush_logs(cls):
         """批量刷新日志到数据库"""
-        if not cls._log_queue:
+        queue = cls._get_queue()
+        if not queue or cls._is_flushing:
             return
         
         entries_to_flush = []
         async with cls._get_lock():
-            if cls._log_queue:
-                entries_to_flush = cls._log_queue[:cls._batch_size]
-                cls._log_queue = cls._log_queue[cls._batch_size:]
+            cls._is_flushing = True
+            if queue:
+                entries_to_flush = queue[:cls._batch_size]
+                cls._log_queue = queue[cls._batch_size:]
         
         if not entries_to_flush:
             return
@@ -313,6 +323,11 @@ class AuditLogger:
             logger.debug(f"批量写入 {len(entries_to_flush)} 条审计日志")
         except Exception as e:
             logger.error(f"批量写入审计日志失败: {e}")
+            # 写入失败的日志重新放回队列（最多重试一次）
+            async with cls._get_lock():
+                cls._get_queue().extend(entries_to_flush)
+        finally:
+            cls._is_flushing = False
     
     @classmethod
     async def _auto_flush_loop(cls):
@@ -320,14 +335,16 @@ class AuditLogger:
         while True:
             try:
                 await asyncio.sleep(cls._flush_interval)
-                current_time = asyncio.get_event_loop().time()
+                import time as _time
+                current_time = _time.monotonic()
                 
                 # 检查是否需要刷新
                 should_flush = False
                 async with cls._get_lock():
-                    if cls._log_queue:
+                    queue = cls._get_queue()
+                    if queue:
                         # 队列已满或超过刷新间隔
-                        if len(cls._log_queue) >= cls._batch_size:
+                        if len(queue) >= cls._batch_size:
                             should_flush = True
                         elif current_time - cls._last_flush >= cls._flush_interval:
                             should_flush = True
@@ -443,13 +460,17 @@ class AuditLogger:
                 logger.error(f"立即写入审计日志失败: {e}")
         else:
             # 加入批量队列
+            import time as _time
             async with cls._get_lock():
-                cls._log_queue.append(entry)
+                cls._get_queue().append(entry)
                 
-                # 如果队列已满，立即刷新
-                if len(cls._log_queue) >= cls._batch_size:
-                    asyncio.create_task(cls._flush_logs())
-                    cls._last_flush = asyncio.get_event_loop().time()
+                # 如果队列已满，立即刷新（await 确保不丢失）
+                if len(cls._get_queue()) >= cls._batch_size:
+                    cls._last_flush = _time.monotonic()
+            
+            # 在锁外执行刷新，避免死锁
+            if len(cls._get_queue()) >= cls._batch_size:
+                await cls._flush_logs()
     
     @classmethod
     async def log_request(

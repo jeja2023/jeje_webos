@@ -223,8 +223,9 @@ class KnowledgeService:
         save_dir = user_uploads_dir / str(base_id)
         os.makedirs(save_dir, exist_ok=True)
         
-        # 使用时间戳防止文件名冲突
-        safe_filename = f"{int(os.times().elapsed)}_{file.filename}" 
+        # 使用时间戳防止文件名冲突（basename 过滤防路径穿越）
+        original_name = os.path.basename(file.filename or "unnamed").replace('..', '_')
+        safe_filename = f"{int(os.times().elapsed)}_{original_name}" 
         file_path = os.path.join(save_dir, safe_filename)
         
         # 写入文件

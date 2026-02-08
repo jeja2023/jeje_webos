@@ -52,7 +52,7 @@ class Modal {
             <div class="modal-overlay active" id="${this.id}">
                 <div class="modal" style="max-width: ${width}">
                     <div class="modal-header">
-                        <h3 class="modal-title">${title}</h3>
+                        <h3 class="modal-title">${typeof Utils !== 'undefined' ? Utils.escapeHtml(title) : title.replace(/[<>&"']/g, '')}</h3>
                         ${closable ? `<button class="modal-close" data-action="close">&times;</button>` : ''}
                     </div>
                     <div class="modal-body">

@@ -116,7 +116,9 @@ class Settings(BaseSettings):
 
     # CORS 配置
     allow_origins: list[str] = ["*"]
-    
+
+    # 认证：是否使用 HttpOnly Cookie 存放 Token（防 XSS 窃取，需前端 credentials + 同源或正确 CORS）
+    auth_use_httponly_cookie: bool = True
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
@@ -142,6 +144,11 @@ def get_settings() -> Settings:
             logging.getLogger("core.config").warning(
                 "🚨 [安全警告] 您正在生产环境模式下使用默认的 JWT_SECRET！"
                 "请立即在 .env 文件中配置 JWT_SECRET。"
+            )
+        if not _settings_instance.debug and _settings_instance.allow_origins == ["*"]:
+            import logging
+            logging.getLogger("core.config").warning(
+                "⚠️ [安全建议] 生产环境 CORS 为 allow_origins=['*']，建议在 .env 中设置 ALLOW_ORIGINS 为具体前端域名列表。"
             )
     return _settings_instance
 

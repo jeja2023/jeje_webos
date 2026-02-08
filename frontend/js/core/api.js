@@ -4,11 +4,15 @@
  */
 
 const Api = {
+    // Token 刷新锁：防止并发请求同时触发多次刷新
+    _refreshPromise: null,
+
     /**
      * 基础请求方法
      */
     async request(url, options = {}) {
-        const token = localStorage.getItem(Config.storageKeys.token);
+        // HttpOnly Cookie 模式下不读 localStorage Token，由 Cookie 自动携带
+        const token = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.token);
 
         const defaultHeaders = {
             'Content-Type': 'application/json'
@@ -26,6 +30,7 @@ const Api = {
 
         const config = {
             ...options,
+            credentials: 'include',  // 携带 Cookie（HttpOnly Token 与同源会话）
             headers: {
                 ...defaultHeaders,
                 ...options.headers
@@ -44,34 +49,44 @@ const Api = {
 
             // 先检查401状态，即使不是JSON也要处理
             if (response.status === 401) {
-                const refreshToken = localStorage.getItem(Config.storageKeys.refreshToken);
+                const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
+                const canRefresh = Config.useHttpOnlyCookie || refreshToken;
 
-                // 如果有刷新令牌，尝试刷新
-                if (refreshToken && !options._isRetry) {
+                // HttpOnly Cookie 模式下 Cookie 会随请求发送；否则需要 body 中的 refresh_token
+                if (canRefresh && !options._isRetry) {
                     try {
+                        if (this._refreshPromise) {
+                            Config.log('等待已有的令牌刷新完成...');
+                            await this._refreshPromise;
+                            return this.request(url, { ...options, _isRetry: true });
+                        }
+
                         Config.log('检测到401，尝试刷新令牌...');
-                        const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
+                        this._refreshPromise = fetch(`${Config.apiBase}/auth/refresh`, {
                             method: 'POST',
+                            credentials: 'include',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ refresh_token: refreshToken })
+                            body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
                         });
+
+                        const refreshRes = await this._refreshPromise;
+                        this._refreshPromise = null;
 
                         if (refreshRes.ok) {
                             const refreshData = await refreshRes.json();
-                            if (refreshData.code === 200 && refreshData.data.access_token) {
-                                // 更新本地存储
-                                localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
-                                if (refreshData.data.refresh_token) {
-                                    localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                            if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
+                                if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
+                                    localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
+                                    if (refreshData.data.refresh_token) {
+                                        localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                                    }
                                 }
-
                                 Config.log('令牌刷新成功，准备重试请求');
-
-                                // 重试原请求
                                 return this.request(url, { ...options, _isRetry: true });
                             }
                         }
                     } catch (e) {
+                        this._refreshPromise = null;
                         Config.error('刷新令牌失败:', e);
                     }
                 }

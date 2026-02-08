@@ -156,17 +156,32 @@ class ModuleLoader:
         self._load_states()
     
     def _load_states(self):
-        """加载模块状态"""
+        """加载模块状态（容错：JSON损坏时不影响系统启动）"""
         if self._state_file.exists():
             try:
                 with open(self._state_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     for module_id, state_data in data.items():
-                        state_data["installed_at"] = datetime.fromisoformat(state_data["installed_at"])
-                        if state_data.get("last_enabled_at"):
-                            state_data["last_enabled_at"] = datetime.fromisoformat(state_data["last_enabled_at"])
-                        self._states[module_id] = ModuleState(**state_data)
+                        try:
+                            state_data["installed_at"] = datetime.fromisoformat(state_data["installed_at"])
+                            if state_data.get("last_enabled_at"):
+                                state_data["last_enabled_at"] = datetime.fromisoformat(state_data["last_enabled_at"])
+                            self._states[module_id] = ModuleState(**state_data)
+                        except (KeyError, ValueError, TypeError) as e:
+                            logger.warning(f"跳过损坏的模块状态 {module_id}: {e}")
+                            continue
                 logger.debug(f"加载模块状态: {len(self._states)} 个")
+            except json.JSONDecodeError as e:
+                logger.error(f"模块状态文件 JSON 格式损坏，将重新初始化: {e}")
+                self._states = {}
+                # 备份损坏的文件
+                try:
+                    backup_path = self._state_file.with_suffix('.json.bak')
+                    import shutil
+                    shutil.copy2(self._state_file, backup_path)
+                    logger.info(f"已备份损坏的状态文件到: {backup_path}")
+                except Exception:
+                    pass
             except Exception as e:
                 logger.warning(f"加载模块状态失败: {e}")
     
@@ -191,6 +206,26 @@ class ModuleLoader:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"保存模块状态失败: {e}")
+    
+    @staticmethod
+    def _is_version_newer(new_version: str, old_version: str) -> bool:
+        """
+        语义化版本比较：判断 new_version 是否比 old_version 更新
+        支持 "1.2.3" 格式，避免字符串比较导致 "1.10" < "1.2" 的问题
+        """
+        if new_version == old_version:
+            return False
+        try:
+            new_parts = [int(x) for x in new_version.split('.')]
+            old_parts = [int(x) for x in old_version.split('.')]
+            # 补齐长度
+            max_len = max(len(new_parts), len(old_parts))
+            new_parts.extend([0] * (max_len - len(new_parts)))
+            old_parts.extend([0] * (max_len - len(old_parts)))
+            return new_parts > old_parts
+        except (ValueError, AttributeError):
+            # 无法解析时降级为字符串比较
+            return new_version != old_version
     
     def scan_modules(self) -> List[str]:
         """扫描模块目录"""
@@ -423,7 +458,7 @@ class ModuleLoader:
         # 5. 确定是否首次安装或升级
         state = self._states.get(module_id)
         is_new_install = state is None
-        is_upgrade = state and state.version != manifest.version
+        is_upgrade = state and self._is_version_newer(manifest.version, state.version)
         
         # 6. 记录加载
         installed_version = state.version if state else None

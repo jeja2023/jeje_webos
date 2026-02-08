@@ -108,23 +108,30 @@ const WindowManager = {
 
         const win = this.windows.get(id);
 
-        // 销毁组件
+        // 销毁组件（包裹 try-catch 防止组件销毁出错影响窗口关闭）
         if (win.component && typeof win.component.destroy === 'function') {
-            win.component.destroy();
+            try {
+                win.component.destroy();
+            } catch (e) {
+                console.error(`[WindowManager] 组件销毁失败 (${id}):`, e);
+            }
         }
+        win.component = null;
 
         // 带动画移除 DOM
-        win.element.classList.add('closing');
-        win.element.addEventListener('animationend', () => {
-            if (win.element.parentNode) {
-                win.element.parentNode.removeChild(win.element);
+        const element = win.element;
+        element.classList.add('closing');
+        
+        const removeElement = () => {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
             }
-        });
+        };
+        
+        element.addEventListener('animationend', removeElement, { once: true });
 
         // 如果动画失效则兜底处理
-        setTimeout(() => {
-            if (win.element.parentNode) win.element.parentNode.removeChild(win.element);
-        }, 300);
+        setTimeout(removeElement, 300);
 
         this.windows.delete(id);
 
@@ -423,12 +430,16 @@ const WindowManager = {
         const initialLeft = el.offsetLeft;
         const initialTop = el.offsetTop;
         const width = el.offsetWidth;
+        let rafId = null;
+        let lastMoveEvent = null;
 
         // 置顶
         this.focus(el.id);
 
-        const onMouseMove = (ev) => {
-            if (!isDragging) return;
+        // 使用 requestAnimationFrame 节流拖拽，提升性能
+        const updatePosition = () => {
+            if (!isDragging || !lastMoveEvent) return;
+            const ev = lastMoveEvent;
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
 
@@ -452,10 +463,20 @@ const WindowManager = {
             el.style.left = `${newLeft}px`;
             el.style.top = `${newTop}px`;
             el.style.transform = 'none';
+            rafId = null;
+        };
+
+        const onMouseMove = (ev) => {
+            if (!isDragging) return;
+            lastMoveEvent = ev;
+            if (!rafId) {
+                rafId = requestAnimationFrame(updatePosition);
+            }
         };
 
         const onMouseUp = () => {
             isDragging = false;
+            if (rafId) cancelAnimationFrame(rafId);
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
@@ -477,12 +498,15 @@ const WindowManager = {
 
         const MIN_W = 300;
         const MIN_H = 200;
+        let rafId = null;
+        let lastMoveEvent = null;
 
         // 置顶显示
         this.focus(el.id);
 
-        const onMouseMove = (ev) => {
-            if (!isResizing) return;
+        const updateSize = () => {
+            if (!isResizing || !lastMoveEvent) return;
+            const ev = lastMoveEvent;
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
 
@@ -509,13 +533,22 @@ const WindowManager = {
 
             el.style.width = `${newW}px`;
             el.style.height = `${newH}px`;
-            // 仅在需要时更新位置
             if (type.includes('w')) el.style.left = `${newL}px`;
             if (type.includes('n')) el.style.top = `${newT}px`;
+            rafId = null;
+        };
+
+        const onMouseMove = (ev) => {
+            if (!isResizing) return;
+            lastMoveEvent = ev;
+            if (!rafId) {
+                rafId = requestAnimationFrame(updateSize);
+            }
         };
 
         const onMouseUp = () => {
             isResizing = false;
+            if (rafId) cancelAnimationFrame(rafId);
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };

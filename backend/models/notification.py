@@ -5,7 +5,7 @@
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean, Index
 
 from core.database import Base
 
@@ -27,10 +27,12 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
     
     # Relationships
-    sender = relationship("User", foreign_keys=[sender_id], lazy="joined")
+    sender = relationship("User", foreign_keys=[sender_id], lazy="selectin")
     
     # 索引
     __table_args__ = (
+        # 复合索引：用户未读通知查询优化
+        Index('ix_notifications_user_read', 'user_id', 'is_read', 'created_at'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '系统通知表'},
     )
 

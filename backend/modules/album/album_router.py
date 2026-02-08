@@ -176,7 +176,7 @@ async def upload_photo(
     user: TokenData = Depends(get_current_user)
 ):
     """上传照片到指定相册"""
-    # 验证文件类型
+    # 验证文件类型（Content-Type + 魔数双重验证）
     if not file.content_type or not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="只能上传图片文件")
     
@@ -184,6 +184,15 @@ async def upload_photo(
     content = await file.read()
     if len(content) > 20 * 1024 * 1024:  # 20MB 限制
         raise HTTPException(status_code=400, detail="文件大小不能超过 20MB")
+    
+    # 验证文件魔数（防止 Content-Type 伪造）
+    try:
+        import filetype
+        kind = filetype.guess(content)
+        if kind is None or not kind.mime.startswith('image/'):
+            raise HTTPException(status_code=400, detail="文件内容不是有效的图片格式")
+    except ImportError:
+        pass  # filetype 库未安装时跳过
     
     try:
         photo = await AlbumService.upload_photo(
@@ -275,8 +284,16 @@ async def get_photo_file(
     if not os.path.exists(photo.storage_path):
         raise HTTPException(status_code=404, detail="文件不存在")
     
+    # 路径安全验证：确保文件在 storage 目录下
+    from core.config import get_settings
+    _settings = get_settings()
+    resolved = os.path.realpath(photo.storage_path)
+    storage_root = os.path.realpath(_settings.storage_path)
+    if not resolved.startswith(storage_root):
+        raise HTTPException(status_code=403, detail="文件路径非法")
+    
     return FileResponse(
-        photo.storage_path,
+        resolved,
         media_type=photo.mime_type or "image/jpeg",
         filename=photo.filename
     )
@@ -314,8 +331,16 @@ async def get_photo_thumbnail(
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="文件不存在")
     
+    # 路径安全验证：确保文件在 storage 目录下
+    from core.config import get_settings
+    _settings = get_settings()
+    resolved = os.path.realpath(file_path)
+    storage_root = os.path.realpath(_settings.storage_path)
+    if not resolved.startswith(storage_root):
+        raise HTTPException(status_code=403, detail="文件路径非法")
+    
     return FileResponse(
-        file_path,
+        resolved,
         media_type=photo.mime_type or "image/jpeg"
     )
 

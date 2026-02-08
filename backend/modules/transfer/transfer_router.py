@@ -270,8 +270,11 @@ async def upload_chunk(
     if session.sender_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="只有发送方可以上传分块")
     
-    # 读取分块数据
-    chunk_data = await chunk.read()
+    # 读取分块数据（限制单个分块大小，防止内存耗尽）
+    MAX_CHUNK_SIZE = 10 * 1024 * 1024  # 10MB 单块上限
+    chunk_data = await chunk.read(MAX_CHUNK_SIZE + 1)
+    if len(chunk_data) > MAX_CHUNK_SIZE:
+        raise HTTPException(status_code=413, detail=f"分块大小超过限制（最大 {MAX_CHUNK_SIZE // 1024 // 1024}MB）")
     
     # 保存分块
     success, message = await ChunkService.save_chunk(
@@ -385,12 +388,19 @@ async def download_file(
     if not session.temp_file_path or not os.path.exists(session.temp_file_path):
         raise HTTPException(status_code=404, detail="文件不存在")
     
+    # 路径安全验证：确保文件路径在允许的临时目录内
+    from modules.transfer.transfer_services import TransferConfig
+    temp_dir = TransferConfig.get_temp_dir()
+    resolved_path = Path(session.temp_file_path).resolve()
+    if not str(resolved_path).startswith(str(temp_dir.resolve())):
+        raise HTTPException(status_code=403, detail="文件路径非法")
+    
     # URL 编码文件名以支持中文
     from urllib.parse import quote
     encoded_filename = quote(session.file_name)
     
     return FileResponse(
-        session.temp_file_path,
+        str(resolved_path),
         filename=session.file_name,
         media_type=session.file_type or "application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}

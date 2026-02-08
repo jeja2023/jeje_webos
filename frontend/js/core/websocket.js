@@ -92,6 +92,12 @@ const WebSocketClient = {
      */
     disconnect() {
         this.stopHeartbeat();
+        // 取消排队中的重连定时器
+        if (this._reconnectTimer) {
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
+        }
+        this.reconnectAttempts = 0;
         if (this.ws) {
             this.ws.close(1000, 'Client disconnect');
             this.ws = null;
@@ -99,12 +105,18 @@ const WebSocketClient = {
     },
 
     /**
-     * 重新连接
+     * 重新连接（防竞态：取消之前排队的重连定时器）
      */
     reconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             Config.warn('WebSocket: 已达到最大重连次数，停止自动重连');
             return;
+        }
+
+        // 取消之前排队的重连定时器，防止多次断连导致重复重连
+        if (this._reconnectTimer) {
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
         }
 
         this.reconnectAttempts++;
@@ -113,8 +125,9 @@ const WebSocketClient = {
 
         Config.log(`WebSocket: 将在 ${delay / 1000}s 后尝试第 ${this.reconnectAttempts} 次重连`);
 
-        setTimeout(() => {
-            if (this.reconnectAttempts > 0) { // 避免重置 attempts 后仍触发
+        this._reconnectTimer = setTimeout(() => {
+            this._reconnectTimer = null;
+            if (this.reconnectAttempts > 0) {
                 this.connect();
             }
         }, delay);

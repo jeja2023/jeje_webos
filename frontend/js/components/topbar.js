@@ -18,34 +18,38 @@ class TopBarComponent extends Component {
             pendingCount: 0  // 待审核用户数
         };
 
-        // 每分钟更新一次时间
-        setInterval(() => {
+        // 每分钟更新一次时间（保存引用以便 destroy 时清理）
+        this._timeInterval = setInterval(() => {
             this.setState({ time: this.getCurrentTime() });
         }, 60000);
 
-        // 监听用户变更
-        Store.subscribe('user', (user) => {
-            this.setState({ user });
-            this.checkPendingCount();
-        });
+        // 保存所有 Store 取消订阅函数
+        this._storeUnsubscribes = [];
+        
+        this._storeUnsubscribes.push(
+            Store.subscribe('user', (user) => {
+                this.setState({ user });
+                this.checkPendingCount();
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('unreadMessages', (count) => {
+                this.setState({ unreadMessages: count || 0 });
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('appName', (name) => this.setState({ appName: name }))
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('version', (ver) => this.setState({ sysVersion: ver }))
+        );
 
-        // 监听未读消息变更
-        Store.subscribe('unreadMessages', (count) => {
-            this.setState({ unreadMessages: count || 0 });
-        });
-
-        // 监听系统信息变更
-        Store.subscribe('appName', (name) => this.setState({ appName: name }));
-        Store.subscribe('version', (ver) => this.setState({ sysVersion: ver }));
-
-        // 监听 WebSocket 连接状态
+        // 监听 WebSocket 连接状态（保存引用以便移除）
+        this._wsConnectedHandler = () => this.setState({ wsConnected: true });
+        this._wsDisconnectedHandler = () => this.setState({ wsConnected: false });
         if (typeof WebSocketClient !== 'undefined') {
-            WebSocketClient.on('connected', () => {
-                this.setState({ wsConnected: true });
-            });
-            WebSocketClient.on('disconnected', () => {
-                this.setState({ wsConnected: false });
-            });
+            WebSocketClient.on('connected', this._wsConnectedHandler);
+            WebSocketClient.on('disconnected', this._wsDisconnectedHandler);
         }
 
         // 初始加载待审核用户数量
@@ -289,6 +293,25 @@ class TopBarComponent extends Component {
 
     destroy() {
         this.unbindEvents();
+        
+        // 清理定时器
+        if (this._timeInterval) {
+            clearInterval(this._timeInterval);
+            this._timeInterval = null;
+        }
+        
+        // 取消所有 Store 订阅
+        if (this._storeUnsubscribes) {
+            this._storeUnsubscribes.forEach(unsub => unsub && unsub());
+            this._storeUnsubscribes = [];
+        }
+        
+        // 移除 WebSocket 监听器
+        if (typeof WebSocketClient !== 'undefined') {
+            if (this._wsConnectedHandler) WebSocketClient.off('connected', this._wsConnectedHandler);
+            if (this._wsDisconnectedHandler) WebSocketClient.off('disconnected', this._wsDisconnectedHandler);
+        }
+        
         super.destroy();
     }
 

@@ -2,8 +2,9 @@
 数据备份 Schema
 """
 
+import re
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime
 
 
@@ -78,6 +79,25 @@ class ScheduleCreate(BaseModel):
     is_encrypted: bool = Field(False, description="是否加密")
     is_enabled: bool = Field(True, description="是否启用")
     retention_days: int = Field(30, ge=1, le=365, description="保留天数")
+    
+    @field_validator('schedule_time')
+    @classmethod
+    def validate_time_format(cls, v):
+        """验证时间格式为 HH:MM"""
+        if not re.match(r'^([01]\d|2[0-3]):([0-5]\d)$', v):
+            raise ValueError("时间格式必须为 HH:MM（如 08:30）")
+        return v
+    
+    @model_validator(mode='after')
+    def validate_schedule_day(self):
+        """根据调度类型验证执行日期"""
+        if self.schedule_type == 'weekly' and self.schedule_day is not None:
+            if not (1 <= self.schedule_day <= 7):
+                raise ValueError("周调度的执行日期必须为 1-7（周一至周日）")
+        elif self.schedule_type == 'monthly' and self.schedule_day is not None:
+            if not (1 <= self.schedule_day <= 31):
+                raise ValueError("月调度的执行日期必须为 1-31")
+        return self
 
 
 class ScheduleUpdate(BaseModel):

@@ -9,6 +9,8 @@ import os
 # 在导入任何其他模块之前设置测试环境变量
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("ENV", "test")
+# 测试环境禁用 CSRF，避免 API 测试中 POST/PUT/DELETE 返回 403
+os.environ.setdefault("CSRF_ENABLED", "false")
 
 # 从 test_conftest.py 导入所有 fixtures
 from tests.test_conftest import *

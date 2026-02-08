@@ -15,34 +15,39 @@ class DockComponent extends Component {
         // 固定应用的 localStorage key
         this.PINNED_APPS_KEY = Config.storageKeys.pinnedApps;
 
-        Store.subscribe('currentRoute', (route) => {
-            this.setState({ activeApp: route, openFolder: null });
-        });
+        // 保存所有 Store 取消订阅函数，在 destroy 时统一清理
+        this._storeUnsubscribes = [];
 
-        // 监听打开的窗口列表，用于确定的 Dock 指示器（小白点）
-        Store.subscribe('openWindows', (windows) => {
-            this.setState({ openWindows: windows || [] });
-        });
-
-        // 监听模块变化，动态更新 Dock
-        Store.subscribe('modules', () => {
-            this.updateCategories();
-        });
-
-        // 监听固定应用变化
-        Store.subscribe('pinnedApps', () => {
-            this.updateCategories();
-        });
-
-        // 监听用户信息变化（如设置同步完成后）
-        Store.subscribe('user', () => {
-            this.updateCategories();
-        });
-
-        // 监听是否有最大化窗口 - 触发重新渲染以更新auto-hide类
-        Store.subscribe('hasMaximizedWindow', () => {
-            this.update();
-        });
+        this._storeUnsubscribes.push(
+            Store.subscribe('currentRoute', (route) => {
+                this.setState({ activeApp: route, openFolder: null });
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('openWindows', (windows) => {
+                this.setState({ openWindows: windows || [] });
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('modules', () => {
+                this.updateCategories();
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('pinnedApps', () => {
+                this.updateCategories();
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('user', () => {
+                this.updateCategories();
+            })
+        );
+        this._storeUnsubscribes.push(
+            Store.subscribe('hasMaximizedWindow', () => {
+                this.update();
+            })
+        );
     }
 
     // 获取用户固定的应用列表
@@ -440,7 +445,7 @@ class DockComponent extends Component {
         if (!hasChildren && !hasSubgroups) {
             return `
                 <div class="dock-item ${isActive ? 'active' : ''}" 
-                     onclick="Router.push('${category.path}')" 
+                     onclick="Router.push('${Utils.escapeHtml(category.path)}')" 
                      title="${Utils.escapeHtml(category.title)}">
                     <span class="dock-icon">${this._renderIcon(category.id, category.icon)}</span>
                     <div class="dock-tooltip">${Utils.escapeHtml(category.title)}</div>
@@ -600,11 +605,26 @@ class DockComponent extends Component {
             }
         });
 
-        // 点击外部关闭
-        document.addEventListener('click', (e) => {
+        // 点击外部关闭（保存引用以便清理）
+        this._docClickHandler = (e) => {
             if (!e.target.closest('.dock-folder')) {
                 this.closeFolder();
             }
-        });
+        };
+        document.addEventListener('click', this._docClickHandler);
+    }
+
+    destroy() {
+        // 取消所有 Store 订阅
+        if (this._storeUnsubscribes) {
+            this._storeUnsubscribes.forEach(unsub => unsub && unsub());
+            this._storeUnsubscribes = [];
+        }
+        // 移除 document 监听器
+        if (this._docClickHandler) {
+            document.removeEventListener('click', this._docClickHandler);
+            this._docClickHandler = null;
+        }
+        super.destroy();
     }
 }

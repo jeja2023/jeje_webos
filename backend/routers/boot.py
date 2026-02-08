@@ -198,6 +198,7 @@ async def system_init(
         "menus": menus,
         "module_assets": module_assets,  # 模块前端资源（CSS/JS）
         "csrf_token": csrf_token,  # CSRF Token（前端需要在请求头中携带）
+        "use_http_only_cookie": settings.auth_use_httponly_cookie,  # 是否使用 HttpOnly Cookie 存 Token（前端据此决定是否带 credentials、是否存 localStorage）
         "version_info": {
             "current": settings.app_version,
             "latest": latest_version_info.get("version") if latest_version_info else settings.app_version,

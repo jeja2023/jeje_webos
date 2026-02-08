@@ -28,6 +28,7 @@ from .datalens_schemas import (
     QueryType
 )
 from sqlalchemy.orm.attributes import flag_modified
+from utils.sql_safety import is_safe_table_name, is_safe_column_name
 from .datalens_optimizations import (
     ConnectionPoolManager, _file_cache, _query_cache,
     validate_sql, sanitize_identifier, execute_with_timeout,
@@ -579,14 +580,31 @@ class QueryExecutor:
                            DataSourceType.SQLSERVER, DataSourceType.ORACLE]:
             if query_type == QueryType.SQL:
                 base_sql = query_config.get("sql", "SELECT 1")
+                if not validate_sql(base_sql):
+                    raise ValueError("SQL 语句包含危险操作，仅允许 SELECT 查询")
             else:
                 table = query_config.get("table", "")
+                if not table or not is_safe_table_name(table.strip()):
+                    raise ValueError(f"不安全的表名: {table!r}")
+                table = table.strip()
                 columns = query_config.get("columns", ["*"])
                 where = query_config.get("where", "")
+                if isinstance(columns, list):
+                    for c in columns:
+                        if isinstance(c, dict):
+                            field = c.get("field", "*")
+                            if field != "*" and not is_safe_column_name(str(field).strip()):
+                                raise ValueError(f"不安全的列名: {field!r}")
+                        elif c != "*" and not is_safe_column_name(str(c).strip()):
+                            raise ValueError(f"不安全的列名: {c!r}")
+                elif columns != "*" and not is_safe_column_name(str(columns).strip()):
+                    raise ValueError(f"不安全的列名: {columns!r}")
                 col_str = ", ".join(columns) if isinstance(columns, list) else columns
                 base_sql = f"SELECT {col_str} FROM {table}"
                 if where:
                     base_sql += f" WHERE {where}"
+                if not validate_sql(base_sql):
+                    raise ValueError("构建的 SQL 包含危险操作，仅允许 SELECT 查询")
 
             # 使用 SQLAlchemy 执行并流式获取数据（使用连接池）
             try:

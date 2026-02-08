@@ -125,8 +125,10 @@ async def upload_pdf(
     
     storage, base_dir, uploads_dir, outputs_dir = _get_pdf_storage_paths(user.user_id)
     
-    # 生成安全的文件名
-    safe_filename = file.filename
+    # 生成安全的文件名（过滤路径分隔符，防止路径穿越）
+    safe_filename = os.path.basename(file.filename or "unnamed").replace('..', '_')
+    if not safe_filename:
+        safe_filename = "unnamed"
     save_path = uploads_dir / safe_filename
     
     # 如果文件已存在，添加后缀
@@ -160,8 +162,13 @@ async def delete_pdf_file(
     """删除 PDF 模块中的文件"""
     storage, base_dir, uploads_dir, outputs_dir = _get_pdf_storage_paths(user.user_id)
     
+    # 安全过滤文件名
+    safe_name = os.path.basename(filename).replace('..', '_')
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+    
     target_dir = uploads_dir if category == "uploads" else outputs_dir
-    file_path = target_dir / filename
+    file_path = target_dir / safe_name
     
     # 安全检查：确保文件在正确目录内
     try:
@@ -342,14 +349,19 @@ async def download_result(
     """下载 PDF 处理后的结果文件"""
     storage = get_storage_manager()
     
+    # 安全过滤文件名，防止路径穿越
+    safe_filename = os.path.basename(filename).replace('..', '_')
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+    
     # 获取正确的模块目录 (输出目录和上传目录)
     output_dir = storage.get_module_dir("pdf", "outputs", user.user_id)
     upload_dir = storage.get_module_dir("pdf", "uploads", user.user_id)
     
     # 按优先级查找文件
     search_paths = [
-        output_dir / filename,
-        upload_dir / filename
+        output_dir / safe_filename,
+        upload_dir / safe_filename
     ]
     
     file_path = None

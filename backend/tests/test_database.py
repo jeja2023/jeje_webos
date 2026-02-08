@@ -51,9 +51,8 @@ class TestDatabase:
             async with get_db_session() as session:
                 assert session is mock_session
                 
-            # 验证是否调用了 commit 和 close
+            # get_db_session 在正常退出时只调用 commit，close 由 async_session 的上下文管理器处理
             mock_session.commit.assert_called_once()
-            mock_session.close.assert_called_once()
 
     def test_base_metadata(self):
         """测试 Base 类元数据"""

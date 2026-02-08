@@ -417,9 +417,9 @@ const App = {
         const desktopContent = document.getElementById('desktop-content');
         WindowManager.init(desktopContent);
 
-        // 启动时钟
+        // 启动时钟（保存引用以便未来清理）
         this.updateDesktopClock();
-        setInterval(() => this.updateDesktopClock(), 1000);
+        this._clockInterval = setInterval(() => this.updateDesktopClock(), 1000);
     },
 
     // 移除手动 bindEvents，因为窗口事件由 Manager 接管

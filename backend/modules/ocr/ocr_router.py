@@ -40,7 +40,7 @@ async def recognize_image(
     支持格式: JPG, PNG, BMP, WEBP 等常见图片格式
     """
     try:
-        # 验证文件类型
+        # 验证文件类型（Content-Type 检查）
         allowed_types = ["image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif", "application/pdf"]
         if file.content_type not in allowed_types:
             return error(code=400, message=f"不支持的文件类型: {file.content_type}")
@@ -51,6 +51,15 @@ async def recognize_image(
         # 文件大小限制 (10MB)
         if len(image_data) > 10 * 1024 * 1024:
             return error(code=400, message="文件大小不能超过 10MB")
+        
+        # 文件魔数验证（防止 Content-Type 伪造）
+        try:
+            import filetype
+            kind = filetype.guess(image_data[:8192])
+            if kind and kind.mime not in allowed_types:
+                return error(code=400, message=f"文件内容与声明类型不匹配")
+        except ImportError:
+            pass  # filetype 库未安装时跳过
         
         # 执行识别
         result = OCRService.recognize_image(

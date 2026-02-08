@@ -78,7 +78,27 @@ def _ensure_client():
 
 
 class Cache:
-    """缓存操作类"""
+    """缓存操作类（内置重试机制）"""
+    
+    # 重试配置
+    MAX_RETRIES = 2
+    RETRY_DELAY = 0.1  # 秒
+    
+    @staticmethod
+    async def _retry_operation(operation, key: str, default=None):
+        """带重试的操作执行器"""
+        import asyncio
+        last_error = None
+        for attempt in range(Cache.MAX_RETRIES + 1):
+            try:
+                return await operation()
+            except Exception as e:
+                last_error = e
+                if attempt < Cache.MAX_RETRIES:
+                    await asyncio.sleep(Cache.RETRY_DELAY * (attempt + 1))
+                else:
+                    logger.error(f"缓存操作失败 {key}（已重试 {Cache.MAX_RETRIES} 次）: {e}")
+        return default
     
     @staticmethod
     async def get(key: str, default: Any = None) -> Any:
@@ -95,20 +115,16 @@ class Cache:
         if not _redis_client:
             return default
         
-        try:
-            _ensure_client()
+        async def _do():
             value = await _redis_client.get(key)
             if value is None:
                 return default
-            
-            # 尝试解析 JSON
             try:
                 return json.loads(value)
             except (json.JSONDecodeError, TypeError):
                 return value
-        except Exception as e:
-            logger.error(f"获取缓存失败 {key}: {e}")
-            return default
+        
+        return await Cache._retry_operation(_do, key, default)
     
     @staticmethod
     async def set(
@@ -130,9 +146,7 @@ class Cache:
         if not _redis_client:
             return False
         
-        try:
-            _ensure_client()
-            
+        async def _do():
             # 序列化值
             if isinstance(value, (str, int, float, bool)):
                 serialized = str(value)
@@ -148,9 +162,9 @@ class Cache:
                 await _redis_client.setex(key, expire, serialized)
             
             return True
-        except Exception as e:
-            logger.error(f"设置缓存失败 {key}: {e}")
-            return False
+        
+        result = await Cache._retry_operation(_do, key, False)
+        return result if result is not None else False
     
     @staticmethod
     async def delete(key: str) -> bool:

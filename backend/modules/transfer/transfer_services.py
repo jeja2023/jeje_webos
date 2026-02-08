@@ -423,11 +423,19 @@ class ChunkService:
             if calculated_hash != chunk_hash:
                 return False, "分块数据校验失败"
         
-        # 确定临时文件路径
+        # 确定临时文件路径（对文件名进行安全过滤，防止路径穿越）
         if not session.temp_file_path:
             temp_dir = TransferConfig.get_temp_dir()
-            temp_file = temp_dir / f"{session_code}_{session.file_name}"
-            session.temp_file_path = str(temp_file)
+            # 只保留文件名部分，移除任何路径分隔符防止路径穿越
+            safe_name = os.path.basename(session.file_name).replace('..', '_')
+            if not safe_name:
+                safe_name = 'unnamed'
+            temp_file = temp_dir / f"{session_code}_{safe_name}"
+            # 验证最终路径确实在临时目录下
+            resolved = temp_file.resolve()
+            if not str(resolved).startswith(str(temp_dir.resolve())):
+                return False, "文件名包含非法字符"
+            session.temp_file_path = str(resolved)
         
         # 写入分块数据
         try:

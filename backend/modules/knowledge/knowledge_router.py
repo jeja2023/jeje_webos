@@ -182,8 +182,16 @@ async def preview_file(
     if not node.file_path or not os.path.exists(node.file_path):
         raise HTTPException(status_code=404, detail="文件实体不存在")
     
+    # 路径安全验证：确保文件在 storage 目录下
+    from core.config import get_settings
+    _settings = get_settings()
+    resolved = os.path.realpath(node.file_path)
+    storage_root = os.path.realpath(_settings.storage_path)
+    if not resolved.startswith(storage_root):
+        raise HTTPException(status_code=403, detail="文件路径非法")
+    
     return FileResponse(
-        path=node.file_path,
+        path=resolved,
         filename=node.title,
         media_type=node.file_meta.get("mime", "application/octet-stream")
     )

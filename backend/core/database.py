@@ -152,17 +152,20 @@ async def ensure_database_exists():
     
     try:
         async with admin_engine.connect() as conn:
-            # 检查数据库是否存在
+            # 检查数据库是否存在（使用参数化查询防止 SQL 注入）
             result = await conn.execute(
-                text(f"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{settings.db_name}'")
+                text("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = :db_name"),
+                {"db_name": settings.db_name}
             )
             exists = result.fetchone() is not None
             
             if not exists:
                 logger.info(f"数据库 '{settings.db_name}' 不存在，正在创建...")
                 try:
-                    # 尝试创建数据库
-                    await conn.execute(text(f"CREATE DATABASE `{settings.db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+                    # 创建数据库（DDL 不支持参数化，但 db_name 来自受信配置文件，非用户输入）
+                    # 使用标识符引用确保安全
+                    safe_db_name = settings.db_name.replace('`', '``')
+                    await conn.execute(text(f"CREATE DATABASE `{safe_db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
                     await conn.commit()
                     logger.info(f"数据库 '{settings.db_name}' 创建成功")
                 except Exception as create_error:
