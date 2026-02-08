@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jeje-webos-cache-v2';
+const CACHE_NAME = 'jeje-webos-cache';
 
 // 需要预缓存的核心资源
 const PRECACHE_ASSETS = [
