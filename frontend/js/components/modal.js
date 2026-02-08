@@ -347,11 +347,6 @@ class Modal {
         });
     }
 
-    /**
-     * 静态方法：显示自定义模态框
-     * @param {Object} options - 模态框配置
-     * @returns {Object} { overlay, close } - 返回模态框元素和关闭函数
-     */
     static show(options) {
         const modal = new Modal({
             ...options,
@@ -366,10 +361,7 @@ class Modal {
             });
         }
 
-        return {
-            overlay: modal.overlay,
-            close: () => modal.close()
-        };
+        return modal;
     }
 
     /**
