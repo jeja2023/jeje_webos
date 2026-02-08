@@ -332,10 +332,9 @@ class MapPage extends Component {
             if (res.code === 200 && res.data) {
                 const config = res.data;
                 // 注意：不加载 map_mode，始终默认使用在线地图模式
+                // 注意：不加载 last_center/last_zoom，始终默认显示北京
                 this.state.tileSource = config.tile_source || 'amap_offline';
                 this.state.onlineTileUrl = config.online_tile_url || this.state.onlineTileUrl;
-                this.state.lastCenter = config.last_center;
-                this.state.lastZoom = config.last_zoom;
             }
         } catch (e) {
             let savedMapConfig;
