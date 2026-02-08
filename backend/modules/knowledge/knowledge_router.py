@@ -186,7 +186,7 @@ async def preview_file(
     from core.config import get_settings
     _settings = get_settings()
     resolved = os.path.realpath(node.file_path)
-    storage_root = os.path.realpath(_settings.storage_path)
+    storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
         raise HTTPException(status_code=403, detail="文件路径非法")
     

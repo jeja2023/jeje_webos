@@ -14,16 +14,20 @@ const Spotlight = {
     settingsIndex: [
         { title: '系统设置', desc: '主题、安全策略、全局配置', icon: '⚙️', path: '/system/settings' },
         { title: '用户管理', desc: '添加用户、重置密码、角色管理', icon: '👥', path: '/users/list', permission: 'admin' },
-        { title: '添加用户', desc: '快速创建新用户账户', icon: '➕', action: 'createUser', permission: 'admin' },
-        { title: '个人资料', desc: '修改昵称、头像', icon: '👤', action: 'profile' },
+        { title: '待审核用户', desc: '查看等待审核的新注册用户', icon: '⏳', path: '/users/pending', permission: 'admin' },
+        { title: '个人资料', desc: '修改昵称、头像', icon: '👤', path: '/profile' },
         { title: '修改密码', desc: '修改当前登录密码', icon: '🔐', action: 'changePassword' },
         { title: '文件管理', desc: '浏览、上传、下载文件', icon: '📁', path: '/filemanager' },
         { title: '知识库', desc: '企业级知识管理与文档协作', icon: '📚', path: '/knowledge' },
-        { title: '应用中心', desc: '安装、管理应用模块', icon: 'qy', path: '/apps' },
+        { title: '我的笔记', desc: '记录灵感、工作计划、待办事项', icon: '📝', path: '/notes' },
+        { title: '我的相册', desc: '珍藏回忆，管理精彩时刻', icon: '🖼️', path: '/album' },
+        { title: '视频中心', desc: '管理和观看视频合集', icon: '🎬', path: '/video' },
+        { title: '消息中心', desc: '查看系统通知、即时通讯', icon: '💬', path: '/im' },
+        { title: '应用中心', desc: '安装、管理应用模块', icon: '🧩', path: '/apps' },
         { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/apps' },
-        { title: '待审核用户', desc: '查看等待审核的新注册用户', icon: '⏳', path: '/users/pending', permission: 'admin' },
-        { title: '管理面板', desc: '查看系统统计、运行状态', icon: '📊', path: '/system/monitor' },
         { title: 'PDF 工具', desc: '处理 PDF 合并、拆分、提取文本', icon: '📄', path: '/pdf' },
+        { title: '公告管理', desc: '发布和管理系统公告', icon: '📢', path: '/announcement', permission: 'admin' },
+        { title: '备份管理', desc: '系统数据备份与还原', icon: '💾', path: '/system/backup', permission: 'admin' },
         { title: '关于系统', desc: '查看版本信息', icon: 'ℹ️', action: 'about' }
     ],
 
@@ -35,13 +39,14 @@ const Spotlight = {
     },
 
     render() {
+        if (document.querySelector('.spotlight-overlay')) return;
         const overlay = document.createElement('div');
         overlay.className = 'spotlight-overlay';
         overlay.innerHTML = `
             <div class="spotlight-container">
                 <div class="spotlight-header">
                     <div class="spotlight-icon">🔍</div>
-                    <input type="text" class="spotlight-input" placeholder="搜索应用、文件、设置..." autocomplete="off">
+                    <input type="text" class="spotlight-input" placeholder="搜索功能、用户、文件、笔记..." autocomplete="off">
                     <div class="spotlight-badge">ESC 关闭</div>
                 </div>
                 <div class="spotlight-results">
@@ -71,7 +76,7 @@ const Spotlight = {
         // 输入事件
         this.input.addEventListener('input', Utils.debounce((e) => {
             this.search(e.target.value);
-        }, 150));
+        }, 300));
 
         // 键盘导航
         this.input.addEventListener('keydown', (e) => {
@@ -135,13 +140,7 @@ const Spotlight = {
         const user = Store.get('user') || {};
         const isAdmin = ['admin', 'manager'].includes(user.role);
 
-        // 1. 搜索应用 (已安装的模块)
-        // 从 Store 或 Config 中获取模块列表
-        const modules = Store.get('modules') || []; // 假设 Store 中存了 modules
-        // 如果 Store 没有 modules，尝试从侧边栏菜单配置中获取
-        // 这里简化为搜索预定义的设置项和已知的系统页面
-
-        // 2. 搜索系统设置 (本地索引)
+        // 1. 搜索系统设置与应用入口 (本地索引)
         const settingsMatches = this.settingsIndex.filter(item => {
             // 权限检查
             if (item.permission === 'admin' && !isAdmin) return false;
@@ -152,19 +151,97 @@ const Spotlight = {
         }).map(item => ({
             ...item,
             type: 'setting',
-            group: '系统功能'
+            group: '功能跳转'
         }));
 
-        results = [...results, ...settingsMatches];
+        // 限制空搜索时的推荐数量
+        results = keyword ? [...settingsMatches] : settingsMatches.slice(0, 8);
 
-        // 3. 搜索数据透镜视图 (DataLens)
         if (keyword.length >= 1) {
-            try {
-                // 如果 window.LensApi 可用，则搜索视图
-                if (window.LensApi) {
-                    const lensRes = await LensApi.getViews({ search: keyword });
-                    if (lensRes.code === 200 && lensRes.data) {
-                        const viewMatches = lensRes.data.map(view => ({
+            const searchPromises = [];
+
+            // 2. 搜索用户
+            searchPromises.push(
+                Api.get('/users/search', { query: keyword })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.map(u => ({
+                        title: u.nickname || u.username,
+                        desc: `@${u.username}`,
+                        icon: u.avatar || '👤',
+                        type: 'user',
+                        group: '用户',
+                        id: u.id,
+                        path: `/im?userId=${u.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 3. 搜索文件
+            if (keyword.length >= 2) {
+                searchPromises.push(
+                    Api.get('/storage/list', { keyword: keyword, page: 1, page_size: 5 })
+                        .then(res => (res.data && res.data.items) ? res.data.items.map(file => ({
+                            title: file.filename,
+                            desc: Utils.formatBytes(file.file_size),
+                            icon: this.getFileIcon(file.filename),
+                            type: 'file',
+                            group: '文件',
+                            id: file.id,
+                            path: file.url
+                        })) : [])
+                        .catch(() => [])
+                );
+            }
+
+            // 4. 搜索知识库
+            searchPromises.push(
+                Api.get('/knowledge/search', { q: keyword })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.map(item => ({
+                        title: item.title,
+                        desc: item.type === 'folder' ? '文件夹' : '文档',
+                        icon: item.type === 'folder' ? '📁' : '📄',
+                        type: 'knowledge',
+                        group: '知识库',
+                        id: item.id,
+                        path: `/knowledge?node=${item.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 5. 搜索笔记
+            searchPromises.push(
+                Api.get('/notes/', { keyword: keyword, page: 1, size: 5 })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(note => ({
+                        title: note.title,
+                        desc: note.content_preview || '笔记内容',
+                        icon: '📝',
+                        type: 'note',
+                        group: '笔记',
+                        id: note.id,
+                        path: `/notes?id=${note.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 6. 搜索相册
+            searchPromises.push(
+                Api.get('/album/', { keyword: keyword, page: 1, page_size: 5 })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(album => ({
+                        title: album.name,
+                        desc: `${album.photo_count || 0} 张照片`,
+                        icon: '🖼️',
+                        type: 'album',
+                        group: '相册',
+                        id: album.id,
+                        path: `/album?id=${album.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 7. 数据透镜 (动态加载)
+            if (window.LensApi) {
+                searchPromises.push(
+                    LensApi.getViews({ search: keyword })
+                        .then(res => (res.code === 200 && res.data) ? res.data.map(view => ({
                             title: view.name,
                             desc: view.description || '数据透镜视图',
                             icon: view.icon || '📊',
@@ -172,39 +249,17 @@ const Spotlight = {
                             group: '数据透镜',
                             id: view.id,
                             path: `/lens/view/${view.id}`
-                        }));
-                        results = [...results, ...viewMatches];
-                    }
-                }
-            } catch (e) {
-                console.warn('数据透镜搜索失败', e);
+                        })) : [])
+                        .catch(() => [])
+                );
             }
-        }
 
-        // 4. 搜索文件 (调用后端 API)
-        if (keyword.length > 1) {
-            try {
-                const res = await Api.get('/storage/list', {
-                    keyword: keyword,
-                    page: 1,
-                    size: 5
-                });
-
-                if (res.data && res.data.items) {
-                    const fileMatches = res.data.items.map(file => ({
-                        title: file.filename,
-                        desc: Utils.formatBytes(file.file_size),
-                        icon: this.getFileIcon(file.filename),
-                        type: 'file',
-                        group: '文件',
-                        id: file.id,
-                        path: file.url // 下载链接
-                    }));
-                    results = [...results, ...fileMatches];
+            const allResults = await Promise.allSettled(searchPromises);
+            allResults.forEach(res => {
+                if (res.status === 'fulfilled') {
+                    results = [...results, ...res.value];
                 }
-            } catch (e) {
-                console.warn('文件搜索失败', e);
-            }
+            });
         }
 
         this.results = results;
@@ -248,9 +303,14 @@ const Spotlight = {
                 <div class="spotlight-group-title">${groupName}</div>`;
 
             groups[groupName].forEach(item => {
+                const isAvatar = item.type === 'user' && item.icon && (item.icon.startsWith('http') || item.icon.startsWith('/') || item.icon.startsWith('data:'));
+                const iconHtml = isAvatar
+                    ? `<img src="${Utils.escapeHtml(item.icon)}" class="spotlight-item-avatar">`
+                    : Utils.escapeHtml(item.icon || '🔹');
+
                 html += `
                     <div class="spotlight-item ${globalIndex === 0 ? 'active' : ''}" data-index="${globalIndex}">
-                        <div class="spotlight-item-icon">${Utils.escapeHtml(item.icon || '🔹')}</div>
+                        <div class="spotlight-item-icon ${isAvatar ? 'is-avatar' : ''}">${iconHtml}</div>
                         <div class="spotlight-item-content">
                             <div class="spotlight-item-title">${Utils.escapeHtml(item.title)}</div>
                             <div class="spotlight-item-desc">${Utils.escapeHtml(item.desc)}</div>
@@ -280,6 +340,7 @@ const Spotlight = {
 
     setSelection(index) {
         const items = this.resultsContainer.querySelectorAll('.spotlight-item');
+        if (items.length === 0) return;
         if (index < 0) index = 0;
         if (index >= items.length) index = items.length - 1;
 
@@ -306,13 +367,8 @@ const Spotlight = {
             this.handleAction(item.action);
         } else if (item.path) {
             if (item.type === 'file') {
-                // 如果是文件，可能是下载或预览
-                // 这里暂时做下载/新标签页打开
-                // 如果是图片，可以用 PreviewModal (如果存在)
-                // 简单起见，文件直接打开下载链接
                 window.open(`${Config.apiBase}/storage/download/${item.id}?token=${Store.get('token')}`);
             } else {
-                // 路由跳转
                 Router.push(item.path);
             }
         }
@@ -320,32 +376,13 @@ const Spotlight = {
 
     handleAction(action) {
         switch (action) {
-            case 'createUser':
-                // 尝试调用 UsersPage 的方法？这比较困难，因为 UsersPage 未必实例化
-                // 更好的方法是跳转到用户列表，并携带参数让其自动打开弹窗
-                // 或者直接在这里调用 UserApi 并弹窗？如果 Modal 组件是全局的，可以直接用。
-                // 复用 UsersPage 的逻辑需要稍微重构 UsersPage 使其方法可复用，或者在这里重写一份
-                // 为了简单，我们跳转到用户管理页面
-                Router.push('/users/list');
-                setTimeout(() => {
-                    const btn = document.getElementById('createUserBtn');
-                    if (btn) btn.click();
-                }, 500);
-                break;
-            case 'profile':
-                // 跳转到个人中心
-                Router.push('/profile');
-                break;
             case 'changePassword':
-                // 跳转到修改密码页面
                 Router.push('/profile/password');
                 break;
             case 'about':
-                // 直接调用 TopBar 的关于弹窗方法
                 if (window.App && App.topbar && typeof App.topbar.showAboutModal === 'function') {
                     App.topbar.showAboutModal();
                 } else {
-                    // 降级处理：如果 TopBar 实例不可用，尝试 DOM 点击
                     const brand = document.querySelector('#brandPill');
                     if (brand) brand.click();
                 }
@@ -354,5 +391,4 @@ const Spotlight = {
     }
 };
 
-// 导出
 window.Spotlight = Spotlight;

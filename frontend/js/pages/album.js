@@ -663,6 +663,12 @@ class AlbumPage extends Component {
         const dimension = selectedPhoto.width ? `${selectedPhoto.width} × ${selectedPhoto.height} ` : '未知尺寸';
 
         return `
+            <div class="photo-viewer-overlay">
+                <div class="viewer-header">
+                    <div class="viewer-info">
+                        <span class="viewer-counter">${selectedIndex + 1} / ${photos.length}</span>
+                        <span class="viewer-title">${Utils.escapeHtml(selectedPhoto.title || selectedPhoto.filename)}</span>
+                    </div>
                     <button class="viewer-close-btn" data-action="close-viewer">
                         <i class="ri-close-line"></i>
                     </button>

@@ -304,7 +304,7 @@ async def get_video_file(
     from core.config import get_settings
     _settings = get_settings()
     resolved = os.path.realpath(video.storage_path)
-    storage_root = os.path.realpath(_settings.storage_path)
+    storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
         raise HTTPException(status_code=403, detail="文件路径非法")
     
@@ -352,7 +352,7 @@ async def get_video_thumbnail(
         from core.config import get_settings
         _settings = get_settings()
         resolved = os.path.realpath(video.thumbnail_path)
-        storage_root = os.path.realpath(_settings.storage_path)
+        storage_root = os.path.realpath(_settings.upload_dir)
         if not resolved.startswith(storage_root):
             raise HTTPException(status_code=403, detail="文件路径非法")
         

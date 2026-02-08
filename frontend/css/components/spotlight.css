@@ -139,6 +139,18 @@
     border-radius: 6px;
     background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.spotlight-item-icon.is-avatar {
+    border-radius: 50%;
+}
+
+.spotlight-item-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .spotlight-item.active .spotlight-item-icon {
