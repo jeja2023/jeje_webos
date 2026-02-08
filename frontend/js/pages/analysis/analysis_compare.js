@@ -26,7 +26,7 @@ const AnalysisCompareMixin = {
                             <span>🔵 数据集 1 (源)</span>
                             <select id="compare-source" class="dataset-select">
                                 <option value="">选择数据集...</option>
-                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareSourceId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareSourceId == d.id ? 'selected' : ''}>${Utils.escapeHtml(d.name)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="preview-container">
@@ -40,7 +40,7 @@ const AnalysisCompareMixin = {
                             <span>🟠 数据集 2 (目标)</span>
                             <select id="compare-target" class="dataset-select">
                                 <option value="">选择数据集...</option>
-                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareTargetId == d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                                ${this.state.datasets.map(d => `<option value="${d.id}" ${compareTargetId == d.id ? 'selected' : ''}>${Utils.escapeHtml(d.name)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="preview-container">
@@ -56,9 +56,9 @@ const AnalysisCompareMixin = {
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
                                     ${commonColumns.map(col => `
                                         <label style="display: flex; align-items: center; font-size: 11px; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" class="compare-key-checkbox" value="${col}" 
+                                            <input type="checkbox" class="compare-key-checkbox" value="${Utils.escapeHtml(col)}" 
                                                 ${compareSelectedKeys.includes(col) ? 'checked' : ''} style="margin-right: 6px;">
-                                            ${col}
+                                            ${Utils.escapeHtml(col)}
                                         </label>
                                     `).join('')}
                                 </div>
@@ -194,7 +194,7 @@ const AnalysisCompareMixin = {
             <table class="modern-table">
                 <thead>
                     <tr>
-                        ${columns.map(c => `<th>${c}</th>`).join('')}
+                        ${columns.map(c => `<th>${Utils.escapeHtml(c)}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -205,10 +205,10 @@ const AnalysisCompareMixin = {
             if (type === 'different') {
                 const targetVal = row['_target_' + c];
                 if (targetVal !== undefined && targetVal !== val) {
-                    return `<td><span class="diff-highlight" title="目标值: ${targetVal}">${val}</span><span class="target-val">→ ${targetVal}</span></td>`;
+                    return `<td><span class="diff-highlight" title="目标值: ${Utils.escapeHtml(String(targetVal))}">${Utils.escapeHtml(String(val))}</span><span class="target-val">→ ${Utils.escapeHtml(String(targetVal))}</span></td>`;
                 }
             }
-            return `<td>${val}</td>`;
+            return `<td>${Utils.escapeHtml(String(val))}</td>`;
         }).join('')}
                         </tr>
                     `).join('')}
@@ -236,13 +236,13 @@ const AnalysisCompareMixin = {
             <table class="modern-table">
                 <thead>
                     <tr>
-                        ${columns.map(c => `<th>${c}</th>`).join('')}
+                        ${columns.map(c => `<th>${Utils.escapeHtml(c)}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
                     ${items.slice(0, 5).map(row => `
                         <tr>
-                            ${columns.map(c => `<td>${row[c] ?? ''}</td>`).join('')}
+                            ${columns.map(c => `<td>${Utils.escapeHtml(String(row[c] ?? ''))}</td>`).join('')}
                         </tr>
                     `).join('')}
                 </tbody>

@@ -204,6 +204,12 @@ class IMPage extends Component {
             }
         });
 
+        // 回复按钮 (通过委托处理，避免内联 onclick)
+        this.delegate('click', '[data-reply]', (e, target) => {
+            const id = target.dataset.reply;
+            if (id) this.startReply(id);
+        });
+
         // 表情按钮
         this.delegate('click', '.im-emoji-btn', (e) => {
             e.stopPropagation();
@@ -1048,8 +1054,16 @@ class IMPage extends Component {
     /**
      * 生成单条消息的HTML
      */
-    handleContextMenu(e, msg) {
+    handleContextMenu(e, msgOrId) {
         e.preventDefault();
+
+        // 如果传入的是ID，则从状态中查找消息对象
+        let msg = msgOrId;
+        if (typeof msgOrId !== 'object') {
+            // 宽松比较以兼容字符串ID
+            msg = this.state.messages.find(m => m.id == msgOrId);
+        }
+        if (!msg) return;
 
         // 移除已有的上下文菜单
         this.removeContextMenu();
@@ -1059,10 +1073,10 @@ class IMPage extends Component {
         menu.className = 'im-context-menu';
 
         let menuHtml = `
-            <div class="im-context-menu-item" onclick="window.imPageInstance?.copyMessageText('${this.escapeHtml(msg.content).replace(/'/g, "\\'")}')">
+            <div class="im-context-menu-item">
                 <i class="ri-file-copy-line"></i> 复制内容
             </div>
-            <div class="im-context-menu-item" onclick="window.imPageInstance?.startReply(${msg.id}, '${this.escapeHtml(msg.sender_nickname || msg.sender_username || '用户').replace(/'/g, "\\'")}', '${this.escapeHtml(msg.content.substring(0, 20)).replace(/'/g, "\\'") + (msg.content.length > 20 ? '...' : '')}')">
+            <div class="im-context-menu-item">
                 <i class="ri-reply-line"></i> 回复
             </div>
         `;
@@ -1072,7 +1086,7 @@ class IMPage extends Component {
             const isRecallable = (new Date() - new Date(msg.created_at)) < 120000;
             if (isRecallable) {
                 menuHtml += `
-                    <div class="im-context-menu-item danger" onclick="window.imPageInstance?.recallMessage(${msg.id})">
+                    <div class="im-context-menu-item danger">
                         <i class="ri-arrow-go-back-line"></i> 撤回消息
                     </div>
                 `;
@@ -1082,27 +1096,15 @@ class IMPage extends Component {
         menu.innerHTML = menuHtml;
         document.body.appendChild(menu);
 
-        // 定位菜单
-        const rect = menu.getBoundingClientRect();
-        let x = e.clientX;
-        let y = e.clientY;
-
-        if (x + rect.width > window.innerWidth) x -= rect.width;
-        if (y + rect.height > window.innerHeight) y -= rect.height;
-
-        menu.style.left = x + 'px';
-        menu.style.top = y + 'px';
-
-        // 点击其他地方关闭菜单
-        const closeHandler = (e) => {
-            // 如果点击的是菜单项，由菜单项自身的 click 事件处理
-            // 如果点击的是外部，则关闭菜单
-            this.removeContextMenu();
-        };
-        // 延迟绑定，避免当前 ContextMenu 事件冒泡触发关闭
-        this.setTimeout(() => {
-            this.addDocumentEvent('click', closeHandler, { once: true });
-        }, 0);
+        // 使用事件绑定代替内联 onclick，防止转义绕过
+        const items = menu.querySelectorAll('.im-context-menu-item');
+        items.forEach((item, idx) => {
+            item.onclick = () => {
+                if (idx === 0) this.copyMessageText(msg.content || '');
+                else if (idx === 1) this.startReply(msg.id);
+                else if (idx === 2) this.recallMessage(msg.id);
+            };
+        });
     }
 
     removeContextMenu() {
@@ -1120,7 +1122,15 @@ class IMPage extends Component {
         this.removeContextMenu();
     }
 
-    startReply(msgId, senderName, contentPreview) {
+    startReply(msgId) {
+        const msg = this.state.messages.find(m => m.id == msgId);
+        if (!msg) return;
+
+        const senderName = msg.sender_nickname || msg.sender_username || '用户';
+        let contentPreview = msg.content || '';
+        if (msg.type === 'image') contentPreview = '[图片]';
+        else if (msg.type === 'file') contentPreview = '[文件]';
+        else contentPreview = contentPreview.substring(0, 20) + (contentPreview.length > 20 ? '...' : '');
         this.state.replyTo = { id: msgId, name: senderName, content: contentPreview };
 
         const replyBar = this.container.querySelector('#imReplyBar');
@@ -1178,7 +1188,14 @@ class IMPage extends Component {
                     } else {
                         fullSrc = `${Api.baseUrl}/${src.replace(/^\//, '')}`;
                     }
-                    contentHtml = `<div class="im-msg-image"><img src="${fullSrc}" loading="lazy" /></div>`;
+
+                    // 协议检查
+                    const safeSrc = /^\s*(javascript|vbscript|data):/i.test(fullSrc) ? '' : fullSrc;
+                    if (safeSrc) {
+                        contentHtml = `<div class="im-msg-image"><img src="${this.escapeHtml(safeSrc)}" loading="lazy" /></div>`;
+                    } else {
+                        contentHtml = '[无效的图片路径]';
+                    }
                 } else {
                     contentHtml = '[图片无法加载]';
                 }
@@ -1197,8 +1214,11 @@ class IMPage extends Component {
                     fullPath = `${Api.baseUrl}/${filePath.replace(/^\//, '')}`;
                 }
 
+                // 协议检查
+                const safeFullPath = /^\s*(javascript|vbscript|data):/i.test(fullPath) ? '#' : fullPath;
+
                 contentHtml = `
-                    <a href="${fullPath}" target="_blank" class="im-msg-file">
+                    <a href="${this.escapeHtml(safeFullPath)}" target="_blank" class="im-msg-file">
                         <div class="im-msg-file-icon"><i class="${this.getFileIcon(fileName)}"></i></div>
                         <div class="im-msg-file-info">
                             <div class="im-msg-file-name">${this.escapeHtml(fileName)}</div>
@@ -1219,7 +1239,7 @@ class IMPage extends Component {
 
         const actionHtml = `
             <div class="im-msg-actions">
-                <button class="im-msg-action-btn" title="回复" onclick="window.imPageInstance?.startReply(${msg.id}, '${this.escapeHtml(msg.sender_nickname || msg.sender_username || '用户').replace(/'/g, "\\'")}', '回复...')"><i class="ri-reply-line"></i></button>
+                <button class="im-msg-action-btn" title="回复" data-reply="${Utils.escapeHtml(String(msg.id))}"><i class="ri-reply-line"></i></button>
                 ${(isOwn && !msg.is_recalled && isRecallable) ? `
                 <button class="im-msg-action-btn delete" title="撤回">
                     <i class="ri-arrow-go-back-line"></i>
@@ -1228,14 +1248,14 @@ class IMPage extends Component {
             </div>
         `;
 
-        // 右键菜单触发区域
-        const contextMenuAttr = `oncontextmenu="window.imPageInstance?.handleContextMenu(event, {id:${msg.id}, sender_id:${msg.sender_id}, content:'${this.escapeHtml(msg.content || '').replace(/'/g, "\\'")}', sender_nickname:'${this.escapeHtml(msg.sender_nickname || msg.sender_username).replace(/'/g, "\\'")}', is_recalled:${msg.is_recalled}, created_at:'${msg.created_at}'})"`
+        // 右键菜单触发区域，对 ID 进行转义以防万一
+        const contextMenuAttr = `oncontextmenu="window.imPageInstance?.handleContextMenu(event, '${this.escapeHtml(String(msg.id))}')"`
 
         return `
-            <div class="im-message ${isOwn ? 'own' : ''} ${isSameSender ? 'same-sender' : ''}" data-id="${msg.id}" style="${msg.state === 'error' ? 'opacity: 0.7;' : ''}">
+            <div class="im-message ${isOwn ? 'own' : ''} ${isSameSender ? 'same-sender' : ''}" data-id="${Utils.escapeHtml(String(msg.id))}" style="${msg.state === 'error' ? 'opacity: 0.7;' : ''}">
                 ${actionHtml}
                 <div class="im-message-avatar">
-                   ${msg.sender_avatar ? `<img src="${this.escapeHtml(msg.sender_avatar)}" />` : '<i class="ri-user-3-fill"></i>'}
+                   ${msg.sender_avatar && !/^\s*(javascript|vbscript|data):/i.test(msg.sender_avatar) ? `<img src="${this.escapeHtml(msg.sender_avatar)}" />` : '<i class="ri-user-3-fill"></i>'}
                    <div class="im-status-dot"></div>
                 </div>
                 <div class="im-message-content" ${contextMenuAttr}>
@@ -1272,7 +1292,7 @@ class IMPage extends Component {
                         </div>
                         <div class="im-search-area">
                             <div class="search-group">
-                                <input type="text" class="form-input im-search-input" placeholder="搜索会话..." value="${this.state.searchQuery || ''}">
+                                <input type="text" class="form-input im-search-input" placeholder="搜索会话..." value="${this.escapeHtml(this.state.searchQuery || '')}">
                                 <button class="btn btn-primary btn-sm" id="btnIMSearch">
                                     <i class="ri-search-line"></i>
                                 </button>
@@ -1283,8 +1303,8 @@ class IMPage extends Component {
                             ${conversations.length === 0 && !loading ? '<div class="im-empty-list">暂无会话</div>' : ''}
                             ${conversations.map(conv => `
                                 <div class="im-conversation-item ${currentConversation?.id === conv.id ? 'active' : ''}" 
-                                     data-id="${conv.id}">
-                                    <div class="im-conv-avatar">${conv.avatar ? `<img src="${this.escapeHtml(conv.avatar)}" />` : '<i class="ri-user-3-fill"></i>'}</div>
+                                     data-id="${Utils.escapeHtml(String(conv.id))}">
+                                    <div class="im-conv-avatar">${conv.avatar && !/^\s*(javascript|vbscript|data):/i.test(conv.avatar) ? `<img src="${this.escapeHtml(conv.avatar)}" />` : '<i class="ri-user-3-fill"></i>'}</div>
                                     <div class="im-conv-info">
                                         <div class="im-conv-name">${this.escapeHtml(conv.name || '未命名会话')}</div>
                                         <div class="im-conv-preview">${conv.last_message_time ? this.formatTime(conv.last_message_time) : ''}</div>
@@ -1300,7 +1320,7 @@ class IMPage extends Component {
                         ${currentConversation ? `
                             <div class="im-header">
                                 <div class="im-header-info">
-                                    <div class="im-header-avatar">${currentConversation.avatar ? `<img src="${this.escapeHtml(currentConversation.avatar)}" />` : '<i class="ri-user-3-fill"></i>'}</div>
+                                    <div class="im-header-avatar">${currentConversation.avatar && !/^\s*(javascript|vbscript|data):/i.test(currentConversation.avatar) ? `<img src="${this.escapeHtml(currentConversation.avatar)}" />` : '<i class="ri-user-3-fill"></i>'}</div>
                                     <div class="im-header-name">${this.escapeHtml(currentConversation.name || '未命名会话')}</div>
                                 </div>
                                 <div class="im-header-actions">

@@ -122,7 +122,7 @@ async def join_session(
         # 发送 WebSocket 通知给发送方
         try:
             from core.ws_manager import manager
-            from datetime import datetime
+            from utils.timezone import get_beijing_time
             
             logger.info(f"正在通知发送方 {session.sender_id}，Peer: {current_user.user_id}")
             
@@ -133,7 +133,7 @@ async def join_session(
                     "peer_id": current_user.user_id,
                     "nickname": getattr(current_user, 'nickname', None) or current_user.username
                 },
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_beijing_time().isoformat()
             }, session.sender_id)
         except Exception as e:
             logger.warning(f"发送 WebSocket 通知失败: {e}")

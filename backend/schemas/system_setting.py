@@ -38,4 +38,3 @@ class SystemSettingUpdate(BaseModel):
     ai_online_api_key: Optional[str] = None
     ai_online_base_url: Optional[str] = None
     ai_online_model: Optional[str] = None
-

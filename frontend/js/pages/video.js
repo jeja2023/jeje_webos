@@ -221,6 +221,8 @@ class VideoPage extends Component {
      */
     withToken(url) {
         if (!url) return url;
+        // 安全协议检查
+        if (/^\s*(javascript|vbscript|data):/i.test(url)) return '#';
         const token = Utils.getToken();
         if (!token) return url;
         const separator = url.includes('?') ? '&' : '?';
@@ -572,7 +574,7 @@ class VideoPage extends Component {
             `;
         } catch (e) {
             console.error('渲染错误:', e);
-            return `<div class="alert alert-danger m-4">页面渲染错误: ${e.message}</div>`;
+            return `<div class="alert alert-danger m-4">页面渲染错误: ${Utils.escapeHtml(e.message)}</div>`;
         }
     }
 
@@ -618,7 +620,7 @@ class VideoPage extends Component {
                         <div class="collection-card" data-collection-id="${collection.id}">
                             <div class="collection-cover">
                                 ${collection.cover_url
-                ? `<img src="${this.withToken(collection.cover_url)}" alt="${Utils.escapeHtml(collection.name || '')}" loading="lazy" data-fallback="collection">`
+                ? `<img src="${Utils.escapeHtml(this.withToken(collection.cover_url))}" alt="${Utils.escapeHtml(collection.name || '')}" loading="lazy" data-fallback="collection">`
                 : `<div class="collection-cover-placeholder"><i class="ri-film-line"></i></div>`
             }
                                 <div class="collection-overlay">
@@ -694,10 +696,10 @@ class VideoPage extends Component {
             const isSelected = selectedIds.has(video.id);
             const isCover = currentCollection?.cover_video_id === video.id;
             return `
-                                <div class="video-item ${isSelected ? 'selected' : ''}" data-index="${index}" data-video-id="${video.id}">
+                                <div class="video-item ${isSelected ? 'selected' : ''}" data-index="${index}" data-video-id="${Utils.escapeHtml(String(video.id))}">
                                     <div class="video-thumbnail">
                                         ${video.thumbnail_url
-                    ? `<img src="${this.withToken(video.thumbnail_url)}" alt="${Utils.escapeHtml(video.filename)}" loading="lazy" data-fallback="video">`
+                    ? `<img src="${Utils.escapeHtml(this.withToken(video.thumbnail_url))}" alt="${Utils.escapeHtml(video.filename)}" loading="lazy" data-fallback="video">`
                     : `<div class="video-thumbnail-placeholder"><i class="ri-clapperboard-line"></i></div>`
                 }
                                         <div class="video-duration">${video.duration_formatted || '00:00'}</div>
@@ -714,13 +716,13 @@ class VideoPage extends Component {
                                     </div>
                                     <div class="video-overlay">
                                         ${!selectionMode ? `
-                                            <button class="video-action-btn" data-action="edit-video" data-video-id="${video.id}" title="编辑">
+                                            <button class="video-action-btn" data-action="edit-video" data-video-id="${Utils.escapeHtml(String(video.id))}" title="编辑">
                                                 <i class="ri-edit-line"></i>
                                             </button>
-                                            <button class="video-action-btn ${isCover ? 'active' : ''}" data-action="set-cover" data-video-id="${video.id}" title="${isCover ? '当前集封面' : '设为合集封面'}">
+                                            <button class="video-action-btn ${isCover ? 'active' : ''}" data-action="set-cover" data-video-id="${Utils.escapeHtml(String(video.id))}" title="${isCover ? '当前集封面' : '设为合集封面'}">
                                                 <i class="${isCover ? 'ri-bookmark-fill' : 'ri-bookmark-line'}"></i>
                                             </button>
-                                            <button class="video-action-btn danger" data-action="delete-video" data-video-id="${video.id}" title="删除">
+                                            <button class="video-action-btn danger" data-action="delete-video" data-video-id="${Utils.escapeHtml(String(video.id))}" title="删除">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
                                         ` : ''}
@@ -761,7 +763,7 @@ class VideoPage extends Component {
                     <div class="player-video-container">
                         <video 
                             id="videoPlayer"
-                            src="${this.withToken(selectedVideo.url)}" 
+                            src="${Utils.escapeHtml(this.withToken(selectedVideo.url))}" 
                             controls 
                             autoplay
                             class="player-video"

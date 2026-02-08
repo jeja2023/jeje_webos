@@ -77,18 +77,29 @@ class Modal {
     }
 
     close() {
-        if (this.overlay) {
-            this.overlay.classList.remove('active');
-            this.overlay.addEventListener('transitionend', () => {
+        if (!this.overlay || this._closing) return;
+        this._closing = true;
+
+        // 移除全局监听器
+        if (this._keydownHandler) {
+            document.removeEventListener('keydown', this._keydownHandler);
+            this._keydownHandler = null;
+        }
+
+        this.overlay.classList.remove('active');
+
+        const handleRemove = () => {
+            if (this.overlay) {
                 this.overlay.remove();
                 this.overlay = null;
-            }, { once: true });
+            }
+            this._closing = false;
+        };
 
-            // 如果 transitionend 事件未触发，执行兜底处理
-            setTimeout(() => {
-                if (this.overlay) this.overlay.remove();
-            }, 300);
-        }
+        this.overlay.addEventListener('transitionend', handleRemove, { once: true });
+
+        // 兜底处理 (防止动画被阻塞或不触发)
+        setTimeout(handleRemove, 400);
     }
 
     setLoading(loading) {
@@ -114,16 +125,14 @@ class Modal {
         // 点击关闭按钮
         this.overlay.querySelectorAll('[data-action="close"]').forEach(btn => {
             btn.onclick = () => {
-                this.close();
-                if (this.options.onCancel) this.options.onCancel();
+                this._handleCancel();
             };
         });
 
-        // 点击遮罩
+        // 点击遮罩 (可选：点击背景不关闭)
         this.overlay.onclick = (e) => {
-            // 用户要求：点击遮罩不关闭，必须点击关闭按钮
             if (e.target === this.overlay) {
-                // e.stopPropagation();
+                // 如果需要点击遮罩关闭，在这里调用 this._handleCancel()
             }
         };
 
@@ -131,8 +140,7 @@ class Modal {
         const cancelBtn = this.overlay.querySelector('[data-action="cancel"]');
         if (cancelBtn) {
             cancelBtn.onclick = () => {
-                this.close();
-                if (this.options.onCancel) this.options.onCancel();
+                this._handleCancel();
             };
         }
 
@@ -140,57 +148,80 @@ class Modal {
         const confirmBtn = this.overlay.querySelector('[data-action="confirm"]');
         if (confirmBtn) {
             confirmBtn.onclick = async () => {
-                if (this.options.onConfirm) {
-                    const originalText = confirmBtn.innerText; // 移到 try 外面
-                    try {
-                        // 防止重复点击
-                        if (confirmBtn.disabled) return;
-
-                        // 设置加载状态
-                        confirmBtn.classList.add('loading');
-                        confirmBtn.disabled = true;
-                        confirmBtn.innerText = '处理中...';
-
-                        const shouldClose = await this.options.onConfirm();
-                        if (shouldClose !== false) {
-                            this.close();
-                        } else {
-                            // 如果返回 false，说明验证失败，恢复按钮状态
-                            confirmBtn.classList.remove('loading');
-                            confirmBtn.disabled = false;
-                            confirmBtn.innerText = originalText;
-                        }
-                    } catch (e) {
-
-                        console.error(e);
-                        // 显示错误信息
-                        const msg = e.message || e.toString();
-                        if (msg !== 'false') { // 忽略主动返回false的情况
-                            // Modal.alert('❌ 操作失败', msg); 
-                            // 或者直接 alert，只要不卡死就行
-                            alert(`❌ 操作失败: ${msg}`);
-                        }
-
-                        // 发生错误时恢复按钮状态
-                        confirmBtn.classList.remove('loading');
-                        confirmBtn.disabled = false;
-                        confirmBtn.innerText = originalText;
-                    }
-                } else {
-                    this.close();
-                }
+                await this._handleConfirm();
             };
         }
 
-        // ESC键
-        const escHandler = (e) => {
+        // 全局按键监听
+        this._keydownHandler = (e) => {
+            // ESC 键
             if (e.key === 'Escape' && this.options.closable) {
-                this.close();
-                if (this.options.onCancel) this.options.onCancel();
-                document.removeEventListener('keydown', escHandler);
+                this._handleCancel();
+            }
+            // Enter 键 (如果当前焦点不在 textarea 内)
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && confirmBtn && !confirmBtn.disabled) {
+                // 如果在输入框中按回车，触发确定
+                if (e.target.classList.contains('form-input') || e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    this._handleConfirm();
+                }
             }
         };
-        document.addEventListener('keydown', escHandler);
+        document.addEventListener('keydown', this._keydownHandler);
+    }
+
+    async _handleConfirm() {
+        const confirmBtn = this.overlay.querySelector('[data-action="confirm"]');
+        if (!confirmBtn || confirmBtn.disabled) return;
+
+        if (this.options.onConfirm) {
+            const originalText = confirmBtn.innerText;
+            const footerButtons = this.overlay.querySelectorAll('.modal-footer .btn');
+
+            try {
+                // 设置加载状态 & 禁用所有按钮
+                confirmBtn.classList.add('loading');
+                footerButtons.forEach(btn => btn.disabled = true);
+                confirmBtn.innerText = '处理中...';
+
+                const shouldClose = await this.options.onConfirm();
+                if (shouldClose !== false) {
+                    this.close();
+                } else {
+                    // 恢复状态
+                    confirmBtn.classList.remove('loading');
+                    footerButtons.forEach(btn => btn.disabled = false);
+                    confirmBtn.innerText = originalText;
+                }
+            } catch (e) {
+                console.error('[Modal Error]', e);
+                const msg = e.message || e.toString();
+                if (typeof Toast !== 'undefined') {
+                    Toast.error(msg);
+                } else {
+                    alert(`❌ 操作失败: ${msg}`);
+                }
+
+                // 恢复状态
+                confirmBtn.classList.remove('loading');
+                footerButtons.forEach(btn => btn.disabled = false);
+                confirmBtn.innerText = originalText;
+            }
+        } else {
+            this.close();
+        }
+    }
+
+    _handleCancel() {
+        this.close();
+        if (this.options.onCancel) this.options.onCancel();
+    }
+
+    /**
+     * 在模态框范围内查询元素
+     */
+    query(selector) {
+        return this.overlay ? this.overlay.querySelector(selector) : null;
     }
 
     // 静态快捷方法
@@ -202,7 +233,7 @@ class Modal {
                 new Modal({
                     title: options.title || '确认',
                     content: options.content || options.message || '',
-                    ...options, // 传递其他参数，如 width, footer 等
+                    ...options,
                     onConfirm: async () => {
                         if (typeof options.onConfirm === 'function') {
                             await options.onConfirm();
@@ -282,10 +313,10 @@ class Modal {
                 title: options.title || '提示',
                 content: `
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        ${displayMessage ? `<p>${displayMessage}</p>` : ''}
+                        ${displayMessage ? `<p>${Utils.escapeHtml(displayMessage)}</p>` : ''}
                         <input type="text" class="form-input" id="modalPromptInput"
-                               placeholder="${options.placeholder || '请输入'}"
-                               value="${options.defaultValue || ''}">
+                               placeholder="${Utils.escapeHtml(options.placeholder || '请输入')}"
+                               value="${Utils.escapeHtml(options.defaultValue || '')}">
                     </div>
                 `,
                 onConfirm: async () => {
@@ -353,17 +384,17 @@ class Modal {
             <form id="${formId}">
                 ${fields.map(field => {
             const id = Utils.uniqueId('field-');
-            const label = field.label || field.text || field.name;
+            const label = Utils.escapeHtml(field.label || field.text || field.name);
             const type = field.type || 'text';
             const required = field.required ? 'required' : '';
-            const placeholder = field.placeholder || '';
-            const value = field.value || '';
+            const placeholder = Utils.escapeHtml(field.placeholder || '');
+            const value = Utils.escapeHtml(field.value || '');
 
             if (type === 'checkbox') {
                 return `
                             <div class="form-group">
                                 <label class="checkbox" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                                    <input type="checkbox" name="${field.name}" ${value ? 'checked' : ''}>
+                                    <input type="checkbox" name="${field.name}" ${field.value ? 'checked' : ''}>
                                     <span>${label}</span>
                                 </label>
                             </div>
@@ -382,7 +413,7 @@ class Modal {
 
             if (type === 'select') {
                 const optionsHtml = (field.options || []).map(opt => `
-                    <option value="${opt.value}" ${opt.value == value ? 'selected' : ''}>${opt.text || opt.label || opt.value}</option>
+                    <option value="${Utils.escapeHtml(opt.value)}" ${opt.value == field.value ? 'selected' : ''}>${Utils.escapeHtml(opt.text || opt.label || opt.value)}</option>
                 `).join('');
                 return `
                     <div class="form-group">
@@ -447,9 +478,9 @@ class Modal {
                     ${content ? `<p style="margin-bottom: 12px; color: var(--color-text-secondary);">${content}</p>` : ''}
                     <div class="list-group">
                         ${selectOptions.map(opt => `
-                            <div class="list-item list-item-clickable" data-value="${opt.value}">
+                            <div class="list-item list-item-clickable" data-value="${Utils.escapeHtml(String(opt.value))}">
                                 <div class="list-item-content">
-                                    <div class="list-item-title">${opt.label}</div>
+                                    <div class="list-item-title">${Utils.escapeHtml(opt.label)}</div>
                                 </div>
                                 <i class="ri-arrow-right-s-line"></i>
                             </div>

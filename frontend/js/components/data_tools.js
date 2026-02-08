@@ -47,10 +47,12 @@ const DataTools = {
                             <div class="${prefix}-filter-row" data-index="${idx}">
                                 <select class="form-control ${prefix}-filter-field">
                                     <option value="">选择字段</option>
-                                    ${columns.map(col => {
+            ${columns.map(col => {
                 const f = typeof col === 'object' ? col.field : col;
                 const t = typeof col === 'object' ? (col.title || col.field) : col;
-                return `<option value="${f}" ${f === field ? 'selected' : ''}>${t}</option>`;
+                const safeF = Utils.escapeHtml(f);
+                const safeT = Utils.escapeHtml(t);
+                return `<option value="${safeF}" ${f === field ? 'selected' : ''}>${safeT}</option>`;
             }).join('')}
                                 </select>
                                 <select class="form-control ${prefix}-filter-op">
@@ -101,7 +103,9 @@ const DataTools = {
                                 ${columns.map(col => {
             const f = typeof col === 'object' ? col.field : col;
             const t = typeof col === 'object' ? (col.title || col.field) : col;
-            return `<option value="${f}" ${f === sort.field ? 'selected' : ''}>${t}</option>`;
+            const safeF = Utils.escapeHtml(f);
+            const safeT = Utils.escapeHtml(t);
+            return `<option value="${safeF}" ${f === sort.field ? 'selected' : ''}>${safeT}</option>`;
         }).join('')}
                             </select>
                             <select class="form-control ${prefix}-sort-direction">

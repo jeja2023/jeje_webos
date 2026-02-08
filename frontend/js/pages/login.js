@@ -93,7 +93,7 @@ class LoginPage extends Component {
                 if (!currentUser) return;
 
                 // 同步 dock_pinned_apps
-                const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                const localPinnedApps = localStorage.getItem(Config.storageKeys.pinnedApps);
                 if (localPinnedApps) {
                     try {
                         const parsed = JSON.parse(localPinnedApps);
@@ -175,7 +175,7 @@ class LoginPage extends Component {
                     <div class="login-form">
                         <div class="card">
                             <form id="loginForm">
-                                ${error ? `<div class="form-error" style="margin-bottom: 16px">${error}</div>` : ''}
+                                ${error ? `<div class="form-error" style="margin-bottom: 16px">${Utils.escapeHtml(error)}</div>` : ''}
                                 
                                 <div class="form-group">
                                     <label class="form-label">用户名</label>

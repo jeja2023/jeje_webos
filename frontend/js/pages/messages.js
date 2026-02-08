@@ -269,7 +269,7 @@ class NotificationsPage extends Component {
             'warning': '警告',
             'error': '错误'
         };
-        return labels[type] || type;
+        return labels[type] || Utils.escapeHtml(type);
     }
 
     changePage(page) {

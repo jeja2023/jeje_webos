@@ -414,7 +414,7 @@ class AnalysisBIPage extends Component {
                 this.addWindowEvent('resize', this._resizeHandler);
             }
         } catch (e) {
-            container.innerHTML = `<div class="flex-center h-100 text-error text-xs">加载失败: ${e.message}</div>`;
+            container.innerHTML = `<div class="flex-center h-100 text-error text-xs">加载失败: ${Utils.escapeHtml(e.message)}</div>`;
         }
     }
 
@@ -553,7 +553,7 @@ class AnalysisBIPage extends Component {
                     if (!dsId) return;
                     try {
                         const res = await AnalysisApi.getDatasetData(dsId, { page: 1, size: 1 });
-                        const options = (res.data?.columns || []).map(c => `<option value="${c}">${c}</option>`).join('');
+                        const options = (res.data?.columns || []).map(c => `<option value="${Utils.escapeHtml(c)}">${Utils.escapeHtml(c)}</option>`).join('');
                         ChartConfigUI.updateFieldOptions(options);
                     } catch (err) { }
                 });
@@ -610,7 +610,7 @@ class AnalysisBIPage extends Component {
                 if (res.data?.columns) {
                     fields = res.data.columns;
                     // 同时保留 fieldOptions 以防万一 (ChartConfigUI 会优先使用 fields)
-                    fieldOptions = res.data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+                    fieldOptions = res.data.columns.map(c => `<option value="${Utils.escapeHtml(c)}">${Utils.escapeHtml(c)}</option>`).join('');
                 }
             } catch (e) {
                 // 获取字段失败，静默处理
@@ -684,7 +684,7 @@ class AnalysisBIPage extends Component {
                     if (!dsId) return;
                     try {
                         const res = await AnalysisApi.getDatasetData(dsId, { page: 1, size: 1 });
-                        const options = (res.data?.columns || []).map(c => `<option value="${c}">${c}</option>`).join('');
+                        const options = (res.data?.columns || []).map(c => `<option value="${Utils.escapeHtml(c)}">${Utils.escapeHtml(c)}</option>`).join('');
                         // 使用 ChartConfigUI 统一更新所有字段下拉框
                         ChartConfigUI.updateFieldOptions(options);
                     } catch (err) { }

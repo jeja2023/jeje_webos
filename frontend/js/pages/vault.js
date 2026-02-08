@@ -230,7 +230,7 @@ class VaultPage extends Component {
                         <div style="background: var(--color-bg-tertiary); border-radius: 8px; padding: 20px; margin-bottom: 16px;">
                             <p style="font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 8px;">您的恢复码</p>
                             <p id="recovery-key-display" style="font-family: monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: var(--color-primary); word-break: break-all; margin: 0;">
-                                ${recoveryKey}
+                                ${Utils.escapeHtml(recoveryKey)}
                             </p>
                         </div>
                         
@@ -340,7 +340,7 @@ class VaultPage extends Component {
 
                     const showError = (msg) => {
                         if (errorEl) {
-                            errorEl.innerHTML = msg; // 使用 innerHTML 以支持插入按钮
+                            errorEl.innerHTML = Utils.escapeHtml(msg);
                             errorEl.style.display = 'block';
 
                             // 如果检测到“锁定”关键词，动态显示恢复按钮
@@ -355,15 +355,12 @@ class VaultPage extends Component {
                                 errorEl.insertAdjacentHTML('beforeend', actionHtml);
 
                                 // 彻底移除/禁用无效的解锁按钮（强制使用恢复码）
-                                // 修正选择器以匹配 Modal 组件的 data-action
                                 const confirmBtn = modal?.querySelector('[data-action="confirm"]');
                                 if (confirmBtn) {
                                     confirmBtn.disabled = true;
                                     confirmBtn.style.opacity = '0.5';
                                     confirmBtn.style.cursor = 'not-allowed';
                                     confirmBtn.innerHTML = '<i class="ri-lock-line"></i> 已锁定';
-                                    // 根据用户要求，彻底移除以绝后患，或禁用
-                                    // confirmBtn.remove(); 
                                 }
 
                                 // 隐藏输入框区域，避免误导
@@ -376,7 +373,7 @@ class VaultPage extends Component {
                                 const modalTitle = modal?.querySelector('.modal-title');
                                 if (modalTitle) modalTitle.textContent = '账户已锁定';
 
-                                // 重要：立即在主页面状态中标记已锁定，强制登出（解锁状态失效）并隐藏所有敏感内容
+                                // 重要：立即在主页面状态中标记已锁定
                                 this._masterPassword = null;
                                 this._stopAutoLockTimer();
                                 this.setState({
@@ -389,15 +386,12 @@ class VaultPage extends Component {
                                 // 绑定恢复按钮点击事件
                                 modal?.querySelector('#btn-go-recovery-inline')?.addEventListener('click', (e) => {
                                     e.preventDefault();
-                                    // 1. 先彻底关闭当前的密码提示弹窗
                                     const closeBtn = modal?.querySelector('.btn-close-modal') || modal?.querySelector('.btn-cancel');
                                     if (closeBtn) {
                                         closeBtn.click();
                                     } else {
-                                        modal?.remove(); // 兜底方案
+                                        modal?.remove();
                                     }
-
-                                    // 2. 立即触发重置/恢复流程
                                     this.resetVault();
                                 });
                             }
@@ -428,13 +422,11 @@ class VaultPage extends Component {
                             showError('密码长度至少需要8位');
                             return false;
                         }
-                        // 强密码复杂度校验
                         if (!/[a-z]/.test(pwd) || !/[A-Z]/.test(pwd) || !/[0-9]/.test(pwd)) {
                             showError('密码必须包含大写字母、小写字母和数字');
                             return false;
                         }
                     } else if (typeof onVerify === 'function') {
-                        // 如果传入了验证函数（如解锁、验证旧密码），在这里直接验证
                         const confirmBtn = modal?.querySelector('[data-action="confirm"]');
                         const originalText = confirmBtn?.innerHTML;
                         if (confirmBtn) {
@@ -447,7 +439,6 @@ class VaultPage extends Component {
                             if (result !== true) {
                                 const msg = typeof result === 'string' ? result : '密码错误';
                                 showError(msg);
-                                // 如果没有被锁定，才恢复按钮状态
                                 if (confirmBtn && !msg.includes('锁定')) {
                                     confirmBtn.disabled = false;
                                     confirmBtn.innerHTML = originalText;
@@ -854,7 +845,7 @@ class VaultPage extends Component {
                             <option value="">未分类</option>
                             ${categories.map(c => `
                                 <option value="${c.id}" ${isEdit && item.category_id === c.id ? 'selected' : ''}>
-                                    ${c.icon} ${Utils.escapeHtml(c.name)}
+                                    ${Utils.escapeHtml(c.icon)} ${Utils.escapeHtml(c.name)}
                                 </option>
                             `).join('')}
                         </select>
@@ -963,13 +954,13 @@ class VaultPage extends Component {
                     <div class="form-group">
                         <label>图标</label>
                         <input type="text" class="form-input" name="icon" 
-                               value="${isEdit ? category.icon : '📁'}" 
+                               value="${isEdit ? Utils.escapeHtml(category.icon || '📁') : '📁'}" 
                                placeholder="选择一个emoji" maxlength="50">
                     </div>
                     <div class="form-group">
                         <label>颜色</label>
                         <input type="color" class="form-input" name="color" 
-                               value="${isEdit ? category.color : '#3b82f6'}" 
+                               value="${isEdit ? Utils.escapeHtml(category.color || '#3b82f6') : '#3b82f6'}" 
                                style="height: 40px; padding: 4px;">
                     </div>
                 </form>
@@ -1283,15 +1274,15 @@ class VaultPage extends Component {
                     </div>
                     ${categories.length > 0 ? categories.map(cat => `
                         <div class="sidebar-item category-item ${currentCategoryId === cat.id ? 'active' : ''}" 
-                             data-filter-category="${cat.id}">
-                            <span class="cat-icon" style="color: ${cat.color}">${cat.icon}</span>
+                             data-filter-category="${Utils.escapeHtml(String(cat.id))}">
+                            <span class="cat-icon" style="color: ${Utils.escapeHtml(cat.color || '')}">${Utils.escapeHtml(cat.icon || '')}</span>
                             <span class="cat-name">${Utils.escapeHtml(cat.name)}</span>
                             <span class="badge">${cat.item_count || 0}</span>
                             <div class="item-actions">
-                                <button class="btn-icon btn-xs" data-edit-category="${cat.id}" title="编辑">
+                                <button class="btn-icon btn-xs" data-edit-category="${Utils.escapeHtml(String(cat.id))}" title="编辑">
                                     <i class="ri-edit-line"></i>
                                 </button>
-                                <button class="btn-icon btn-xs" data-delete-category="${cat.id}" title="删除">
+                                <button class="btn-icon btn-xs" data-delete-category="${Utils.escapeHtml(String(cat.id))}" title="删除">
                                     <i class="ri-delete-bin-line"></i>
                                 </button>
                             </div>
@@ -1346,7 +1337,7 @@ class VaultPage extends Component {
                 
                 <div class="items-grid">
                     ${items.length > 0 ? items.map(item => `
-                        <div class="item-card" data-item-id="${item.id}">
+                        <div class="item-card" data-item-id="${Utils.escapeHtml(String(item.id))}">
                             <div class="item-icon">
                                 ${this.getItemIcon(item)}
                             </div>
@@ -1356,7 +1347,7 @@ class VaultPage extends Component {
                             </div>
                             <div class="item-actions">
                                 <button class="btn-icon ${item.is_starred ? 'starred' : ''}" 
-                                        data-toggle-star="${item.id}" title="${item.is_starred ? '取消收藏' : '收藏'}">
+                                        data-toggle-star="${Utils.escapeHtml(String(item.id))}" title="${item.is_starred ? '取消收藏' : '收藏'}">
                                     <i class="${item.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i>
                                 </button>
                             </div>
@@ -1413,7 +1404,7 @@ class VaultPage extends Component {
                     </div>
                     <h2 class="detail-title">${Utils.escapeHtml(selectedItem.title)}</h2>
                     ${selectedItem.category_name ? `
-                        <div class="detail-category">${selectedItem.category_name}</div>
+                        <div class="detail-category">${Utils.escapeHtml(selectedItem.category_name)}</div>
                     ` : ''}
                     
                     <div class="detail-fields">
@@ -1423,10 +1414,10 @@ class VaultPage extends Component {
                                     <i class="ri-global-line"></i> 网站
                                 </div>
                                 <div class="field-value">
-                                    <a href="${selectedItem.website}" target="_blank" rel="noopener">
+                                    <a href="${/^\s*(javascript|vbscript|data):/i.test(selectedItem.website) ? '#' : Utils.escapeHtml(selectedItem.website)}" target="_blank" rel="noopener">
                                         ${Utils.escapeHtml(selectedItem.website)}
                                     </a>
-                                    <button class="btn-copy" data-copy="${selectedItem.website}" data-label="网址">
+                                    <button class="btn-copy" data-copy="${Utils.escapeHtml(selectedItem.website)}" data-label="网址">
                                         <i class="ri-file-copy-line"></i>
                                     </button>
                                 </div>
@@ -1439,7 +1430,7 @@ class VaultPage extends Component {
                             </div>
                             <div class="field-value">
                                 <span>${Utils.escapeHtml(selectedItem.username || '')}</span>
-                                <button class="btn-copy" data-copy="${selectedItem.username || ''}" data-label="用户名">
+                                <button class="btn-copy" data-copy="${Utils.escapeHtml(selectedItem.username || '')}" data-label="用户名">
                                     <i class="ri-file-copy-line"></i>
                                 </button>
                             </div>
@@ -1453,10 +1444,10 @@ class VaultPage extends Component {
                                 <span class="password-text ${isPasswordVisible ? '' : 'masked'}">
                                     ${isPasswordVisible ? Utils.escapeHtml(selectedItem.password || '') : '••••••••••••'}
                                 </span>
-                                <button class="btn-toggle-pwd" data-toggle-pwd="${selectedItem.id}">
+                                <button class="btn-toggle-pwd" data-toggle-pwd="${Utils.escapeHtml(String(selectedItem.id))}">
                                     <i class="${isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'}"></i>
                                 </button>
-                                <button class="btn-copy" data-copy="${selectedItem.password || ''}" data-label="密码">
+                                <button class="btn-copy" data-copy="${Utils.escapeHtml(selectedItem.password || '')}" data-label="密码">
                                     <i class="ri-file-copy-line"></i>
                                 </button>
                             </div>

@@ -19,7 +19,7 @@ class ChartConfigUI {
         const renderFieldOptions = (selectedValue, defaultLabel = null) => {
             let html = defaultLabel ? `<option value="">${defaultLabel}</option>` : '';
             if (fields && fields.length > 0) {
-                html += fields.map(f => `<option value="${f}" ${sel(f, selectedValue)}>${f}</option>`).join('');
+                html += fields.map(f => `<option value="${esc(f)}" ${sel(f, selectedValue)}>${esc(f)}</option>`).join('');
             } else {
                 html += fieldOptions;
             }
@@ -96,7 +96,7 @@ class ChartConfigUI {
                 <label class="text-xs">数据集</label>
                 <select id="cfg-w-dataset" class="form-control">
                     <option value="">请选择...</option>
-                    ${datasets.map(d => `<option value="${d.id}" ${sel(d.id, values.datasetId)}>${d.name}</option>`).join('')}
+                    ${datasets.map(d => `<option value="${esc(d.id)}" ${sel(d.id, values.datasetId)}>${esc(d.name)}</option>`).join('')}
                 </select>
             </div>` : ''}
             

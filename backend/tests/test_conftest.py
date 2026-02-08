@@ -72,9 +72,9 @@ def _sqlite_json_contains(json_array, value):
             val_int = int(value)
             val_str = str(value)
             return val_int in array or val_str in array
-        except:
+        except (ValueError, TypeError):
             return value in array
-    except:
+    except (ValueError, TypeError, json.JSONDecodeError):
         return str(value) in str(json_array)
 
 @event.listens_for(global_engine.sync_engine, "connect")
@@ -102,12 +102,12 @@ async def cleanup_global_engine():
     from core.scheduler import get_scheduler
     try:
         await AuditLogger.stop_auto_flush()
-    except:
+    except Exception:
         pass
     try:
         scheduler = get_scheduler()
         await scheduler.stop()
-    except:
+    except Exception:
         pass
         
     # 尝试关闭缓存

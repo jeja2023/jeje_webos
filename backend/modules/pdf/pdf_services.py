@@ -104,7 +104,7 @@ class PdfService:
             # 默认先尝试从文件管理器找，找不到再尝试从 upload 记录找
             try:
                 return await PdfService.get_file_path(db, file_id, user_id, "filemanager")
-            except:
+            except ValueError:
                 return await PdfService.get_file_path(db, file_id, user_id, "upload")
         elif path:
             return await PdfService.get_file_path_by_storage(user_id, path)

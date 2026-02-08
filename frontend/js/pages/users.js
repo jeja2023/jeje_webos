@@ -125,12 +125,12 @@ class UserListPage extends Component {
                     <div style="padding:12px;background:rgba(34,197,94,0.1);border-radius:8px;color:var(--color-success);">
                         <div style="font-weight:500;margin-bottom:8px;"><i class="ri-checkbox-circle-line"></i> 导入完成</div>
                         <div style="font-size:14px;">
-                            共 ${result.total || 0} 条，成功 ${result.imported || 0} 条，跳过 ${result.skipped || 0} 条
+                            共 ${Utils.escapeHtml(String(result.total || 0))} 条，成功 ${Utils.escapeHtml(String(result.imported || 0))} 条，跳过 ${Utils.escapeHtml(String(result.skipped || 0))} 条
                         </div>
                         ${result.errors && result.errors.length > 0 ? `
                             <div style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);max-height:100px;overflow-y:auto;">
-                                ${result.errors.slice(0, 10).map(e => `<div>• ${e}</div>`).join('')}
-                                ${result.errors.length > 10 ? `<div>... 等 ${result.errors.length} 条</div>` : ''}
+                                ${result.errors.slice(0, 10).map(e => `<div>• ${Utils.escapeHtml(e)}</div>`).join('')}
+                                ${result.errors.length > 10 ? `<div>... 等 ${Utils.escapeHtml(String(result.errors.length))} 条</div>` : ''}
                             </div>
                         ` : ''}
                     </div>
@@ -142,7 +142,7 @@ class UserListPage extends Component {
                 progressBox.style.display = 'none';
                 resultBox.innerHTML = `
                     <div style="padding:12px;background:rgba(239,68,68,0.1);border-radius:8px;color:var(--color-error);">
-                        <i class="ri-close-circle-line"></i> ${e.message || '导入失败'}
+                        <i class="ri-close-circle-line"></i> ${Utils.escapeHtml(e.message || '导入失败')}
                     </div>
                 `;
             }
@@ -424,7 +424,7 @@ class UserListPage extends Component {
                     <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
                         <div>
                             <input type="number" name="quota_value" class="form-input" 
-                                   value="${quotaGB || quotaMB || ''}" 
+                                   value="${Utils.escapeHtml(String(quotaGB || quotaMB || ''))}" 
                                    placeholder="请输入配额" 
                                    min="0" step="0.01">
                         </div>
@@ -687,7 +687,7 @@ class UserListPage extends Component {
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center">
                     <div>
                         <h1 class="page-title">用户管理</h1>
-                        <p class="page-desc">共 ${total} 个用户</p>
+                        <p class="page-desc">共 ${Utils.escapeHtml(String(total))} 个用户</p>
                     </div>
                     <div class="page-header-actions">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('users', '用户管理') : ''}
@@ -717,7 +717,7 @@ class UserListPage extends Component {
                     <div class="card-body users-filters">
                         <div class="form-group">
                             <label class="form-label">角色</label>
-                            <select class="form-input form-select" id="filterRole" value="${filters.role}">
+                            <select class="form-input form-select" id="filterRole" value="${Utils.escapeHtml(filters.role)}">
                                 <option value="">全部</option>
                                 <option value="admin" ${filters.role === 'admin' ? 'selected' : ''}>系统管理员</option>
                                 <option value="manager" ${filters.role === 'manager' ? 'selected' : ''}>管理员</option>
@@ -734,7 +734,7 @@ class UserListPage extends Component {
                         </div>
                         <div class="form-group">
                             <label class="form-label">状态</label>
-                            <select class="form-input form-select" id="filterStatus" value="${filters.is_active}">
+                            <select class="form-input form-select" id="filterStatus" value="${Utils.escapeHtml(filters.is_active)}">
                                 <option value="">全部</option>
                                 <option value="true" ${filters.is_active === 'true' ? 'selected' : ''}>已激活</option>
                                 <option value="false" ${filters.is_active === 'false' ? 'selected' : ''}>待审核</option>
@@ -744,7 +744,7 @@ class UserListPage extends Component {
                             <label class="form-label">搜索</label>
                             <div class="search-group">
                                 <input type="text" class="form-input" id="usersSearchInput" 
-                                       placeholder="用户名、手机号、昵称" value="${filters.keyword || ''}">
+                                       placeholder="用户名、手机号、昵称" value="${Utils.escapeHtml(filters.keyword || '')}">
                                 <button class="btn btn-primary" id="usersSearchBtn">
                                     <i class="ri-search-line"></i> 搜索
                                 </button>
@@ -806,13 +806,13 @@ class UserListPage extends Component {
                                         <tr>
                                             <td>
                                                 ${user.role !== 'admin' ? `
-                                                    <input type="checkbox" class="user-checkbox" data-user-id="${user.id}" 
+                                                    <input type="checkbox" class="user-checkbox" data-user-id="${Utils.escapeHtml(String(user.id))}" 
                                                            ${selectedUsers.includes(user.id) ? 'checked' : ''}>
                                                 ` : ''}
                                             </td>
-                                            <td>${user.id}</td>
+                                            <td>${Utils.escapeHtml(String(user.id))}</td>
                                             <td>${Utils.escapeHtml(user.username)}</td>
-                                            <td>${user.phone || '-'}</td>
+                                            <td>${Utils.escapeHtml(user.phone || '-')}</td>
                                             <td>${Utils.escapeHtml(user.nickname || '-')}</td>
                                             <td>
                                                 ${(() => {
@@ -839,27 +839,27 @@ class UserListPage extends Component {
                                             <td>
                                                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
                                                     ${!user.is_active ? `
-                                                        <button class="btn btn-ghost btn-sm" data-audit-pass="${user.id}" title="通过审核"><i class="ri-check-line"></i></button>
-                                                        <button class="btn btn-ghost btn-sm" data-audit-reject="${user.id}" title="拒绝审核"><i class="ri-close-line"></i></button>
+                                                        <button class="btn btn-ghost btn-sm" data-audit-pass="${Utils.escapeHtml(String(user.id))}" title="通过审核"><i class="ri-check-line"></i></button>
+                                                        <button class="btn btn-ghost btn-sm" data-audit-reject="${Utils.escapeHtml(String(user.id))}" title="拒绝审核"><i class="ri-close-line"></i></button>
                                                     ` : ''}
                                                     ${user.is_active ? `
-                                                        <button class="btn btn-ghost btn-sm" data-disable="${user.id}" title="禁用"><i class="ri-forbid-line"></i></button>
+                                                        <button class="btn btn-ghost btn-sm" data-disable="${Utils.escapeHtml(String(user.id))}" title="禁用"><i class="ri-forbid-line"></i></button>
                                                     ` : `
-                                                        ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${user.id}" title="启用"><i class="ri-check-line"></i></button>` : ''}
+                                                        ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${Utils.escapeHtml(String(user.id))}" title="启用"><i class="ri-check-line"></i></button>` : ''}
                                                     `}
-                                                    <button class="btn btn-ghost btn-sm" data-edit="${user.id}" title="编辑"><i class="ri-edit-line"></i></button>
-                                                    ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${user.id}" title="权限"><i class="ri-shield-keyhole-line"></i></button>` : ''}
+                                                    <button class="btn btn-ghost btn-sm" data-edit="${Utils.escapeHtml(String(user.id))}" title="编辑"><i class="ri-edit-line"></i></button>
+                                                    ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${Utils.escapeHtml(String(user.id))}" title="权限"><i class="ri-shield-keyhole-line"></i></button>` : ''}
                                                     <!-- 更多操作下拉菜单 -->
                                                     ${user.role !== 'admin' ? `
                                                         <div class="dropdown" style="position: relative; display: inline-block;">
-                                                            <button class="btn btn-ghost btn-sm dropdown-toggle" data-toggle-dropdown="${user.id}" title="更多操作">
+                                                            <button class="btn btn-ghost btn-sm dropdown-toggle" data-toggle-dropdown="${Utils.escapeHtml(String(user.id))}" title="更多操作">
                                                                 <i class="ri-more-2-line"></i>
                                                             </button>
-                                                            <div class="dropdown-menu" id="dropdown-${user.id}" style="display: none; position: absolute; right: 0; top: 100%; background: var(--color-bg-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 100; min-width: 120px;">
-                                                                <button class="dropdown-item" data-reset-pwd="${user.id}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-text-primary);">
+                                                            <div class="dropdown-menu" id="dropdown-${Utils.escapeHtml(String(user.id))}" style="display: none; position: absolute; right: 0; top: 100%; background: var(--color-bg-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 100; min-width: 120px;">
+                                                                <button class="dropdown-item" data-reset-pwd="${Utils.escapeHtml(String(user.id))}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-text-primary);">
                                                                     <i class="ri-lock-password-line"></i> 重置密码
                                                                 </button>
-                                                                <button class="dropdown-item" data-delete="${user.id}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-error);">
+                                                                <button class="dropdown-item" data-delete="${Utils.escapeHtml(String(user.id))}" data-username="${Utils.escapeHtml(user.username)}" style="display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; cursor: pointer; color: var(--color-error);">
                                                                     <i class="ri-delete-bin-line"></i> 删除用户
                                                                 </button>
                                                             </div>
@@ -1170,8 +1170,8 @@ class UserListPage extends Component {
                         const checked = defaultModules.includes(m.id);
                         return `
                             <label style="display:flex;align-items:center;gap:6px;opacity:${allowed ? 1 : 0.55};">
-                                <input type="checkbox" name="modules" value="${m.id}" ${checked ? 'checked' : ''} ${allowed ? '' : 'disabled'}>
-                                <span>${m.name}</span>
+                                <input type="checkbox" name="modules" value="${Utils.escapeHtml(m.id)}" ${checked ? 'checked' : ''} ${allowed ? '' : 'disabled'}>
+                                <span>${Utils.escapeHtml(m.name)}</span>
                                 ${allowed ? '' : '<span class="tag tag-default">超出用户组</span>'}
                             </label>
                         `;
@@ -1230,17 +1230,17 @@ class UserListPage extends Component {
                         return `
                         <div class="user-perm-module-section" style="margin-bottom:12px; border:1px solid var(--color-border); border-radius:6px; padding:10px; background:rgba(0,0,0,0.01);">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--color-border-subtle); padding-bottom:4px;">
-                                <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${mod}</div>
+                                <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${Utils.escapeHtml(mod)}</div>
                                 <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; user-select:none;">
-                                    <input type="checkbox" class="user-module-specific-all" data-user-mod="${mod}" ${allChecked ? 'checked' : ''}>
+                                    <input type="checkbox" class="user-module-specific-all" data-user-mod="${Utils.escapeHtml(mod)}" ${allChecked ? 'checked' : ''}>
                                     <span style="color:var(--color-text-secondary);">全选</span>
                                 </label>
                             </div>
                             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                                 ${grouped[mod].map(item => `
                                     <label style="display:flex;align-items:center;gap:6px; cursor:pointer;">
-                                        <input type="checkbox" name="specific" data-user-mod-ref="${mod}" value="${item.id}" ${presets.includes(item.id) ? 'checked' : ''}>
-                                        <span style="font-size:13px;">${item.tail}</span>
+                                        <input type="checkbox" name="specific" data-user-mod-ref="${Utils.escapeHtml(mod)}" value="${Utils.escapeHtml(item.id)}" ${presets.includes(item.id) ? 'checked' : ''}>
+                                        <span style="font-size:13px;">${Utils.escapeHtml(item.tail)}</span>
                                     </label>
                                 `).join('')}
                             </div>
@@ -1278,7 +1278,7 @@ class UserListPage extends Component {
                 `;
 
                 const { overlay, close } = Modal.show({
-                    title: `设置权限 - 用户ID ${userId}`,
+                    title: `设置权限 - 用户ID ${Utils.escapeHtml(String(userId))}`,
                     content,
                     footer: `
                         <button class="btn btn-secondary" data-close>取消</button>
@@ -1371,13 +1371,13 @@ class UserListPage extends Component {
                     if (!wildcard) {
                         const invalid = selectedModules.filter(m => !allowedModules.has(m));
                         if (invalid.length) {
-                            Toast.error(`存在超出用户组的模块：${invalid.join(', ')}`);
+                            Toast.error(`存在超出用户组的模块：${Utils.escapeHtml(invalid.join(', '))}`);
                             saving = false;
                             return;
                         }
                         const invalidSpec = selectedSpecific.filter(p => !specific.has(p));
                         if (invalidSpec.length) {
-                            Toast.error(`存在超出用户组的子功能：${invalidSpec.join(', ')}`);
+                            Toast.error(`存在超出用户组的子功能：${Utils.escapeHtml(invalidSpec.join(', '))}`);
                             saving = false;
                             return;
                         }
@@ -1620,17 +1620,17 @@ class PendingUsersPage extends Component {
                                     ${users.map(user => `
                                         <tr>
                                             <td>
-                                                <input type="checkbox" class="pending-checkbox" data-user-id="${user.id}" 
+                                                <input type="checkbox" class="pending-checkbox" data-user-id="${Utils.escapeHtml(String(user.id))}" 
                                                        ${selectedUsers.includes(user.id) ? 'checked' : ''}>
                                             </td>
-                                            <td>${user.id}</td>
+                                            <td>${Utils.escapeHtml(String(user.id))}</td>
                                             <td>${Utils.escapeHtml(user.username)}</td>
-                                            <td>${user.phone || '-'}</td>
+                                            <td>${Utils.escapeHtml(user.phone || '-')}</td>
                                             <td>${Utils.escapeHtml(user.nickname || '-')}</td>
                                             <td>${Utils.formatDate(user.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-audit-pass="${user.id}" title="通过"><i class="ri-check-line"></i></button>
-                                                <button class="btn btn-ghost btn-sm" data-audit-reject="${user.id}" title="拒绝"><i class="ri-close-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-audit-pass="${Utils.escapeHtml(String(user.id))}" title="通过"><i class="ri-check-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-audit-reject="${Utils.escapeHtml(String(user.id))}" title="拒绝"><i class="ri-close-line"></i></button>
                                             </td>
                                         </tr>
                                     `).join('')}

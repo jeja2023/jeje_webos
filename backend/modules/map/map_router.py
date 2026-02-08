@@ -241,7 +241,7 @@ def parse_gps_file(file_path: str) -> List[Dict]:
     if ext == '.csv':
         try:
             df = pd.read_csv(file_path)
-        except:
+        except (UnicodeDecodeError, pd.errors.ParserError):
             df = pd.read_csv(file_path, encoding='gbk')
     else:
         df = pd.read_excel(file_path)

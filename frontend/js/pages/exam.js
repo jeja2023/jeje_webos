@@ -131,7 +131,7 @@ class ExamPage extends Component {
                 const record = inProgress[0];
                 const confirmed = await Modal.confirm(
                     '发现未完成的考试',
-                    `您有一场未完成的考试「${record.paper_title || '未知试卷'}」，是否继续作答？`,
+                    `您有一场未完成的考试「${Utils.escapeHtml(record.paper_title || '未知试卷')}」，是否继续作答？`,
                     { confirmText: '继续考试', cancelText: '稍后再说' }
                 );
 
@@ -303,7 +303,7 @@ class ExamPage extends Component {
                 <i class="ri-alarm-warning-line"></i>
             </div>
             <h3>${isUrgent ? '⚠️ 时间紧迫！' : '⏰ 时间提醒'}</h3>
-            <p>考试还剩 <strong>${minutes}</strong> 分钟，请抓紧时间作答！</p>
+            <p>考试还剩 <strong>${Utils.escapeHtml(String(minutes))}</strong> 分钟，请抓紧时间作答！</p>
         `;
 
         document.body.appendChild(overlay);
@@ -1067,14 +1067,14 @@ class ExamPage extends Component {
                                 <div class="exam-card">
                                     <div class="exam-card-header">
                                         <h3>${Utils.escapeHtml(exam.title)}</h3>
-                                        <span class="tag tag-primary">${exam.total_score} 分</span>
+                                        <span class="tag tag-primary">${Utils.escapeHtml(String(exam.total_score))} 分</span>
                                     </div>
                                     <div class="exam-card-body">
-                                        <p><i class="ri-time-line"></i> 时长: ${exam.duration} 分钟</p>
-                                        <p><i class="ri-file-list-line"></i> ${exam.question_count} 道题</p>
+                                        <p><i class="ri-time-line"></i> 时长: ${Utils.escapeHtml(String(exam.duration))} 分钟</p>
+                                        <p><i class="ri-file-list-line"></i> ${Utils.escapeHtml(String(exam.question_count))} 道题</p>
                                     </div>
                                     <div class="exam-card-footer">
-                                        <button class="btn btn-primary btn-block" data-action="start-exam" data-id="${exam.id}">
+                                        <button class="btn btn-primary btn-block" data-action="start-exam" data-id="${Utils.escapeHtml(String(exam.id))}">
                                             立即参加
                                         </button>
                                     </div>
@@ -1095,10 +1095,10 @@ class ExamPage extends Component {
                                         <span class="record-status status-${record.status}">${this.getStatusText(record.status)}</span>
                                     </div>
                                     <div class="record-score">
-                                        ${record.score !== null ? `<span class="${record.is_passed ? 'pass' : 'fail'}">${record.score}/${record.total_score}</span>` : '-'}
+                                        ${record.score !== null ? `<span class="${record.is_passed ? 'pass' : 'fail'}">${Utils.escapeHtml(String(record.score))}/${Utils.escapeHtml(String(record.total_score))}</span>` : '-'}
                                     </div>
                                     <div class="record-actions">
-                                        ${['graded', 'submitted'].includes(record.status) ? `<button class="btn btn-sm btn-ghost" data-action="view-result" data-id="${record.id}">查看详情</button>` : ''}
+                                        ${['graded', 'submitted'].includes(record.status) ? `<button class="btn btn-sm btn-ghost" data-action="view-result" data-id="${Utils.escapeHtml(String(record.id))}">查看详情</button>` : ''}
                                     </div>
                                 </div>
                             `).join('')}
@@ -1129,12 +1129,12 @@ class ExamPage extends Component {
                     <div class="bank-list">
                         <div class="bank-item ${!currentBankId ? 'active' : ''}" data-id="">全部题目</div>
                         ${banks.map(bank => `
-                            <div class="bank-item ${currentBankId === bank.id ? 'active' : ''}" data-id="${bank.id}">
+                            <div class="bank-item ${currentBankId === bank.id ? 'active' : ''}" data-id="${Utils.escapeHtml(String(bank.id))}">
                                 <span>${Utils.escapeHtml(bank.name)}</span>
-                                <span class="bank-count">${bank.question_count}</span>
+                                <span class="bank-count">${Utils.escapeHtml(String(bank.question_count))}</span>
                                 <div class="bank-actions">
-                                    <button data-action="edit-bank" data-id="${bank.id}"><i class="ri-edit-line"></i></button>
-                                    <button data-action="delete-bank" data-id="${bank.id}"><i class="ri-delete-bin-line"></i></button>
+                                    <button data-action="edit-bank" data-id="${Utils.escapeHtml(String(bank.id))}"><i class="ri-edit-line"></i></button>
+                                    <button data-action="delete-bank" data-id="${Utils.escapeHtml(String(bank.id))}"><i class="ri-delete-bin-line"></i></button>
                                 </div>
                             </div>
                         `).join('')}
@@ -1147,7 +1147,7 @@ class ExamPage extends Component {
                             <button class="btn btn-ghost" data-action="import-questions"><i class="ri-upload-2-line"></i> 批量导入</button>
                         ` : ''}
                         <div class="search-group">
-                            <input type="text" class="form-input" placeholder="搜索题目内容..." id="questionSearch" value="${this.state.questionKeyword || ''}">
+                            <input type="text" class="form-input" placeholder="搜索题目内容..." id="questionSearch" value="${Utils.escapeHtml(this.state.questionKeyword || '')}">
                             <button class="btn btn-primary" id="btn-search-question">搜索</button>
                         </div>
                     </div>
@@ -1155,9 +1155,9 @@ class ExamPage extends Component {
                         ${questions.length === 0 ? '<p class="empty-text">暂无题目</p>' : questions.map((q, i) => `
                             <div class="question-item ${expandedQuestionId === q.id ? 'expanded' : ''}">
                                 <div class="question-header">
-                                    <span class="question-type type-${q.question_type}">${this.getTypeText(q.question_type)}</span>
-                                    <span class="question-score">${q.score} 分</span>
-                                    <button class="question-expand-btn" data-action="toggle-preview" data-id="${q.id}">
+                                    <span class="question-type type-${Utils.escapeHtml(String(q.question_type))}">${this.getTypeText(q.question_type)}</span>
+                                    <span class="question-score">${Utils.escapeHtml(String(q.score))} 分</span>
+                                    <button class="question-expand-btn" data-action="toggle-preview" data-id="${Utils.escapeHtml(String(q.id))}">
                                         <i class="ri-${expandedQuestionId === q.id ? 'arrow-up-s-line' : 'arrow-down-s-line'}"></i>
                                         ${expandedQuestionId === q.id ? '收起' : '预览'}
                                     </button>
@@ -1165,8 +1165,8 @@ class ExamPage extends Component {
                                 <div class="question-title">${Utils.escapeHtml(q.title)}</div>
                                 ${expandedQuestionId === q.id ? this.renderQuestionPreview(q) : ''}
                                 <div class="question-actions">
-                                    ${this._hasPermission('exam.update') ? `<button data-action="edit-question" data-id="${q.id}"><i class="ri-edit-line"></i></button>` : ''}
-                                    ${this._hasPermission('exam.delete') ? `<button data-action="delete-question" data-id="${q.id}"><i class="ri-delete-bin-line"></i></button>` : ''}
+                                    ${this._hasPermission('exam.update') ? `<button data-action="edit-question" data-id="${Utils.escapeHtml(String(q.id))}"><i class="ri-edit-line"></i></button>` : ''}
+                                    ${this._hasPermission('exam.delete') ? `<button data-action="delete-question" data-id="${Utils.escapeHtml(String(q.id))}"><i class="ri-delete-bin-line"></i></button>` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -1190,7 +1190,7 @@ class ExamPage extends Component {
                         <div class="options-list">
                             ${options.map(opt => `
                                 <div class="option-item">
-                                    <strong>${opt.key}.</strong> ${Utils.escapeHtml(opt.value)}
+                                    <strong>${Utils.escapeHtml(String(opt.key))}.</strong> ${Utils.escapeHtml(opt.value)}
                                 </div>
                             `).join('')}
                         </div>
@@ -1230,7 +1230,7 @@ class ExamPage extends Component {
                         <button class="btn btn-ghost" data-action="smart-paper"><i class="ri-magic-line"></i> 智能组卷</button>
                     ` : ''}
                     <div class="search-group">
-                        <input type="text" class="form-input" placeholder="搜索试卷标题..." id="paperSearch" value="${this.state.paperKeyword || ''}">
+                        <input type="text" class="form-input" placeholder="搜索试卷标题..." id="paperSearch" value="${Utils.escapeHtml(this.state.paperKeyword || '')}">
                         <button class="btn btn-primary" id="btn-search-paper">搜索</button>
                     </div>
                 </div>
@@ -1239,20 +1239,20 @@ class ExamPage extends Component {
                         <div class="paper-card">
                             <div class="paper-header">
                                 <h3>${Utils.escapeHtml(paper.title)}</h3>
-                                <span class="tag tag-${paper.status}">${paper.status === 'published' ? '已发布' : '草稿'}</span>
+                                <span class="tag tag-${Utils.escapeHtml(String(paper.status))}">${paper.status === 'published' ? '已发布' : '草稿'}</span>
                             </div>
                             <div class="paper-info">
-                                <span><i class="ri-file-list-line"></i> ${paper.question_count} 题</span>
-                                <span><i class="ri-time-line"></i> ${paper.duration} 分钟</span>
-                                <span><i class="ri-medal-line"></i> ${paper.total_score} 分</span>
-                                ${paper.take_count > 0 ? `<span><i class="ri-user-line"></i> ${paper.take_count} 人参考</span>` : ''}
+                                <span><i class="ri-file-list-line"></i> ${Utils.escapeHtml(String(paper.question_count))} 题</span>
+                                <span><i class="ri-time-line"></i> ${Utils.escapeHtml(String(paper.duration))} 分钟</span>
+                                <span><i class="ri-medal-line"></i> ${Utils.escapeHtml(String(paper.total_score))} 分</span>
+                                ${paper.take_count > 0 ? `<span><i class="ri-user-line"></i> ${Utils.escapeHtml(String(paper.take_count))} 人参考</span>` : ''}
                             </div>
                             <div class="paper-actions">
-                                <button class="btn btn-sm btn-ghost" data-action="preview-paper" data-id="${paper.id}"><i class="ri-eye-line"></i> 预览</button>
-                                ${this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-ghost" data-action="view-paper" data-id="${paper.id}">编辑</button>` : ''}
-                                ${paper.status === 'published' ? `<button class="btn btn-sm btn-ghost" data-action="view-ranking" data-id="${paper.id}"><i class="ri-bar-chart-line"></i> 排名</button>` : ''}
-                                ${paper.status === 'draft' && this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-primary" data-action="publish-paper" data-id="${paper.id}">发布</button>` : ''}
-                                ${this._hasPermission('exam.delete') ? `<button class="btn btn-sm btn-ghost danger" data-action="delete-paper" data-id="${paper.id}">删除</button>` : ''}
+                                <button class="btn btn-sm btn-ghost" data-action="preview-paper" data-id="${Utils.escapeHtml(String(paper.id))}"><i class="ri-eye-line"></i> 预览</button>
+                                ${this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-ghost" data-action="view-paper" data-id="${Utils.escapeHtml(String(paper.id))}">编辑</button>` : ''}
+                                ${paper.status === 'published' ? `<button class="btn btn-sm btn-ghost" data-action="view-ranking" data-id="${Utils.escapeHtml(String(paper.id))}"><i class="ri-bar-chart-line"></i> 排名</button>` : ''}
+                                ${paper.status === 'draft' && this._hasPermission('exam.update') ? `<button class="btn btn-sm btn-primary" data-action="publish-paper" data-id="${Utils.escapeHtml(String(paper.id))}">发布</button>` : ''}
+                                ${this._hasPermission('exam.delete') ? `<button class="btn btn-sm btn-ghost danger" data-action="delete-paper" data-id="${Utils.escapeHtml(String(paper.id))}">删除</button>` : ''}
                             </div>
                         </div>
                     `).join('')}
@@ -1276,9 +1276,9 @@ class ExamPage extends Component {
                     ${(currentPaper.questions || []).map((q, i) => `
                         <div class="detail-question">
                             <span class="q-num">${i + 1}</span>
-                            <span class="q-type type-${q.question_type}">${this.getTypeText(q.question_type)}</span>
+                            <span class="q-type type-${Utils.escapeHtml(String(q.question_type))}">${this.getTypeText(q.question_type)}</span>
                             <span class="q-title">${Utils.escapeHtml(q.title.substring(0, 50))}...</span>
-                            <span class="q-score">${q.paper_score || q.score} 分</span>
+                            <span class="q-score">${Utils.escapeHtml(String(q.paper_score || q.score))} 分</span>
                         </div>
                     `).join('')}
                 </div>
@@ -1307,22 +1307,22 @@ class ExamPage extends Component {
                     <div class="paper-stats-bar">
                         <div class="stat-item">
                             <i class="ri-file-list-line"></i>
-                            <span class="stat-value">${questions.length}</span>
+                            <span class="stat-value">${Utils.escapeHtml(String(questions.length))}</span>
                             <span class="stat-label">道题</span>
                         </div>
                         <div class="stat-item">
                             <i class="ri-medal-line"></i>
-                            <span class="stat-value">${previewPaper.total_score}</span>
+                            <span class="stat-value">${Utils.escapeHtml(String(previewPaper.total_score))}</span>
                             <span class="stat-label">总分</span>
                         </div>
                         <div class="stat-item">
                             <i class="ri-time-line"></i>
-                            <span class="stat-value">${previewPaper.duration}</span>
+                            <span class="stat-value">${Utils.escapeHtml(String(previewPaper.duration))}</span>
                             <span class="stat-label">分钟</span>
                         </div>
                         <div class="stat-item">
                             <i class="ri-trophy-line"></i>
-                            <span class="stat-value">${previewPaper.pass_score}</span>
+                            <span class="stat-value">${Utils.escapeHtml(String(previewPaper.pass_score))}</span>
                             <span class="stat-label">及格分</span>
                         </div>
                     </div>
@@ -1333,7 +1333,7 @@ class ExamPage extends Component {
                             <div class="eq-header">
                                 <span class="eq-num">${i + 1}</span>
                                 <span class="eq-type">${this.getTypeText(q.question_type)}</span>
-                                <span class="eq-score">${q.paper_score || q.score} 分</span>
+                                <span class="eq-score">${Utils.escapeHtml(String(q.paper_score || q.score))} 分</span>
                             </div>
                             <div class="eq-title">${Utils.escapeHtml(q.title)}</div>
                             <div class="exam-answer preview-only">
@@ -1366,7 +1366,7 @@ class ExamPage extends Component {
             return (options || []).map(opt => `
                 <label class="${question_type === 'single' ? 'radio' : 'checkbox'}-option" style="pointer-events: none; opacity: 0.7;">
                     <input type="${question_type === 'single' ? 'radio' : 'checkbox'}" disabled>
-                    <span>${opt.key}. ${Utils.escapeHtml(opt.value)}</span>
+                    <span>${Utils.escapeHtml(String(opt.key))}. ${Utils.escapeHtml(opt.value)}</span>
                 </label>
             `).join('');
         }
@@ -1415,14 +1415,14 @@ class ExamPage extends Component {
                 </div>
                 <div class="exam-questions">
                     ${currentExam.questions.map((q, i) => `
-                        <div class="exam-question" id="q-${q.id}">
+                        <div class="exam-question" id="q-${Utils.escapeHtml(String(q.id))}">
                             <div class="eq-header">
                                 <span class="eq-num">${i + 1}</span>
                                 <span class="eq-type">${this.getTypeText(q.question_type)}</span>
-                                <span class="eq-score">${q.score} 分</span>
+                                <span class="eq-score">${Utils.escapeHtml(String(q.score))} 分</span>
                             </div>
                             <div class="eq-title">${Utils.escapeHtml(q.title)}</div>
-                            <div class="exam-answer" data-qid="${q.id}" data-type="${q.question_type}">
+                            <div class="exam-answer" data-qid="${Utils.escapeHtml(String(q.id))}" data-type="${q.question_type}">
                                 ${this.renderAnswerInput(q, examAnswers[q.id])}
                             </div>
                         </div>
@@ -1450,8 +1450,8 @@ class ExamPage extends Component {
         if (question_type === 'single') {
             return (options || []).map(opt => `
                 <label class="radio-option">
-                    <input type="radio" name="q_${question.id}" value="${opt.key}" ${savedAnswer === opt.key ? 'checked' : ''}>
-                    <span>${opt.key}. ${Utils.escapeHtml(opt.value)}</span>
+                    <input type="radio" name="q_${Utils.escapeHtml(String(question.id))}" value="${Utils.escapeHtml(String(opt.key))}" ${savedAnswer === opt.key ? 'checked' : ''}>
+                    <span>${Utils.escapeHtml(String(opt.key))}. ${Utils.escapeHtml(opt.value)}</span>
                 </label>
             `).join('');
         }
@@ -1460,20 +1460,20 @@ class ExamPage extends Component {
             const selected = savedAnswer.split(',');
             return (options || []).map(opt => `
                 <label class="checkbox-option">
-                    <input type="checkbox" name="q_${question.id}" value="${opt.key}" ${selected.includes(opt.key) ? 'checked' : ''}>
-                    <span>${opt.key}. ${Utils.escapeHtml(opt.value)}</span>
+                    <input type="checkbox" name="q_${Utils.escapeHtml(String(question.id))}" value="${Utils.escapeHtml(String(opt.key))}" ${selected.includes(opt.key) ? 'checked' : ''}>
+                    <span>${Utils.escapeHtml(String(opt.key))}. ${Utils.escapeHtml(opt.value)}</span>
                 </label>
             `).join('');
         }
 
         if (question_type === 'judge') {
             return `
-                <label class="radio-option"><input type="radio" name="q_${question.id}" value="true" ${savedAnswer === 'true' ? 'checked' : ''}><span>正确</span></label>
-                <label class="radio-option"><input type="radio" name="q_${question.id}" value="false" ${savedAnswer === 'false' ? 'checked' : ''}><span>错误</span></label>
+                <label class="radio-option"><input type="radio" name="q_${Utils.escapeHtml(String(question.id))}" value="true" ${savedAnswer === 'true' ? 'checked' : ''}><span>正确</span></label>
+                <label class="radio-option"><input type="radio" name="q_${Utils.escapeHtml(String(question.id))}" value="false" ${savedAnswer === 'false' ? 'checked' : ''}><span>错误</span></label>
             `;
         }
 
-        return `<textarea class="form-control" name="q_${question.id}" rows="4" placeholder="请输入答案">${Utils.escapeHtml(savedAnswer)}</textarea>`;
+        return `<textarea class="form-control" name="q_${Utils.escapeHtml(String(question.id))}" rows="4" placeholder="请输入答案">${Utils.escapeHtml(savedAnswer)}</textarea>`;
     }
 
     renderResultDetail() {
@@ -1492,7 +1492,7 @@ class ExamPage extends Component {
                         <h2>${Utils.escapeHtml(gradingRecord.paper_title)} - 考试结果</h2>
                     </div>
                     <div class="result-score ${is_passed ? 'pass' : 'fail'}">
-                        <span>${score}</span> <span class="total">/ ${total_score} 分</span>
+                        <span>${Utils.escapeHtml(String(score))}</span> <span class="total">/ ${Utils.escapeHtml(String(total_score))} 分</span>
                     </div>
                 </div>
                 <div class="exam-questions">
@@ -1510,18 +1510,18 @@ class ExamPage extends Component {
                                     ${isCorrect === true ? '<i class="ri-check-line"></i> 正确' :
                     (isCorrect === false ? '<i class="ri-close-line"></i> 错误' : '<i class="ri-edit-circle-line"></i> 待阅/主观')}
                                 </span>
-                                <span class="eq-score">${ans.score || 0} / ${q.score} 分</span>
+                                <span class="eq-score">${Utils.escapeHtml(String(ans.score || 0))} / ${Utils.escapeHtml(String(q.score))} 分</span>
                             </div>
                             <div class="eq-title">${Utils.escapeHtml(q.title)}</div>
                             
-                            <div class="result-answer-box">
+                             <div class="result-answer-box">
                                 <div class="user-answer-section">
                                     <label>你的答案：</label>
                                     <div class="answer-content">${Utils.escapeHtml(ans.user_answer || '未作答')}</div>
                                 </div>
                                 <div class="correct-answer-section">
                                     <label>正确答案：</label>
-                                    <div class="answer-content">${Utils.escapeHtml(q.answer)}</div>
+                                    <div class="answer-content">${Utils.escapeHtml(q.answer || '未设置')}</div>
                                 </div>
                                 ${ans.comment ? `
                                 <div class="comment-section">
@@ -1558,7 +1558,7 @@ class ExamPage extends Component {
                                     <span class="record-meta">考生ID: ${r.user_id}</span>
                                     <span class="record-meta">提交时间: ${r.submit_time ? Utils.formatDate(r.submit_time) : '-'}</span>
                                 </div>
-                                <button class="btn btn-sm btn-primary" data-action="grade-record" data-id="${r.id}">开始阅卷</button>
+                                <button class="btn btn-sm btn-primary" data-action="grade-record" data-id="${Utils.escapeHtml(String(r.id))}">开始阅卷</button>
                             </div>
                         `).join('')}
                     </div>
@@ -1594,7 +1594,7 @@ class ExamPage extends Component {
                                 <div class="eq-header">
                                     <span class="eq-num">${i + 1}</span>
                                     <span class="eq-type">${this.getTypeText(q.question_type)}</span>
-                                    <span class="eq-score">满分: ${q.score}</span>
+                                    <span class="eq-score">满分: ${Utils.escapeHtml(String(q.score))}</span>
                                 </div>
                                 <div class="eq-title">${Utils.escapeHtml(q.title)}</div>
                                 
@@ -1615,14 +1615,14 @@ class ExamPage extends Component {
                                     <div class="form-group row">
                                         <label>得分:</label>
                                         <input type="number" class="form-control score-input" 
-                                            name="score_${q.id}" 
-                                            value="${ans.score !== undefined ? ans.score : 0}" 
-                                            max="${q.score}" min="0" step="0.5"
+                                            name="score_${Utils.escapeHtml(String(q.id))}" 
+                                            value="${ans.score !== undefined ? Utils.escapeHtml(String(ans.score)) : 0}" 
+                                            max="${Utils.escapeHtml(String(q.score))}" min="0" step="0.5"
                                             ${isAutoGraded ? '' : 'required'}>
                                     </div>
                                     <div class="form-group row">
                                         <label>评语:</label>
-                                        <input type="text" class="form-control" name="comment_${q.id}" value="${Utils.escapeHtml(ans.comment || '')}" placeholder="可选评语">
+                                        <input type="text" class="form-control" name="comment_${Utils.escapeHtml(String(q.id))}" value="${Utils.escapeHtml(ans.comment || '')}" placeholder="可选评语">
                                     </div>
                                 </div>
                             </div>
@@ -2071,7 +2071,7 @@ class ExamPage extends Component {
         return `
             <div class="wrong-questions-view">
                 <div class="wrong-questions-header">
-                    <h2><i class="ri-error-warning-line"></i> 我的错题本 <span class="record-count">(${wrongTotal})</span></h2>
+                    <h2><i class="ri-error-warning-line"></i> 我的错题本 <span class="record-count">(${Utils.escapeHtml(String(wrongTotal))})</span></h2>
                     ${wrongQuestions.length > 0 ? `
                         <button class="btn btn-ghost danger" data-action="clear-wrong">
                             <i class="ri-delete-bin-line"></i> 清空
@@ -2084,11 +2084,11 @@ class ExamPage extends Component {
                             <div class="wrong-question-item">
                                 <div class="wrong-question-header">
                                     <div class="wrong-question-meta">
-                                        <span class="question-type type-${wrong.question_type}">${this.getTypeText(wrong.question_type)}</span>
-                                        <span class="wrong-count-badge">错 ${wrong.wrong_count} 次</span>
+                                        <span class="question-type type-${Utils.escapeHtml(String(wrong.question_type))}">${this.getTypeText(wrong.question_type)}</span>
+                                        <span class="wrong-count-badge">错 ${Utils.escapeHtml(String(wrong.wrong_count))} 次</span>
                                     </div>
                                     <div class="wrong-question-actions">
-                                        <button data-action="delete-wrong" data-id="${wrong.id}" title="移除错题">
+                                        <button data-action="delete-wrong" data-id="${Utils.escapeHtml(String(wrong.id))}" title="移除错题">
                                             <i class="ri-close-line"></i>
                                         </button>
                                     </div>
@@ -2133,24 +2133,24 @@ class ExamPage extends Component {
                         <i class="ri-arrow-left-line"></i> 返回
                     </button>
                     <h2>📊 ${Utils.escapeHtml(paper_title)}</h2>
-                    <p>满分 ${total_score} 分 / 及格 ${pass_score} 分</p>
+                    <p>满分 ${Utils.escapeHtml(String(total_score))} 分 / 及格 ${Utils.escapeHtml(String(pass_score))} 分</p>
                 </div>
                 
                 <div class="ranking-stats">
                     <div class="ranking-stat">
-                        <div class="ranking-stat-value">${take_count}</div>
+                        <div class="ranking-stat-value">${Utils.escapeHtml(String(take_count))}</div>
                         <div class="ranking-stat-label">参考人数</div>
                     </div>
                     <div class="ranking-stat">
-                        <div class="ranking-stat-value">${pass_count}</div>
+                        <div class="ranking-stat-value">${Utils.escapeHtml(String(pass_count))}</div>
                         <div class="ranking-stat-label">通过人数</div>
                     </div>
                     <div class="ranking-stat">
-                        <div class="ranking-stat-value">${pass_rate}%</div>
+                        <div class="ranking-stat-value">${Utils.escapeHtml(String(pass_rate))}%</div>
                         <div class="ranking-stat-label">通过率</div>
                     </div>
                     <div class="ranking-stat">
-                        <div class="ranking-stat-value">${avg_score}</div>
+                        <div class="ranking-stat-value">${Utils.escapeHtml(String(avg_score))}</div>
                         <div class="ranking-stat-label">平均分</div>
                     </div>
                 </div>
@@ -2159,12 +2159,12 @@ class ExamPage extends Component {
                     <div class="ranking-list">
                         ${rankings.map((r, i) => `
                             <div class="ranking-item">
-                                <div class="ranking-position ${i < 3 ? 'top-' + (i + 1) : ''}">${r.rank}</div>
+                                <div class="ranking-position ${i < 3 ? 'top-' + (i + 1) : ''}">${Utils.escapeHtml(String(r.rank))}</div>
                                 <div class="ranking-info">
-                                    <div class="ranking-user">用户 ${r.user_id}</div>
-                                    <div class="ranking-time">${r.used_seconds ? Math.floor(r.used_seconds / 60) + '分' + (r.used_seconds % 60) + '秒' : '-'}</div>
+                                    <div class="ranking-user">用户 ${Utils.escapeHtml(String(r.user_id))}</div>
+                                    <div class="ranking-time">${r.used_seconds ? Utils.escapeHtml(String(Math.floor(r.used_seconds / 60))) + '分' + Utils.escapeHtml(String(r.used_seconds % 60)) + '秒' : '-'}</div>
                                 </div>
-                                <div class="ranking-score">${r.score}</div>
+                                <div class="ranking-score">${Utils.escapeHtml(String(r.score))}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -2188,14 +2188,14 @@ class ExamPage extends Component {
                 <div class="answer-sheet-grid">
                     ${questions.map((q, i) => `
                         <div class="answer-sheet-item ${examAnswers[q.id] ? 'answered' : ''}" 
-                             data-qid="${q.id}" title="第${i + 1}题">
+                             data-qid="${Utils.escapeHtml(String(q.id))}" title="第${i + 1}题">
                             ${i + 1}
                         </div>
                     `).join('')}
                 </div>
                 <div class="answer-sheet-stats">
-                    <div><span>已答:</span><span>${answeredCount}/${questions.length}</span></div>
-                    <div><span>未答:</span><span>${questions.length - answeredCount}</span></div>
+                    <div><span>已答:</span><span>${Utils.escapeHtml(String(answeredCount))}/${Utils.escapeHtml(String(questions.length))}</span></div>
+                    <div><span>未答:</span><span>${Utils.escapeHtml(String(questions.length - answeredCount))}</span></div>
                 </div>
             </div>
         `;

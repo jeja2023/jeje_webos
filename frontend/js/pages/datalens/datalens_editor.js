@@ -19,7 +19,7 @@ const DataLensEditorMixin = {
                     </div>
                 `).join('')}
             </div>
-            <input type="hidden" id="${inputId}" value="${selectedIcon}">
+            <input type="hidden" id="${inputId}" value="${Utils.escapeHtml(selectedIcon)}">
         `;
     },
 
@@ -64,7 +64,7 @@ const DataLensEditorMixin = {
             const buildFieldOptions = (selectedValue) => {
                 if (columns.length > 0) {
                     return `<option value="">请选择字段</option>` +
-                        columns.map(c => `<option value="${c}" ${selectedValue === c ? 'selected' : ''}>${c}</option>`).join('');
+                        columns.map(c => `<option value="${Utils.escapeHtml(c)}" ${selectedValue === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('');
                 }
                 return `<option value="">无可用字段</option>`;
             };
@@ -81,11 +81,11 @@ const DataLensEditorMixin = {
 
                     return `
                         <div class="lens-col-alias-row" style="display: flex; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;">
-                            <span style="width: 120px; flex-shrink: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis;" title="${col}">${col}</span>
+                            <span style="width: 120px; flex-shrink: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis;" title="${Utils.escapeHtml(col)}">${Utils.escapeHtml(col)}</span>
                             <input type="text" class="form-control form-control-sm lens-alias-input" 
-                                   data-col="${col}" value="${alias}" placeholder="显示名称" 
+                                   data-col="${Utils.escapeHtml(col)}" value="${Utils.escapeHtml(alias)}" placeholder="显示名称" 
                                    style="width: 150px !important;">
-                            <select class="form-control form-control-sm lens-col-type" data-col="${col}" style="width: 100px !important;">
+                            <select class="form-control form-control-sm lens-col-type" data-col="${Utils.escapeHtml(col)}" style="width: 100px !important;">
                                 <option value="default" ${type === 'default' ? 'selected' : ''}>默认</option>
                                 <option value="image" ${type === 'image' ? 'selected' : ''}><i class="ri-image-line"></i> 图片</option>
                                 <option value="link" ${type === 'link' ? 'selected' : ''}><i class="ri-link"></i> 链接</option>
@@ -93,7 +93,7 @@ const DataLensEditorMixin = {
                                 <option value="bool" ${type === 'bool' ? 'selected' : ''}><i class="ri-checkbox-circle-line"></i> 布尔</option>
                             </select>
                             <label style="display: flex; align-items: center; font-size: 13px; cursor: pointer; user-select: none;">
-                                <input type="checkbox" class="lens-hide-col" data-col="${col}" ${isHidden ? 'checked' : ''} style="margin-right: 4px;"> 隐藏
+                                <input type="checkbox" class="lens-hide-col" data-col="${Utils.escapeHtml(col)}" ${isHidden ? 'checked' : ''} style="margin-right: 4px;"> 隐藏
                             </label>
                         </div>
                     `;
@@ -121,7 +121,7 @@ const DataLensEditorMixin = {
                 return rules.map((r, i) => `
                     <div class="lens-status-row" data-index="${i}" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; justify-content: flex-start;">
                         <select class="form-control form-control-sm lens-status-field" style="width: 160px !important; flex-shrink: 0;">
-                            ${columns.map(c => `<option value="${c}" ${c === r.field ? 'selected' : ''}>${c}</option>`).join('')}
+                            ${columns.map(c => `<option value="${Utils.escapeHtml(c)}" ${c === r.field ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                         </select>
                         <select class="form-control form-control-sm lens-status-op" style="width: 160px !important; flex-shrink: 0;">
                             <option value="eq" ${r.operator === 'eq' ? 'selected' : ''}>等于 (=)</option>
@@ -131,7 +131,7 @@ const DataLensEditorMixin = {
                             <option value="lt" ${r.operator === 'lt' ? 'selected' : ''}>小于 (<)</option>
                             <option value="lte" ${r.operator === 'lte' ? 'selected' : ''}>小于等于 (≤)</option>
                         </select>
-                        <input type="text" class="form-control form-control-sm lens-status-value" value="${r.value}" placeholder="值" style="width: 80px !important; flex-shrink: 0;">
+                        <input type="text" class="form-control form-control-sm lens-status-value" value="${Utils.escapeHtml(String(r.value))}" placeholder="值" style="width: 80px !important; flex-shrink: 0;">
                         <select class="form-control form-control-sm lens-status-color" style="width: 130px !important; flex-shrink: 0;">
                             <option value="success" ${r.color === 'success' ? 'selected' : ''}><i class="ri-checkbox-circle-line"></i> 成功</option>
                             <option value="warning" ${r.color === 'warning' ? 'selected' : ''}><i class="ri-alert-line"></i> 警告</option>
@@ -316,7 +316,7 @@ const DataLensEditorMixin = {
                     newRow.style.cssText = 'display: flex; align-items: center; gap: 10px; margin-bottom: 8px; justify-content: flex-start;';
                     newRow.innerHTML = `
                         <select class="form-control form-control-sm lens-status-field" style="width: 160px !important; flex-shrink: 0;">
-                            ${columns.map(c => `<option value="${c}">${c}</option>`).join('')}
+                            ${columns.map(c => `<option value="${Utils.escapeHtml(c)}">${Utils.escapeHtml(c)}</option>`).join('')}
                         </select>
                         <select class="form-control form-control-sm lens-status-op" style="width: 160px !important; flex-shrink: 0;">
                             <option value="eq">等于 (=)</option>
@@ -387,7 +387,7 @@ const DataLensEditorMixin = {
                             <div class="form-group">
                                 <label>视图名称 <span class="required">*</span></label>
                                 <input type="text" id="lens-view-name" class="form-control" 
-                                       value="${view?.name || ''}" placeholder="输入视图名称">
+                                       value="${Utils.escapeHtml(view?.name || '')}" placeholder="输入视图名称">
                             </div>
                             <div class="form-group">
                                 <label>视图图标</label>
@@ -398,8 +398,8 @@ const DataLensEditorMixin = {
                                 <select id="lens-view-category" class="form-control">
                                     <option value="">未分类</option>
                                     ${categories.map(c => `
-                                        <option value="${c.id}" ${view?.category_id === c.id ? 'selected' : ''}>
-                                            ${c.icon} ${c.name}
+                                        <option value="${Utils.escapeHtml(String(c.id))}" ${view?.category_id === c.id ? 'selected' : ''}>
+                                            ${Utils.escapeHtml(c.icon)} ${Utils.escapeHtml(c.name)}
                                         </option>
                                     `).join('')}
                                 </select>
@@ -407,7 +407,7 @@ const DataLensEditorMixin = {
                             <div class="form-group">
                                 <label>描述</label>
                                 <textarea id="lens-view-desc" class="form-control" rows="2" 
-                                          placeholder="视图描述（可选）">${view?.description || ''}</textarea>
+                                          placeholder="视图描述（可选）">${Utils.escapeHtml(view?.description || '')}</textarea>
                             </div>
                         </div>
                     </div>
@@ -433,8 +433,8 @@ const DataLensEditorMixin = {
                                 <select id="lens-view-source" class="form-control" style="flex:1">
                                     <option value="">请选择数据源</option>
                                     ${sources.map(s => `
-                                        <option value="${s.id}" ${view?.datasource_id === s.id ? 'selected' : ''}>
-                                            ${this._getSourceTypeIcon(s.type)} ${s.name}
+                                        <option value="${Utils.escapeHtml(String(s.id))}" ${view?.datasource_id === s.id ? 'selected' : ''}>
+                                            ${this._getSourceTypeIcon(s.type)} ${Utils.escapeHtml(s.name)}
                                         </option>
                                     `).join('')}
                                 </select>
@@ -522,7 +522,7 @@ const DataLensEditorMixin = {
                             <div class="form-group">
                                 <label>SQL 语句 <span class="required">*</span></label>
                                 <textarea id="lens-view-sql" class="form-control lens-sql-editor" rows="5" 
-                                          placeholder="SELECT * FROM table_name WHERE condition">${view?.query_config?.sql || ''}</textarea>
+                                          placeholder="SELECT * FROM table_name WHERE condition">${Utils.escapeHtml(view?.query_config?.sql || '')}</textarea>
                                 <div class="flex-between mt-5">
                                     <small class="form-hint">支持多表关联 (JOIN) 查询。系统会自动处理分页。</small>
                                     <div class="flex gap-5">
@@ -651,7 +651,7 @@ const DataLensEditorMixin = {
                     const res = await LensApi.getSourceTables(sourceId);
                     availableTables = res.data || [];
                     tableSelectEl.innerHTML = '<option value="">请选择主表</option>' +
-                        availableTables.map(t => `<option value="${t}">${t}</option>`).join('');
+                        availableTables.map(t => `<option value="${Utils.escapeHtml(t)}">${Utils.escapeHtml(t)}</option>`).join('');
                 } catch (err) {
                     tableSelectEl.innerHTML = '<option value="">加载失败</option>';
                     Toast.error('获取表列表失败');
@@ -702,7 +702,7 @@ const DataLensEditorMixin = {
                         </select>
                         <select class="form-control form-control-sm lens-join-table" style="flex:1;">
                             <option value="">选择关联表</option>
-                            ${availableTables.filter(t => t !== mainTable).map(t => `<option value="${t}">${t}</option>`).join('')}
+                            ${availableTables.filter(t => t !== mainTable).map(t => `<option value="${Utils.escapeHtml(t)}">${Utils.escapeHtml(t)}</option>`).join('')}
                         </select>
                     </div>
                     <div class="lens-join-condition-box flex gap-5 align-center bg-secondary p-5 border-radius-4">
@@ -742,9 +742,9 @@ const DataLensEditorMixin = {
                         ]);
 
                         leftSelect.innerHTML = '<option value="">左字段</option>' +
-                            (mainColsRes.data || []).map(c => `<option value="${mainTable}.${c.name}">${mainTable}.${c.name}</option>`).join('');
+                            (mainColsRes.data || []).map(c => `<option value="${Utils.escapeHtml(mainTable)}.${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(mainTable)}.${Utils.escapeHtml(c.name)}</option>`).join('');
                         rightSelect.innerHTML = '<option value="">右字段</option>' +
-                            (subColsRes.data || []).map(c => `<option value="${joinedTable}.${c.name}">${joinedTable}.${c.name}</option>`).join('');
+                            (subColsRes.data || []).map(c => `<option value="${Utils.escapeHtml(joinedTable)}.${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(joinedTable)}.${Utils.escapeHtml(c.name)}</option>`).join('');
 
                         if (prefillLeft) leftSelect.value = prefillLeft;
                         if (prefillRight) rightSelect.value = prefillRight;
@@ -812,10 +812,10 @@ const DataLensEditorMixin = {
 
                     // 渲染分组后的 UI
                     colsGrid.innerHTML = Object.entries(groups).map(([table, fields]) => `
-                        <div class="lens-field-group" data-table="${table}">
+                        <div class="lens-field-group" data-table="${Utils.escapeHtml(table)}">
                             <div class="lens-field-group-title">
                                 <div>
-                                    <span>📦 表: ${table}</span>
+                                    <span>📦 表: ${Utils.escapeHtml(table)}</span>
                                     <span style="opacity:0.6; font-weight:normal; font-size:11px; margin-left:4px;">(${fields.length})</span>
                                 </div>
                                 <div class="flex gap-10 align-center">
@@ -826,9 +826,9 @@ const DataLensEditorMixin = {
                             </div>
                             <div class="lens-field-group-list">
                                 ${fields.map(f => `
-                                    <label class="lens-column-item-compact" title="${f.fullName}">
-                                        <input type="checkbox" class="lens-col-checkbox" value="${f.fullName}" checked>
-                                        <span class="lens-col-name">${f.name}</span>
+                                    <label class="lens-column-item-compact" title="${Utils.escapeHtml(f.fullName)}">
+                                        <input type="checkbox" class="lens-col-checkbox" value="${Utils.escapeHtml(f.fullName)}" checked>
+                                        <span class="lens-col-name">${Utils.escapeHtml(f.name)}</span>
                                     </label>
                                 `).join('')}
                             </div>
@@ -852,7 +852,7 @@ const DataLensEditorMixin = {
                     const updateSelect = (select, fields) => {
                         const currentVal = select.value;
                         select.innerHTML = '<option value="">请选择字段</option>' +
-                            fields.map(f => `<option value="${f.fullName}" ${f.fullName === currentVal ? 'selected' : ''}>${f.fullName}</option>`).join('');
+                            fields.map(f => `<option value="${Utils.escapeHtml(f.fullName)}" ${f.fullName === currentVal ? 'selected' : ''}>${Utils.escapeHtml(f.fullName)}</option>`).join('');
                     };
                     updateSelect(sortSelect, allFields);
                     filterSelects.forEach(s => updateSelect(s, allFields));
@@ -903,7 +903,7 @@ const DataLensEditorMixin = {
                 filterRow.innerHTML = `
                     <select class="form-control form-control-sm lens-filter-field" style="width:120px">
                         <option value="">选择字段</option>
-                        ${currentColumns.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                        ${currentColumns.map(c => `<option value="${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(c.name)}</option>`).join('')}
                     </select>
                     <select class="form-control form-control-sm lens-filter-op" style="width:100px">
                         <option value="=">=</option>
@@ -1098,14 +1098,14 @@ const DataLensEditorMixin = {
                 // 渲染头部
                 const thead = tableEl.querySelector('thead');
                 thead.innerHTML = '<tr>' +
-                    columns.map(col => '<th>' + (col.title || '') + '</th>').join('') +
+                    columns.map(col => '<th>' + Utils.escapeHtml(col.title || '') + '</th>').join('') +
                     '</tr>';
 
                 // 渲染主体
                 const tbody = tableEl.querySelector('tbody');
                 tbody.innerHTML = data.map(row =>
                     '<tr>' +
-                    columns.map(col => '<td>' + (row[col.field] !== null ? row[col.field] : '') + '</td>').join('') +
+                    columns.map(col => '<td>' + Utils.escapeHtml(row[col.field] !== null ? String(row[col.field]) : '') + '</td>').join('') +
                     '</tr>'
                 ).join('');
 
@@ -1379,7 +1379,7 @@ const DataLensEditorMixin = {
                                     margin-right: 12px;
                                 ">${this._getSourceTypeIcon(s.type)}</div>
                                 <div class="lens-source-info" style="flex: 1; min-width: 0;">
-                                    <div class="lens-source-name" style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">${s.name}</div>
+                                    <div class="lens-source-name" style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">${Utils.escapeHtml(s.name)}</div>
                                     <div class="lens-source-type" style="font-size: 12px; color: var(--text-muted);">${this._getSourceTypeName(s.type)}</div>
                                 </div>
                                 <div class="lens-source-status ${s.is_active ? 'active' : 'inactive'}" style="font-size: 11px; margin-right: 12px;">
@@ -1501,7 +1501,7 @@ const DataLensEditorMixin = {
                             <div class="form-group" style="flex: 2;">
                                 <label style="margin-bottom: 4px;">数据源名称 <span class="required">*</span></label>
                                 <input type="text" id="lens-source-name" class="form-control" 
-                                       value="${source?.name || ''}" placeholder="输入数据源名称">
+                                       value="${Utils.escapeHtml(source?.name || '')}" placeholder="输入数据源名称">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label style="margin-bottom: 4px;">类型 <span class="required">*</span></label>
@@ -1521,7 +1521,7 @@ const DataLensEditorMixin = {
                         <div class="form-group" style="margin-bottom: 0;">
                             <label style="margin-bottom: 4px;">描述</label>
                             <input type="text" id="lens-source-desc" class="form-control" 
-                                   value="${source?.description || ''}" placeholder="数据源描述（可选）">
+                                   value="${Utils.escapeHtml(source?.description || '')}" placeholder="数据源描述（可选）">
                         </div>
                     </div>
 
@@ -1532,19 +1532,19 @@ const DataLensEditorMixin = {
                             <div class="form-group" style="flex: 3;">
                                 <label style="margin-bottom: 4px;">主机地址</label>
                                 <input type="text" id="lens-source-host" class="form-control" 
-                                       value="${source?.connection_config?.host || 'localhost'}" placeholder="localhost">
+                                       value="${Utils.escapeHtml(source?.connection_config?.host || 'localhost')}" placeholder="localhost">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label style="margin-bottom: 4px;">端口</label>
                                 <input type="number" id="lens-source-port" class="form-control" 
-                                       value="${source?.connection_config?.port || ''}" placeholder="3306">
+                                       value="${Utils.escapeHtml(String(source?.connection_config?.port || ''))}" placeholder="3306">
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; margin-bottom: 0;">
                             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">用户名</label>
                                 <input type="text" id="lens-source-user" class="form-control" 
-                                       value="${source?.connection_config?.user || ''}" placeholder="root">
+                                       value="${Utils.escapeHtml(source?.connection_config?.user || '')}" placeholder="root">
                             </div>
                             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">密码</label>
@@ -1554,7 +1554,7 @@ const DataLensEditorMixin = {
                             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">数据库名</label>
                                 <input type="text" id="lens-source-database" class="form-control" 
-                                       value="${source?.connection_config?.database || ''}" placeholder="database_name">
+                                       value="${Utils.escapeHtml(source?.connection_config?.database || '')}" placeholder="database_name">
                             </div>
                         </div>
                     </div>
@@ -1566,24 +1566,24 @@ const DataLensEditorMixin = {
                             <div class="form-group" style="flex: 3;">
                                 <label style="margin-bottom: 4px;">主机地址</label>
                                 <input type="text" id="lens-source-oracle-host" class="form-control" 
-                                       value="${source?.connection_config?.host || 'localhost'}" placeholder="localhost">
+                                       value="${Utils.escapeHtml(source?.connection_config?.host || 'localhost')}" placeholder="localhost">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label style="margin-bottom: 4px;">端口</label>
                                 <input type="number" id="lens-source-oracle-port" class="form-control" 
-                                       value="${source?.connection_config?.port || '1521'}" placeholder="1521">
+                                       value="${Utils.escapeHtml(String(source?.connection_config?.port || '1521'))}" placeholder="1521">
                             </div>
                             <div class="form-group" style="flex: 2;">
                                 <label style="margin-bottom: 4px;">服务名</label>
                                 <input type="text" id="lens-source-service-name" class="form-control" 
-                                       value="${source?.connection_config?.service_name || ''}" placeholder="ORCL">
+                                       value="${Utils.escapeHtml(source?.connection_config?.service_name || '')}" placeholder="ORCL">
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; margin-bottom: 0;">
                             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">用户名</label>
                                 <input type="text" id="lens-source-oracle-user" class="form-control" 
-                                       value="${source?.connection_config?.user || ''}" placeholder="用户名">
+                                       value="${Utils.escapeHtml(source?.connection_config?.user || '')}" placeholder="用户名">
                             </div>
                             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">密码</label>
@@ -1599,13 +1599,13 @@ const DataLensEditorMixin = {
                         <div class="form-group">
                             <label>文件路径</label>
                             <input type="text" id="lens-source-filepath" class="form-control" 
-                                   value="${source?.file_config?.file_path || ''}" placeholder="storage/lens/example.csv">
+                                   value="${Utils.escapeHtml(source?.file_config?.file_path || '')}" placeholder="storage/lens/example.csv">
                             <small class="form-hint">支持 CSV、Excel 文件，可手动输入路径或上传文件</small>
                         </div>
                         <div class="form-group" id="lens-excel-sheet" style="display:none;">
                             <label>工作表名称</label>
                             <input type="text" id="lens-source-sheet" class="form-control" 
-                                   value="${source?.file_config?.sheet_name || ''}" placeholder="Sheet1（留空使用第一个工作表）">
+                                   value="${Utils.escapeHtml(source?.file_config?.sheet_name || '')}" placeholder="Sheet1（留空使用第一个工作表）">
                         </div>
                         <div class="form-group">
                             <label>编码</label>
@@ -1623,7 +1623,7 @@ const DataLensEditorMixin = {
                         <div class="form-group">
                             <label>API URL <span class="required">*</span></label>
                             <input type="text" id="lens-source-api-url" class="form-control" 
-                                   value="${source?.api_config?.url || ''}" placeholder="https://api.example.com/data">
+                                   value="${Utils.escapeHtml(source?.api_config?.url || '')}" placeholder="https://api.example.com/data">
                         </div>
                         <div class="form-group">
                             <label>请求方法</label>
@@ -1635,7 +1635,7 @@ const DataLensEditorMixin = {
                         <div class="form-group">
                             <label>请求头 (JSON 格式)</label>
                             <textarea id="lens-source-api-headers" class="form-control" rows="3" 
-                                      placeholder='{"Authorization": "Bearer xxx"}'>${source?.api_config?.headers ? JSON.stringify(source.api_config.headers, null, 2) : ''}</textarea>
+                                      placeholder='{"Authorization": "Bearer xxx"}'>${Utils.escapeHtml(source?.api_config?.headers ? JSON.stringify(source.api_config.headers, null, 2) : '')}</textarea>
                         </div>
                     </div>
 
@@ -1645,7 +1645,7 @@ const DataLensEditorMixin = {
         <div class="form-group">
             <label>数据库文件路径</label>
             <input type="text" id="lens-source-sqlite-path" class="form-control"
-                value="${source?.connection_config?.file_path || ''}" placeholder="storage/lens/database.db">
+                value="${Utils.escapeHtml(source?.connection_config?.file_path || '')}" placeholder="storage/lens/database.db">
         </div>
     </div>
                 </div>
@@ -1895,10 +1895,10 @@ const DataLensEditorMixin = {
                                 font-size: 24px; 
                                 margin-right: 14px;
                                 flex-shrink: 0;
-                            ">${cat.icon}</div>
+                            ">${Utils.escapeHtml(cat.icon)}</div>
                             
                             <div class="lens-category-info" style="flex: 1; min-width: 0;">
-                                <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cat.name}</div>
+                                <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${Utils.escapeHtml(cat.name)}</div>
                                 <div style="font-size: 12px; color: var(--text-muted);">${cat.view_count || 0} 个视图资源</div>
                             </div>
 
@@ -1969,7 +1969,7 @@ const DataLensEditorMixin = {
                     <div class="form-group">
                         <label>分类名称 <span class="required">*</span></label>
                         <input type="text" id="lens-category-name" class="form-control" 
-                            value="${category?.name || ''}" placeholder="输入分类名称">
+                            value="${Utils.escapeHtml(category?.name || '')}" placeholder="输入分类名称">
                     </div>
                     <div class="form-group">
                         <label>排序权重</label>

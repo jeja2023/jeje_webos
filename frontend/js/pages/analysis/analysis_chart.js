@@ -139,8 +139,8 @@ const AnalysisChartMixin = {
                             <span style="font-size: 18px;">⬅️</span> 返回列表
                         </button>
                         <div class="flex-column">
-                            <h3 class="m-0 text-md">${chart.name}</h3>
-                            <span class="text-xs text-secondary">资源类型: 可视化图表 / 数据源: ${dsName}</span>
+                            <h3 class="m-0 text-md">${Utils.escapeHtml(chart.name)}</h3>
+                            <span class="text-xs text-secondary">资源类型: 可视化图表 / 数据源: ${Utils.escapeHtml(dsName)}</span>
                         </div>
                     </div>
                     <div class="flex gap-10">
@@ -161,7 +161,7 @@ const AnalysisChartMixin = {
                             <div class="bg-card rounded-xl border p-20 shadow-sm">
                                 <h4 class="mt-0 mb-15 text-sm text-secondary">📝 图表描述</h4>
                                 <p class="m-0 text-sm line-height-relaxed">
-                                    ${chart.description || '<span class="text-tertiary italic">暂无详细描述...</span>'}
+                                    ${Utils.escapeHtml(chart.description) || '<span class="text-tertiary italic">暂无详细描述...</span>'}
                                 </p>
                             </div>
                             <div class="bg-card rounded-xl border p-20 shadow-sm">
@@ -173,11 +173,11 @@ const AnalysisChartMixin = {
                                     </div>
                                     <div class="flex-between text-xs">
                                         <span class="text-secondary">维度 (X轴)</span>
-                                        <span class="font-bold">${chart.config.xField || '-'}</span>
+                                        <span class="font-bold">${Utils.escapeHtml(chart.config.xField || '-')}</span>
                                     </div>
                                     <div class="flex-between text-xs">
                                         <span class="text-secondary">指标 (Y轴)</span>
-                                        <span class="font-bold">${chart.config.yField || '-'}</span>
+                                        <span class="font-bold">${Utils.escapeHtml(chart.config.yField || '-')}</span>
                                     </div>
                                     <div class="flex-between text-xs border-top pt-10 mt-5">
                                         <span class="text-secondary">收录时间</span>
@@ -519,7 +519,7 @@ const AnalysisChartMixin = {
                         <div class="p-15 border-bottom flex-between bg-tertiary">
                              <div class="flex-center gap-8">
                                 <span class="text-lg">${this.getChartIcon(c.chart_type)}</span>
-                                <strong class="text-sm truncate" title="${c.name || '未命名图表'}" style="max-width: 150px;">${c.name || '未命名图表'}</strong>
+                                <strong class="text-sm truncate" title="${Utils.escapeHtml(c.name || '未命名图表')}" style="max-width: 150px;">${Utils.escapeHtml(c.name || '未命名图表')}</strong>
                              </div>
                              <button class="btn-icon text-danger hover-bg-danger-light btn-delete-saved-chart" data-id="${c.id}" title="彻底删除">🗑️</button>
                         </div>
@@ -530,7 +530,7 @@ const AnalysisChartMixin = {
                             </div>
                             <div class="flex-between mb-8 text-xs">
                                 <span class="text-secondary">数据源</span>
-                                <span class="truncate text-right" style="max-width: 120px;">${dsName}</span>
+                                <span class="truncate text-right" style="max-width: 120px;">${Utils.escapeHtml(dsName)}</span>
                             </div>
                             <div class="flex-between mb-15 text-xs">
                                 <span class="text-secondary">创建时间</span>

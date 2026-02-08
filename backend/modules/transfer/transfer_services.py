@@ -9,6 +9,7 @@ import hashlib
 import aiofiles
 import logging
 from datetime import datetime, timedelta
+from utils.timezone import get_beijing_time
 from typing import Optional, List, Tuple
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +103,7 @@ class TransferService:
         total_chunks = (data.file_size + chunk_size - 1) // chunk_size
         
         # 计算过期时间
-        expires_at = datetime.now() + timedelta(minutes=TransferConfig.SESSION_EXPIRE_MINUTES)
+        expires_at = get_beijing_time() + timedelta(minutes=TransferConfig.SESSION_EXPIRE_MINUTES)
         
         # 创建会话
         session = TransferSession(
@@ -158,7 +159,7 @@ class TransferService:
             return None
         
         # 检查是否过期
-        if session.expires_at < datetime.now():
+        if session.expires_at < get_beijing_time():
             session.status = TransferStatus.EXPIRED
             await db.commit()
             return None
@@ -171,7 +172,7 @@ class TransferService:
         session.receiver_id = user_id
         session.receiver_device = device_info
         session.status = TransferStatus.CONNECTED
-        session.connected_at = datetime.now()
+        session.connected_at = get_beijing_time()
         
         await db.commit()
         await db.refresh(session)
@@ -256,7 +257,7 @@ class TransferService:
         update_values = {"status": status_value}
         
         if status_value == TransferStatus.COMPLETED.value:
-            update_values["completed_at"] = datetime.now()
+            update_values["completed_at"] = get_beijing_time()
         
         result = await db.execute(
             sql_update(TransferSession)
@@ -352,7 +353,7 @@ class TransferService:
     @staticmethod
     async def cleanup_expired_sessions(db: AsyncSession) -> int:
         """清理过期的会话"""
-        now = datetime.now()
+        now = get_beijing_time()
         
         # 查找过期会话
         result = await db.execute(
@@ -449,7 +450,7 @@ class ChunkService:
             # 检查是否完成
             if session.completed_chunks >= session.total_chunks:
                 session.status = TransferStatus.COMPLETED
-                session.completed_at = datetime.now()
+                session.completed_at = get_beijing_time()
                 
                 # 创建历史记录
                 await HistoryService.create_history(db, session)
@@ -527,7 +528,7 @@ class HistoryService:
         if session.connected_at and session.completed_at:
             duration_ms = int((session.completed_at - session.connected_at).total_seconds() * 1000)
         elif session.connected_at:
-            duration_ms = int((datetime.now() - session.connected_at).total_seconds() * 1000)
+            duration_ms = int((get_beijing_time() - session.connected_at).total_seconds() * 1000)
         
         # 获取用户昵称
         from models import User
@@ -675,7 +676,7 @@ class HistoryService:
     @staticmethod
     async def cleanup_old_history(db: AsyncSession, days: int = 30) -> int:
         """清理旧的历史记录"""
-        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_date = get_beijing_time() - timedelta(days=days)
         
         result = await db.execute(
             delete(TransferHistory).where(

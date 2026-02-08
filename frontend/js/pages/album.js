@@ -547,17 +547,17 @@ class AlbumPage extends Component {
                             <div class="sub-text">点击右上方按钮创建一个相册来整理您的瞬间</div>
                         </div>
                     ` : albums.map(album => `
-                        <div class="album-card" data-album-id="${album.id}">
+                        <div class="album-card" data-album-id="${Utils.escapeHtml(String(album.id))}">
                             <div class="album-cover">
                                 ${album.cover_url
-                ? `<img src="${this.withToken(album.cover_url)}" alt="${Utils.escapeHtml(album.name || '')}" loading="lazy" data-fallback="album">`
+                ? `<img src="${Utils.escapeHtml(this.withToken(album.cover_url))}" alt="${Utils.escapeHtml(album.name || '')}" loading="lazy" data-fallback="album">`
                 : `<div class="album-cover-placeholder"><i class="ri-image-2-line"></i></div>`
             }
                                 <div class="album-overlay">
-                                    <button class="album-action-btn" data-action="edit-album" data-album-id="${album.id}" title="编辑">
+                                    <button class="album-action-btn" data-action="edit-album" data-album-id="${Utils.escapeHtml(String(album.id))}" title="编辑">
                                         <i class="ri-edit-line"></i>
                                     </button>
-                                    <button class="album-action-btn danger" data-action="delete-album" data-album-id="${album.id}" title="删除">
+                                    <button class="album-action-btn danger" data-action="delete-album" data-album-id="${Utils.escapeHtml(String(album.id))}" title="删除">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
@@ -585,7 +585,7 @@ class AlbumPage extends Component {
                         </button>
                         <div>
                             <h1 class="page-title">${Utils.escapeHtml(currentAlbum?.name || '未命名相册')}</h1>
-                            <p class="page-subtitle">${photos.length} 张照片</p>
+                            <p class="page-subtitle">${Utils.escapeHtml(String(photos.length))} 张照片</p>
                         </div>
                     </div>
                     <div class="header-actions d-flex gap-2">
@@ -599,10 +599,10 @@ class AlbumPage extends Component {
                                 ${selectedIds.size === photos.length ? '取消全选' : '全选'}
                             </button>
                             <button class="btn btn-secondary" data-action="batch-download" ${selectedIds.size === 0 ? 'disabled' : ''}>
-                                <i class="ri-download-line"></i> 下载 (${selectedIds.size})
+                                <i class="ri-download-line"></i> 下载 (${Utils.escapeHtml(String(selectedIds.size))})
                             </button>
                             <button class="btn btn-danger" data-action="batch-delete" ${selectedIds.size === 0 ? 'disabled' : ''}>
-                                删除 (${selectedIds.size})
+                                删除 (${Utils.escapeHtml(String(selectedIds.size))})
                             </button>
                             <button class="btn btn-primary" data-action="toggle-selection">退出管理</button>
                         ` : `
@@ -629,18 +629,18 @@ class AlbumPage extends Component {
             const isSelected = selectedIds.has(photo.id);
             const isCover = currentAlbum?.cover_photo_id === photo.id;
             return `
-                                <div class="photo-item ${isSelected ? 'selected' : ''}" data-index="${index}" data-photo-id="${photo.id}" ${!selectionMode ? 'draggable="true"' : ''}>
-                                    <img src="${this.withToken(photo.thumbnail_url)}" alt="${Utils.escapeHtml(photo.filename)}" loading="lazy" data-fallback="photo">
+                                <div class="photo-item ${isSelected ? 'selected' : ''}" data-index="${index}" data-photo-id="${Utils.escapeHtml(String(photo.id))}" ${!selectionMode ? 'draggable="true"' : ''}>
+                                    <img src="${Utils.escapeHtml(this.withToken(photo.thumbnail_url))}" alt="${Utils.escapeHtml(photo.filename)}" loading="lazy" data-fallback="photo">
                                     <div class="photo-overlay">
                                         ${selectionMode ? `
                                             <div class="photo-checkbox ${isSelected ? 'checked' : ''}">
                                                 <i class="${isSelected ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'}"></i>
                                             </div>
                                         ` : `
-                                            <button class="photo-action-btn" data-action="edit-photo" data-photo-id="${photo.id}" title="编辑">
+                                            <button class="photo-action-btn" data-action="edit-photo" data-photo-id="${Utils.escapeHtml(String(photo.id))}" title="编辑">
                                                 <i class="ri-edit-line"></i>
                                             </button>
-                                            <button class="photo-action-btn ${isCover ? 'active' : ''}" data-action="set-cover" data-photo-id="${photo.id}" title="${isCover ? '当前封面' : '设为封面'}">
+                                            <button class="photo-action-btn ${isCover ? 'active' : ''}" data-action="set-cover" data-photo-id="${Utils.escapeHtml(String(photo.id))}" title="${isCover ? '当前封面' : '设为封面'}">
                                                 <i class="${isCover ? 'ri-bookmark-fill' : 'ri-bookmark-line'}"></i>
                                             </button>
                                         `}
@@ -674,7 +674,7 @@ class AlbumPage extends Component {
                     </button>
                     
                     <div class="viewer-image-container">
-                        <img src="${this.withToken(selectedPhoto.url)}" alt="" id="viewerImage">
+                        <img src="${Utils.escapeHtml(this.withToken(selectedPhoto.url))}" alt="" id="viewerImage">
                     </div>
                     
                     <button class="viewer-nav-btn next" data-action="next-photo">
@@ -721,7 +721,7 @@ class AlbumPage extends Component {
         new Modal({
             title: '编辑相册',
             content: `
-    < form id = "albumForm" >
+                <form id="albumForm">
                     <div class="form-group mb-3">
                         <label class="form-label">相册名称 <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="name" value="${Utils.escapeHtml(album.name)}" required maxlength="100">
@@ -730,7 +730,7 @@ class AlbumPage extends Component {
                         <label class="form-label">描述</label>
                         <textarea class="form-control" name="description" rows="3">${Utils.escapeHtml(album.description || '')}</textarea>
                     </div>
-                </form >
+                </form>
     `,
             confirmText: '保存修改',
             onConfirm: async () => {
@@ -758,7 +758,7 @@ class AlbumPage extends Component {
         new Modal({
             title: '编辑照片',
             content: `
-    < form id = "photoForm" >
+                <form id="photoForm">
                     <div class="form-group mb-3">
                         <label class="form-label">标题</label>
                         <input type="text" class="form-control" name="title" value="${Utils.escapeHtml(photo.title || '')}" maxlength="200" placeholder="为照片添加标题">
@@ -774,7 +774,7 @@ class AlbumPage extends Component {
                             <div><i class="ri-database-line"></i> ${Utils.formatBytes(photo.file_size)}</div>
                         </div>
                     </div>
-                </form >
+                </form>
     `,
             confirmText: '保存',
             onConfirm: async () => {
@@ -784,7 +784,7 @@ class AlbumPage extends Component {
                     description: form.description.value.trim() || null
                 };
                 try {
-                    const res = await Api.put(`/ album / photos / ${photoId} `, data);
+                    const res = await Api.put(`/album/photos/${photoId}`, data);
                     if (this.isApiSuccess(res)) {
                         Toast.success('照片信息已更新');
                         // 更新本地状态

@@ -161,10 +161,10 @@ class TransferPage extends Component {
         if (isTransferring) return this.renderProgress();
         if (isWaiting && sessionCode) {
             return `<div class="send-waiting">
-                <div class="code-display">${sessionCode.split('').map(d => `<span class="digit">${d}</span>`).join('')}</div>
+                <div class="code-display">${Utils.escapeHtml(sessionCode).split('').map(d => `<span class="digit">${d}</span>`).join('')}</div>
                 <button class="btn" id="copyCodeBtn"><i class="fas fa-copy"></i> 复制</button>
                 <p>传输码 ${config.session_expire_minutes} 分钟内有效</p>
-                <div class="file-info"><i class="fas fa-file"></i> ${selectedFile?.name} (${this.formatSize(selectedFile?.size || 0)})</div>
+                <div class="file-info"><i class="fas fa-file"></i> ${Utils.escapeHtml(selectedFile?.name || '')} (${this.formatSize(selectedFile?.size || 0)})</div>
                 ${peerConnected ? `<button class="btn primary" id="startTransferBtn"><i class="fas fa-play"></i> 开始传输</button>` : '<p class="waiting">等待对方连接...</p>'}
                 <button class="btn cancel" id="cancelSessionBtn"><i class="fas fa-times"></i> 取消</button>
             </div>`;
@@ -180,7 +180,7 @@ class TransferPage extends Component {
             <div class="selected-file">
                 <i class="fas fa-file"></i>
                 <div class="file-details">
-                    <span class="file-name">${selectedFile.name}</span>
+                    <span class="file-name">${Utils.escapeHtml(selectedFile.name)}</span>
                     <span class="file-size">${this.formatSize(selectedFile.size)}</span>
                 </div>
                 <button id="removeFileBtn"><i class="fas fa-times"></i></button>
@@ -195,7 +195,7 @@ class TransferPage extends Component {
         const { inputCode, joinedSession, isTransferring } = this.state;
         if (isTransferring) return this.renderProgress();
         if (joinedSession) {
-            return `<div class="receive-joined"><i class="fas fa-check-circle"></i><p>已连接，等待传输...</p><div class="file-info">${joinedSession.file_name} (${this.formatSize(joinedSession.file_size)})</div><button class="btn cancel" id="leaveSessionBtn"><i class="fas fa-times"></i> 取消</button></div>`;
+            return `<div class="receive-joined"><i class="fas fa-check-circle"></i><p>已连接，等待传输...</p><div class="file-info">${Utils.escapeHtml(joinedSession.file_name)} (${this.formatSize(joinedSession.file_size)})</div><button class="btn cancel" id="leaveSessionBtn"><i class="fas fa-times"></i> 取消</button></div>`;
         }
         return `<div class="receive-input"><p>输入6位传输码</p><input type="text" class="code-input" id="codeInput" maxlength="6" placeholder="______" value="${inputCode}"><button class="btn primary ${inputCode.length === 6 ? '' : 'disabled'}" id="joinSessionBtn" ${inputCode.length !== 6 ? 'disabled' : ''}><i class="fas fa-link"></i> 连接</button></div>`;
     }
@@ -221,12 +221,12 @@ class TransferPage extends Component {
                         <i class="fas ${h.direction === 'send' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
                     </div>
                     <div class="item-info">
-                        <span class="item-name">${h.file_name}</span>
-                        <span class="item-meta">${this.formatSize(h.file_size)} · ${h.peer_nickname || '未知'} · ${Utils.timeAgo(h.created_at)}</span>
+                        <span class="item-name">${Utils.escapeHtml(h.file_name)}</span>
+                        <span class="item-meta">${this.formatSize(h.file_size)} · ${Utils.escapeHtml(h.peer_nickname || '未知')} · ${Utils.timeAgo(h.created_at)}</span>
                     </div>
-                    <button class="del" data-id="${h.id}"><i class="fas fa-trash"></i></button>
+                    <button class="del" data-id="${Utils.escapeHtml(String(h.id))}"><i class="fas fa-trash"></i></button>
                 </div>`).join('')}</div>`}
-            ${pages > 1 ? `<div class="pagination"><button ${historyPage <= 1 ? 'disabled' : ''} data-page="${historyPage - 1}">上一页</button><span>${historyPage}/${pages}</span><button ${historyPage >= pages ? 'disabled' : ''} data-page="${historyPage + 1}">下一页</button></div>` : ''}
+            ${pages > 1 ? `<div class="pagination"><button ${historyPage <= 1 ? 'disabled' : ''} data-page="${Utils.escapeHtml(String(historyPage - 1))}">上一页</button><span>${Utils.escapeHtml(String(historyPage))}/${Utils.escapeHtml(String(pages))}</span><button ${historyPage >= pages ? 'disabled' : ''} data-page="${Utils.escapeHtml(String(historyPage + 1))}">下一页</button></div>` : ''}
         </div>`;
     }
 

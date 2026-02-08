@@ -27,11 +27,11 @@ const AnalysisSqlMixin = {
                     const ds = this.state.datasets.find(d => d.table_name === t);
                     const displayName = ds ? ds.name : t;
                     return `
-                                    <div class="sql-tree-item" data-table="${t}">
-                                        <div class="sql-table-header" data-table="${t}" title="物理表名: ${t}">
+                                    <div class="sql-tree-item" data-table="${Utils.escapeHtml(t)}">
+                                        <div class="sql-table-header" data-table="${Utils.escapeHtml(t)}" title="物理表名: ${Utils.escapeHtml(t)}">
                                             <span class="tree-icon">▶</span>
                                             <span class="table-icon">📋</span>
-                                            <span class="table-name">${displayName}</span>
+                                            <span class="table-name">${Utils.escapeHtml(displayName)}</span>
                                         </div>
                                         <div class="sql-columns-list" id="cols-${t.replace(/\W/g, '_')}" style="display:none">
                                             <div class="text-center p-10"><span class="loading-icon"></span></div>
@@ -61,7 +61,7 @@ const AnalysisSqlMixin = {
                                         ${sqlTables.map(t => {
                 const ds = this.state.datasets.find(d => d.table_name === t);
                 const displayName = ds ? ds.name : t;
-                return `<option value="${t}" ${this.state.builderTable === t ? 'selected' : ''}>${displayName}</option>`;
+                return `<option value="${Utils.escapeHtml(t)}" ${this.state.builderTable === t ? 'selected' : ''}>${Utils.escapeHtml(displayName)}</option>`;
             }).join('')}
                                     </select>
                                 </div>
@@ -74,13 +74,13 @@ const AnalysisSqlMixin = {
                                                 <!-- 动态加载字段按钮 -->
                                                 ${(this.state.builderColumns || []).map(c => `
                                                     <div class="field-checkbox-item">
-                                                        <input type="checkbox" id="field-${c}" class="builder-field-cb" value="${c}" ${this.state.builderSelectedFields?.includes(c) ? 'checked' : ''}>
-                                                        <label for="field-${c}" class="text-nowrap">${c}</label>
+                                                        <input type="checkbox" id="field-${Utils.escapeHtml(c)}" class="builder-field-cb" value="${Utils.escapeHtml(c)}" ${this.state.builderSelectedFields?.includes(c) ? 'checked' : ''}>
+                                                        <label for="field-${Utils.escapeHtml(c)}" class="text-nowrap">${Utils.escapeHtml(c)}</label>
                                                         ${this.state.builderSelectedFields?.includes(c) ? `
                                                             <input type="text" class="form-control form-control-xs builder-field-alias" 
                                                                 style="width: 80px; margin-left: 5px;"
-                                                                placeholder="别名" data-field="${c}"
-                                                                value="${this.state.builderFieldAliases[c] || ''}">
+                                                                placeholder="别名" data-field="${Utils.escapeHtml(c)}"
+                                                                value="${Utils.escapeHtml(this.state.builderFieldAliases[c] || '')}">
                                                         ` : ''}
                                                     </div>
                                                 `).join('')}
@@ -101,7 +101,7 @@ const AnalysisSqlMixin = {
                                             <div class="flex gap-5 mb-5 align-center">
                                                 <select class="form-control form-control-sm builder-filter-field" style="width:95px">
                                                     <option value="">选择字段...</option>
-                                                    ${(this.state.builderColumns || []).map(c => `<option value="${c}" ${this.state.builderFilterField === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                                    ${(this.state.builderColumns || []).map(c => `<option value="${Utils.escapeHtml(c)}" ${this.state.builderFilterField === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                                                 </select>
                                                 <select class="form-control form-control-sm builder-filter-op" style="width:110px">
                                                     <optgroup label="数值/比较">
@@ -130,7 +130,7 @@ const AnalysisSqlMixin = {
                                                     <input type="text" id="builder-filter-val" class="form-control form-control-sm builder-filter-val" style="width:200px"
                                                         placeholder="${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(this.state.builderFilterOp) ? '无需输入' : '过滤值'}" 
                                                         ${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(this.state.builderFilterOp) ? 'disabled' : ''}
-                                                        value="${this.state.builderFilterVal || ''}">
+                                                        value="${Utils.escapeHtml(this.state.builderFilterVal || '')}">
                                                     ${(this.state.builderFilterField || '').toLowerCase().match(/date|time|时间|日期|at$/) ? `
                                                         <select class="form-control form-control-sm builder-date-shortcut" style="width:80px">
                                                             <option value="">快捷查询</option>
@@ -152,7 +152,7 @@ const AnalysisSqlMixin = {
                                                     </select>
                                                     <select class="form-control form-control-sm builder-filter-field" style="width:95px">
                                                         <option value="">选择字段...</option>
-                                                        ${(this.state.builderColumns || []).map(c => `<option value="${c}" ${f.field === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                                        ${(this.state.builderColumns || []).map(c => `<option value="${Utils.escapeHtml(c)}" ${f.field === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                                                     </select>
                                                     <select class="form-control form-control-sm builder-filter-op" style="width:110px">
                                                         <optgroup label="数值/比较">
@@ -180,7 +180,7 @@ const AnalysisSqlMixin = {
                                                     <input type="text" class="form-control form-control-sm builder-filter-val" style="width:200px" 
                                                         placeholder="${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(f.op) ? '无需输入' : '过滤值'}" 
                                                         ${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(f.op) ? 'disabled' : ''}
-                                                        value="${f.val || ''}">
+                                                        value="${Utils.escapeHtml(f.val || '')}">
                                                     <button class="btn btn-ghost btn-xs btn-remove-filter" data-index="${i}">×</button>
                                                 </div>
                                             `).join('')}
@@ -204,9 +204,9 @@ const AnalysisSqlMixin = {
                                                 <option value="MAX" ${this.state.builderAggregate === 'MAX' ? 'selected' : ''}>最大值 (MAX)</option>
                                                 <option value="MIN" ${this.state.builderAggregate === 'MIN' ? 'selected' : ''}>最小值 (MIN)</option>
                                             </select>
-                                            <select id="builder-sort-field" class="form-control form-control-sm" style="flex:1; min-width:120px" title="${this.state.builderSortField || '选择排序字段'}">
+                                            <select id="builder-sort-field" class="form-control form-control-sm" style="flex:1; min-width:120px" title="${Utils.escapeHtml(this.state.builderSortField || '选择排序字段')}">
                                                 <option value="">排序字段...</option>
-                                                ${(this.state.builderColumns || []).map(c => `<option value="${c}" ${this.state.builderSortField === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                                ${(this.state.builderColumns || []).map(c => `<option value="${Utils.escapeHtml(c)}" ${this.state.builderSortField === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                                             </select>
                                             <select id="builder-sort-dir" class="form-control form-control-sm" style="width:85px">
                                                 <option value="ASC" ${this.state.builderSortDir === 'ASC' ? 'selected' : ''}>升序</option>
@@ -236,7 +236,7 @@ const AnalysisSqlMixin = {
                                 </div>
                             </div>
                             <textarea id="sql-query-input" class="form-control sql-textarea-compact" rows="6" 
-                                placeholder="编写或生成 SQL...">${this.state.sqlQuery || ''}</textarea>
+                                placeholder="编写或生成 SQL...">${Utils.escapeHtml(this.state.sqlQuery || '')}</textarea>
                             
                             <div class="flex gap-10 mt-10 border-top pt-10">
                                 <div class="flex-1"></div>
@@ -282,11 +282,11 @@ const AnalysisSqlMixin = {
             <div class="sql-result-table-wrapper">
                 <table class="premium-table">
                     <thead>
-                        <tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr>
+                        <tr>${columns.map(c => `<th>${Utils.escapeHtml(c)}</th>`).join('')}</tr>
                     </thead>
                     <tbody>
                         ${rows.slice(0, 200).map(row => `
-                            <tr>${columns.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>
+                            <tr>${columns.map(c => `<td>${Utils.escapeHtml(row[c] ?? '')}</td>`).join('')}</tr>
                         `).join('')}
                     </tbody>
                 </table>
@@ -385,9 +385,9 @@ const AnalysisSqlMixin = {
                         const res = await AnalysisApi.getDatasetData(ds.id, { page: 1, size: 1 });
                         const columns = res.data?.columns || [];
                         colsList.innerHTML = columns.map(c => `
-                            <div class="sql-col-item" data-table="${tableName}" data-col="${c}">
+                            <div class="sql-col-item" data-table="${Utils.escapeHtml(tableName)}" data-col="${Utils.escapeHtml(c)}">
                                 <span class="col-icon">🔹</span>
-                                <span class="col-name">${c}</span>
+                                <span class="col-name">${Utils.escapeHtml(c)}</span>
                             </div>
                         `).join('');
                     } else {

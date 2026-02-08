@@ -301,7 +301,7 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.16 |
+| | `APP_VERSION` | 系统版本 | 2.5.21 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |
@@ -326,8 +326,9 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 ## 🛡️ 安全特性
 
 - **密码存储**：Bcrypt 强哈希加密
-- **API 安全**：全局异常拦截、标准响应封装、CSRF 防护（可选）
-- **敏感数据脱敏**：日志记录自动脱敏（手机号、Token 等）
+- **API 安全**：全局异常拦截、标准响应封装、CSRF 防护（异步+分布式支持）
+- **前端安全**：全站 XSS 漏洞深度加固，强制 HTML 转义与属性属性脱敏 (`Utils.escape`)
+- **敏感数据脱敏**：日志记录自动脱敏（手机号、Token、密码等）
 - **速率限制**：基于 Redis 的滑动窗口限流，防止暴力破解
 - **JWT 自动轮换**：每 25-35 天自动更换签名密钥，旧密钥平滑过渡
 

@@ -336,7 +336,7 @@ const WindowManager = {
                         <i class="ri-checkbox-blank-line"></i>
                     </button>
                 </div>
-                <div class="window-title">${title}</div>
+                <div class="window-title">${typeof Utils !== 'undefined' ? Utils.escapeHtml(title) : title.replace(/[<>&"']/g, '')}</div>
             </div>
             <div class="window-body"></div>
             <!-- 调整大小句柄 -->

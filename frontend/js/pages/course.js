@@ -194,7 +194,7 @@ class CoursePage extends Component {
                     </div>
                     <div class="header-right d-flex align-items-center gap-3">
                         <div class="search-group">
-                            <input type="text" class="form-input" id="course-search" placeholder="搜索课程..." value="${keyword}">
+                            <input type="text" class="form-input" id="course-search" placeholder="搜索课程..." value="${Utils.escapeHtml(keyword || '')}">
                             <button class="btn btn-primary" id="btn-search-course">
                                 <i class="ri-search-line"></i> 搜索
                             </button>
@@ -219,10 +219,10 @@ class CoursePage extends Component {
         const progress = Math.min(100, Math.max(0, parseInt(course.progress || 0)));
 
         return `
-            <div class="course-card fade-up" data-course-id="${course.id}">
+            <div class="course-card fade-up" data-course-id="${Utils.escapeHtml(String(course.id))}">
                 <div class="course-cover">
                     ${course.cover_image
-                ? `<img src="${course.cover_image}" alt="${course.title}">`
+                ? `<img src="${Utils.escapeHtml(course.cover_image)}" alt="${Utils.escapeHtml(course.title)}">`
                 : `<div class="cover-placeholder"><i class="ri-palette-line"></i></div>`
             }
                     <div class="progress-overlay">
@@ -243,7 +243,7 @@ class CoursePage extends Component {
                     ` : '<p class="course-desc">开始您的学习之旅</p>'}
 
                 </div>
-                <div class="card-footer-action" ${lastChapterId ? `onclick="event.stopPropagation(); app.coursePage.continueLearning('${course.id}', '${lastChapterId}')"` : ''}>
+                <div class="card-footer-action" ${lastChapterId ? `onclick="event.stopPropagation(); app.coursePage.continueLearning(decodeURIComponent('${encodeURIComponent(String(course.id))}'), decodeURIComponent('${encodeURIComponent(String(lastChapterId))}'))"` : ''}>
                     <span>${lastChapterId ? '继续学习' : '开始学习'}</span>
                     <i class="ri-arrow-right-line"></i>
                 </div>
@@ -267,10 +267,10 @@ class CoursePage extends Component {
         const difficulty = difficultyMap[course.difficulty] || difficultyMap.beginner;
 
         return `
-            <div class="course-card fade-up" data-course-id="${course.id}">
+            <div class="course-card fade-up" data-course-id="${Utils.escapeHtml(String(course.id))}">
                 <div class="course-cover">
                     ${course.cover_image
-                ? `<img src="${course.cover_image}" alt="${course.title}">`
+                ? `<img src="${Utils.escapeHtml(course.cover_image)}" alt="${Utils.escapeHtml(course.title)}">`
                 : `<div class="cover-placeholder"><i class="ri-palette-line"></i></div>`
             }
                     <span class="difficulty-badge ${difficulty.class}">${difficulty.label}</span>
@@ -338,14 +338,14 @@ class CoursePage extends Component {
                     <h3 class="list-title">正在学习</h3>
                     ${myLearning.length > 0 ? myLearning.map(item => {
             // 读取本地存储的最后学习记录
-            const lastChapterId = localStorage.getItem(`lastChapter_${item.course.id}`);
-            const lastChapterTitle = localStorage.getItem(`lastChapterTitle_${item.course.id}`);
+            const lastChapterId = localStorage.getItem(Config.storageKeys.courseLastChapter + item.course.id);
+            const lastChapterTitle = localStorage.getItem(Config.storageKeys.courseLastChapterTitle + item.course.id);
 
             return `
-                        <div class="learning-item" data-course-id="${item.course.id}">
+                        <div class="learning-item" data-course-id="${Utils.escapeHtml(String(item.course.id))}">
                             <div class="learning-cover">
                                 ${item.course.cover_image
-                    ? `<img src="${item.course.cover_image}" alt="">`
+                    ? `<img src="${Utils.escapeHtml(item.course.cover_image)}" alt="">`
                     : `<div class="cover-placeholder small"><i class="ri-book-2-line"></i></div>`
                 }
                             </div>
@@ -360,8 +360,8 @@ class CoursePage extends Component {
                                 </span>
                             </div>
                             <button class="btn-continue" 
-                                    data-course-id="${item.course.id}" 
-                                    ${lastChapterId ? `data-chapter-id="${lastChapterId}"` : ''}>
+                                    data-course-id="${Utils.escapeHtml(String(item.course.id))}" 
+                                    ${lastChapterId ? `data-chapter-id="${Utils.escapeHtml(String(lastChapterId))}"` : ''}>
                                 <i class="${lastChapterId ? 'ri-history-line' : 'ri-play-circle-line'}"></i> 
                                 ${lastChapterId ? '继续学习' : '开始学习'}
                             </button>
@@ -398,7 +398,7 @@ class CoursePage extends Component {
                         <div class="manage-item">
                             <div class="manage-cover">
                                 ${course.cover_image
-                ? `<img src="${course.cover_image}" alt="">`
+                ? `<img src="${Utils.escapeHtml(course.cover_image)}" alt="">`
                 : `<div class="cover-placeholder small"><i class="ri-book-2-line"></i></div>`
             }
                             </div>
@@ -412,13 +412,13 @@ class CoursePage extends Component {
                                 </div>
                             </div>
                             <div class="manage-actions">
-                                <button class="btn-icon" data-edit-course="${course.id}" title="编辑">
+                                <button class="btn-icon" data-edit-course="${Utils.escapeHtml(String(course.id))}" title="编辑">
                                     <i class="ri-edit-line"></i>
                                 </button>
-                                <button class="btn-icon" data-manage-chapters="${course.id}" title="管理章节">
+                                <button class="btn-icon" data-manage-chapters="${Utils.escapeHtml(String(course.id))}" title="管理章节">
                                     <i class="ri-list-ordered"></i>
                                 </button>
-                                <button class="btn-icon danger" data-delete-course="${course.id}" title="删除">
+                                <button class="btn-icon danger" data-delete-course="${Utils.escapeHtml(String(course.id))}" title="删除">
                                     <i class="ri-delete-bin-line"></i>
                                 </button>
                             </div>
@@ -457,7 +457,7 @@ class CoursePage extends Component {
                 <div class="course-detail">
                     <div class="detail-cover">
                         ${currentCourse.cover_image
-                ? `<img src="${currentCourse.cover_image}" alt="">`
+                ? `<img src="${Utils.escapeHtml(currentCourse.cover_image)}" alt="">`
                 : `<div class="cover-placeholder large"><i class="ri-book-2-line"></i></div>`
             }
                     </div>
@@ -503,7 +503,7 @@ class CoursePage extends Component {
                         ${currentCourse.chapters && currentCourse.chapters.length > 0
                 ? currentCourse.chapters.map((ch, idx) => `
                                 <div class="chapter-item ${currentCourse.enrolled ? 'clickable' : 'locked'}" 
-                                     data-chapter-id="${ch.id}">
+                                     data-chapter-id="${Utils.escapeHtml(String(ch.id))}">
                                     <span class="chapter-index">${idx + 1}</span>
                                     <div class="chapter-info">
                                         <span class="chapter-title">${Utils.escapeHtml(ch.title)}</span>
@@ -539,7 +539,7 @@ class CoursePage extends Component {
             : null;
 
         // 获取保存的视频播放进度
-        const savedVideoProgress = localStorage.getItem(`videoProgress_${currentChapter.id}`);
+        const savedVideoProgress = localStorage.getItem(Config.storageKeys.videoProgress + currentChapter.id);
         const savedProgressTime = savedVideoProgress ? parseInt(savedVideoProgress) : 0;
 
         return `
@@ -564,10 +564,10 @@ class CoursePage extends Component {
                                     <span>视频加载中...</span>
                                 </div>
                                 <video id="course-video" controls preload="metadata" 
-                                       data-chapter-id="${currentChapter.id}"
-                                       data-saved-progress="${savedProgressTime}"
+                                       data-chapter-id="${Utils.escapeHtml(String(currentChapter.id))}"
+                                       data-saved-progress="${Utils.escapeHtml(String(savedProgressTime))}"
                                        poster="">
-                                    <source src="${videoUrl}" type="video/mp4">
+                                    <source src="${Utils.escapeHtml(videoUrl)}" type="video/mp4">
                                     您的浏览器不支持视频播放
                                 </video>
                             </div>
@@ -614,7 +614,7 @@ class CoursePage extends Component {
                 <div class="learn-footer">
                     <button class="btn btn-primary ${currentChapter.is_completed ? 'completed' : ''}" 
                             id="btn-complete-chapter" 
-                            data-chapter-id="${currentChapter.id}">
+                            data-chapter-id="${Utils.escapeHtml(String(currentChapter.id))}">
                         <i class="ri-checkbox-circle-line"></i> ${currentChapter.is_completed ? '已完成学习' : '完成本章'}
                     </button>
                 </div>
@@ -622,7 +622,7 @@ class CoursePage extends Component {
                 <!-- 章节切换导航 -->
                 <div class="learn-nav">
                     <button class="btn-nav-chapter prev" ${!prevChapter ? 'disabled' : ''} 
-                            data-nav-chapter="${prevChapter?.id}">
+                            data-nav-chapter="${Utils.escapeHtml(String(prevChapter?.id || ''))}">
                         <i class="ri-arrow-left-s-line"></i>
                         <div class="nav-text">
                             <span class="nav-label">上一章</span>
@@ -630,7 +630,7 @@ class CoursePage extends Component {
                         </div>
                     </button>
                     <button class="btn-nav-chapter next" ${!nextChapter ? 'disabled' : ''} 
-                            data-nav-chapter="${nextChapter?.id}">
+                            data-nav-chapter="${Utils.escapeHtml(String(nextChapter?.id || ''))}">
                         <i class="ri-arrow-right-s-line"></i>
                         <div class="nav-text">
                             <span class="nav-label">下一章</span>
@@ -650,8 +650,12 @@ class CoursePage extends Component {
 
     renderMarkdown(text) {
         if (!text) return '';
+
+        // 初步对全文进行转义
+        let html = Utils.escapeHtml(text);
+
         // 增强的 Markdown 转换
-        return text
+        return html
             .replace(/# (.*)/g, '<h1>$1</h1>')
             .replace(/## (.*)/g, '<h2>$1</h2>')
             .replace(/### (.*)/g, '<h3>$1</h3>')
@@ -661,7 +665,9 @@ class CoursePage extends Component {
             .replace(/^- (.*)/gm, '<li>$1</li>')
             .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
             .replace(/^> (.*)/gm, '<blockquote>$1</blockquote>')
-            .replace(/```(.*?)\n([\s\S]*?)```/gs, '<pre><code>$2</code></pre>')
+            .replace(/```(.*?)\n([\s\S]*?)```/gs, (match, lang, code) => {
+                return `<pre class="code-block" data-lang="${Utils.escapeHtml(lang || 'text')}"><code>${code.trim()}</code></pre>`;
+            })
             .replace(/\n/g, '<br>');
     }
 
@@ -978,8 +984,8 @@ class CoursePage extends Component {
                                 <div class="chapter-manage-item" style="display: flex; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 8px;">
                                     <span style="width: 30px; text-align: center;">${idx + 1}</span>
                                     <span style="flex: 1;">${Utils.escapeHtml(ch.title)}</span>
-                                    <button class="btn-icon small" data-edit-chapter="${ch.id}"><i class="ri-edit-line"></i></button>
-                                    <button class="btn-icon small danger" data-delete-chapter="${ch.id}"><i class="ri-delete-bin-line"></i></button>
+                                    <button class="btn-icon small" data-edit-chapter="${Utils.escapeHtml(String(ch.id))}"><i class="ri-edit-line"></i></button>
+                                    <button class="btn-icon small danger" data-delete-chapter="${Utils.escapeHtml(String(ch.id))}"><i class="ri-delete-bin-line"></i></button>
                                 </div>
                             `).join('') : '<p style="text-align: center; color: var(--text-tertiary);">暂无章节</p>'}
                         </div>
@@ -1400,7 +1406,7 @@ class CoursePage extends Component {
                             width: '800px',
                             content: `
                                 <video controls style="width: 100%; max-height: 450px;" autoplay>
-                                    <source src="${videoUrl}" type="video/mp4">
+                                    <source src="${Utils.escapeHtml(videoUrl)}" type="video/mp4">
                                 </video>
                             `,
                             showCancel: false,
@@ -1446,7 +1452,7 @@ class CoursePage extends Component {
         const jumpBtn = this.container.querySelector('#btn-jump-progress');
 
         // 恢复上次的播放速度
-        const savedSpeed = localStorage.getItem('videoPlaybackSpeed') || '1';
+        const savedSpeed = localStorage.getItem(Config.storageKeys.videoPlaybackSpeed) || '1';
         if (speedSelect) {
             speedSelect.value = savedSpeed;
             video.playbackRate = parseFloat(savedSpeed);
@@ -1483,7 +1489,7 @@ class CoursePage extends Component {
             speedSelect.addEventListener('change', (e) => {
                 const speed = parseFloat(e.target.value);
                 video.playbackRate = speed;
-                localStorage.setItem('videoPlaybackSpeed', speed.toString());
+                localStorage.setItem(Config.storageKeys.videoPlaybackSpeed, speed.toString());
             });
         }
 
@@ -1505,20 +1511,20 @@ class CoursePage extends Component {
             // 每5秒保存一次，避免频繁写入
             if (currentTime - lastSaveTime >= 5) {
                 lastSaveTime = currentTime;
-                localStorage.setItem(`videoProgress_${chapterId}`, currentTime.toString());
+                localStorage.setItem(Config.storageKeys.videoProgress + chapterId, currentTime.toString());
             }
         });
 
         // 视频暂停时保存进度
         video.addEventListener('pause', () => {
             const currentTime = Math.floor(video.currentTime);
-            localStorage.setItem(`videoProgress_${chapterId}`, currentTime.toString());
+            localStorage.setItem(Config.storageKeys.videoProgress + chapterId, currentTime.toString());
         });
 
         // 视频播放结束处理
         video.addEventListener('ended', async () => {
             // 清除保存的进度（视频已看完）
-            localStorage.removeItem(`videoProgress_${chapterId}`);
+            localStorage.removeItem(Config.storageKeys.videoProgress + chapterId);
 
             // 自动标记章节完成
             const completeBtn = this.container.querySelector('#btn-complete-chapter');

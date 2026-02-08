@@ -6,6 +6,7 @@ DataLens 数据透镜模块 - 业务逻辑层
 import json
 import logging
 from datetime import datetime
+from utils.timezone import get_beijing_time
 import os
 import sys
 import time
@@ -1146,7 +1147,7 @@ class DataSourceService:
             source.api_config = json.dumps(data.api_config)
         if data.is_active is not None:
             source.is_active = data.is_active
-        source.updated_at = datetime.now()
+        source.updated_at = get_beijing_time()
         await db.flush()
         await db.refresh(source)
         return source
@@ -1313,7 +1314,7 @@ class CategoryService:
             value = getattr(data, field, None)
             if value is not None:
                 setattr(category, field, value)
-        category.updated_at = datetime.now()
+        category.updated_at = get_beijing_time()
         await db.flush()
         await db.refresh(category)
         return category
@@ -1474,7 +1475,7 @@ class ViewService:
         if data.chart_config is not None:
             view.chart_config = json.dumps(data.chart_config)
 
-        view.updated_at = datetime.now()
+        view.updated_at = get_beijing_time()
         await db.flush()
         await db.refresh(view)
         return view

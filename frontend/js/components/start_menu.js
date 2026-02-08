@@ -191,9 +191,9 @@ class StartMenuComponent extends Component {
         }
         // 如果是 RI class
         if (spec.emoji && spec.emoji.startsWith('ri-')) {
-            return `<i class="${spec.emoji}"></i>`;
+            return `<i class="${Utils.escapeHtml(spec.emoji)}"></i>`;
         }
-        return spec.emoji;
+        return Utils.escapeHtml(spec.emoji);
     }
 
     /**
@@ -210,7 +210,7 @@ class StartMenuComponent extends Component {
 
             // 分组标题
             if (item.isGroupHeader) {
-                return `<div class="menu-group-header">${item.title}</div>`;
+                return `<div class="menu-group-header">${Utils.escapeHtml(item.title)}</div>`;
             }
 
             // 普通菜单项
@@ -220,10 +220,10 @@ class StartMenuComponent extends Component {
             return `
                 <div class="menu-item-wrapper">
                     <div class="${itemClass}" 
-                         data-id="${uniqueId}" 
-                         ${item.path ? `data-path="${item.path}"` : ''}>
+                         data-id="${Utils.escapeHtml(uniqueId)}" 
+                         ${item.path ? `data-path="${Utils.escapeHtml(item.path)}"` : ''}>
                         <span class="menu-icon">${this._renderIcon(item.id, item.icon)}</span>
-                        <span class="menu-title">${item.title}</span>
+                        <span class="menu-title">${Utils.escapeHtml(item.title)}</span>
                         ${item.isShortcut ? '<span class="menu-badge"><i class="ri-pushpin-2-fill"></i></span>' : ''}
                     </div>
                 </div>

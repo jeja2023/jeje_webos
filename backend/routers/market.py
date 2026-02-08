@@ -21,6 +21,7 @@ from core.config import get_settings
 from models import UserModule
 from schemas import success
 from sqlalchemy import select, delete
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -331,19 +332,18 @@ async def user_install_module(
     )
     user_module = result.scalar_one_or_none()
     
-    from datetime import datetime
     if user_module:
         user_module.installed = True
         user_module.enabled = True
-        user_module.updated_at = datetime.now()
+        user_module.updated_at = get_beijing_time()
     else:
         user_module = UserModule(
             user_id=user_id,
             module_id=module_id,
             installed=True,
             enabled=True,
-            installed_at=datetime.now(),
-            updated_at=datetime.now()
+            installed_at=get_beijing_time(),
+            updated_at=get_beijing_time()
         )
         db.add(user_module)
     
@@ -402,9 +402,8 @@ async def user_toggle_module(
     if not user_module or not user_module.installed:
         raise HTTPException(status_code=400, detail="请先安装该模块")
     
-    from datetime import datetime
     user_module.enabled = enabled
-    user_module.updated_at = datetime.now()
+    user_module.updated_at = get_beijing_time()
     await db.commit()
     
     action = "启用" if enabled else "禁用"

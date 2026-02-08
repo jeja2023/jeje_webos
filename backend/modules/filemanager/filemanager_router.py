@@ -6,7 +6,7 @@ RESTful 风格，提供完整的文件管理功能
 from typing import Optional, List
 import os
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,9 +80,7 @@ async def browse_directory(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        logger.error(f"浏览目录失败: {e}\n{traceback.format_exc()}")
+        logger.error(f"浏览目录失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"浏览失败: {str(e)}")
 
 
@@ -611,8 +609,7 @@ async def upload_folder(
                 created_folders += 1
                 logger.info(f"创建文件夹: {folder_path} -> ID {new_folder.id}")
         except Exception as e:
-            import traceback
-            logger.error(f"创建文件夹 {folder_path} 失败: {e}\n{traceback.format_exc()}")
+            logger.error(f"创建文件夹 {folder_path} 失败: {e}", exc_info=True)
     
     logger.info(f"文件夹创建完成，共创建 {created_folders} 个，缓存: {folder_cache}")
     
@@ -686,6 +683,7 @@ async def upload_folder(
 @router.get("/folders/{folder_id}/download")
 async def download_folder(
     folder_id: int,
+    background_tasks: BackgroundTasks,
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_permission("filemanager.download"))
@@ -696,8 +694,9 @@ async def download_folder(
     递归获取文件夹下所有文件，打包成 ZIP 流式返回
     """
     import zipfile
-    import io
+    import tempfile
     from datetime import datetime
+    from starlette.background import BackgroundTasks
     
     service = get_service(db, user)
     storage = get_storage_manager()
@@ -749,32 +748,49 @@ async def download_folder(
     
     if not all_files:
         raise HTTPException(status_code=400, detail="文件夹为空，无法下载")
+        
+    # 检查总大小，防止过大 (限制为 2GB)
+    total_size = sum(f["path"].stat().st_size for f in all_files)
+    if total_size > 2 * 1024 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件夹内容过大 (>2GB)，暂不支持打包下载")
     
-    # 创建 ZIP 文件到内存
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file_info in all_files:
-            try:
-                # 在 ZIP 中保持目录结构
-                arcname = f"{folder_name}/{file_info['name']}"
-                zf.write(file_info["path"], arcname)
-            except Exception as e:
-                logger.warning(f"添加文件到ZIP失败: {file_info['name']}, 错误: {e}")
+    # 创建临时文件
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    temp_path = temp_file.name
+    temp_file.close() # 关闭句柄，让zipfile重新打开
     
-    zip_buffer.seek(0)
-    
-    # 处理文件名编码
-    zip_filename = f"{folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-    encoded_filename = encode_filename_for_header(zip_filename)
-    cd_header = f"attachment; filename*={encoded_filename}" if not encoded_filename.startswith('"') else f'attachment; filename={encoded_filename}'
-    
-    logger.info(f"用户 {user.user_id} 下载文件夹: {folder_name}，包含 {len(all_files)} 个文件")
-    
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": cd_header}
-    )
+    try:
+        with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_info in all_files:
+                try:
+                    # 在 ZIP 中保持目录结构
+                    arcname = f"{folder_name}/{file_info['name']}"
+                    zf.write(file_info["path"], arcname)
+                except Exception as e:
+                    logger.warning(f"添加文件到ZIP失败: {file_info['name']}, 错误: {e}")
+                    
+        # 后台任务删除临时文件
+        background_tasks.add_task(os.remove, temp_path)
+        
+        # 处理文件名编码
+        zip_filename = f"{folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        encoded_filename = encode_filename_for_header(zip_filename)
+        cd_header = f"attachment; filename*={encoded_filename}" if not encoded_filename.startswith('"') else f'attachment; filename={encoded_filename}'
+        
+        logger.info(f"用户 {user.user_id} 下载文件夹: {folder_name}，包含 {len(all_files)} 个文件，临时文件: {temp_path}")
+        
+        return FileResponse(
+            temp_path,
+            media_type="application/zip",
+            headers={"Content-Disposition": cd_header}
+        )
+        
+    except Exception as e:
+        # 上传失败清理临时文件
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        logger.error(f"打包下载失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"打包下载失败: {str(e)}")
 
 
 @router.get("/files/{file_id}")

@@ -13,7 +13,7 @@ class DockComponent extends Component {
         };
 
         // 固定应用的 localStorage key
-        this.PINNED_APPS_KEY = 'jeje_pinned_apps';
+        this.PINNED_APPS_KEY = Config.storageKeys.pinnedApps;
 
         Store.subscribe('currentRoute', (route) => {
             this.setState({ activeApp: route, openFolder: null });
@@ -270,7 +270,7 @@ class DockComponent extends Component {
         if (spec.emoji && spec.emoji.startsWith('ri-')) {
             return `<div class="dock-icon-wrapper ${spec.gradient || 'gradient-default'}"><i class="${spec.emoji}"></i></div>`;
         }
-        return `<div class="dock-icon-wrapper">${spec.emoji}</div>`;
+        return `<div class="dock-icon-wrapper">${Utils.escapeHtml(spec.emoji)}</div>`;
     }
 
     // 根据模块构建 Dock 项
@@ -441,9 +441,9 @@ class DockComponent extends Component {
             return `
                 <div class="dock-item ${isActive ? 'active' : ''}" 
                      onclick="Router.push('${category.path}')" 
-                     title="${category.title}">
+                     title="${Utils.escapeHtml(category.title)}">
                     <span class="dock-icon">${this._renderIcon(category.id, category.icon)}</span>
-                    <div class="dock-tooltip">${category.title}</div>
+                    <div class="dock-tooltip">${Utils.escapeHtml(category.title)}</div>
                 </div>
             `;
         }
@@ -451,8 +451,8 @@ class DockComponent extends Component {
         // 辅助函数：渲染简单图标
         const renderSimpleIcon = (icon) => {
             if (!icon) return '';
-            if (icon.startsWith('ri-')) return `<i class="${icon}"></i>`;
-            return icon;
+            if (icon.startsWith('ri-')) return `<i class="${Utils.escapeHtml(icon)}"></i>`;
+            return Utils.escapeHtml(icon);
         };
 
         // 渲染弹出内容
@@ -463,14 +463,14 @@ class DockComponent extends Component {
                 <div class="folder-subgroup">
                     <div class="folder-subgroup-header">
                         <span class="subgroup-icon">${renderSimpleIcon(group.icon)}</span>
-                        <span class="subgroup-title">${group.title}</span>
+                        <span class="subgroup-title">${Utils.escapeHtml(group.title)}</span>
                     </div>
                     <div class="folder-subgroup-items">
                         ${group.children.map(child => `
                             <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
                                  data-path="${child.path}">
                                 <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
-                                <span class="folder-app-title">${child.title}</span>
+                                <span class="folder-app-title">${Utils.escapeHtml(child.title)}</span>
                             </div>
                         `).join('')}
                     </div>
@@ -482,7 +482,7 @@ class DockComponent extends Component {
                 <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
                      data-path="${child.path}">
                     <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
-                    <span class="folder-app-title">${child.title}</span>
+                    <span class="folder-app-title">${Utils.escapeHtml(child.title)}</span>
                 </div>
             `).join('');
         }
@@ -491,14 +491,14 @@ class DockComponent extends Component {
         return `
             <div class="dock-folder ${isOpen ? 'open' : ''} ${hasActiveChild ? 'active' : ''}" 
                  data-folder="${category.id}">
-                <div class="dock-item dock-folder-trigger" title="${category.title}">
+                <div class="dock-item dock-folder-trigger" title="${Utils.escapeHtml(category.title)}">
                     <span class="dock-icon">${renderSimpleIcon(category.icon)}</span>
-                    <div class="dock-tooltip">${category.title}</div>
+                    <div class="dock-tooltip">${Utils.escapeHtml(category.title)}</div>
                 </div>
                 
                 <!-- 弹出菜单 -->
                 <div class="dock-folder-popup ${isOpen ? 'show' : ''} ${hasSubgroups ? 'has-subgroups' : ''}">
-                    <div class="folder-popup-header">${category.title}</div>
+                    <div class="folder-popup-header">${Utils.escapeHtml(category.title)}</div>
                     <div class="folder-popup-grid">
                         ${popupContent}
                     </div>

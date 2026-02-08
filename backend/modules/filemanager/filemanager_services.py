@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Optional, List, Tuple
 from datetime import datetime
+from utils.timezone import get_beijing_time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, update, or_, and_
@@ -193,12 +194,12 @@ class FileManagerService:
             
             folder.name = data.name
             folder.path = new_path
-            folder.updated_at = datetime.now()
+            folder.updated_at = get_beijing_time()
             
             await self._update_children_paths(folder_id, old_path, new_path)
             await self.db.commit()
         else:
-            folder.updated_at = datetime.now()
+            folder.updated_at = get_beijing_time()
             await self.db.commit()
         
         return folder
@@ -244,7 +245,7 @@ class FileManagerService:
         
         folder.parent_id = target_parent_id
         folder.path = new_path
-        folder.updated_at = datetime.now()
+        folder.updated_at = get_beijing_time()
         
         await self._update_children_paths(folder_id, old_path, new_path)
         await self.db.commit()
@@ -414,7 +415,7 @@ class FileManagerService:
         for key, value in update_data.items():
             setattr(file, key, value)
         
-        file.updated_at = datetime.now()
+        file.updated_at = get_beijing_time()
         await self.db.commit()
         await self.db.refresh(file)
         return file
@@ -431,7 +432,7 @@ class FileManagerService:
                 raise ValueError("目标文件夹不存在")
         
         file.folder_id = target_folder_id
-        file.updated_at = datetime.now()
+        file.updated_at = get_beijing_time()
         await self.db.commit()
         await self.db.refresh(file)
         return file
@@ -490,7 +491,7 @@ class FileManagerService:
             return None
         
         file.is_starred = not file.is_starred
-        file.updated_at = datetime.now()
+        file.updated_at = get_beijing_time()
         await self.db.commit()
         await self.db.refresh(file)
         return file

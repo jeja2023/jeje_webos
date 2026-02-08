@@ -170,4 +170,6 @@ async def handle_im_message(
                     "data": {"message": str(e)},
                     "timestamp": get_beijing_time().isoformat()
                 }, ensure_ascii=False))
-            except: pass
+            except Exception as e:
+                logger.debug(f"发送IM错误响应失败: {e}")
+

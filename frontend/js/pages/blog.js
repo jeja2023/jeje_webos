@@ -137,7 +137,7 @@ class BlogListPage extends Component {
                     <div>
                         <h1 class="page-title"><i class="ri-article-line"></i> 文章管理</h1>
                         <p class="page-desc">
-                            共 ${total} 篇文章
+                            共 ${Utils.escapeHtml(String(total))} 篇文章
                             ${selectedCategory ? ` · 分类: ${Utils.escapeHtml(selectedCategory.name)}` : ''}
                             ${status === 'draft' ? ' · 草稿' : status === 'published' ? ' · 已发布' : ''}
                         </p>
@@ -188,7 +188,7 @@ class BlogListPage extends Component {
                             <input type="checkbox" id="selectAll" ${selectedIds.size === posts.length && posts.length > 0 ? 'checked' : ''}>
                             全选
                         </label>
-                        <span style="color: var(--color-text-secondary);">已选 ${selectedIds.size} 篇</span>
+                        <span style="color: var(--color-text-secondary);">已选 ${Utils.escapeHtml(String(selectedIds.size))} 篇</span>
                         <div style="flex: 1;"></div>
                         <button class="btn btn-danger btn-sm" id="batchDelete"><i class="ri-delete-bin-line"></i> 删除选中</button>
                     </div>
@@ -213,33 +213,31 @@ class BlogListPage extends Component {
                                     ${posts.map(post => `
                                         <tr>
                                             ${batchMode ? `
-                                                <td>
                                                     <input type="checkbox" class="post-select" 
-                                                           data-id="${post.id}" 
+                                                           data-id="${Utils.escapeHtml(String(post.id))}" 
                                                            ${selectedIds.has(post.id.toString()) ? 'checked' : ''}>
-                                                </td>
                                             ` : ''}
                                             <td>
-                                                <a href="#/blog/view/${post.id}" class="truncate" style="max-width: 300px; display: block">
+                                                <a href="#/blog/view/${Utils.escapeHtml(String(post.id))}" class="truncate" style="max-width: 300px; display: block">
                                                     ${post.is_top ? '<span class="tag tag-warning" style="margin-right: 4px">置顶</span>' : ''}
                                                     ${Utils.escapeHtml(post.title)}
                                                 </a>
                                             </td>
-                                            <td>${post.category?.name || '-'}</td>
+                                            <td>${Utils.escapeHtml(post.category?.name || '-')}</td>
                                             <td>
                                                 <span class="tag ${post.status === 'published' ? 'tag-primary' : 'tag-info'}">
                                                     ${post.status === 'published' ? '已发布' : '草稿'}
                                                 </span>
                                             </td>
-                                            <td><i class="ri-eye-line"></i> ${post.views}</td>
+                                            <td><i class="ri-eye-line"></i> ${Utils.escapeHtml(String(post.views))}</td>
                                             <td>${Utils.timeAgo(post.published_at || post.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-view="${post.id}" title="查看"><i class="ri-eye-line"></i></button>
-                                                <button class="btn btn-ghost btn-sm" data-edit="${post.id}" title="编辑"><i class="ri-edit-line"></i></button>
-                                                <button class="btn btn-ghost btn-sm" data-toggle-top="${post.id}" title="${post.is_top ? '取消置顶' : '置顶'}">
+                                                <button class="btn btn-ghost btn-sm" data-view="${Utils.escapeHtml(String(post.id))}" title="查看"><i class="ri-eye-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-edit="${Utils.escapeHtml(String(post.id))}" title="编辑"><i class="ri-edit-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-toggle-top="${Utils.escapeHtml(String(post.id))}" title="${post.is_top ? '取消置顶' : '置顶'}">
                                                     <i class="${post.is_top ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                                                 </button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${post.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${Utils.escapeHtml(String(post.id))}" title="删除"><i class="ri-delete-bin-line"></i></button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -769,8 +767,8 @@ class BlogCategoryPage extends Component {
                                             <td>${Utils.escapeHtml(cat.description || '-')}</td>
                                             <td>${cat.order}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(cat)}'><i class="ri-edit-line"></i> 编辑</button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${cat.id}"><i class="ri-delete-bin-line"></i> 删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-action="edit-category" data-id="${Utils.escapeHtml(String(cat.id))}"><i class="ri-edit-line"></i> 编辑</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${Utils.escapeHtml(String(cat.id))}"><i class="ri-delete-bin-line"></i> 删除</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -815,9 +813,10 @@ class BlogCategoryPage extends Component {
         if (this.container && !this.container._bindedCategoryEdit) {
             this.container._bindedCategoryEdit = true;
 
-            this.delegate('click', '[data-edit]', (e, target) => {
-                const category = JSON.parse(target.dataset.edit);
-                this.showAddModal(category);
+            this.delegate('click', '[data-action="edit-category"]', (e, target) => {
+                const id = target.dataset.id;
+                const category = this.state.categories.find(c => c.id == id);
+                if (category) this.showAddModal(category);
             });
 
             // 删除按钮
@@ -867,7 +866,7 @@ class BlogViewPage extends Component {
 
         // 代码块
         html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-            return `<pre class="code-block" data-lang="${lang || 'text'}"><code>${code.trim()}</code></pre>`;
+            return `<pre class="code-block" data-lang="${Utils.escapeHtml(lang || 'text')}"><code>${code.trim()}</code></pre>`;
         });
 
         // 标题
@@ -894,13 +893,36 @@ class BlogViewPage extends Component {
         // 水平线
         html = html.replace(/^---$/gm, '<hr>');
 
-        // 链接
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        // 图片 (增加协议检查防止XSS)
+        html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, (match, alt, url) => {
+            const safeUrl = url.trim();
+            if (/^\s*(javascript|vbscript|data):/i.test(safeUrl)) {
+                return '';
+            }
+            const escapedAlt = Utils.escapeHtml(alt);
+            const escapedUrl = Utils.escapeHtml(safeUrl);
+            return `<img src="${escapedUrl}" alt="${escapedAlt}" style="max-width:100%; height:auto;">`;
+        });
 
-        // 换行
-        html = html.replace(/\n\n/g, '</p><p>');
-        html = '<p>' + html + '</p>';
-        html = html.replace(/<p><\/p>/g, '');
+        // 链接 (增加协议检查防止XSS)
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+            const safeUrl = url.trim();
+            if (/^\s*(javascript|vbscript|data):/i.test(safeUrl)) {
+                return text;
+            }
+            const escapedText = Utils.escapeHtml(text);
+            const escapedUrl = Utils.escapeHtml(safeUrl);
+            return `<a href="${escapedUrl}" target="_blank" rel="noopener">${escapedText}</a>`;
+        });
+
+        // 换行处理：先处理显式的 HTML 标签换行，再处理普通文本换行
+        const paragraphs = html.split(/\n\n+/);
+        html = paragraphs.map(p => {
+            if (p.trim().startsWith('<') && p.trim().endsWith('>')) {
+                return p;
+            }
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
 
         return html;
     }
@@ -960,9 +982,9 @@ class BlogViewPage extends Component {
                             </h1>
                             <p class="page-desc" style="margin:4px 0 0 0;">
                                 ${post.category ? `<i class="ri-folder-line"></i> ${Utils.escapeHtml(post.category.name)} · ` : ''}
-                                <i class="ri-file-text-line"></i> ${wordCount} 字 · 
-                                <i class="ri-time-line"></i> ${readTime} 分钟 · 
-                                <i class="ri-eye-line"></i> ${post.views} 次浏览 ·
+                                <i class="ri-file-text-line"></i> ${Utils.escapeHtml(String(wordCount))} 字 · 
+                                <i class="ri-time-line"></i> ${Utils.escapeHtml(String(readTime))} 分钟 · 
+                                <i class="ri-eye-line"></i> ${Utils.escapeHtml(String(post.views))} 次浏览 ·
                                 ${Utils.timeAgo(post.updated_at || post.created_at)}
                             </p>
                         </div>

@@ -11,6 +11,7 @@ from sqlalchemy import select
 from .analysis_models import AnalysisDataset, AnalysisModel
 from .analysis_schemas import ModelCreate, ModelUpdate
 from .analysis_duckdb_service import duckdb_instance
+from utils.sql_safety import is_safe_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,10 @@ class ModelingService:
                 max_rows = 1000000  # 100万行
                 if len(df) > max_rows:
                     raise ValueError(f"查询结果过大（{len(df):,} 行），超过限制（{max_rows:,} 行）。请添加筛选条件或使用 LIMIT 子句限制结果数量。")
+                
+                # 验证 save_as 参数安全性（防止 SQL 注入）
+                if not is_safe_table_name(save_as):
+                    raise ValueError(f"不安全的数据集名称: {save_as}，只允许字母、数字和下划线")
                 
                 table_name = f"user_sql_{save_as}_{int(pd.Timestamp.now().timestamp())}"
                 # 创建表并保存（使用原始 SQL，保存全量数据）

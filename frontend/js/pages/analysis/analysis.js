@@ -754,7 +754,7 @@ class AnalysisPage extends Component {
                         <div class="search-group" style="width: 360px;">
                             <div class="search-box">
                                 <i class="ri-search-line"></i>
-                                <input type="text" id="dataset-list-search" placeholder="搜索名称或描述..." value="${datasetSearch || ''}">
+                                <input type="text" id="dataset-list-search" placeholder="搜索名称或描述..." value="${Utils.escapeHtml(datasetSearch || '')}">
                             </div>
                             <button class="btn btn-primary" id="btn-dataset-search">
                                 <i class="ri-search-line"></i> 查找
@@ -824,10 +824,10 @@ class AnalysisPage extends Component {
                 </td>
                 <td>
                     <div class="flex-column">
-                        <div class="font-600 text-truncate" style="max-width: 300px;" title="${d.name}">${d.name}</div>
+                        <div class="font-600 text-truncate" style="max-width: 300px;" title="${Utils.escapeHtml(d.name)}">${Utils.escapeHtml(d.name)}</div>
                         ${d.config?.description ? `
-                            <div class="text-secondary text-xs text-truncate" style="max-width: 300px;" title="${d.config.description}">
-                                ${d.config.description}
+                            <div class="text-secondary text-xs text-truncate" style="max-width: 300px;" title="${Utils.escapeHtml(d.config.description)}">
+                                ${Utils.escapeHtml(d.config.description)}
                             </div>
                         ` : '<div class="text-tertiary text-xs">暂无描述</div>'}
                     </div>
@@ -888,7 +888,7 @@ class AnalysisPage extends Component {
                     <div class="flex-between mb-15">
                         <div class="flex-center">
                             <button class="btn-icon mr-10 btn-back-to-list"><i class="ri-arrow-left-line"></i></button>
-                            <strong style="font-size: 16px;">${currentDataset?.name}</strong>
+                            <strong style="font-size: 16px;">${Utils.escapeHtml(currentDataset?.name || '')}</strong>
                             <span class="text-secondary ml-15" style="font-size: 13px;">
                                 ${search || filterCount > 0 ? `筛选结果: ${displayTotal} / ${total} 条` : `共 ${total} 条数据`}
                             </span>
@@ -901,7 +901,7 @@ class AnalysisPage extends Component {
                             <div style="position: relative; flex: 1; max-width: 400px;">
                                 <input type="text" id="viewer-search" class="form-control" 
                                     placeholder="搜索关键词..." 
-                                    value="${search || ''}"
+                                    value="${Utils.escapeHtml(search || '')}"
                                     style="padding-left: 35px; height: 36px;">
                                 <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary);"><i class="ri-search-line"></i></span>
                             </div>
@@ -924,7 +924,7 @@ class AnalysisPage extends Component {
                     ${Object.keys(sortFields).length > 0 ? `
                         <div class="mt-10" style="font-size: 12px; color: var(--color-text-secondary);">
                             排序: ${Object.entries(sortFields).map(([field, info]) =>
-            `<span class="badge bg-secondary mr-5">${field} ${info.order === 'asc' ? '↑' : '↓'}</span>`
+            `<span class="badge bg-secondary mr-5">${Utils.escapeHtml(field)} ${info.order === 'asc' ? '↑' : '↓'}</span>`
         ).join('')}
                             <button class="btn btn-ghost btn-xs ml-10" id="btn-clear-sort">清除排序</button>
                         </div>
@@ -957,8 +957,8 @@ class AnalysisPage extends Component {
             const sortIndicator = sortInfo ? (sortInfo.order === 'asc' ? '▲' : '▼') : '';
             const priorityBadge = sortInfo && Object.keys(sortFields).length > 1 ? `<sup>${sortInfo.priority}</sup>` : '';
             return `
-                                            <th class="sortable-th" data-field="${c}" title="点击排序，Shift+点击多字段排序">
-                                                ${c} ${sortIndicator}${priorityBadge}
+                                            <th class="sortable-th" data-field="${Utils.escapeHtml(c)}" title="点击排序，Shift+点击多字段排序">
+                                                ${Utils.escapeHtml(c)} ${sortIndicator}${priorityBadge}
                                             </th>
                                         `;
         }).join('')}
@@ -974,7 +974,9 @@ class AnalysisPage extends Component {
                 const isImageUrl = (val.startsWith('http') || val.startsWith('/api/') || val.startsWith('data:image'))
                     && (val.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i) || val.startsWith('data:image'));
                 if (isImageUrl) {
-                    return `<td><img src="${val}" class="cell-image" style="max-width: 80px; max-height: 60px; border-radius: 4px; cursor: pointer;" onclick="window.open('${val}', '_blank')"></td>`;
+                    const escapedVal = Utils.escapeHtml(val);
+                    const safeValForJs = encodeURIComponent(val);
+                    return `<td><img src="${escapedVal}" class="cell-image" style="max-width: 80px; max-height: 60px; border-radius: 4px; cursor: pointer;" onclick="window.open(decodeURIComponent('${safeValForJs.replace(/'/g, '%27')}'), '_blank')"></td>`;
                 }
             }
             const displayVal = val !== null && val !== undefined ? val : '';

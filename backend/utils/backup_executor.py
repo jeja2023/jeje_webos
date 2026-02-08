@@ -171,8 +171,8 @@ def execute_backup_task_sync(backup_id: int, backup_type: str, encrypt_password:
                         try:
                             encrypted_size = Path(result).stat().st_size
                             total_encrypted_size += encrypted_size
-                        except:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"获取加密文件大小失败: {e}")
                         logger.info(f"文件加密成功: {result}")
                     else:
                         error_messages.append(f"加密失败: {result}")

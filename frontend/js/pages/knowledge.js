@@ -37,7 +37,7 @@ const KnowledgeApi = {
     },
 
     // 获取文件预览URL
-    getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem('token')}`,
+    getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem(Config.storageKeys.token)}`,
 
     // 获取知识图谱数据
     getGraph: (baseId) => Api.get(`/knowledge/bases/${baseId}/graph`)
@@ -94,12 +94,12 @@ class KnowledgeListPage extends Component {
                 ` : `
                     <div class="kb-grid">
                         ${bases.map(base => `
-                            <div class="kb-card" data-id="${base.id}">
+                            <div class="kb-card" data-id="${Utils.escapeHtml(String(base.id))}">
                                 <div class="kb-card-actions">
                                     <button class="btn-action edit" data-action="edit" title="编辑"><i class="ri-edit-line"></i></button>
                                     <button class="btn-action delete" data-action="delete" title="删除"><i class="ri-delete-bin-line"></i></button>
                                 </div>
-                                <div class="kb-card-icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${base.cover}"></i>` : (base.cover || '<i class="ri-book-fill"></i>')}</div>
+                                <div class="kb-card-icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${Utils.escapeHtml(base.cover)}"></i>` : Utils.escapeHtml(base.cover || '📘')}</div>
                                 <div class="kb-card-body">
                                     <h3 class="kb-title">${Utils.escapeHtml(base.name)}</h3>
                                     <p class="kb-desc">${Utils.escapeHtml(base.description || '无描述')}</p>
@@ -306,7 +306,7 @@ class KnowledgeViewPage extends Component {
                     <div class="kb-sidebar-header">
                         <button class="btn-icon btn-back-home" id="btnBackHome" title="返回知识库列表"><i class="ri-arrow-left-line"></i></button>
                         <div class="kb-header-title" style="flex:1">
-                            <span class="icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${base.cover}"></i>` : (base.cover || '<i class="ri-book-fill"></i>')}</span>
+                            <span class="icon">${base.cover && base.cover.startsWith('ri-') ? `<i class="${Utils.escapeHtml(base.cover)}"></i>` : Utils.escapeHtml(base.cover || '')}</span>
                             <span class="text-truncate">${Utils.escapeHtml(base.name)}</span>
                         </div>
                         <div class="kb-header-tools">
@@ -349,7 +349,7 @@ class KnowledgeViewPage extends Component {
                     </div>
                     
                     <div class="kb-sidebar-footer" style="padding: 8px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-tertiary); text-align: center;">
-                        共 ${nodes.length} 个项目
+                        共 ${Utils.escapeHtml(String(nodes.length))} 个项目
                     </div>
                 </div>
                 
@@ -427,7 +427,7 @@ class KnowledgeViewPage extends Component {
                 ${path.map((node, index) => `
                     <span class="breadcrumb-separator">/</span>
                     <span class="breadcrumb-item ${index === path.length - 1 ? 'active' : ''}" 
-                          data-id="${node.id}">
+                          data-id="${Utils.escapeHtml(String(node.id))}">
                           ${Utils.escapeHtml(node.title)}
                     </span>
                 `).join('')}
@@ -443,9 +443,10 @@ class KnowledgeViewPage extends Component {
 
         const highlightText = (text, q) => {
             if (!text) return '';
-            if (!q) return Utils.escapeHtml(text);
+            const escapedText = Utils.escapeHtml(text);
+            if (!q) return escapedText;
             const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return Utils.escapeHtml(text).replace(regex, '<mark>$1</mark>');
+            return escapedText.replace(regex, '<mark>$1</mark>');
         };
 
         return `
@@ -458,7 +459,7 @@ class KnowledgeViewPage extends Component {
 
             return `
                     <li class="tree-item search-item">
-                        <div class="tree-content search-content" data-id="${r.node_id}">
+                        <div class="tree-content search-content" data-id="${Utils.escapeHtml(String(r.node_id))}">
                             <div class="search-item-top">
                                 <span class="tree-icon">${icon}</span>
                                 <div class="tree-text search-title">${highlightText(title, query)}</div>
@@ -484,13 +485,13 @@ class KnowledgeViewPage extends Component {
             <ul class="tree-list" style="padding-left: ${level * 12}px">
                 ${nodes.map(node => `
                     <li class="tree-item ${this.state.activeNode?.id === node.id ? 'active' : ''}">
-                        <div class="tree-content ${node.status === 'processing' ? 'status-processing' : ''}" data-id="${node.id}">
+                        <div class="tree-content ${node.status === 'processing' ? 'status-processing' : ''}" data-id="${Utils.escapeHtml(String(node.id))}">
                             <span class="tree-icon">${this.getNodeIcon(node)}</span>
                             <span class="tree-text">${Utils.escapeHtml(node.title)}</span>
                             ${node.node_type === 'folder' ? `
                                 <div class="tree-actions-hover">
-                                    <button class="btn-icon-tiny" data-action="add-sub" data-id="${node.id}" title="新建子项"><i class="ri-add-line"></i></button>
-                                    <button class="btn-icon-tiny" data-action="upload-sub" data-id="${node.id}" title="上传文件"><i class="ri-upload-2-line"></i></button>
+                                    <button class="btn-icon-tiny" data-action="add-sub" data-id="${Utils.escapeHtml(String(node.id))}" title="新建子项"><i class="ri-add-line"></i></button>
+                                    <button class="btn-icon-tiny" data-action="upload-sub" data-id="${Utils.escapeHtml(String(node.id))}" title="上传文件"><i class="ri-upload-2-line"></i></button>
                                 </div>
                             ` : ''}
                         </div>
@@ -579,9 +580,9 @@ class KnowledgeViewPage extends Component {
                 const previewUrl = KnowledgeApi.getPreviewUrl(node.id);
 
                 if (ext === 'pdf') {
-                    container.innerHTML = `<iframe src="${previewUrl}#toolbar=0" style="width:100%;height:100%;border:none;"></iframe>`;
+                    container.innerHTML = `<iframe src="${Utils.escapeHtml(previewUrl)}#toolbar=0" style="width:100%;height:100%;border:none;"></iframe>`;
                 } else if (['jpg', 'png', 'jpeg', 'gif', 'svg'].includes(ext)) {
-                    container.innerHTML = `<div style="display:flex;justify-content:center;padding:20px"><img src="${previewUrl}" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:var(--shadow-md)"></div>`;
+                    container.innerHTML = `<div style="display:flex;justify-content:center;padding:20px"><img src="${Utils.escapeHtml(previewUrl)}" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:var(--shadow-md)"></div>`;
                 } else {
                     // 对于 Word/Excel，显示提取的文本内容或下载链接
                     const extractedView = node.content ? `
@@ -593,7 +594,7 @@ class KnowledgeViewPage extends Component {
                          <div class="empty-state">
                              <div class="empty-icon"><i class="ri-attachment-line"></i></div>
                              <p>此文件不支持在线预览</p>
-                             <a href="${previewUrl}" class="btn btn-primary">下载文件</a>
+                             <a href="${Utils.escapeHtml(previewUrl)}" class="btn btn-primary">下载文件</a>
                          </div>
                      `;
                     container.innerHTML = extractedView;

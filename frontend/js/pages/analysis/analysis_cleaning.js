@@ -41,7 +41,7 @@ const AnalysisCleaningMixin = {
                             <label class="mb-6" style="display: block; font-size: 12px; color: var(--color-text-secondary); font-weight: 500;">选择数据集</label>
                             <select id="clean-dataset" class="form-control form-control-sm" style="width: 100%; height: 32px; font-size: 13px;">
                                 <option value="">选择数据集...</option>
-                                ${this.state.datasets.map(d => `<option value="${d.id}" ${cleaningDataset === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                                ${this.state.datasets.map(d => `<option value="${d.id}" ${cleaningDataset === d.id ? 'selected' : ''}>${Utils.escapeHtml(d.name)}</option>`).join('')}
                             </select>
                         </div>
                         
@@ -179,7 +179,7 @@ const AnalysisCleaningMixin = {
                             <div class="clean-result-card">
                                 <div class="text-info mb-8 font-600"><i class="ri-sparkling-fill"></i> ${cleanResult.saved ? '已正式入库' : '任务已执行，见预览'}</div>
                                 <div class="text-sm">
-                                    ${cleanResult.name ? `<div class="mb-4">数据集：<strong>${cleanResult.name}</strong></div>` : ''}
+                                    ${cleanResult.name ? `<div class="mb-4">数据集：<strong>${Utils.escapeHtml(cleanResult.name)}</strong></div>` : ''}
                                     <div>结论：<strong>${cleanResult.row_count}</strong> 行</div>
                                 </div>
                                 <div class="mt-12" style="display: flex; flex-direction: column; gap: 8px;">
@@ -231,7 +231,7 @@ const AnalysisCleaningMixin = {
                                 <table class="table table-sm table-hover" style="font-size: 12px; margin: 0;">
                                     <thead>
                                         <tr>
-                                            ${(cleanPreviewData.columns || []).map(col => `<th style="padding: 6px 8px;">${col}</th>`).join('')}
+                                            ${(cleanPreviewData.columns || []).map(col => `<th style="padding: 6px 8px;">${Utils.escapeHtml(col)}</th>`).join('')}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -240,7 +240,7 @@ const AnalysisCleaningMixin = {
                                                 ${(cleanPreviewData.columns || []).map(col => {
                 const val = row[col];
                 const isEmpty = val === null || val === undefined || val === '';
-                return `<td style="padding: 6px 8px; border-bottom: 1px solid var(--color-border); min-width: 60px;">${isEmpty ? '' : val}</td>`;
+                return `<td style="padding: 6px 8px; border-bottom: 1px solid var(--color-border); min-width: 60px;">${isEmpty ? '' : Utils.escapeHtml(String(val))}</td>`;
             }).join('')}
                                             </tr>
                                         `).join('')}

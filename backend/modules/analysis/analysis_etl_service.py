@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .analysis_models import AnalysisDataset, AnalysisModel
 from .analysis_duckdb_service import duckdb_instance
+from utils.sql_safety import is_safe_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -560,6 +561,10 @@ class ETLExecutionService:
             logger.info("Sink 节点: 未配置目标表，仅透传数据")
             return df
         
+        # 验证目标名称安全性（防止 SQL 注入）
+        if not is_safe_table_name(target_name):
+            raise ValueError(f"不安全的目标名称: {target_name}，只允许字母、数字和下划线")
+        
         # 生成内部表名
         import time
         table_name = f"etl_result_{target_name}_{int(time.time())}"
@@ -576,8 +581,8 @@ class ETLExecutionService:
                     # 覆盖模式：删除旧表，使用新表名
                     try:
                         duckdb_instance.conn.execute(f"DROP TABLE IF EXISTS {existing_dataset.table_name}")
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"删除旧表失败: {e}")
                     # 更新现有记录
                     existing_dataset.table_name = table_name
                     existing_dataset.row_count = len(df)
@@ -785,7 +790,7 @@ class ETLExecutionService:
         
         try:
             rate = max(1, min(100, int(rate)))
-        except:
+        except (ValueError, TypeError):
             rate = 100
         
         frac = rate / 100
@@ -800,7 +805,7 @@ class ETLExecutionService:
         
         try:
             count = max(1, int(count))
-        except:
+        except (ValueError, TypeError):
             count = 100
         
         result = df.head(count).copy()
@@ -883,7 +888,7 @@ class ETLExecutionService:
         else:
             try:
                 col_b = float(value)
-            except:
+            except (ValueError, TypeError):
                 col_b = 0
         
         if op == '+':
@@ -1010,7 +1015,7 @@ class ETLExecutionService:
         
         try:
             limit = max(1, int(limit))
-        except:
+        except (ValueError, TypeError):
             limit = 2
         
         result = df.copy()
@@ -1180,8 +1185,8 @@ class ETLExecutionService:
             # 清理临时表
             try:
                 duckdb_instance.conn.unregister('input')
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"清理临时表失败: {e}")
     
     @classmethod
     def _execute_text_ops(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
@@ -1241,7 +1246,7 @@ class ETLExecutionService:
         else:
             try:
                 col_b = float(value)
-            except:
+            except (ValueError, TypeError):
                 col_b = 0
                 
         if op == '+':

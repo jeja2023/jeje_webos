@@ -66,10 +66,10 @@ const PdfUtils = {
                 return `
                 <div class="pdf-file-item" 
                      data-file='${JSON.stringify(f).replace(/'/g, "&apos;")}'
-                     onclick="PdfUtils._toggleSelection('${fileIdAttr}', this, ${multiple})">
+                     onclick="PdfUtils._toggleSelection('${Utils.escapeHtml(fileIdAttr)}', this, ${multiple})">
                     <input type="checkbox" class="pdf-file-checkbox" style="display: ${multiple ? 'block' : 'none'};" ${this._isSelected(fileIdAttr) ? 'checked' : ''}>
                     <div class="pdf-file-info">
-                        <span class="pdf-file-name" title="${f.name}"><i class="${fileIcon}"></i> ${f.name}${badge}</span>
+                        <span class="pdf-file-name" title="${Utils.escapeHtml(f.name)}"><i class="${fileIcon}"></i> ${Utils.escapeHtml(f.name)}${badge}</span>
                     </div>
                     <span class="pdf-file-size">${sizeStr}</span>
                 </div>
@@ -78,20 +78,21 @@ const PdfUtils = {
             // 统一的底部栏，包含上传按钮
             const footerHtml = `
                 <div style="margin-top: 15px; display:flex; align-items:center; justify-content:space-between; border-top: 1px solid var(--border-color); padding-top: 10px;">
-                    <button class="btn btn-outline btn-sm" onclick="window._pdfPage.handleUpload(); Modal.closeAll();"><i class="ri-upload-2-line"></i> 上传新文件</button>
+                <button class="btn btn-outline btn-sm" onclick="window._pdfPage.handleUpload(); Modal.closeAll();"><i class="ri-upload-2-line"></i> 上传新文件</button>
                     ${multiple ? `
                     <div style="display:flex; align-items:center;">
                         <span id="pdf-selected-count" style="margin-right: 10px; font-size: 12px;">已选 0 项</span>
                         <button class="btn btn-primary btn-sm" onclick="PdfUtils._confirmSelection()">确认选择</button>
                     </div>
-                    ` : ''}
-                </div>
-            `;
+                    ` : ''
+                }
+                </div >
+    `;
 
             this._pickedCallback = callback;
             Modal.show({
                 title: options.title || (multiple ? '选择多个文件' : '选择文件'),
-                content: `<div class="pdf-file-list" style="max-height: 400px; height: 400px; overflow-y: auto; padding: 10px;">${listHtml}</div>${footerHtml}`,
+                content: `< div class="pdf-file-list" style = "max-height: 400px; height: 400px; overflow-y: auto; padding: 10px;" > ${listHtml}</div > ${footerHtml} `,
                 width: '600px',
                 footer: false
             });

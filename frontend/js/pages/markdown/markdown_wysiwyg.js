@@ -219,7 +219,7 @@ class MarkdownWysiwygEditor {
                 }
 
                 // ！！！核心：对于私有存储，必须附加 Token 才能通过浏览器 <img> 标签加载
-                const token = localStorage.getItem(window.Config?.storageKeys?.token || 'jeje_token');
+                const token = localStorage.getItem(window.Config?.storageKeys?.token || 'token');
                 if (token) {
                     const separator = imageUrl.includes('?') ? '&' : '?';
                     imageUrl += `${separator}token=${token}`;
@@ -858,8 +858,20 @@ class MarkdownWysiwygEditor {
                 html = html.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
                 html = html.replace(/~~(.*?)~~/g, '<del>$1</del>');
                 html = html.replace(/`(.*?)`/g, '<code class="md-inline-code">$1</code>');
-                html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" title="$1">');
-                html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="md-link">$1</a>');
+                html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
+                    const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
+                    if (!safeUrl) return '';
+                    const escapedAlt = this.escapeAttr(alt);
+                    const escapedUrl = this.escapeAttr(safeUrl);
+                    return `<img src="${escapedUrl}" alt="${escapedAlt}" title="${escapedAlt}">`;
+                });
+                html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
+                    const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
+                    const escapedText = this.escapeHtml(text);
+                    if (!safeUrl) return escapedText;
+                    const escapedUrl = this.escapeAttr(safeUrl);
+                    return `<a href="${escapedUrl}" target="_blank" class="md-link">${escapedText}</a>`;
+                });
                 html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
             }
         } else {
@@ -890,7 +902,7 @@ class MarkdownWysiwygEditor {
                     line.classList.add('md-task-item');
                     if (checked) line.classList.add('md-task-checked');
                     html = html.replace(/^(\s*([-*+]|\d+\.))\s+\[([ xX])\]\s+(.*)/,
-                        `<span class="md-syntax">$1</span> <span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> $4`);
+                        (m, p1, p2, p3, p4) => `<span class="md-syntax">${p1}</span> <span class="md-task-checkbox" data-checked="${checked}">${checked ? '☑' : '☐'}</span> ${p4}`);
                 } else {
                     html = html.replace(/^(\s*([-*+]|\d+\.)\s)(.*)/, '<span class="md-syntax">$1</span>$3');
                 }
@@ -907,8 +919,20 @@ class MarkdownWysiwygEditor {
                 html = html.replace(/(\*|_)(.*?)\1/g, '<em><span class="md-syntax">$1</span>$2<span class="md-syntax">$1</span></em>');
                 html = html.replace(/~~(.*?)~~/g, '<del><span class="md-syntax">~~</span>$1<span class="md-syntax">~~</span></del>');
                 html = html.replace(/`(.*?)`/g, '<code class="md-inline-code"><span class="md-syntax">`</span>$1<span class="md-syntax">`</span></code>');
-                html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<span class="md-image"><span class="md-syntax">![</span>$1<span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span><img src="$2" alt="$1"></span>');
-                html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<span class="md-link"><span class="md-syntax">[</span>$1<span class="md-syntax">](</span><span class="md-url">$2</span><span class="md-syntax">)</span></span>');
+                html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
+                    const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
+                    // 对 alt 和 url 进行二次转义确保属性安全
+                    const displayAlt = this.escapeHtml(alt);
+                    const displayUrl = this.escapeHtml(url);
+                    const attrAlt = this.escapeAttr(alt);
+                    const attrUrl = this.escapeAttr(safeUrl);
+                    return `<span class="md-image"><span class="md-syntax">![</span>${displayAlt}<span class="md-syntax">](</span><span class="md-url">${displayUrl}</span><span class="md-syntax">)</span><img src="${attrUrl}" alt="${attrAlt}"></span>`;
+                });
+                html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
+                    const escapedText = this.escapeHtml(text);
+                    const escapedUrl = this.escapeHtml(url);
+                    return `<span class="md-link"><span class="md-syntax">[</span>${escapedText}<span class="md-syntax">](</span><span class="md-url">${escapedUrl}</span><span class="md-syntax">)</span></span>`;
+                });
                 html = html.replace(/==(.*?)==/g, '<mark><span class="md-syntax">==</span>$1<span class="md-syntax">==</span></mark>');
             }
         }
@@ -991,9 +1015,16 @@ class MarkdownWysiwygEditor {
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        if (!text) return '';
+        return text.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    escapeAttr(text) {
+        return this.escapeHtml(text)
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     setContent(markdown) {

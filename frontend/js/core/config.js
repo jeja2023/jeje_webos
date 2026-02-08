@@ -16,7 +16,21 @@ const Config = {
         refreshToken: 'jeje_refresh_token',
         user: 'jeje_user',
         theme: 'jeje_theme',
-        sidebarCollapsed: 'jeje_sidebar_collapsed'
+        sidebarCollapsed: 'jeje_sidebar_collapsed',
+
+        // 模块配置
+        pinnedApps: 'jeje_pinned_apps', // 固定的应用列表
+        mapConfig: 'jeje_map_config', // 地图配置
+        mapActiveDatasets: 'jeje_map_active_datasets', // 地图激活数据集
+        videoPlaybackSpeed: 'videoPlaybackSpeed', // 视频播放速度
+        aiSessions: 'jeje_ai_sessions', // AI 会话历史
+        aiConfig: 'jeje_ai_config_public', // AI 公共配置
+        aiModel: 'jeje_ai_selected_model', // AI 选定模型
+
+        // 课程进度
+        courseLastChapter: 'lastChapter_',
+        courseLastChapterTitle: 'lastChapterTitle_',
+        videoProgress: 'videoProgress_'
     },
 
     // 分页默认值

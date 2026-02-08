@@ -89,7 +89,7 @@ class LmCleanerPage extends Component {
                 Toast.success('文件处理成功！可在下方历史记录中查看或下载。');
                 await this.loadData();
                 // 自动打开预览
-                this.previewImage(result.data.id, file.name);
+                this.previewImage(result.data.id, 'cleaned', file.name);
             } else {
                 Toast.error(result.message || '处理失败');
             }
@@ -120,7 +120,12 @@ class LmCleanerPage extends Component {
         }
     }
 
-    previewImage(id, title, type = 'cleaned') {
+    previewImage(id, type = 'cleaned', title = null) {
+        if (!title) {
+            const item = this.state.items.find(i => i.id == id);
+            title = item ? item.title : '未知文件';
+        }
+
         const url = `/api/v1/lm_cleaner/download/${id}?type=${type}&preview=true&token=${Store.get('token')}`;
         const isPdf = title.toLowerCase().endsWith('.pdf');
         const typeLabel = type === 'source' ? '原件' : '处理后';
@@ -132,7 +137,7 @@ class LmCleanerPage extends Component {
 
         if (window.Modal) {
             window.Modal.show({
-                title: `预览 (${typeLabel}): ${title}`,
+                title: `预览 (${typeLabel}): ${Utils.escapeHtml(title)}`,
                 content: `
                     <div class="text-center p-md">
                         <img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);">
@@ -213,24 +218,24 @@ class LmCleanerPage extends Component {
                                     <div class="history-list-body">
                                         ${items.map(item => `
                                             <div class="history-grid-row history-item">
-                                                <div class="col-name" title="${item.title}">
+                                                <div class="col-name" title="${Utils.escapeHtml(item.title)}">
                                                     <span class="file-icon">
                                                         ${item.title.toLowerCase().endsWith('.pdf') ? '<i class="ri-file-pdf-line"></i>' : '<i class="ri-image-line"></i>'}
                                                     </span>
-                                                    <span>${item.title}</span>
+                                                    <span>${Utils.escapeHtml(item.title)}</span>
                                                 </div>
                                                 <div class="col-date">
                                                     ${new Date(item.created_at).toLocaleString()}
                                                 </div>
                                                 <div class="col-actions">
-                                                    <button class="btn btn-sm btn-primary" onclick="window._lm_cleanerPage.previewImage(${item.id}, '${item.title}', 'cleaned')">
+                                                    <button class="btn btn-sm btn-primary" onclick="window._lm_cleanerPage.previewImage(${item.id}, 'cleaned')">
                                                         <i class="ri-eye-line"></i> 查看
                                                     </button>
                                                     <button class="btn btn-sm btn-success" onclick="window._lm_cleanerPage.downloadFile(${item.id})">
                                                         <i class="ri-download-line"></i> 下载
                                                     </button>
                                                     ${item.source_file ? `
-                                                        <button class="btn btn-sm btn-outline-secondary" onclick="window._lm_cleanerPage.previewImage(${item.id}, '${item.title}', 'source')" title="预览原始文件">
+                                                        <button class="btn btn-sm btn-outline-secondary" onclick="window._lm_cleanerPage.previewImage(${item.id}, 'source')" title="预览原始文件">
                                                             原件
                                                         </button>
                                                     ` : ''}

@@ -394,7 +394,7 @@ async def get_dataset_data(
                     sort_parts.append(f'"{field}" {order}')
             if sort_parts:
                 order_by = f"ORDER BY {', '.join(sort_parts)}"
-        except:
+        except json.JSONDecodeError:
             pass
     # 回退到旧的 sort 参数
     elif sort:

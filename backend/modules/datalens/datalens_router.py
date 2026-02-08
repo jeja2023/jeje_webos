@@ -723,7 +723,8 @@ async def get_lens_image(
         try:
             potential_path = Path(base_path) / path.lstrip("/\\")
             file_path = potential_path.resolve()
-        except:
+        except (ValueError, OSError) as e:
+            logger.debug(f"解析路径失败: {e}")
             raise HTTPException(status_code=400, detail="无效的路径格式")
     else:
         # 默认作为 storage 下的相对路径处理

@@ -34,7 +34,7 @@ if sys.platform == 'win32':
     try:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-    except:
+    except (AttributeError, OSError):
         pass  # 如果失败，继续使用默认编码
 
 
@@ -1059,7 +1059,7 @@ def create_module(
                             if any(kw in manifest_content.lower() for kw in test_keywords) or \
                                item.name in ['task_manager', 'test_module', 'demo_module']:
                                 old_test_modules.append(item.name)
-                        except:
+                        except (OSError, UnicodeDecodeError):
                             pass
         
         if old_test_modules:

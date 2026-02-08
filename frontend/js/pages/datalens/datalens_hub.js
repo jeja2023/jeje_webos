@@ -166,12 +166,12 @@ const DataLensHubMixin = {
                         <div class="lens-sidebar-label">业务分类</div>
                         ${categories.map(c => {
             const icon = c.icon || 'ri-folder-line';
-            const iconHtml = icon.startsWith('ri-') ? `<i class="${icon}"></i>` : icon;
+            const iconHtml = icon.startsWith('ri-') ? `<i class="${Utils.escapeHtml(icon)}"></i>` : Utils.escapeHtml(icon);
             return `
-                            <div class="lens-sidebar-item ${currentCategory === c.id ? 'active' : ''}" data-category="${c.id}">
+                            <div class="lens-sidebar-item ${currentCategory === c.id ? 'active' : ''}" data-category="${Utils.escapeHtml(String(c.id))}">
                                 <span class="lens-sidebar-icon">${iconHtml}</span>
-                                <span class="lens-sidebar-text">${c.name}</span>
-                                ${c.view_count ? `<span class="lens-category-count">${c.view_count}</span>` : ''}
+                                <span class="lens-sidebar-text">${Utils.escapeHtml(c.name)}</span>
+                                ${c.view_count ? `<span class="lens-category-count">${Utils.escapeHtml(String(c.view_count))}</span>` : ''}
                             </div>
                         `;
         }).join('')}
@@ -197,14 +197,14 @@ const DataLensHubMixin = {
                 <div class="lens-main">
                     <div class="lens-hub-header">
                         <div class="lens-search-bar search-group">
-                            <input type="text" id="lens-hub-search" placeholder="搜索视图名称、描述或作者..." value="${searchQuery || ''}">
+                            <input type="text" id="lens-hub-search" placeholder="搜索视图名称、描述或作者..." value="${Utils.escapeHtml(searchQuery || '')}">
                             <button class="btn btn-primary" id="lens-hub-search-btn">搜索</button>
                         </div>
                     </div>
                     
                     <div class="lens-hub-content">
                         <div class="lens-section-title">
-                            ${this._getCategoryTitle(currentCategory)}
+                            ${Utils.escapeHtml(this._getCategoryTitle(currentCategory))}
                             <span class="lens-count">${views.length}</span>
                         </div>
                         <div class="lens-view-grid">
@@ -257,34 +257,34 @@ const DataLensHubMixin = {
             const ownerName = view.creator_name || view.created_by_name || view.owner_name || `用户${view.created_by || view.owner_id || ''}`;
 
             const icon = view.icon || 'ri-bar-chart-2-line';
-            const iconHtml = icon.startsWith('ri-') ? `<i class="${icon}"></i>` : icon;
+            const iconHtml = icon.startsWith('ri-') ? `<i class="${Utils.escapeHtml(icon)}"></i>` : Utils.escapeHtml(icon);
 
             return `
-                <div class="lens-view-card animate-slide-up" data-id="${view.id}">
+                <div class="lens-view-card animate-slide-up" data-id="${Utils.escapeHtml(String(view.id))}">
                     <div class="lens-view-card-icon">${iconHtml}</div>
                     <div class="lens-view-card-body">
                         <div class="lens-view-card-name">${Utils.escapeHtml(view.name)}</div>
                         <div class="lens-view-card-desc">${Utils.escapeHtml(view.description || '暂无描述')}</div>
                         <div class="lens-view-card-meta">
                             <span><i class="ri-user-line"></i> ${Utils.escapeHtml(ownerName)}</span>
-                            <span><i class="ri-calendar-line"></i> ${dateStr}</span>
+                            <span><i class="ri-calendar-line"></i> ${Utils.escapeHtml(dateStr)}</span>
                         </div>
                     </div>
                     <div class="lens-view-card-actions">
                         <button class="lens-view-card-btn favorite ${view.is_favorited ? 'active' : ''}" 
-                                data-id="${view.id}" 
+                                data-id="${Utils.escapeHtml(String(view.id))}" 
                                 title="${view.is_favorited ? '取消收藏' : '收藏'}">
                             <i class="${view.is_favorited ? 'ri-star-fill' : 'ri-star-line'}"></i>
                         </button>
                         <button class="lens-view-card-btn pin ${pinned ? 'active' : ''}" 
-                                data-id="${view.id}"
+                                data-id="${Utils.escapeHtml(String(view.id))}"
                                 data-active="${pinned}"
                                 title="${pinned ? '从开始菜单移除' : '固定到开始菜单'}">
                             <i class="${pinned ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                         </button>
                         ${this._hasPermission('datalens.admin') || view.owner_id === Store.get('user')?.id ? `
-                            <button class="lens-view-card-btn edit" data-id="${view.id}" title="编辑"><i class="ri-edit-line"></i></button>
-                            <button class="lens-view-card-btn delete" data-id="${view.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                            <button class="lens-view-card-btn edit" data-id="${Utils.escapeHtml(String(view.id))}" title="编辑"><i class="ri-edit-line"></i></button>
+                            <button class="lens-view-card-btn delete" data-id="${Utils.escapeHtml(String(view.id))}" title="删除"><i class="ri-delete-bin-line"></i></button>
                         ` : ''}
                     </div>
                 </div>

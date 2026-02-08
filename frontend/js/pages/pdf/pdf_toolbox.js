@@ -9,10 +9,10 @@ const PdfToolbox = {
                 <div class="pdf-bench-card">
                     <div class="pdf-bench-icon"><i class="ri-file-pdf-line"></i></div>
                     <div class="pdf-bench-info">
-                        <div class="pdf-bench-name" title="${file.name}">${file.name}</div>
+                        <div class="pdf-bench-name" title="${Utils.escapeHtml(file.name)}">${Utils.escapeHtml(file.name)}</div>
                         <div class="pdf-bench-meta">${sizeStr}</div>
                     </div>
-                    <button class="pdf-bench-remove" onclick="window._pdfPage.removeSelectedFile('${file.id}', '${file.path}')" title="移除">
+                    <button class="pdf-bench-remove" onclick="window._pdfPage.removeSelectedFile('${Utils.escapeHtml(file.id)}', decodeURIComponent('${encodeURIComponent(file.path)}'))" title="移除">
                         <i class="ri-close-line"></i>
                     </button>
                 </div>

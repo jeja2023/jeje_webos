@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+from utils.timezone import get_beijing_time
 
 from core.config import get_settings, reload_settings
 
@@ -162,12 +163,12 @@ class JWTRotator:
         
         # 生成下次轮换的随机间隔
         next_rotate_days = self.generate_next_rotate_days()
-        next_rotate_time = datetime.now() + timedelta(days=next_rotate_days)
+        next_rotate_time = get_beijing_time() + timedelta(days=next_rotate_days)
         
         # 更新轮换时间戳和下次轮换时间
         rotate_timestamp_found = False
         next_rotate_found = False
-        current_time = datetime.now().isoformat()
+        current_time = get_beijing_time().isoformat()
         next_rotate_str = next_rotate_time.isoformat()
         
         for i, line in enumerate(new_lines):
@@ -202,7 +203,7 @@ class JWTRotator:
         
         logger.info(f"JWT密钥轮换成功，新密钥长度: {len(new_secret)}")
         
-        rotate_timestamp = datetime.now().isoformat()
+        rotate_timestamp = get_beijing_time().isoformat()
         
         return {
             "rotated": True,
@@ -302,7 +303,7 @@ class JWTRotator:
             if next_rotate_str:
                 try:
                     next_rotate = datetime.fromisoformat(next_rotate_str)
-                    now = datetime.now()
+                    now = get_beijing_time()
                     
                     if now >= next_rotate:
                         days_passed = (now - next_rotate).days
@@ -321,7 +322,7 @@ class JWTRotator:
         try:
             env_mtime = self.env_path.stat().st_mtime
             env_modified = datetime.fromtimestamp(env_mtime)
-            days_since_modified = (datetime.now() - env_modified).days
+            days_since_modified = (get_beijing_time() - env_modified).days
             
             # 如果超过最大间隔，需要轮换
             if days_since_modified >= settings.jwt_rotate_interval_max:
@@ -365,7 +366,7 @@ class JWTRotator:
             transition_minutes = settings.jwt_expire_minutes  # 默认 7 天 = 10080 分钟
             transition_end = rotate_time + timedelta(minutes=transition_minutes)
             
-            now = datetime.now()
+            now = get_beijing_time()
             if now >= transition_end:
                 days_passed = (now - rotate_time).days
                 logger.info(f"旧密钥过渡期已结束，距轮换已过 {days_passed} 天，可以清理")

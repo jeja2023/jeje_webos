@@ -15,14 +15,14 @@ const PdfReader = {
 
         const { fileId, filePath, currentPage, totalPages, zoom, source } = state.reader;
         const token = localStorage.getItem(Config.storageKeys.token);
-        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${source}&token=${token}`;
+        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${encodeURIComponent(source || '')}&token=${token}`;
         if (fileId) renderUrl += `&file_id=${fileId}`;
         if (filePath) renderUrl += `&path=${encodeURIComponent(filePath)}`;
 
         return `
             <div class="pdf-viewer-container">
                 <div class="pdf-page-wrapper">
-                    <img src="${renderUrl}" 
+                    <img src="${Utils.escapeHtml(renderUrl)}" 
                          class="pdf-page-image" 
                          id="pdf-page-img"
                          onload="this.style.opacity=1"

@@ -6,6 +6,7 @@
 import logging
 from typing import List, Optional, Tuple
 from datetime import datetime
+from utils.timezone import get_beijing_time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_
 
@@ -281,7 +282,7 @@ class EnrollmentService:
         progress.is_completed = data.is_completed
         progress.progress_seconds = data.progress_seconds
         if data.is_completed and not progress.completed_at:
-            progress.completed_at = datetime.now()
+            progress.completed_at = get_beijing_time()
         
         await db.commit()
         await db.refresh(progress)
@@ -328,7 +329,7 @@ class EnrollmentService:
             enrollment.progress = progress
             enrollment.last_chapter_id = chapter_id
             if progress >= 100:
-                enrollment.completed_at = datetime.now()
+                enrollment.completed_at = get_beijing_time()
             await db.commit()
     
     @staticmethod

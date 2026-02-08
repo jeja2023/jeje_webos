@@ -161,7 +161,7 @@ const AnalysisModelingMixin = {
                     <div class="flex gap-10 align-center">
                         <button class="btn btn-ghost btn-sm" id="btn-back-models"><i class="ri-arrow-left-line"></i> 返回列表</button>
                         <div class="border-left pl-10 flex align-center gap-10">
-                            <span class="font-bold text-lg">${currentModel?.name || '未命名模型'}</span>
+                            <span class="font-bold text-lg">${Utils.escapeHtml(currentModel?.name || '未命名模型')}</span>
                             <span class="badge ${currentModel?.status === 'published' ? 'badge-success' : 'badge-secondary'} text-xs" title="当前模型状态">
                                 ${currentModel?.status === 'published' ? '已发布' : '设计中'}
                             </span>
@@ -252,9 +252,9 @@ const AnalysisModelingMixin = {
                                         <div class="mb-20 text-secondary">
                                             <div class="text-3xl mb-10"><i class="ri-link"></i></div>
                                             <div class="font-bold text-primary mb-5">当前选中连线</div>
-                                            <div class="text-xs">源: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].sourceId)?.label || '未知'}</div>
+                                            <div class="text-xs">源: ${Utils.escapeHtml(modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].sourceId)?.label || '未知')}</div>
                                             <div class="text-xs text-secondary mb-15"><i class="ri-arrow-down-line"></i></div>
-                                            <div class="text-xs">目标: ${modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].targetId)?.label || '未知'}</div>
+                                            <div class="text-xs">目标: ${Utils.escapeHtml(modelNodes.find(n => n.id === modelConnections[this.state.selectedConnIndex].targetId)?.label || '未知')}</div>
                                         </div>
                                         <button class="btn btn-outline-danger btn-block btn-sm" id="btn-delete-conn-panel"><i class="ri-delete-bin-line"></i> 移除此连线</button>
                                     </div>
@@ -1222,7 +1222,7 @@ const AnalysisModelingMixin = {
                 ${portsHtml}
                 <div class="node-head" style="background: linear-gradient(90deg, ${nodeColor}20, transparent);">
                     <span class="node-icon">${icons[node.type] || '📦'}</span>
-                    <span class="node-label" style="max-width: 120px;" title="${Utils.escapeHtml(displayLabel)}">${displayLabel}</span>
+                    <span class="node-label" style="max-width: 120px;" title="${Utils.escapeHtml(displayLabel)}">${Utils.escapeHtml(displayLabel)}</span>
                     <div class="node-actions-mini">
                          <span class="btn-node-run" title="运行此节点" style="color: #10b981;">▶️</span>
                          <span class="btn-node-preview" title="预览数据" style="color: var(--color-primary); ${isExecuted ? '' : 'display:none;'}">👁️</span>
@@ -1245,24 +1245,25 @@ const AnalysisModelingMixin = {
      */
     getNodeSummary(node) {
         const d = node.data || {};
+        const esc = (s) => Utils.escapeHtml(String(s || ''));
         switch (node.type) {
-            case 'source': return d.table || '未配置来源';
-            case 'sink': return d.target || '未配置目标';
-            case 'filter': return (d.field && d.operator) ? `${d.field} ${d.operator} ${d.value || ''}` : '未设置条件';
-            case 'select': return d.columns || '全部字段';
-            case 'distinct': return d.columns || '全部列去重';
-            case 'sample': return d.rate ? `${d.rate}%` : '未配置';
-            case 'limit': return d.count ? `取前 ${d.count} 行` : '未配置';
-            case 'group': return d.groupBy ? `按 ${d.groupBy} 分组` : '未配置分组';
-            case 'sort': return d.orderBy ? `${d.orderBy} ${d.direction || 'ASC'}` : '未配置排序';
-            case 'calculate': return (d.newColumn && d.fieldA) ? `${d.newColumn}=${d.fieldA}${d.op || '+'}${d.value || ''}` : '未配置公式';
-            case 'rename': return d.oldCol ? `${d.oldCol}→${d.newCol}` : '未配置映射';
-            case 'pivot': return d.index ? `索引: ${d.index}` : '未配置';
-            case 'join': return d.joinType ? `${d.joinType.toUpperCase()} JOIN` : '未配置';
-            case 'union': return d.tables ? `合并: ${d.tables}` : '未配置';
-            case 'fillna': return d.fillValue !== undefined ? `填充: ${d.fillValue}` : '未配置';
-            case 'typecast': return d.castType ? `转为 ${d.castType}` : '未配置';
-            case 'split': return d.separator ? `分隔符: "${d.separator}"` : '未配置';
+            case 'source': return esc(d.table) || '未配置来源';
+            case 'sink': return esc(d.target) || '未配置目标';
+            case 'filter': return (d.field && d.operator) ? `${esc(d.field)} ${esc(d.operator)} ${esc(d.value)}` : '未设置条件';
+            case 'select': return esc(d.columns) || '全部字段';
+            case 'distinct': return esc(d.columns) || '全部列去重';
+            case 'sample': return d.rate ? `${esc(d.rate)}%` : '未配置';
+            case 'limit': return d.count ? `取前 ${esc(d.count)} 行` : '未配置';
+            case 'group': return d.groupBy ? `按 ${esc(d.groupBy)} 分组` : '未配置分组';
+            case 'sort': return d.orderBy ? `${esc(d.orderBy)} ${esc(d.direction || 'ASC')}` : '未配置排序';
+            case 'calculate': return (d.newColumn && d.fieldA) ? `${esc(d.newColumn)}=${esc(d.fieldA)}${esc(d.op || '+')}${esc(d.value)}` : '未配置公式';
+            case 'rename': return d.oldCol ? `${esc(d.oldCol)}→${esc(d.newCol)}` : '未配置映射';
+            case 'pivot': return d.index ? `索引: ${esc(d.index)}` : '未配置';
+            case 'join': return d.joinType ? `${esc(d.joinType.toUpperCase())} JOIN` : '未配置';
+            case 'union': return d.tables ? `合并: ${esc(d.tables)}` : '未配置';
+            case 'fillna': return d.fillValue !== undefined ? `填充: ${esc(d.fillValue)}` : '未配置';
+            case 'typecast': return d.castType ? `转为 ${esc(d.castType)}` : '未配置';
+            case 'split': return d.separator ? `分隔符: "${esc(d.separator)}"` : '未配置';
             case 'sql': return d.query ? '已配置 SQL' : '未配置 SQL';
             case 'clean': return d.mode ? (d.mode === 'drop_na' ? '删除空值行' : '删除重复行') : '未配置';
             default: return '';
@@ -1359,15 +1360,15 @@ const AnalysisModelingMixin = {
             const fName = typeof f === 'object' ? f.name : f;
             const active = selectedArr.includes(fName);
             return `<span class="visual-field-chip ${active ? 'active' : ''}" 
-                                  data-col="${fName}" 
+                                  data-col="${Utils.escapeHtml(fName)}" 
                                   data-target="${targetId}"
                                   data-single="${single}"
                                   style="padding: 4px 10px; border-radius: 15px; border: 1px solid var(--color-border); cursor: pointer; font-size: 11px; transition: all 0.2s; ${active ? 'background: var(--color-primary); color: white; border-color: var(--color-primary);' : 'background: var(--color-bg-secondary);'}">
-                                ${fName}
+                                ${Utils.escapeHtml(fName)}
                             </span>`;
         }).join('')}
             </div>
-            <input type="hidden" id="${targetId}" value="${selectedArr.join(', ')}">
+            <input type="hidden" id="${targetId}" value="${Utils.escapeHtml(selectedArr.join(', '))}">
         `;
     },
 
@@ -1417,11 +1418,11 @@ const AnalysisModelingMixin = {
                     <select class="form-control w-100" id="cfg-source-table">
                         <option value="">请选择数据集...</option>
                         ${datasets.length === 0 ? '<option value="" disabled>暂无可用数据集，请先导入数据</option>' : ''}
-                        ${datasets.map(d => `<option value="${d.name}" ${node.data?.table === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                        ${datasets.map(d => `<option value="${Utils.escapeHtml(d.name)}" ${node.data?.table === d.name ? 'selected' : ''}>${Utils.escapeHtml(d.name)}</option>`).join('')}
                     </select>
                 `, '选择系统内已注册的数据集作为起始输入') + (sourceHasTable ? renderGroup('数据源字段预览', `
                     <div class="field-chips-container" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 5px; background: var(--color-bg-secondary); border-radius: 6px;">
-                        ${availableFields.slice(0, 30).map(f => `<span style="padding: 3px 8px; border-radius: 12px; border: 1px solid var(--color-border); font-size: 10px; background: var(--color-bg-primary);">${f.name}</span>`).join('')}
+                        ${availableFields.slice(0, 30).map(f => `<span style="padding: 3px 8px; border-radius: 12px; border: 1px solid var(--color-border); font-size: 10px; background: var(--color-bg-primary);">${Utils.escapeHtml(f.name)}</span>`).join('')}
                         ${availableFields.length > 30 ? `<span style="padding: 3px 8px; font-size: 10px; color: var(--color-text-secondary);">...及其他 ${availableFields.length - 30} 个字段</span>` : ''}
                     </div>
                 `, `共 ${availableFields.length} 个字段`) : '');
@@ -1430,7 +1431,7 @@ const AnalysisModelingMixin = {
             case 'sink':
                 fields = renderGroup('输出目标表', `
                     <input type="text" class="form-control w-100" id="cfg-sink-target" 
-                           placeholder="例如: result_table_v1" value="${node.data?.target || ''}">
+                           placeholder="例如: result_table_v1" value="${Utils.escapeHtml(node.data?.target || '')}">
                 `) + renderGroup('写入模式', `
                     <select class="form-control w-100" id="cfg-sink-mode">
                         <option value="append" ${node.data?.mode === 'append' ? 'selected' : ''}>追加数据 (Append)</option>
@@ -1501,7 +1502,7 @@ const AnalysisModelingMixin = {
                                 <div class="flex gap-5 mb-5">
                                     <select class="form-control filter-field" style="flex: 2;">
                                         <option value="">选择字段</option>
-                                        ${availableFields.map(f => `<option value="${f.name}" ${cond.field === f.name ? 'selected' : ''}>${f.name}</option>`).join('')}
+                                        ${availableFields.map(f => `<option value="${Utils.escapeHtml(f.name)}" ${cond.field === f.name ? 'selected' : ''}>${Utils.escapeHtml(f.name)}</option>`).join('')}
                                     </select>
                                     ${i > 0 ? `<button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>` : ''}
                                 </div>
@@ -1511,7 +1512,7 @@ const AnalysisModelingMixin = {
                                     </select>
                                 </div>
                                 <input type="text" class="form-control w-100 filter-val" 
-                                       placeholder="输入比较值" value="${cond.value || ''}" 
+                                       placeholder="输入比较值" value="${Utils.escapeHtml(cond.value || '')}" 
                                        style="display: ${['is_null', 'not_null', 'is_empty', 'not_empty'].includes(cond.operator) ? 'none' : 'block'};">
                             </div>
                         `).join('')}
@@ -1530,7 +1531,7 @@ const AnalysisModelingMixin = {
                             <div class="flex gap-5 mb-5">
                                 <select class="form-control filter-field" style="flex: 2;">
                                     <option value="">选择字段</option>
-                                    ${availableFields.map(f => `<option value="${f.name}">${f.name}</option>`).join('')}
+                                    ${availableFields.map(f => `<option value="${Utils.escapeHtml(f.name)}">${Utils.escapeHtml(f.name)}</option>`).join('')}
                                 </select>
                                 <button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>
                             </div>
@@ -2059,11 +2060,11 @@ const AnalysisModelingMixin = {
                 <div class="etl-preview-body bg-secondary rounded p-10">
                     <table class="premium-table" style="width: 100%;">
                         <thead>
-                            <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>
+                            <tr>${cols.map(c => `<th>${Utils.escapeHtml(c)}</th>`).join('')}</tr>
                         </thead>
                         <tbody>
                             ${previewData.map(row => `
-                                <tr>${cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : '-'}</td>`).join('')}</tr>
+                                <tr>${cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? Utils.escapeHtml(String(row[c])) : '-'}</td>`).join('')}</tr>
                             `).join('')}
                         </tbody>
                     </table>
@@ -2093,7 +2094,7 @@ const AnalysisModelingMixin = {
                 <div class="modal-content modal-large bg-primary etl-preview-modal-content">
                     <div class="flex-between mb-15 flex-shrink-0">
                         <div class="flex align-center gap-10">
-                            <h3>🔍 数据实时预览: ${node.data?.label || node.type}</h3>
+                            <h3>🔍 数据实时预览: ${Utils.escapeHtml(node.data?.label || node.type)}</h3>
                             <span class="badge badge-secondary text-xs">PREVIEW</span>
                         </div>
                         <button class="btn-icon btn-ghost" id="btn-close-preview">×</button>

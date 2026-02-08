@@ -86,7 +86,7 @@ class PdfPage extends Component {
     getTabTitle() {
         switch (this.state.activeTab) {
             case 'toolbox': return 'PDF 工具箱';
-            case 'reader': return this.state.reader.filename || 'PDF 阅读器';
+            case 'reader': return Utils.escapeHtml(this.state.reader.filename || 'PDF 阅读器');
             case 'files': return '我的 PDF 文档';
             case 'history': return '操作历史';
             default: return 'PDF 工具';

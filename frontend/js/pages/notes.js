@@ -77,13 +77,13 @@ class NotesListPage extends Component {
         return folders.map(folder => `
             <div class="folder-item ${this.folderId == folder.id ? 'active' : ''}" 
                  style="padding-left: ${16 + level * 16}px"
-                 data-folder="${folder.id}">
+                 data-folder="${Utils.escapeHtml(String(folder.id))}">
                 <span class="folder-icon"><i class="ri-folder-line"></i></span>
                 <span class="folder-name">${Utils.escapeHtml(folder.name)}</span>
-                <span class="folder-count">${folder.note_count}</span>
+                <span class="folder-count">${Utils.escapeHtml(String(folder.note_count))}</span>
                 <div class="folder-actions">
-                    <button class="btn btn-ghost btn-xs" data-edit-folder="${folder.id}" data-folder-name="${Utils.escapeHtml(folder.name)}" title="编辑"><i class="ri-edit-line"></i></button>
-                    <button class="btn btn-ghost btn-xs" data-delete-folder="${folder.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                    <button class="btn btn-ghost btn-xs" data-edit-folder="${Utils.escapeHtml(String(folder.id))}" data-folder-name="${Utils.escapeHtml(folder.name)}" title="编辑"><i class="ri-edit-line"></i></button>
+                    <button class="btn btn-ghost btn-xs" data-delete-folder="${Utils.escapeHtml(String(folder.id))}" title="删除"><i class="ri-delete-bin-line"></i></button>
                 </div>
             </div>
             ${folder.children.length > 0 ? this.renderFolderTree(folder.children, level + 1) : ''}
@@ -120,7 +120,7 @@ class NotesListPage extends Component {
                     <div class="notes-header">
                         <div class="notes-title">
                             <h2>${currentFolder ? Utils.escapeHtml(currentFolder.name) : '所有笔记'}</h2>
-                            <span class="notes-count">${total} 条笔记${selectedTag ? ` · 标签: ${Utils.escapeHtml(selectedTag.name)}` : ''}</span>
+                            <span class="notes-count">${Utils.escapeHtml(String(total))} 条笔记${selectedTag ? ` · 标签: ${Utils.escapeHtml(selectedTag.name)}` : ''}</span>
                         </div>
                         
                         <div class="notes-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -136,7 +136,7 @@ class NotesListPage extends Component {
                                 <select class="form-input form-select" id="tagFilter" style="width: auto; min-width: 120px;">
                                     <option value="">全部标签</option>
                                     ${tags.map(tag => `
-                                        <option value="${tag.id}" ${selectedTagId == tag.id ? 'selected' : ''}>
+                                        <option value="${Utils.escapeHtml(String(tag.id))}" ${selectedTagId == tag.id ? 'selected' : ''}>
                                             ${Utils.escapeHtml(tag.name)}
                                         </option>
                                     `).join('')}
@@ -167,24 +167,24 @@ class NotesListPage extends Component {
                     <div class="notes-list">
                         ${loading ? '<div class="loading"></div>' :
                 notes.length > 0 ? notes.map(note => `
-                            <div class="note-card" data-note="${note.id}">
+                            <div class="note-card" data-note="${Utils.escapeHtml(String(note.id))}">
                                 <div class="note-card-header">
                                     <label class="note-checkbox" style="display: none; margin-right: 8px;" onclick="event.stopPropagation()">
-                                        <input type="checkbox" class="note-select" data-id="${note.id}">
+                                        <input type="checkbox" class="note-select" data-id="${Utils.escapeHtml(String(note.id))}">
                                     </label>
                                     <h3 class="note-title">
                                         ${note.is_pinned ? '<span class="tag tag-warning" style="margin-right:6px">置顶</span>' : ''}
                                         ${Utils.escapeHtml(note.title)}
                                     </h3>
                                     <div class="note-actions">
-                                        <button class="btn btn-ghost btn-sm" data-star="${note.id}" title="${note.is_starred ? '取消收藏' : '收藏'}">
+                                        <button class="btn btn-ghost btn-sm" data-star="${Utils.escapeHtml(String(note.id))}" title="${note.is_starred ? '取消收藏' : '收藏'}">
                                             <i class="${note.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i>
                                         </button>
-                                        <button class="btn btn-ghost btn-sm" data-pin="${note.id}" title="${note.is_pinned ? '取消置顶' : '置顶'}">
+                                        <button class="btn btn-ghost btn-sm" data-pin="${Utils.escapeHtml(String(note.id))}" title="${note.is_pinned ? '取消置顶' : '置顶'}">
                                             <i class="${note.is_pinned ? 'ri-pushpin-fill' : 'ri-pushpin-line'}"></i>
                                         </button>
-                                        <button class="btn btn-ghost btn-sm" data-edit-note="${note.id}" title="编辑"><i class="ri-edit-line"></i></button>
-                                        <button class="btn btn-ghost btn-sm" data-delete-note="${note.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-edit-note="${Utils.escapeHtml(String(note.id))}" title="编辑"><i class="ri-edit-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-delete-note="${Utils.escapeHtml(String(note.id))}" title="删除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </div>
                                 <p class="note-summary">${Utils.escapeHtml(note.summary || '暂无内容')}</p>
@@ -193,7 +193,7 @@ class NotesListPage extends Component {
                                     ${note.tags.length > 0 ? `
                                         <div class="note-tags">
                                             ${note.tags.map(tag => `
-                                                <span class="tag" style="background: ${tag.color}">${Utils.escapeHtml(tag.name)}</span>
+                                                <span class="tag" style="background: ${Utils.escapeHtml(tag.color || '#3b82f6')}">${Utils.escapeHtml(tag.name)}</span>
                                             `).join('')}
                                         </div>
                                     ` : ''}
@@ -324,7 +324,7 @@ class NotesListPage extends Component {
         // 构建文件夹选项
         const buildOptions = (folders, level = 0) => {
             return folders.map(folder => `
-                <option value="${folder.id}">${'　'.repeat(level)}📁 ${Utils.escapeHtml(folder.name)}</option>
+                <option value="${Utils.escapeHtml(String(folder.id))}">${'　'.repeat(level)}📁 ${Utils.escapeHtml(folder.name)}</option>
                 ${folder.children ? buildOptions(folder.children, level + 1) : ''}
             `).join('');
         };
@@ -737,7 +737,7 @@ class NotesEditPage extends Component {
                                 <select name="folder_id" class="form-input form-select">
                                     <option value="">根目录</option>
                                     ${folders.map(f => `
-                                        <option value="${f.id}" ${folderId == f.id ? 'selected' : ''}>
+                                        <option value="${Utils.escapeHtml(String(f.id))}" ${folderId == f.id ? 'selected' : ''}>
                                             ${'　'.repeat(f.level)}📁 ${Utils.escapeHtml(f.name)}
                                         </option>
                                     `).join('')}
@@ -757,14 +757,14 @@ class NotesEditPage extends Component {
             const isSelected = note?.tags?.some(t => t.id === tag.id) || false;
             return `
                                         <label style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition-fast); 
-                                               ${isSelected ? `background: ${tag.color}; color: var(--color-text-inverse);` : 'background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);'}
+                                               ${isSelected ? `background: ${Utils.escapeHtml(tag.color)}; color: var(--color-text-inverse);` : 'background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);'}
                                                ${isSelected ? '' : 'opacity: 0.7;'}
                                                ${isSelected ? '' : '&:hover { opacity: 1; }'}" 
                                                onmouseover="this.style.opacity='1'" 
                                                onmouseout="${isSelected ? '' : "this.style.opacity='0.7'"}">
-                                            <input type="checkbox" name="tags" value="${tag.id}" ${isSelected ? 'checked' : ''} 
+                                            <input type="checkbox" name="tags" value="${Utils.escapeHtml(String(tag.id))}" ${isSelected ? 'checked' : ''} 
                                                    style="display: none;">
-                                            <span style="width: 12px; height: 12px; border-radius: 50%; background: ${tag.color}; flex-shrink: 0;"></span>
+                                            <span style="width: 12px; height: 12px; border-radius: 50%; background: ${Utils.escapeHtml(tag.color)}; flex-shrink: 0;"></span>
                                             <span>${Utils.escapeHtml(tag.name)}</span>
                                         </label>
                                     `;
@@ -928,7 +928,7 @@ class NotesStarredPage extends Component {
                         </button>
                         <div>
                             <h1 class="page-title" style="margin: 0;">⭐ 我的收藏</h1>
-                            <p class="page-desc" style="margin: 4px 0 0 0;">${total} 条收藏笔记</p>
+                            <p class="page-desc" style="margin: 4px 0 0 0;">${Utils.escapeHtml(String(total))} 条收藏笔记</p>
                         </div>
                     </div>
                     <div class="page-nav-tabs">
@@ -944,7 +944,7 @@ class NotesStarredPage extends Component {
                 <div class="notes-grid">
                     ${loading ? '<div class="loading"></div>' :
                 notes.length > 0 ? notes.map(note => `
-                        <div class="note-card card" data-note="${note.id}">
+                        <div class="note-card card" data-note="${Utils.escapeHtml(String(note.id))}">
                             <div class="card-body">
                                 <h3 class="note-title">
                                     ${note.is_pinned ? '<span class="tag tag-warning" style="margin-right:6px">置顶</span>' : ''}
@@ -954,8 +954,8 @@ class NotesStarredPage extends Component {
                                 <div class="note-meta">
                                     <span class="note-time">${Utils.timeAgo(note.updated_at)}</span>
                                     <div style="display:flex;gap:6px;">
-                                        <button class="btn btn-ghost btn-sm" data-pin="${note.id}" title="${note.is_pinned ? '取消置顶' : '置顶'}">${note.is_pinned ? '📌' : '📍'}</button>
-                                        <button class="btn btn-ghost btn-sm" data-unstar="${note.id}" title="取消收藏">取消收藏</button>
+                                        <button class="btn btn-ghost btn-sm" data-pin="${Utils.escapeHtml(String(note.id))}" title="${note.is_pinned ? '取消置顶' : '置顶'}">${note.is_pinned ? '📌' : '📍'}</button>
+                                        <button class="btn btn-ghost btn-sm" data-unstar="${Utils.escapeHtml(String(note.id))}" title="取消收藏">取消收藏</button>
                                     </div>
                                 </div>
                             </div>
@@ -1108,7 +1108,7 @@ class NotesTagsPage extends Component {
                         </button>
                         <div>
                             <h1 class="page-title" style="margin: 0;"><i class="ri-price-tag-3-line"></i> 标签管理</h1>
-                            <p class="page-desc" style="margin: 4px 0 0 0;">共 ${tags.length} 个标签</p>
+                            <p class="page-desc" style="margin: 4px 0 0 0;">共 ${Utils.escapeHtml(String(tags.length))} 个标签</p>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -1127,11 +1127,11 @@ class NotesTagsPage extends Component {
                         <div class="tags-grid">
                             ${tags.map(tag => `
                                 <div class="tag-card">
-                                    <span class="tag-color" style="background: ${tag.color}"></span>
+                                    <span class="tag-color" style="background: ${Utils.escapeHtml(tag.color)}"></span>
                                     <span class="tag-name">${Utils.escapeHtml(tag.name)}</span>
                                     <div class="tag-actions">
-                                        <button class="btn btn-ghost btn-sm" data-edit='${JSON.stringify(tag)}'><i class="ri-edit-line"></i></button>
-                                        <button class="btn btn-ghost btn-sm" data-delete="${tag.id}"><i class="ri-delete-bin-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-edit='${Utils.escapeHtml(JSON.stringify(tag))}'><i class="ri-edit-line"></i></button>
+                                        <button class="btn btn-ghost btn-sm" data-delete="${Utils.escapeHtml(String(tag.id))}"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1229,11 +1229,12 @@ class NotesViewPage extends Component {
     renderMarkdown(text) {
         if (!text) return '';
 
+        // 初步对全文进行转义
         let html = Utils.escapeHtml(text);
 
         // 代码块（多行）- 先处理以避免被其他规则干扰
         html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-            return `<pre class="code-block" data-lang="${lang || 'text'}"><code>${code.trim()}</code></pre>`;
+            return `<pre class="code-block" data-lang="${Utils.escapeHtml(lang || 'text')}"><code>${code.trim()}</code></pre>`;
         });
 
         // 标题
@@ -1270,11 +1271,17 @@ class NotesViewPage extends Component {
         // 水平线
         html = html.replace(/^---$/gm, '<hr>');
 
-        // 链接
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        // 链接 - 增加协议检查
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, label, url) => {
+            const isSafe = !/^\s*(javascript|vbscript|data):/i.test(url);
+            return `<a href="${isSafe ? url : '#'}" target="_blank" rel="noopener">${label}</a>`;
+        });
 
-        // 图片
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:8px 0;">');
+        // 图片 - 增加协议检查
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+            const isSafe = !/^\s*(javascript|vbscript|data):/i.test(url);
+            return `<img src="${isSafe ? url : ''}" alt="${alt}" style="max-width:100%;border-radius:8px;margin:8px 0;">`;
+        });
 
         // 换行
         html = html.replace(/\n\n/g, '</p><p>');
@@ -1382,8 +1389,8 @@ class NotesViewPage extends Component {
                                 ${Utils.escapeHtml(note.title)}
                             </h1>
                             <p class="page-desc" style="margin:4px 0 0 0;">
-                                <span title="字数"><i class="ri-file-list-line"></i> ${wordCount} 字</span> · 
-                                <span title="预计阅读时间"><i class="ri-time-line"></i> ${readTime} 分钟</span> · 
+                                <span title="字数"><i class="ri-file-list-line"></i> ${Utils.escapeHtml(String(wordCount))} 字</span> · 
+                                <span title="预计阅读时间"><i class="ri-time-line"></i> ${Utils.escapeHtml(String(readTime))} 分钟</span> · 
                                 <span title="更新时间">${Utils.timeAgo(note.updated_at || note.created_at)}</span>
                             </p>
                         </div>
@@ -1415,7 +1422,7 @@ class NotesViewPage extends Component {
                         ${note.tags && note.tags.length ? `
                             <div class="note-tags-display" style="margin-bottom: 16px; display:flex; gap:8px; flex-wrap:wrap;">
                                 ${note.tags.map(tag => `
-                                    <span class="tag" style="background:${tag.color};color:#fff;padding:4px 12px;border-radius:16px;">
+                                    <span class="tag" style="background:${Utils.escapeHtml(tag.color || '#3b82f6')};color:#fff;padding:4px 12px;border-radius:16px;">
                                         ${Utils.escapeHtml(tag.name)}
                                     </span>
                                 `).join('')}

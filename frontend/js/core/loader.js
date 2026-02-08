@@ -145,7 +145,7 @@ const ResourceLoader = {
         '/im': {
             css: ['/static/css/pages/im/im.css'],
             js: [
-                '/static/js/pages/im/components.js',
+                '/static/js/pages/im/im_components.js',
                 '/static/js/pages/im/im.js'
             ]
         },

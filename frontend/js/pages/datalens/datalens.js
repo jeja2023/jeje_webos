@@ -202,7 +202,7 @@ class DataLensPage extends Component {
     _showImagePreview(src) {
         Modal.show({
             title: '图片预览',
-            content: `<div class="text-center p-10"><img src="${src}" style="max-width:100%; max-height: 70vh; border-radius: 8px; box-shadow: var(--shadow-lg);"></div>`,
+            content: `<div class="text-center p-10"><img src="${Utils.escapeHtml(src)}" style="max-width:100%; max-height: 70vh; border-radius: 8px; box-shadow: var(--shadow-lg);"></div>`,
             buttons: [{ text: '关闭', onClick: () => Modal.close() }]
         });
     }

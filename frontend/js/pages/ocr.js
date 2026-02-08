@@ -182,7 +182,7 @@ class OCRPage extends Component {
             return `
                 <div class="ocr-preview pdf-preview">
                     <i class="ri-file-pdf-2-line"></i>
-                    <span class="pdf-name">${this._currentFile?.name || 'PDF 文档'}</span>
+                    <span class="pdf-name">${Utils.escapeHtml(this._currentFile?.name) || 'PDF 文档'}</span>
                     <button class="ocr-clear-btn" id="ocr-clear-btn">
                         <i class="ri-close-line"></i>
                     </button>
@@ -215,7 +215,7 @@ class OCRPage extends Component {
                             points="${points}" 
                             class="ocr-box" 
                             data-index="${idx}"
-                            data-text="${this.escapeHtml(box.text)}"
+                            data-text="${Utils.escapeHtml(box.text)}"
                         />
                     `;
         }).join('')}
@@ -249,7 +249,7 @@ class OCRPage extends Component {
                                 <span class="history-time">${item.timestamp}</span>
                                 <span class="history-lang">${this.getLangName(item.language)}</span>
                             </div>
-                            <div class="history-item-text">${this.escapeHtml(item.text)}</div>
+                            <div class="history-item-text">${Utils.escapeHtml(item.text)}</div>
                             <div class="history-item-stats">
                                 <span>${item.charCount} 字符</span>
                                 <span>${(item.confidence * 100).toFixed(1)}% 置信度</span>
@@ -311,7 +311,7 @@ class OCRPage extends Component {
             </div>
 
             <div class="ocr-result-content">
-                <pre class="result-text" id="ocr-result-text">${this.escapeHtml(text) || '(未识别到文字)'}</pre>
+                <pre class="result-text" id="ocr-result-text">${Utils.escapeHtml(text) || '(未识别到文字)'}</pre>
             </div>
 
             ${boxes && boxes.length > 0 ? `
@@ -325,7 +325,7 @@ class OCRPage extends Component {
                         ${boxes.map((box, idx) => `
                             <div class="detail-item" data-index="${idx}">
                                 <span class="detail-index">${idx + 1}</span>
-                                <span class="detail-text">${this.escapeHtml(box.text)}</span>
+                                <span class="detail-text">${Utils.escapeHtml(box.text)}</span>
                                 <span class="detail-confidence">${(box.confidence * 100).toFixed(1)}%</span>
                             </div>
                         `).join('')}
@@ -335,12 +335,7 @@ class OCRPage extends Component {
         `;
     }
 
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+
 
     bindEvents() {
         if (this.container._eventsBound) return;

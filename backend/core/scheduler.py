@@ -7,6 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Callable, Optional
+from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class Scheduler:
         async def daily_task():
             while self.running:
                 try:
-                    now = datetime.now()
+                    now = get_beijing_time()
                     target_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
                     
                     # 如果目标时间已过，设置为明天

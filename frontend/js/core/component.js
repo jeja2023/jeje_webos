@@ -347,10 +347,33 @@ const Utils = {
      * 转义HTML
      */
     escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, function (m) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[m];
+        });
+    },
+
+    /**
+     * 验证 URL 协议是否安全
+     */
+    validateProtocol(url) {
+        if (!url) return true;
+        const lower = url.toLowerCase().trim();
+        // 允许 http, https, mailto, tel, 相对路径, 锚点
+        return lower.startsWith('http://') ||
+            lower.startsWith('https://') ||
+            lower.startsWith('mailto:') ||
+            lower.startsWith('tel:') ||
+            lower.startsWith('/') ||
+            lower.startsWith('./') ||
+            lower.startsWith('../') ||
+            lower.startsWith('#');
     },
 
     /**

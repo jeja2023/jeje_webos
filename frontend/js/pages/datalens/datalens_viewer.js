@@ -159,11 +159,11 @@ const DataLensViewerMixin = {
                             <span class="lens-breadcrumb-item">数据透镜</span>
                             ${activeTab.category_name ? `
                                 <span class="lens-breadcrumb-separator">/</span>
-                                <span class="lens-breadcrumb-item">${activeTab.category_name}</span>
+                                <span class="lens-breadcrumb-item">${Utils.escapeHtml(activeTab.category_name)}</span>
                             ` : ''}
                             <span class="lens-breadcrumb-separator">/</span>
-                            <h2 class="lens-viewer-title">${activeTab.name}</h2>
-                            ${activeTab.description ? `<span class="lens-viewer-desc" title="${activeTab.description}"><i class="ri-information-line"></i></span>` : ''}
+                            <h2 class="lens-viewer-title">${Utils.escapeHtml(activeTab.name)}</h2>
+                            ${activeTab.description ? `<span class="lens-viewer-desc" title="${Utils.escapeHtml(activeTab.description)}"><i class="ri-information-line"></i></span>` : ''}
                         </div>
                     </div>`}
                     <div class="lens-viewer-toolbar">
@@ -178,7 +178,7 @@ const DataLensViewerMixin = {
                             <i class="ri-arrow-up-down-line"></i> 排序${sortCount > 0 ? ` (${sortCount})` : ''}
                         </button>
                         <div class="lens-search-box search-group">
-                            <input type="text" class="lens-viewer-search-input" placeholder="在结果中搜索..." value="${activeTab.search || ''}">
+                            <input type="text" class="lens-viewer-search-input" placeholder="在结果中搜索..." value="${Utils.escapeHtml(activeTab.search || '')}">
                             <button class="btn btn-primary" id="lens-viewer-search-btn"><i class="ri-search-2-line"></i></button>
                         </div>
                         <button class="lens-btn lens-btn-outline lens-refresh-btn" title="刷新数据"><i class="ri-refresh-line"></i></button>
@@ -251,7 +251,7 @@ const DataLensViewerMixin = {
     `;
         } catch (e) {
             console.error('渲染图表视图失败:', e);
-            return `<div class="lens-error"> 图表视图渲染失败: ${e.message || '未知错误'}</div> `;
+            return `<div class="lens-error"> 图表视图渲染失败: ${Utils.escapeHtml(e.message || '未知错误')}</div> `;
         }
     },
 
@@ -367,7 +367,7 @@ const DataLensViewerMixin = {
 
         } catch (e) {
             console.error('渲染图表失败:', e);
-            container.innerHTML = `<div class="lens-error"> 图表渲染失败: ${e.message}</div> `;
+            container.innerHTML = `<div class="lens-error"> 图表渲染失败: ${Utils.escapeHtml(e.message)}</div> `;
         }
     },
 
@@ -410,8 +410,8 @@ const DataLensViewerMixin = {
                         <thead>
                             <tr>
                                 ${visibleColumns.map(col => `
-                                    <th class="lens-sortable-th ${sortField === col ? 'active' : ''}" data-field="${col}">
-                                        ${customNames[col] || columnTitles[col] || col}
+                                    <th class="lens-sortable-th ${sortField === col ? 'active' : ''}" data-field="${Utils.escapeHtml(col)}">
+                                        ${Utils.escapeHtml(customNames[col] || columnTitles[col] || col)}
                                         ${sortField === col ? (sortOrder === 'asc' ? ' <i class="ri-arrow-up-line"></i>' : ' <i class="ri-arrow-down-line"></i>') : ''}
                                     </th>
                                 `).join('')}
@@ -431,7 +431,7 @@ const DataLensViewerMixin = {
             `;
         } catch (e) {
             console.error('渲染数据表格失败:', e);
-            return `<div class="lens-error">渲染表格失败: ${e.message || '未知错误'}</div>`;
+            return `<div class="lens-error">渲染表格失败: ${Utils.escapeHtml(e.message || '未知错误')}</div>`;
         }
     },
 
@@ -516,13 +516,16 @@ const DataLensViewerMixin = {
                 }
 
 
-                const safeUrl = imgSrc.replace(/'/g, "\\'");
-                return `<img src="${Utils.escapeHtml(imgSrc)}" class="lens-cell-img" onclick="window.DataLensPageInstance._showImagePreview('${safeUrl}')" onerror="this.src='frontend/img/image_error.png';this.title='图片加载失败';">`;
+                const escapedImgSrc = Utils.escapeHtml(imgSrc);
+                // encodeURIComponent does NOT escape single quotes, so we must do it manually to prevent breaking out of the JS string
+                const safeUrlForJs = encodeURIComponent(imgSrc).replace(/'/g, '%27');
+                return `<img src="${escapedImgSrc}" class="lens-cell-img" onclick="window.DataLensPageInstance._showImagePreview(decodeURIComponent('${safeUrlForJs}'))" onerror="this.src='frontend/img/image_error.png';this.title='图片加载失败';">`;
             }
 
             // 2. 如果显式指定为链接，或者自动检出链接
             if (colType === 'link' || strValue.startsWith('http')) {
-                return `<a href="${Utils.escapeHtml(strValue)}" target="_blank" class="lens-cell-link">查看链接</a>`;
+                const safeUrl = Utils.validateProtocol(strValue) ? strValue : '#';
+                return `<a href="${Utils.escapeHtml(safeUrl)}" target="_blank" class="lens-cell-link">查看链接</a>`;
             }
 
             // 3. 布尔类型
@@ -636,7 +639,7 @@ const DataLensViewerMixin = {
                                 ${columns.map(col => {
                 const f = typeof col === 'object' ? col.field : col;
                 const t = typeof col === 'object' ? (col.title || col.field) : col;
-                return `<option value="${f}" ${f === field ? 'selected' : ''}>${t}</option>`;
+                return `<option value="${Utils.escapeHtml(f)}" ${f === field ? 'selected' : ''}>${Utils.escapeHtml(t)}</option>`;
             }).join('')}
                             </select>
                             <select class="form-control lens-filter-op">
@@ -684,7 +687,7 @@ const DataLensViewerMixin = {
                                 ${columns.map(col => {
             const f = typeof col === 'object' ? col.field : col;
             const t = typeof col === 'object' ? (col.title || col.field) : col;
-            return `<option value="${f}" ${f === sort.field ? 'selected' : ''}>${t}</option>`;
+            return `<option value="${Utils.escapeHtml(f)}" ${f === sort.field ? 'selected' : ''}>${Utils.escapeHtml(t)}</option>`;
         }).join('')}
                             </select>
                             <select class="form-control lens-sort-direction">

@@ -28,9 +28,22 @@ sys.path.insert(0, str(BACKEND_DIR))
 # 导入数据库模块
 try:
     from core.database import engine
+    # 尝试导入安全模块（如果存在）
+    try:
+        from utils.sql_safety import is_safe_table_name
+    except ImportError:
+        # 如果找不到模块（可能还在旧版本），使用简单的回退函数
+        def is_safe_table_name(name):
+            import re
+            return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name))
+            
 except ImportError:
     engine = None
     print("[警告] 无法加载数据库配置，数据库相关操作将跳过")
+    # 定义个假的校验函数以便脚本继续运行非数据库操作
+    def is_safe_table_name(name):
+        import re
+        return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name))
 
 
 async def backup_db_tables(module_id: str):
@@ -144,10 +157,9 @@ def delete_module_steps(module_id: str, confirm: bool = True, delete_db: bool = 
     同步执行删除步骤（包含异步数据库操作）
     """
     # 验证模块ID（安全检查：只允许字母数字和下划线，防止SQL注入）
-    import re
-    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', module_id):
+    if not is_safe_table_name(module_id):
         print(f"[错误] 模块ID无效: {module_id}")
-        print("  模块ID必须以字母开头，只能包含字母、数字和下划线")
+        print("  模块ID必须是合法的数据库标识符（字母开头，只含字母数字下划线，且非关键字）")
         return False
     
     # 额外长度限制

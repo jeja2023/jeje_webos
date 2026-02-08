@@ -183,7 +183,7 @@ class MonitorPage extends Component {
                             <div class="health-status-card ${dbStatus === 'ok' ? 'status-ok' : 'status-error'}" style="flex: 1; min-width: 200px; padding: 12px;">
                                 <div class="health-icon" style="font-size: 24px;"><i class="ri-database-2-line"></i></div>
                                 <div class="health-info">
-                                    <div class="health-name" style="font-size: 14px;">数据库 (${health?.db_type || 'SQLite'})</div>
+                                    <div class="health-name" style="font-size: 14px;">数据库 (${Utils.escapeHtml(health?.db_type || 'SQLite')})</div>
                                     <div class="health-status" style="font-size: 13px;">
                                         <span class="status-indicator ${dbStatus === 'ok' ? 'ok' : 'error'}" style="width: 8px; height: 8px;"></span>
                                         <span>${dbStatus === 'ok' ? '正常运行' : '连接异常'}</span>
@@ -216,7 +216,7 @@ class MonitorPage extends Component {
                             <div style="display: flex; flex-wrap: wrap; gap: 24px; row-gap: 16px;">
                                 <div style="min-width: 80px;">
                                     <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">进程 ID</div>
-                                    <div style="font-size: 18px; font-weight: 600;">${process?.pid || '-'}</div>
+                                    <div style="font-size: 18px; font-weight: 600;">${Utils.escapeHtml(String(process?.pid || '-'))}</div>
                                 </div>
                                 <div style="min-width: 80px;">
                                     <div style="color: var(--color-text-secondary); font-size: 12px; margin-bottom: 2px;">运行时间</div>
@@ -247,11 +247,11 @@ class MonitorPage extends Component {
                             <div style="display: grid; gap: 8px; font-size: 13px;">
                                 <div style="display: flex; gap: 12px; align-items: center;">
                                     <span style="color: var(--color-text-secondary); width: 70px;">操作系统</span>
-                                    <span style="font-weight: 500;">${system?.platform || '-'}</span>
+                                    <span style="font-weight: 500;">${Utils.escapeHtml(system?.platform || '-')}</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
                                     <span style="color: var(--color-text-secondary); width: 70px;">主机名</span>
-                                    <span style="font-weight: 500;">${system?.hostname || '-'}</span>
+                                    <span style="font-weight: 500;">${Utils.escapeHtml(system?.hostname || '-')}</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
                                     <span style="color: var(--color-text-secondary); width: 70px;">运行时间</span>
@@ -259,7 +259,7 @@ class MonitorPage extends Component {
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
                                     <span style="color: var(--color-text-secondary); width: 70px;">Python</span>
-                                    <span style="font-weight: 500;">${system?.python_version || '-'}</span>
+                                    <span style="font-weight: 500;">${Utils.escapeHtml(system?.python_version || '-')}</span>
                                 </div>
                             </div>
                         </div>

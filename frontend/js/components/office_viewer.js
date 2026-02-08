@@ -70,7 +70,7 @@ const OfficeViewer = {
             }
 
             this._showViewerModal({
-                title: `📄 ${filename}`,
+                title: `📄 ${this._escapeHtml(filename)}`,
                 content: `
                     <div class="office-viewer-container office-word-viewer">
                         <div class="office-word-content">${html}</div>
@@ -109,7 +109,7 @@ const OfficeViewer = {
             const sheetsHtml = this._renderWorkbook(workbook);
 
             this._showViewerModal({
-                title: `📊 ${filename}`,
+                title: `📊 ${this._escapeHtml(filename)}`,
                 content: `
                     <div class="office-viewer-container office-excel-viewer">
                         ${sheetsHtml}
@@ -138,7 +138,7 @@ const OfficeViewer = {
         // 生成工作表标签
         const tabsHtml = sheetNames.map((name, index) => `
             <button class="office-excel-tab ${index === 0 ? 'active' : ''}" 
-                    onclick="OfficeViewer._switchSheet(this, '${name.replace(/'/g, "\\'")}')">
+                    onclick="OfficeViewer._switchSheet(this, decodeURIComponent('${encodeURIComponent(name)}'))">
                 ${this._escapeHtml(name)}
             </button>
         `).join('');

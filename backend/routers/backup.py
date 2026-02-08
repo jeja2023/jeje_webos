@@ -164,7 +164,7 @@ async def create_schedule(
         hour, minute = map(int, data.schedule_time.split(":"))
         if not (0 <= hour <= 23 and 0 <= minute <= 59):
             raise ValueError()
-    except:
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="无效的时间格式，请使用 HH:MM")
     
     # 计算下次执行时间

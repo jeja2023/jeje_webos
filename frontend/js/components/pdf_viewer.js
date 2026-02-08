@@ -73,7 +73,7 @@ const PdfViewer = {
         const content = this._renderContent();
 
         Modal.show({
-            title: `📕 ${this._state.filename}`,
+            title: `📕 ${Utils.escapeHtml(this._state.filename)}`,
             content: content,
             width: '95%',
             footer: false,

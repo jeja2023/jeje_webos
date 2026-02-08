@@ -75,7 +75,7 @@ const AnalysisSmartTableMixin = {
                                 <div class="smart-table-card-icon"><i class="ri-table-line"></i></div>
                             </div>
                             <div class="smart-table-card-body">
-                                <h4 class="m-0 mb-8 text-truncate font-bold" title="${t.name}">${t.name}</h4>
+                                <h4 class="m-0 mb-8 text-truncate font-bold" title="${Utils.escapeHtml(t.name)}">${Utils.escapeHtml(t.name)}</h4>
                                 <div class="text-xs text-secondary mb-12 flex-between">
                                     <div>
                                         <div><i class="ri-settings-3-line"></i> ${t.fields.length} 个字段</div>
@@ -155,7 +155,7 @@ const AnalysisSmartTableMixin = {
                     <div class="flex-between">
                         <div class="flex-center">
                             <button class="btn-icon mr-10" id="btn-back-to-smart-tables"><i class="ri-arrow-left-line"></i></button>
-                            <h2 class="m-0">${table.name}</h2>
+                            <h2 class="m-0">${Utils.escapeHtml(table.name)}</h2>
                         </div>
                         <div class="flex gap-10">
                             <div class="search-box-container mr-10">
@@ -179,7 +179,7 @@ const AnalysisSmartTableMixin = {
             const sortOrder = this.state.smartTableSort?.order;
             const isSorted = sortField === f.name;
             const sortIcon = isSorted ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-            return `<th class="sortable-smart-th" data-field="${f.name}" style="cursor: pointer;" title="点击排序">${f.label || f.name}${f.type === 'calculated' ? ' <i class="ri-flashlight-line"></i>' : ''}${sortIcon}${f.required ? ' <span style="color: var(--color-danger);">*</span>' : ''}</th>`;
+            return `<th class="sortable-smart-th" data-field="${f.name}" style="cursor: pointer;" title="点击排序">${Utils.escapeHtml(f.label || f.name)}${f.type === 'calculated' ? ' <i class="ri-flashlight-line"></i>' : ''}${sortIcon}${f.required ? ' <span style="color: var(--color-danger);">*</span>' : ''}</th>`;
         }).join('')}
                                 <th width="100">操作</th>
                             </tr>
@@ -256,11 +256,11 @@ const AnalysisSmartTableMixin = {
 
                 // 搜索高亮辅助函数
                 const highlightSearch = (text, searchTerm) => {
-                    if (!searchTerm || !text) return String(text || '');
+                    if (!searchTerm || !text) return Utils.escapeHtml(String(text || ''));
                     const search = searchTerm.toLowerCase();
-                    const textStr = String(text);
+                    const escapedText = Utils.escapeHtml(String(text));
                     const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                    return textStr.replace(regex, '<mark style="background: #ffeb3b; padding: 2px 4px; border-radius: 2px;">$1</mark>');
+                    return escapedText.replace(regex, '<mark style="background: #ffeb3b; padding: 2px 4px; border-radius: 2px;">$1</mark>');
                 };
 
                 return pagedData.map(row => `
@@ -269,7 +269,7 @@ const AnalysisSmartTableMixin = {
                     const cellVal = formatCellValue(f, row);
                     const style = getConditionalStyle(f, cellVal);
                     // 如果有搜索词，高亮显示
-                    const displayVal = this.state.smartRowSearch ? highlightSearch(cellVal, this.state.smartRowSearch) : cellVal;
+                    const displayVal = this.state.smartRowSearch ? highlightSearch(cellVal, this.state.smartRowSearch) : Utils.escapeHtml(String(cellVal || ''));
                     return `<td style="${style}">${displayVal}</td>`;
                 }).join('')}
                                         <td>
@@ -357,7 +357,7 @@ const AnalysisSmartTableMixin = {
                         <div class="field-drag-handle" style="cursor: grab; padding: 5px; color: var(--color-text-secondary);" title="拖拽排序">⋮⋮</div>
                         <div class="flex-center font-bold text-primary" style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: white; font-size: 12px;">${i + 1}</div>
                         <div style="flex: 1.5;">
-                            <input type="text" class="form-control form-control-sm field-label" placeholder="字段名称 (如: 语文)" value="${f.label || ''}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'label', this.value)">
+                            <input type="text" class="form-control form-control-sm field-label" placeholder="字段名称 (如: 语文)" value="${Utils.escapeHtml(f.label || '')}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'label', this.value)">
                         </div>
                         <div style="flex: 1;">
                             <select class="form-control form-control-sm field-type" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'type', this.value); if(this.value === 'calculated') { AnalysisPage.prototype.updateFieldState(${i}, 'precision', 2); }">
@@ -382,7 +382,7 @@ const AnalysisSmartTableMixin = {
 
                     ${f.type === 'select' ? `
                         <div class="mt-8">
-                            <input type="text" class="form-control form-control-sm" placeholder="选项配置，用英文逗号分隔 (如: 优秀,良好,及格)" value="${f.options || ''}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'options', this.value)">
+                            <input type="text" class="form-control form-control-sm" placeholder="选项配置，用英文逗号分隔 (如: 优秀,良好,及格)" value="${Utils.escapeHtml(f.options || '')}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'options', this.value)">
                         </div>
                     ` : ''}
 
@@ -408,15 +408,15 @@ const AnalysisSmartTableMixin = {
                                         <div class="flex gap-10 align-items-center">
                                             <select class="form-control form-control-sm" style="flex:1;" onchange="AnalysisPage.prototype.setPercentField(${i}, 'numerator', this.value)">
                                                 <option value="">选择分子</option>
-                                                ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
-                    `<option value="${other.label}" ${f.numerator === other.label ? 'selected' : ''}>${other.label || '未命名'}</option>`
+                                                 ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
+                    `<option value="${Utils.escapeAttr(other.label)}" ${f.numerator === other.label ? 'selected' : ''}>${Utils.escapeHtml(other.label || '未命名')}</option>`
                 ).join('')}
                                             </select>
                                             <span>÷</span>
                                             <select class="form-control form-control-sm" style="flex:1;" onchange="AnalysisPage.prototype.setPercentField(${i}, 'denominator', this.value)">
                                                 <option value="">选择分母</option>
-                                                ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
-                    `<option value="${other.label}" ${f.denominator === other.label ? 'selected' : ''}>${other.label || '未命名'}</option>`
+                                                 ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
+                    `<option value="${Utils.escapeAttr(other.label)}" ${f.denominator === other.label ? 'selected' : ''}>${Utils.escapeHtml(other.label || '未命名')}</option>`
                 ).join('')}
                                             </select>
                                             <span>× 100%</span>
@@ -425,10 +425,10 @@ const AnalysisSmartTableMixin = {
                                 ` : f.calcMode === 'custom' ? `
                                     <div class="mb-10">
                                         <div class="text-xs text-secondary mb-5">输入公式（点击字段插入）:</div>
-                                        <input type="text" class="form-control form-control-sm font-mono mb-5" value="${f.formula || ''}" oninput="AnalysisPage.prototype.updateFormula(${i}, this.value)" placeholder="例如: 语文 + 数学 * 2">
+                                        <input type="text" class="form-control form-control-sm font-mono mb-5" value="${Utils.escapeHtml(f.formula || '')}" oninput="AnalysisPage.prototype.updateFormula(${i}, this.value)" placeholder="例如: 语文 + 数学 * 2">
                                         <div class="flex flex-wrap gap-5">
                                             ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
-                    `<button class="btn btn-outline-primary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, '${other.label}')">${other.label || '未命名'}</button>`
+                    `<button class="btn btn-outline-primary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, decodeURIComponent('${encodeURIComponent(other.label || '')}'))">${Utils.escapeHtml(other.label || '未命名')}</button>`
                 ).join('')}
                                             <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' + ')">+</button>
                                             <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' - ')">-</button>
@@ -469,12 +469,12 @@ const AnalysisSmartTableMixin = {
                             
                             <div class="flex-between align-items-center border-top pt-10" style="border-color: var(--color-border);">
                                 <div class="text-xs font-mono bg-light px-10 py-5 border-radius-sm" style="max-width: 70%; overflow: hidden; text-overflow: ellipsis;">
-                                    <i class="ri-file-edit-line"></i> ${f.formula || '(请配置公式)'}
+                                    <i class="ri-file-edit-line"></i> ${Utils.escapeHtml(f.formula || '(请配置公式)')}
                                 </div>
                                 <button class="btn btn-primary btn-xs" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, true)">确定</button>
                             </div>
                         </div>
-                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, false)"><i class="ri-file-edit-line"></i> ${f.formula || '(未设置)'}${f.showPercent ? '%' : ''}</div>` : ''}
+                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, false)"><i class="ri-file-edit-line"></i> ${Utils.escapeHtml(f.formula || '(未设置)')}${f.showPercent ? '%' : ''}</div>` : ''}
                     ` : ''}
                 </div>
                 `;
@@ -675,7 +675,7 @@ const AnalysisSmartTableMixin = {
                     <div class="flex-between align-items-center">
                         <div style="flex: 1; margin-right: 20px;">
                             <label class="font-bold mb-8 block">表格名称</label>
-                            <input type="text" id="smart-table-name" class="form-control form-control-lg" value="${table?.name || ''}" placeholder="请输入表格名称，如：销售统计表">
+                            <input type="text" id="smart-table-name" class="form-control form-control-lg" value="${Utils.escapeHtml(table?.name || '')}" placeholder="请输入表格名称，如：销售统计表">
                         </div>
                         <div style="width: 180px;">
                             <label class="font-bold mb-8 block">额外配置</label>
@@ -851,23 +851,23 @@ const AnalysisSmartTableMixin = {
                 const requiredMark = f.required ? '<span style="color: var(--color-danger);"> *</span>' : '';
                 return `
                         <div class="form-group mb-0">
-                            <label class="text-sm text-secondary mb-5 block">${f.label || f.name}${requiredMark} ${isCalc ? '⚡' : ''}</label>
+                            <label class="text-sm text-secondary mb-5 block">${Utils.escapeHtml(f.label || f.name)}${requiredMark} ${isCalc ? '⚡' : ''}</label>
                             ${f.type === 'date' ? `
-                                <input type="date" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="date" class="form-control row-input" data-name="${f.name}" data-label="${Utils.escapeAttr(f.label)}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? Utils.escapeAttr(rowData[f.name] || '') : ''}">
                             ` : f.type === 'number' ? `
-                                <input type="number" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="number" class="form-control row-input" data-name="${f.name}" data-label="${Utils.escapeAttr(f.label)}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? Utils.escapeAttr(rowData[f.name] || '') : ''}">
                             ` : f.type === 'select' ? `
-                                <select class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}">
+                                <select class="form-control row-input" data-name="${f.name}" data-label="${Utils.escapeAttr(f.label)}" data-type="${f.type}" data-required="${f.required || false}">
                                     <option value="">-- 请选择 --</option>
                                     ${(f.options || '').split(/[,，]/).filter(opt => opt.trim()).map(opt => {
                     const trimmed = opt.trim();
-                    return `<option value="${trimmed}" ${rowData && rowData[f.name] === trimmed ? 'selected' : ''}>${trimmed}</option>`;
+                    return `<option value="${Utils.escapeAttr(trimmed)}" ${rowData && rowData[f.name] === trimmed ? 'selected' : ''}>${Utils.escapeHtml(trimmed)}</option>`;
                 }).join('')}
                                 </select>
                             ` : isCalc ? `
-                                <input type="text" class="form-control row-input row-calc-input" data-name="${f.name}" data-type="${f.type}" value="${rowData ? rowData[f.name] || '' : ''}" readonly placeholder="自动计算" style="background: var(--color-bg-secondary);">
+                                <input type="text" class="form-control row-input row-calc-input" data-name="${f.name}" data-type="${f.type}" value="${rowData ? Utils.escapeAttr(rowData[f.name] || '') : ''}" readonly placeholder="自动计算" style="background: var(--color-bg-secondary);">
                             ` : `
-                                <input type="text" class="form-control row-input" data-name="${f.name}" data-label="${f.label}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? rowData[f.name] || '' : ''}">
+                                <input type="text" class="form-control row-input" data-name="${f.name}" data-label="${Utils.escapeAttr(f.label)}" data-type="${f.type}" data-required="${f.required || false}" value="${rowData ? Utils.escapeAttr(rowData[f.name] || '') : ''}">
                             `}
                         </div>
                     `}).join('')}

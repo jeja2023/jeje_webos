@@ -250,7 +250,7 @@ const Spotlight = {
             groups[groupName].forEach(item => {
                 html += `
                     <div class="spotlight-item ${globalIndex === 0 ? 'active' : ''}" data-index="${globalIndex}">
-                        <div class="spotlight-item-icon">${item.icon || '🔹'}</div>
+                        <div class="spotlight-item-icon">${Utils.escapeHtml(item.icon || '🔹')}</div>
                         <div class="spotlight-item-content">
                             <div class="spotlight-item-title">${Utils.escapeHtml(item.title)}</div>
                             <div class="spotlight-item-desc">${Utils.escapeHtml(item.desc)}</div>

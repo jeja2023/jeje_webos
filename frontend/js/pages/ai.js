@@ -125,7 +125,7 @@ class AIPage extends Component {
         } catch (e) {
             Config.error('加载会话失败:', e);
             // 如果后端加载失败，尝试从LocalStorage恢复（降级方案）
-            const savedSessions = localStorage.getItem('jeje_ai_sessions');
+            const savedSessions = localStorage.getItem(Config.storageKeys.aiSessions);
             if (savedSessions) {
                 try {
                     const parsed = JSON.parse(savedSessions);
@@ -202,7 +202,7 @@ class AIPage extends Component {
 
             // 同时备份到LocalStorage（降级方案）
             try {
-                localStorage.setItem('jeje_ai_sessions', JSON.stringify({
+                localStorage.setItem(Config.storageKeys.aiSessions, JSON.stringify({
                     sessions: this.state.sessions,
                     activeSessionId: this.state.activeSessionId,
                     timestamp: Date.now()
@@ -215,7 +215,7 @@ class AIPage extends Component {
             Config.error('保存会话到后端失败:', e);
             // 降级到LocalStorage
             try {
-                localStorage.setItem('jeje_ai_sessions', JSON.stringify({
+                localStorage.setItem(Config.storageKeys.aiSessions, JSON.stringify({
                     sessions: this.state.sessions,
                     activeSessionId: this.state.activeSessionId,
                     timestamp: Date.now()
@@ -238,7 +238,7 @@ class AIPage extends Component {
             ]);
 
             // 从 LocalStorage 加载部分非敏感配置（BaseURL/Model）
-            const savedConfig = localStorage.getItem('jeje_ai_config_public');
+            const savedConfig = localStorage.getItem(Config.storageKeys.aiConfig);
             let apiConfig = this.state.apiConfig;
             if (savedConfig) {
                 try {
@@ -251,7 +251,7 @@ class AIPage extends Component {
             localStorage.removeItem('jeje_ai_config');
 
             // 从 LocalStorage 加载选中的模型
-            const savedModel = localStorage.getItem('jeje_ai_selected_model');
+            const savedModel = localStorage.getItem(Config.storageKeys.aiModel);
             let selectedModel = null;
             const availableModels = aiStatusRes.data?.available_models || [];
             if (savedModel && availableModels.includes(savedModel)) {
@@ -307,13 +307,13 @@ class AIPage extends Component {
                 }
 
                 return filteredSessions.map(s => `
-                                <div class="session-item ${s.id === activeSessionId ? 'active' : ''}" data-id="${s.id}">
+                                <div class="session-item ${s.id === activeSessionId ? 'active' : ''}" data-id="${Utils.escapeHtml(String(s.id))}">
                                     <i class="ri-message-3-line"></i>
                                     <div class="session-info">
                                         <span class="session-title text-truncate">${Utils.escapeHtml(s.title)}</span>
                                         <span class="session-time">${this.formatSessionTime(s.updated_at || s.created_at)}</span>
                                     </div>
-                                    <button class="session-delete-btn" data-delete-session="${s.id}" title="删除会话">
+                                    <button class="session-delete-btn" data-delete-session="${Utils.escapeHtml(String(s.id))}" title="删除会话">
                                         <i class="ri-close-line"></i>
                                     </button>
                                 </div>
@@ -350,7 +350,7 @@ class AIPage extends Component {
                             <!-- 角色预设选择器 -->
                             <select class="form-input btn-sm" id="roleSelector" style="width: 120px;" title="选择AI角色">
                                 ${AIPage.ROLE_PRESETS.map(r => `
-                                    <option value="${r.id}" ${this.state.rolePreset === r.id ? 'selected' : ''}>${r.icon} ${r.name}</option>
+                                    <option value="${Utils.escapeHtml(r.id)}" ${this.state.rolePreset === r.id ? 'selected' : ''}>${Utils.escapeHtml(r.icon)} ${Utils.escapeHtml(r.name)}</option>
                                 `).join('')}
                             </select>
                             
@@ -361,7 +361,7 @@ class AIPage extends Component {
                             <select class="form-input btn-sm" id="kbSelector" style="width: 130px;">
                                 <option value="">无知识库</option>
                                 ${knowledgeBases.map(kb => `
-                                    <option value="${kb.id}" ${selectedKb == kb.id ? 'selected' : ''}>知识库: ${kb.name}</option>
+                                    <option value="${Utils.escapeHtml(String(kb.id))}" ${selectedKb == kb.id ? 'selected' : ''}>知识库: ${Utils.escapeHtml(kb.name)}</option>
                                 `).join('')}
                             </select>
 
@@ -386,9 +386,9 @@ class AIPage extends Component {
                     '<p class="text-warning"><i class="ri-alert-line"></i> 您尚未配置在线 API Key，请点击右上角设置图标进行配置。</p>' :
                     '<p>我可以帮你总结文档、分析数据或进行通用对话。请选择一个模式开始吧！</p>'}
                                 <div class="welcome-hints">
-                                    <div class="hint-card" data-text="什么是 RAG 技术？">"什么是 RAG 技术？"</div>
-                                    <div class="hint-card" data-text="介绍一下 JeJe WebOS">"介绍一下 JeJe WebOS"</div>
-                                    <div class="hint-card" data-text="帮我写一段 Python 脚本">"帮我写一段 Python 脚本"</div>
+                                    <div class="hint-card" data-text="${Utils.escapeHtml("什么是 RAG 技术？")}">"什么是 RAG 技术？"</div>
+                                    <div class="hint-card" data-text="${Utils.escapeHtml("介绍一下 JeJe WebOS")}">"介绍一下 JeJe WebOS"</div>
+                                    <div class="hint-card" data-text="${Utils.escapeHtml("帮我写一段 Python 脚本")}">"帮我写一段 Python 脚本"</div>
                                 </div>
                             </div>
                         ` : `
@@ -399,7 +399,7 @@ class AIPage extends Component {
                             return '';
                         }
                         return `
-                                    <div class="message-wrapper ${msg.role === 'user' ? 'user' : msg.role === 'system' ? 'system' : 'ai'}" data-message-idx="${idx}">
+                                    <div class="message-wrapper ${msg.role === 'user' ? 'user' : msg.role === 'system' ? 'system' : 'ai'}" data-message-idx="${Utils.escapeHtml(String(idx))}">
                                         <div class="avatar">${msg.role === 'user' ? '<i class="ri-user-line"></i>' : msg.role === 'system' ? '<i class="ri-alert-line"></i>' : '<i class="ri-brain-line"></i>'}</div>
                                         <div class="message-content-wrapper">
                                             <div class="message-content markdown-body ${msg.isError ? 'error-message' : ''}">
@@ -409,19 +409,19 @@ class AIPage extends Component {
                                                 <span class="message-time">${this.formatMessageTime(msg.timestamp)}</span>
                                             </div>
                                             <div class="message-actions">
-                                                <button class="msg-action-btn" data-action="copy" data-message-idx="${idx}" title="复制">
+                                                <button class="msg-action-btn" data-action="copy" data-message-idx="${Utils.escapeHtml(String(idx))}" title="复制">
                                                     <i class="ri-file-copy-line"></i>
                                                 </button>
                                                 ${msg.role === 'user' ? `
-                                                    <button class="msg-action-btn" data-action="edit" data-message-idx="${idx}" title="编辑">
+                                                    <button class="msg-action-btn" data-action="edit" data-message-idx="${Utils.escapeHtml(String(idx))}" title="编辑">
                                                         <i class="ri-edit-line"></i>
                                                     </button>
                                                 ` : `
-                                                    <button class="msg-action-btn" data-action="regenerate" data-message-idx="${idx}" title="重新生成">
+                                                    <button class="msg-action-btn" data-action="regenerate" data-message-idx="${Utils.escapeHtml(String(idx))}" title="重新生成">
                                                         <i class="ri-refresh-line"></i>
                                                     </button>
                                                 `}
-                                                <button class="msg-action-btn danger" data-action="delete" data-message-idx="${idx}" title="删除">
+                                                <button class="msg-action-btn danger" data-action="delete" data-message-idx="${Utils.escapeHtml(String(idx))}" title="删除">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </button>
                                             </div>
@@ -594,10 +594,23 @@ class AIPage extends Component {
         html = html.replace(/_(.*?)_/g, '<em>$1</em>');
 
         // 7. 链接
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+            const safeUrl = url.trim();
+            if (/^(javascript|vbscript|data):/i.test(safeUrl)) {
+                return `<a href="javascript:void(0)" title="Blocked dangerous protocol" style="color:var(--color-error);text-decoration:line-through;">${text}</a>`;
+            }
+            // Utils.escapeHtml 已经处理过引号，所以这里拼接到 href 中是安全的
+            return `<a href="${safeUrl}" target="_blank" rel="noopener">${text}</a>`;
+        });
 
         // 8. 图片
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%;">');
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
+            const safeSrc = src.trim();
+            if (/^(javascript|vbscript|data):/i.test(safeSrc)) {
+                return `<div class="broken-image" title="Blocked dangerous image source" style="padding:10px;background:var(--color-bg-tertiary);border-radius:4px;color:var(--color-text-secondary);font-size:12px;"><i class="ri-image-off-line"></i> ${alt || '图片无法显示'}</div>`;
+            }
+            return `<img src="${safeSrc}" alt="${alt}" style="max-width: 100%;">`;
+        });
 
         // 9. 列表（无序）
         html = html.replace(/^\* (.+)$/gim, '<li>$1</li>');
@@ -698,7 +711,7 @@ class AIPage extends Component {
                     }
 
                     // 保存非敏感配置到本地以便回显
-                    localStorage.setItem('jeje_ai_config_public', JSON.stringify({
+                    localStorage.setItem(Config.storageKeys.aiConfig, JSON.stringify({
                         baseUrl,
                         model
                     }));
@@ -859,7 +872,7 @@ class AIPage extends Component {
         this.delegate('change', '#modelSelector', (e) => {
             const modelName = e.target.value;
             this.setState({ selectedModel: modelName });
-            localStorage.setItem('jeje_ai_selected_model', modelName);
+            localStorage.setItem(Config.storageKeys.aiModel, modelName);
             Toast.success(`已切换模型: ${modelName.replace('.gguf', '').substring(0, 15)}...`);
         });
 

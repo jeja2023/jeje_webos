@@ -25,10 +25,19 @@ async def _build_query_conditions(
     action: Optional[str],
     start_time: Optional[datetime],
     end_time: Optional[datetime],
-    keyword: Optional[str] = None
+    keyword: Optional[str] = None,
+    user_id: Optional[int] = None,
+    username: Optional[str] = None
 ):
     """构建查询条件"""
     conditions = []
+    if user_id:
+        conditions.append(SystemLog.user_id == user_id)
+    if username:
+        conditions.append(or_(
+            User.username.like(f"%{username}%"),
+            User.nickname.like(f"%{username}%")
+        ))
     if level and level != "undefined":
         conditions.append(SystemLog.level == level)
     if module and module != "undefined":
@@ -41,10 +50,12 @@ async def _build_query_conditions(
         conditions.append(SystemLog.created_at <= end_time)
     
     if keyword:
-        # 搜索消息内容或 IP 地址
+        # 搜索消息内容、IP 地址或用户名/昵称
         conditions.append(or_(
             SystemLog.message.like(f"%{keyword}%"),
-            SystemLog.ip_address.like(f"%{keyword}%")
+            SystemLog.ip_address.like(f"%{keyword}%"),
+            User.username.like(f"%{keyword}%"),
+            User.nickname.like(f"%{keyword}%")
         ))
         
     return and_(*conditions) if conditions else None
@@ -58,16 +69,22 @@ async def list_logs(
     start_time: datetime = Query(None, description="开始时间"),
     end_time: datetime = Query(None, description="结束时间"),
     keyword: str = Query(None, description="关键词搜索(消息/IP)"),
+    user_id: int = Query(None, description="用户ID筛选"),
+    username: str = Query(None, description="用户名筛选"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_manager())
 ):
     """分页查询审计日志"""
-    where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword)
+    where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword, user_id, username)
 
-    # 统计总数
-    count_stmt = select(func.count()).select_from(SystemLog)
+    # 统计总数 - 需要关联用户表以支持按用户名筛选
+    count_stmt = (
+        select(func.count())
+        .select_from(SystemLog)
+        .outerjoin(User, SystemLog.user_id == User.id)
+    )
     if where_clause is not None:
         count_stmt = count_stmt.where(where_clause)
     total = (await db.execute(count_stmt)).scalar() or 0
@@ -99,6 +116,7 @@ async def list_logs(
             "action": row.SystemLog.action,
             "message": row.SystemLog.message,
             "username": display_name,
+            "userId": row.SystemLog.user_id,
             "ip_address": row.SystemLog.ip_address,
             "user_agent": getattr(row.SystemLog, 'user_agent', None),
             "request_method": getattr(row.SystemLog, 'request_method', None),
@@ -117,6 +135,8 @@ async def export_logs(
     start_time: datetime = Query(None, description="开始时间"),
     end_time: datetime = Query(None, description="结束时间"),
     keyword: str = Query(None, description="关键词搜索(消息/IP)"),
+    user_id: int = Query(None, description="用户ID筛选"),
+    username: str = Query(None, description="用户名筛选"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(require_manager())
 ):
@@ -128,7 +148,7 @@ async def export_logs(
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="导出功能需要 openpyxl 库支持")
 
-    where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword)
+    where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword, user_id, username)
 
     # 查询所有符合条件的数据（限制最多10000条）
     data_stmt = (

@@ -302,8 +302,11 @@ async def get_optional_user(
                     "role": user.role,
                     "permissions": token_data.permissions
                 }
-    except:
+    except ImportError:
         pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"获取可选用户权限失败: {e}")
         
     return token_data
 

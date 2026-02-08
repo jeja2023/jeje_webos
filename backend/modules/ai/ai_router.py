@@ -9,6 +9,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Optional, Any
+from datetime import datetime
+from utils.timezone import get_beijing_time
 from pydantic import BaseModel
 
 from core.security import get_current_user, TokenData, encrypt_data, decrypt_data
@@ -106,7 +108,7 @@ async def save_ai_config(
         if existing_secret:
             existing_secret.encrypted_value = encrypted_key
             existing_secret.additional_info = additional_info
-            existing_secret.updated_at = datetime.now()
+            existing_secret.updated_at = get_beijing_time()
         else:
             new_secret = SystemSecret(
                 user_id=user.user_id,

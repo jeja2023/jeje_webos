@@ -83,8 +83,8 @@ class ProfilePage extends Component {
                             <div class="profile-header-compact">
                                 <div class="profile-avatar-large" id="avatarUploadTrigger">
                                     ${user.avatar ?
-                `<img src="${user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token')}" alt="Avatar">` :
-                initials
+                `<img src="${Utils.escapeHtml(user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token'))}" alt="Avatar">` :
+                Utils.escapeHtml(initials)
             }
                                     <div class="avatar-overlay"><i class="ri-camera-line"></i></div>
                                 </div>

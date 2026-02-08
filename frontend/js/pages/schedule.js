@@ -149,8 +149,8 @@ class SchedulePage extends Component {
                                     <span>全部</span>
                                 </div>
                                 ${categories.map(c => `
-                                    <div class="category-item ${selectedCategory === c.id.toString() ? 'active' : ''}" data-category="${c.id}">
-                                        <span class="category-color" style="background: ${c.color}"></span>
+                                    <div class="category-item ${selectedCategory === c.id.toString() ? 'active' : ''}" data-category="${Utils.escapeHtml(String(c.id))}">
+                                        <span class="category-color" style="background: ${Utils.escapeHtml(String(c.color))}"></span>
                                         <span>${Utils.escapeHtml(c.name)}</span>
                                     </div>
                                 `).join('')}
@@ -413,8 +413,8 @@ class SchedulePage extends Component {
 
         return `
             <div class="event-item ${event.is_completed ? 'completed' : ''}" 
-                 data-event-id="${event.id}"
-                 style="--event-color: ${color}">
+                 data-event-id="${Utils.escapeHtml(String(event.id))}"
+                 style="--event-color: ${Utils.escapeHtml(String(color))}">
                 <div class="event-color-bar"></div>
                 <div class="event-content">
                     <div class="event-header">
@@ -434,14 +434,14 @@ class SchedulePage extends Component {
                 </div>
                 <div class="event-actions">
                     ${!event.is_completed ? `
-                        <button class="btn-icon" data-complete-event="${event.id}" title="完成">
+                        <button class="btn-icon" data-complete-event="${Utils.escapeHtml(String(event.id))}" title="完成">
                             <i class="ri-checkbox-circle-line"></i>
                         </button>
                     ` : ''}
-                    <button class="btn-icon" data-edit-event="${event.id}" title="编辑">
+                    <button class="btn-icon" data-edit-event="${Utils.escapeHtml(String(event.id))}" title="编辑">
                         <i class="ri-edit-line"></i>
                     </button>
-                    <button class="btn-icon danger" data-delete-event="${event.id}" title="删除">
+                    <button class="btn-icon danger" data-delete-event="${Utils.escapeHtml(String(event.id))}" title="删除">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
@@ -766,14 +766,14 @@ class SchedulePage extends Component {
                 <div class="category-manager">
                     <div class="category-manager-list">
                         ${categories.length > 0 ? categories.map(c => `
-                            <div class="category-manager-item" data-id="${c.id}">
-                                <span class="category-color" style="background: ${c.color}"></span>
+                            <div class="category-manager-item" data-id="${Utils.escapeHtml(String(c.id))}">
+                                <span class="category-color" style="background: ${Utils.escapeHtml(String(c.color))}"></span>
                                 <span class="category-name">${Utils.escapeHtml(c.name)}</span>
                                 <div class="category-actions">
-                                    <button class="btn-icon-sm" data-edit-category="${c.id}" title="编辑">
+                                    <button class="btn-icon-sm" data-edit-category="${Utils.escapeHtml(String(c.id))}" title="编辑">
                                         <i class="ri-edit-line"></i>
                                     </button>
-                                    <button class="btn-icon-sm danger" data-delete-category="${c.id}" title="删除">
+                                    <button class="btn-icon-sm danger" data-delete-category="${Utils.escapeHtml(String(c.id))}" title="删除">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
@@ -841,7 +841,7 @@ class SchedulePage extends Component {
                 <form id="event-form">
                     <div class="form-group">
                         <label>标题 *</label>
-                        <input type="text" class="form-input" name="title" value="${event?.title || ''}" required placeholder="请输入日程标题">
+                        <input type="text" class="form-input" name="title" value="${Utils.escapeHtml(event?.title || '')}" required placeholder="请输入日程标题">
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -888,11 +888,11 @@ class SchedulePage extends Component {
                     </div>
                     <div class="form-group">
                         <label>地点</label>
-                        <input type="text" class="form-input" name="location" value="${event?.location || ''}" placeholder="可选">
+                        <input type="text" class="form-input" name="location" value="${Utils.escapeHtml(event?.location || '')}" placeholder="可选">
                     </div>
                     <div class="form-group">
                         <label>描述</label>
-                        <textarea class="form-input" name="description" rows="2" placeholder="可选">${event?.description || ''}</textarea>
+                        <textarea class="form-input" name="description" rows="2" placeholder="可选">${Utils.escapeHtml(event?.description || '')}</textarea>
                     </div>
                     
                     <!-- 重复设置 -->

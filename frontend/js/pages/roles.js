@@ -98,17 +98,17 @@ class RolesPage extends Component {
                 return `
                 <div class="module-permission-section" style="margin-bottom:16px; border:1px solid var(--color-border); border-radius:8px; padding:12px; background:rgba(0,0,0,0.02);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid var(--color-border-subtle); padding-bottom:8px;">
-                        <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${moduleId}</div>
+                        <div class="form-label" style="margin-bottom:0; font-weight:600; color:var(--color-primary);">${Utils.escapeHtml(moduleId)}</div>
                         <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; user-select:none;">
-                            <input type="checkbox" class="module-select-all" data-module="${moduleId}" ${allChecked ? 'checked' : ''}>
+                            <input type="checkbox" class="module-select-all" data-module="${Utils.escapeHtml(moduleId)}" ${allChecked ? 'checked' : ''}>
                             <span style="color:var(--color-text-secondary);">一键全选</span>
                         </label>
                     </div>
                     <div class="module-perms-group" data-module="${moduleId}" style="display:flex; gap:16px; flex-wrap:wrap;">
                         ${list.map(f => `
                             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                                <input type="checkbox" name="perms" data-module-ref="${moduleId}" value="${f.id}" ${hasWildcard || perms.includes(f.id) ? 'checked' : ''}>
-                                <span style="font-size:14px;">${f.label}</span>
+                                <input type="checkbox" name="perms" data-module-ref="${Utils.escapeHtml(moduleId)}" value="${Utils.escapeHtml(f.id)}" ${hasWildcard || perms.includes(f.id) ? 'checked' : ''}>
+                                <span style="font-size:14px;">${Utils.escapeHtml(f.label)}</span>
                             </label>
                         `).join('')}
                     </div>
@@ -124,8 +124,8 @@ class RolesPage extends Component {
                     <div class="form-group">
                         <label class="form-label">名称</label>
                         ${isSystemRole ?
-                    `<div class="form-input" style="background:var(--color-bg-secondary);color:var(--color-text-primary);border:1px solid var(--color-border);">${this.getRoleDisplayName(role?.name)} <span style="color:var(--color-text-secondary)">(${role?.name})</span></div>
-                             <input type="hidden" name="name" value="${role?.name}">`
+                    `<div class="form-input" style="background:var(--color-bg-secondary);color:var(--color-text-primary);border:1px solid var(--color-border);">${Utils.escapeHtml(this.getRoleDisplayName(role?.name))} <span style="color:var(--color-text-secondary)">(${Utils.escapeHtml(role?.name)})</span></div>
+                             <input type="hidden" name="name" value="${Utils.escapeHtml(role?.name)}">`
                     : `<input type="text" class="form-input" name="name" value="${Utils.escapeHtml(role?.name || '')}" placeholder="用户组名称" required>`
                 }
                         ${isSystemRole ? '<div style="color:var(--color-text-secondary);font-size:12px;margin-top:4px;">系统预置用户组名称不可修改</div>' : ''}
@@ -257,14 +257,14 @@ class RolesPage extends Component {
             }
             return `
                                         <tr>
-                                            <td>${r.id}</td>
-                                            <td>${Utils.escapeHtml(this.getRoleDisplayName(r.name))} <span style="color:var(--color-text-secondary);font-size:12px;">(${r.name})</span></td>
+                                            <td>${Utils.escapeHtml(String(r.id))}</td>
+                                            <td>${Utils.escapeHtml(this.getRoleDisplayName(r.name))} <span style="color:var(--color-text-secondary);font-size:12px;">(${Utils.escapeHtml(r.name)})</span></td>
                                             <td>${r.user_count || 0}</td>
                                             <td>${permCount}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-edit-role="${r.id}">${r.name === 'admin' ? '查看' : '编辑'}</button>
-                                                ${r.name === 'admin' ? '' : `<button class="btn btn-ghost btn-sm" data-del-role="${r.id}">删除</button>`}
-                                                <button class="btn btn-ghost btn-sm" data-view-users="${r.id}">查看用户</button>
+                                                <button class="btn btn-ghost btn-sm" data-edit-role="${Utils.escapeHtml(String(r.id))}">${r.name === 'admin' ? '查看' : '编辑'}</button>
+                                                ${r.name === 'admin' ? '' : `<button class="btn btn-ghost btn-sm" data-del-role="${Utils.escapeHtml(String(r.id))}">删除</button>`}
+                                                <button class="btn btn-ghost btn-sm" data-view-users="${Utils.escapeHtml(String(r.id))}">查看用户</button>
                                             </td>
                                         </tr>
                                     `}).join('')}
@@ -326,10 +326,10 @@ class RolesPage extends Component {
                 <tbody>
                     ${users.map(u => `
                                         <tr>
-                                            <td>${u.id}</td>
+                                            <td>${Utils.escapeHtml(String(u.id))}</td>
                                             <td>${Utils.escapeHtml(u.username)}</td>
                                             <td>${Utils.escapeHtml(u.nickname || '-')}</td>
-                                            <td>${u.role}</td>
+                                            <td>${Utils.escapeHtml(u.role)}</td>
                                             <td>${u.is_active ? '已激活' : '待审核'}</td>
                                             <td>${Utils.formatDate(u.created_at)}</td>
                                         </tr>

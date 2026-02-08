@@ -147,13 +147,15 @@ class BackupPage extends Component {
         const backup = this.state.backups.find(b => b.id == backupId);
         const isEncrypted = backup ? backup.is_encrypted : false;
 
-        const confirmRestore = async (password = null) => {
+        const confirmRestoreAction = async (password = null) => {
             try {
                 const res = await BackupApi.restore(backupId, password);
                 Toast.success(res.message || '恢复成功');
                 setTimeout(() => window.location.reload(), 1500);
+                return true;
             } catch (e) {
                 Toast.error(e.message || '恢复失败');
+                return false;
             }
         };
 
@@ -168,19 +170,24 @@ class BackupPage extends Component {
                         <input type="password" id="restorePassword" class="form-input" placeholder="输入解密密码">
                     </div>
                 `,
-                onConfirm: () => {
+                onConfirm: async () => {
                     const password = document.getElementById('restorePassword').value;
                     if (!password) {
                         Toast.error('请输入密码');
                         return false;
                     }
-                    confirmRestore(password);
-                    return true;
+                    return await confirmRestoreAction(password);
                 }
             });
         } else {
             // 普通备份确认
-            Modal.confirm('确认恢复', '<i class="ri-error-warning-line"></i> 警告：恢复操作将覆盖现有数据！确定要继续吗？', () => confirmRestore());
+            Modal.confirm({
+                title: '确认恢复',
+                content: '<p><i class="ri-error-warning-line"></i> 警告：恢复操作将覆盖现有数据！确定要继续吗？</p>',
+                onConfirm: async () => {
+                    return await confirmRestoreAction();
+                }
+            });
         }
     }
 
@@ -190,11 +197,11 @@ class BackupPage extends Component {
         // 弹出创建调度表单
         const formHtml = this.getScheduleFormHtml();
 
-        Modal.show({
+        const modal = Modal.show({
             title: '新建备份计划',
             content: formHtml,
             onConfirm: async () => {
-                const data = this.getScheduleFormData();
+                const data = this.getScheduleFormData(modal);
                 if (!data) return false;
 
                 try {
@@ -209,7 +216,7 @@ class BackupPage extends Component {
             }
         });
 
-        this.bindScheduleFormEvents();
+        this.bindScheduleFormEvents(modal);
     }
 
     async handleToggleSchedule(id) {
@@ -288,57 +295,67 @@ class BackupPage extends Component {
         `;
     }
 
-    bindScheduleFormEvents() {
-        setTimeout(() => {
-            const freq = document.getElementById('schFreq');
-            const dayWrapper = document.getElementById('schDayWrapper');
-            const daySelect = document.getElementById('schDay');
-            const dayLabel = document.getElementById('schDayLabel');
+    bindScheduleFormEvents(modal) {
+        const freq = modal.query('#schFreq');
+        const dayWrapper = modal.query('#schDayWrapper');
+        const daySelect = modal.query('#schDay');
+        const dayLabel = modal.query('#schDayLabel');
 
-            if (!freq) return;
+        if (!freq) return;
 
-            const updateDayOptions = () => {
-                const val = freq.value;
-                daySelect.innerHTML = '';
+        const updateDayOptions = () => {
+            const val = freq.value;
+            daySelect.innerHTML = '';
 
-                if (val === 'daily') {
-                    dayWrapper.style.display = 'none';
-                } else if (val === 'weekly') {
-                    dayWrapper.style.display = 'block';
-                    dayLabel.textContent = '周几';
-                    ['一', '二', '三', '四', '五', '六', '日'].forEach((d, i) => {
-                        daySelect.add(new Option(`周${d}`, i + 1));
-                    });
-                } else if (val === 'monthly') {
-                    dayWrapper.style.display = 'block';
-                    dayLabel.textContent = '几号';
-                    for (let i = 1; i <= 31; i++) {
-                        daySelect.add(new Option(`${i}号`, i));
-                    }
+            if (val === 'daily') {
+                dayWrapper.style.display = 'none';
+            } else if (val === 'weekly') {
+                dayWrapper.style.display = 'block';
+                dayLabel.textContent = '周几';
+                ['一', '二', '三', '四', '五', '六', '日'].forEach((d, i) => {
+                    daySelect.add(new Option(`周${d}`, i + 1));
+                });
+            } else if (val === 'monthly') {
+                dayWrapper.style.display = 'block';
+                dayLabel.textContent = '几号';
+                for (let i = 1; i <= 31; i++) {
+                    daySelect.add(new Option(`${i}号`, i));
                 }
-            };
+            }
+        };
 
-            freq.addEventListener('change', updateDayOptions);
-            updateDayOptions(); // 初始化
-        }, 100);
+        freq.addEventListener('change', updateDayOptions);
+        updateDayOptions(); // 初始化
     }
 
-    getScheduleFormData() {
-        const name = document.getElementById('schName').value;
-        if (!name) {
+    getScheduleFormData(modal) {
+        const nameEl = modal.query('#schName');
+        if (!nameEl || !nameEl.value) {
             Toast.error('请输入计划名称');
             return null;
         }
 
+        const freqEl = modal.query('#schFreq');
+        const schDayEl = modal.query('#schDay');
+        const schEncryptEl = modal.query('#schEncrypt');
+        const schRetentionEl = modal.query('#schRetention');
+        const schTypeEl = modal.query('#schType');
+        const schTimeEl = modal.query('#schTime');
+
+        if (!freqEl || !schEncryptEl || !schRetentionEl || !schTypeEl || !schTimeEl) {
+            Toast.error('表单数据不完整');
+            return null;
+        }
+
         return {
-            name,
-            backup_type: document.getElementById('schType').value,
-            schedule_type: document.getElementById('schFreq').value,
-            schedule_time: document.getElementById('schTime').value,
-            schedule_day: document.getElementById('schFreq').value !== 'daily' ?
-                parseInt(document.getElementById('schDay').value) : null,
-            is_encrypted: document.getElementById('schEncrypt').checked,
-            retention_days: parseInt(document.getElementById('schRetention').value) || 30,
+            name: nameEl.value,
+            backup_type: schTypeEl.value,
+            schedule_type: freqEl.value,
+            schedule_time: schTimeEl.value,
+            schedule_day: freqEl.value !== 'daily' && schDayEl ?
+                parseInt(schDayEl.value) : null,
+            is_encrypted: schEncryptEl.checked,
+            retention_days: parseInt(schRetentionEl.value) || 30,
             is_enabled: true
         };
     }
@@ -497,13 +514,13 @@ class BackupPage extends Component {
                                         <td>
                                             <div class="backup-actions">
                                                 ${b.status === 'success' ? `
-                                                    <button class="btn btn-ghost btn-sm" data-download="${b.id}" title="下载备份"><i class="ri-download-line"></i></button>
-                                                    <button class="btn btn-ghost btn-sm" data-restore="${b.id}" title="恢复数据"><i class="ri-refresh-line"></i></button>
+                                                    <button class="btn btn-ghost btn-sm" data-download="${Utils.escapeHtml(String(b.id))}" title="下载备份"><i class="ri-download-line"></i></button>
+                                                    <button class="btn btn-ghost btn-sm" data-restore="${Utils.escapeHtml(String(b.id))}" title="恢复数据"><i class="ri-refresh-line"></i></button>
                                                 ` : `
                                                     <span class="btn-placeholder"></span>
                                                     <span class="btn-placeholder"></span>
                                                 `}
-                                                <button class="btn btn-ghost btn-sm btn-danger-hover" data-delete="${b.id}" title="删除备份"><i class="ri-delete-bin-line"></i></button>
+                                                <button class="btn btn-ghost btn-sm btn-danger-hover" data-delete="${Utils.escapeHtml(String(b.id))}" title="删除备份"><i class="ri-delete-bin-line"></i></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -568,12 +585,12 @@ class BackupPage extends Component {
                                         <td>保留 ${s.retention_days} 天</td>
                                         <td>
                                             <label class="switch">
-                                                <input type="checkbox" ${s.is_enabled ? 'checked' : ''} onchange="document.dispatchEvent(new CustomEvent('toggleSchedule', {detail: ${s.id}}))">
+                                                <input type="checkbox" ${s.is_enabled ? 'checked' : ''} data-toggle-sch="${Utils.escapeHtml(String(s.id))}">
                                                 <span class="slider round"></span>
                                             </label>
                                         </td>
                                         <td>
-                                            <button class="btn btn-ghost btn-sm btn-danger-hover" data-delete-sch="${s.id}" title="删除计划"><i class="ri-delete-bin-line"></i></button>
+                                            <button class="btn btn-ghost btn-sm btn-danger-hover" data-delete-sch="${Utils.escapeHtml(String(s.id))}" title="删除计划"><i class="ri-delete-bin-line"></i></button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -613,10 +630,7 @@ class BackupPage extends Component {
             ModuleHelp.bindHelpButtons(this.container);
         }
 
-        // 全局事件监听 switch
-        document.addEventListener('toggleSchedule', (e) => {
-            this.handleToggleSchedule(e.detail);
-        });
+
     }
 
     destroy() {
@@ -628,7 +642,6 @@ class BackupPage extends Component {
     }
 
     afterUpdate() {
-        this.bindEvents();
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
         }
@@ -644,22 +657,23 @@ class BackupPage extends Component {
             }
         });
 
-        if (this.state.activeTab === 'manual') {
-            // 原有事件
-            this.delegate('click', '[data-create]', (e, t) => this.handleCreate(t.dataset.create));
-            this.delegate('click', '#refreshBackups', () => this.loadData());
-            this.delegate('click', '[data-download]', (e, t) => this.handleDownload(t.dataset.download));
-            this.delegate('click', '[data-restore]', (e, t) => this.handleRestore(t.dataset.restore));
-            this.delegate('click', '[data-delete]', (e, t) => this.handleDelete(t.dataset.delete));
-            this.delegate('click', '[data-page]', (e, t) => {
-                const p = parseInt(t.dataset.page);
-                if (p > 0) this.changePage(p);
-            });
-        } else {
-            // 调度相关事件
-            this.delegate('click', '#createSchedule', () => this.handleCreateSchedule());
-            this.delegate('click', '[data-delete-sch]', (e, t) => this.handleDeleteSchedule(t.dataset.deleteSch));
-        }
+        // 通用操作 (无论哪个 Tab)
+        this.delegate('click', '#refreshBackups', () => this.loadData());
+
+        // 手动备份页签事件
+        this.delegate('click', '[data-create]', (e, t) => this.handleCreate(t.dataset.create));
+        this.delegate('click', '[data-download]', (e, t) => this.handleDownload(t.dataset.download));
+        this.delegate('click', '[data-restore]', (e, t) => this.handleRestore(t.dataset.restore));
+        this.delegate('click', '[data-delete]', (e, t) => this.handleDelete(t.dataset.delete));
+        this.delegate('click', '[data-page]', (e, t) => {
+            const p = parseInt(t.dataset.page);
+            if (p > 0) this.changePage(p);
+        });
+
+        // 调度计划页签事件
+        this.delegate('click', '#createSchedule', () => this.handleCreateSchedule());
+        this.delegate('click', '[data-delete-sch]', (e, t) => this.handleDeleteSchedule(t.dataset.deleteSch));
+        this.delegate('change', '[data-toggle-sch]', (e, t) => this.handleToggleSchedule(t.dataset.toggleSch));
     }
 }
 

@@ -305,8 +305,8 @@ async def upload_message_file(
         kind = filetype.guess(content)
         if kind:
             file_mime = kind.mime
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"获取文件MIME类型失败: {e}")
     
     # 构建文件信息JSON
     file_info = {

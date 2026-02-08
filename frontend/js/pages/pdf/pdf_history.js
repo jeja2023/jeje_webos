@@ -18,15 +18,15 @@ const PdfHistory = {
                     <div class="pdf-history-item fade-in">
                         <div class="pdf-history-info">
                             <span class="pdf-history-name">
-                                <i class="${this.getOpIcon(item.operation)}"></i> ${item.title}
+                                <i class="${Utils.escapeHtml(this.getOpIcon(item.operation))}"></i> ${Utils.escapeHtml(item.title)}
                             </span>
                             <span class="pdf-history-meta">
-                                <i class="ri-time-line"></i> ${new Date(item.created_at).toLocaleString()}
+                                <i class="ri-time-line"></i> ${Utils.escapeHtml(new Date(item.created_at).toLocaleString())}
                             </span>
                         </div>
                         <div class="pdf-history-actions">
                             ${item.filename ? `
-                                <button class="btn btn-sm btn-primary" onclick="window._pdfPage.downloadResult('${item.filename}')">
+                                <button class="btn btn-sm btn-primary" onclick="window._pdfPage.downloadResult(decodeURIComponent('${encodeURIComponent(item.filename).replace(/'/g, '%27')}'))">
                                     <i class="ri-download-2-line"></i> 下载
                                 </button>
                             ` : ''}

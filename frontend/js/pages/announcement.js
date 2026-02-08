@@ -131,7 +131,10 @@ class AnnouncementListPage extends Component {
             'warning': { label: '警告', cls: 'tag-warning' },
             'error': { label: '错误', cls: 'tag-danger' }
         };
-        return types[type] || { label: type, cls: 'tag-default' };
+        return {
+            label: Utils.escapeHtml(types[type]?.label || type),
+            cls: types[type]?.cls || 'tag-default'
+        };
     }
 
     render() {
@@ -242,13 +245,13 @@ class AnnouncementListPage extends Component {
                                                 ${isAdmin ? `
                                                 <td>
                                                     <input type="checkbox" class="row-checkbox" 
-                                                           data-id="${announcement.id}" 
+                                                           data-id="${Utils.escapeHtml(String(announcement.id))}" 
                                                            ${isSelected ? 'checked' : ''}>
                                                 </td>
                                                 ` : ''}
                                                 <td>
                                                     ${announcement.is_top ? '<span class="tag tag-warning" style="margin-right: 4px"><i class="ri-pushpin-fill"></i> 置顶</span>' : ''}
-                                                    <a href="#/announcement/view/${announcement.id}" class="truncate" style="max-width: 200px; display: inline-block; vertical-align: middle;">
+                                                    <a href="#/announcement/view/${Utils.escapeHtml(String(announcement.id))}" class="truncate" style="max-width: 200px; display: inline-block; vertical-align: middle;">
                                                         ${Utils.escapeHtml(announcement.title)}
                                                     </a>
                                                 </td>
@@ -267,10 +270,10 @@ class AnnouncementListPage extends Component {
                                                 <td>${Utils.formatDate(announcement.created_at)}</td>
                                                 ${isAdmin ? `
                                                 <td>
-                                                    <button class="btn btn-ghost btn-sm btn-icon" data-edit="${announcement.id}" title="编辑">
+                                                    <button class="btn btn-ghost btn-sm btn-icon" data-edit="${Utils.escapeHtml(String(announcement.id))}" title="编辑">
                                                         <i class="ri-edit-line"></i>
                                                     </button>
-                                                    <button class="btn btn-ghost btn-sm btn-icon" data-delete="${announcement.id}" data-title="${Utils.escapeHtml(announcement.title)}" title="删除">
+                                                    <button class="btn btn-ghost btn-sm btn-icon" data-delete="${Utils.escapeHtml(String(announcement.id))}" data-title="${Utils.escapeHtml(announcement.title)}" title="删除">
                                                         <i class="ri-delete-bin-line"></i>
                                                     </button>
                                                 </td>
@@ -637,7 +640,11 @@ class AnnouncementViewPage extends Component {
             'warning': { label: '警告', cls: 'tag-warning', icon: 'ri-error-warning-line' },
             'error': { label: '错误', cls: 'tag-danger', icon: 'ri-close-circle-line' }
         };
-        return types[type] || { label: type, cls: 'tag-default', icon: 'ri-notification-line' };
+        return {
+            label: Utils.escapeHtml(types[type]?.label || type),
+            cls: types[type]?.cls || 'tag-default',
+            icon: types[type]?.icon || 'ri-notification-line'
+        };
     }
 
     render() {
@@ -670,7 +677,7 @@ class AnnouncementViewPage extends Component {
                         <h1 class="page-title">${announcement.title ? Utils.escapeHtml(announcement.title) : '未命名公告'}</h1>
                         <p class="page-desc">
                             <span class="tag ${typeInfo.cls}" style="margin-right: 8px">
-                                <i class="${typeInfo.icon}"></i> ${typeInfo.label}
+                                <i class="${Utils.escapeHtml(typeInfo.icon)}"></i> ${typeInfo.label}
                             </span>
                             <span style="margin-right: 12px;">
                                 <i class="ri-flag-${announcement.is_published ? 'fill' : 'line'}"></i>

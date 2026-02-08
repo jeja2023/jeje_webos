@@ -552,8 +552,27 @@ class BackupManager:
             # 获取上传目录（绝对路径）
             upload_dir = Path(settings.upload_dir).resolve()
             
-            # 解压备份文件
+            # 解压备份文件（安全模式：过滤恶意路径）
             with tarfile.open(backup_file, "r:gz") as tar:
+                # 安全过滤：防止路径穿越攻击（CVE-2007-4559）
+                def is_safe_member(member: tarfile.TarInfo, target_dir: Path) -> bool:
+                    """检查 tar 成员是否安全（无路径穿越）"""
+                    # 计算解压后的绝对路径
+                    member_path = (target_dir / member.name).resolve()
+                    # 确保路径在目标目录内
+                    return str(member_path).startswith(str(target_dir.resolve()))
+                
+                # 获取安全的成员列表
+                safe_members = []
+                for member in tar.getmembers():
+                    if is_safe_member(member, upload_dir.parent):
+                        safe_members.append(member)
+                    else:
+                        logger.warning(f"跳过不安全的 tar 成员（可能的路径穿越）: {member.name}")
+                
+                if not safe_members:
+                    return False, "备份文件中没有有效内容"
+                
                 # 先备份现有文件（如果存在）
                 if upload_dir.exists():
                     old_backup = upload_dir.parent / f"{upload_dir.name}.old"
@@ -561,8 +580,8 @@ class BackupManager:
                         shutil.rmtree(old_backup)
                     shutil.move(str(upload_dir), str(old_backup))
                 
-                # 解压
-                tar.extractall(upload_dir.parent)
+                # 只解压安全的成员
+                tar.extractall(upload_dir.parent, members=safe_members)
             
             logger.info(f"文件恢复成功: {backup_path}")
             return True, None

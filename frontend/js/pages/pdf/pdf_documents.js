@@ -74,7 +74,7 @@ const PdfDocuments = {
             clickAction = "Toast.info('请使用 [图片转PDF] 功能转换此文件')";
         } else {
             // 默认 PDF 行为
-            clickAction = `window._pdfPage.openReader(${fileJson}, '${file.name}', 'pdf')`;
+            clickAction = `window._pdfPage.openReader(${fileJson}, decodeURIComponent('${encodeURIComponent(file.name)}'), 'pdf')`;
         }
 
         return `
@@ -83,7 +83,7 @@ const PdfDocuments = {
                     <i class="${iconClass}"></i>
                 </div>
                 <div class="pdf-item-info">
-                    <div class="pdf-item-name" title="${file.name}">${file.name}</div>
+                    <div class="pdf-item-name" title="${Utils.escapeHtml(file.name)}">${Utils.escapeHtml(file.name)}</div>
                     <div class="pdf-item-meta">
                         <span>${sizeStr}</span>
                         <span class="dot">·</span>
@@ -91,10 +91,10 @@ const PdfDocuments = {
                     </div>
                 </div>
                 <div class="pdf-item-actions">
-                    <button class="action-btn" title="下载" onclick="event.stopPropagation(); window._pdfPage.downloadPdfFile('${file.name}')">
+                    <button class="action-btn" title="下载" onclick="event.stopPropagation(); window._pdfPage.downloadPdfFile(decodeURIComponent('${encodeURIComponent(file.name)}'))">
                         <i class="ri-download-line"></i>
                     </button>
-                    <button class="action-btn danger" title="删除" onclick="event.stopPropagation(); window._pdfPage.handleDelete('${file.name}', '${file.category}')">
+                    <button class="action-btn danger" title="删除" onclick="event.stopPropagation(); window._pdfPage.handleDelete(decodeURIComponent('${encodeURIComponent(file.name)}'), '${Utils.escapeHtml(file.category)}')">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>

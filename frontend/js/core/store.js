@@ -224,7 +224,7 @@ const Store = {
                 } else {
                     // 尝试从 localStorage 读取
                     try {
-                        const localPinnedApps = localStorage.getItem('jeje_pinned_apps');
+                        const localPinnedApps = localStorage.getItem(Config.storageKeys.pinnedApps);
                         if (localPinnedApps) {
                             const parsed = JSON.parse(localPinnedApps);
                             if (Array.isArray(parsed) && parsed.length > 0) {

@@ -240,7 +240,7 @@ class AIService:
                         try:
                             chunk = json.loads(data_str)
                             yield chunk
-                        except:
+                        except json.JSONDecodeError:
                             continue
 
         return generator() if stream else await cls._chat_online_sync(messages)
@@ -248,7 +248,7 @@ class AIService:
     @classmethod
     async def _chat_online_sync(cls, messages: List[Dict[str, str]]) -> Dict:
         # 简化版同步调用
-        return {"choices": [{"message": {"content": "在线同步模式暂未完全实现"}}]}
+        raise NotImplementedError("在线同步模式暂未实现，请使用流式传输 (stream=True)")
 
     @classmethod
     def _is_data_analysis_query(cls, query: str) -> bool:
@@ -495,8 +495,8 @@ class AIService:
                                         limit=1
                                     )
                                     columns = col_result.get('columns', [])
-                                except:
-                                    pass
+                                except Exception as e:
+                                    logger.debug(f"获取数据集列信息失败: {e}")
                                 
                                 # 使用增强的SQL生成
                                 sql_suggestion = cls._generate_sql_from_natural_language(query, dataset, columns)

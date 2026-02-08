@@ -70,7 +70,7 @@ const IMComponents = {
                 selectedChips.innerHTML = Array.from(selectedUsers.values()).map(user => `
                     <div class="im-user-chip" style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 16px; background: var(--color-primary-light); color: var(--color-primary); font-size: 12px;">
                         <span>${this.escapeHtml(user.name)}</span>
-                        <i class="ri-close-circle-fill" style="cursor:pointer; font-size: 14px; opacity: 0.8;" data-id="${user.id}"></i>
+                        <i class="ri-close-circle-fill" style="cursor:pointer; font-size: 14px; opacity: 0.8;" data-id="${this.escapeHtml(String(user.id))}"></i>
                     </div>
                 `).join('');
 
@@ -97,10 +97,10 @@ const IMComponents = {
                     const isSelected = selectedUsers.has(user.id);
                     const isExcluded = excludeIds.includes(user.id);
                     return `
-                        <div class="im-selector-item ${isExcluded ? 'disabled' : ''}" data-id="${user.id}" 
+                        <div class="im-selector-item ${isExcluded ? 'disabled' : ''}" data-id="${this.escapeHtml(String(user.id))}" 
                              style="display: flex; align-items: center; padding: 10px; cursor: ${isExcluded ? 'not-allowed' : 'pointer'}; border-radius: 10px; margin-bottom: 2px; transition: background 0.2s;">
                             <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--color-bg-secondary); margin-right: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--color-border);">
-                                ${user.avatar ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="color:var(--color-text-tertiary)"></i>'}
+                                ${user.avatar && !/^\s*(javascript|vbscript|data):/i.test(user.avatar) ? `<img src="${this.escapeHtml(user.avatar)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="color:var(--color-text-tertiary)"></i>'}
                             </div>
                             <div style="flex:1">
                                 <div style="font-weight: 500">${this.escapeHtml(user.nickname || user.username)}</div>
@@ -158,7 +158,7 @@ const IMComponents = {
                         if (res.code === 200 || res.code === 0) {
                             renderResults(Array.isArray(res.data) ? res.data : (res.data.items || []));
                         } else {
-                            resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:var(--color-error)">${res.message}</div>`;
+                            resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:var(--color-error)">${this.escapeHtml(res.message)}</div>`;
                         }
                     } catch (e) {
                         resultsDiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-error)">接口请求失败</div>';
@@ -185,7 +185,7 @@ const IMComponents = {
                     <div class="im-group-info-card" style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--color-bg-tertiary); border-radius: 12px; margin-bottom: 20px;">
                         <div class="im-group-avatar-wrapper" style="position: relative; cursor: ${isOwner ? 'pointer' : 'default'}">
                             <div style="width: 64px; height: 64px; border-radius: 16px; background: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden">
-                                ${conversation.avatar ? `<img src="${conversation.avatar}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-group-line"></i>'}
+                                ${conversation.avatar && !/^\s*(javascript|vbscript|data):/i.test(conversation.avatar) ? `<img src="${this.escapeHtml(conversation.avatar)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-group-line"></i>'}
                             </div>
                             ${isOwner ? '<div style="position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; background: var(--color-primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid white;"><i class="ri-edit-2-fill"></i></div>' : ''}
                         </div>
@@ -211,14 +211,14 @@ const IMComponents = {
                         ${(conversation.members || []).map(member => `
                             <div class="im-member-card" style="text-align: center; position: relative;">
                                 <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--color-bg-secondary); margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--color-border);">
-                                    ${member.avatar ? `<img src="${member.avatar}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="color:var(--color-text-tertiary)"></i>'}
+                                    ${member.avatar && !/^\s*(javascript|vbscript|data):/i.test(member.avatar) ? `<img src="${this.escapeHtml(member.avatar)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="color:var(--color-text-tertiary)"></i>'}
                                 </div>
                                 <div style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;">
                                     ${this.escapeHtml(member.nickname || member.username)}
                                 </div>
                                 ${member.role === 'owner' ? '<div style="font-size: 10px; color: var(--color-warning); transform: scale(0.8)">群主</div>' : ''}
                                 ${isOwner && member.user_id !== currentUser.id ? `
-                                    <div class="btn-remove-member" data-id="${member.user_id}" 
+                                    <div class="btn-remove-member" data-id="${this.escapeHtml(String(member.user_id))}" 
                                          style="position: absolute; top: -5px; right: 0; color: var(--color-error); cursor: pointer; background: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1)">
                                         <i class="ri-close-line"></i>
                                     </div>
@@ -302,7 +302,7 @@ const IMComponents = {
             content: `
                 <div class="im-private-settings" style="text-align: center; padding: 10px 0;">
                     <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--color-bg-tertiary); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--color-primary-light);">
-                        ${otherMember.avatar ? `<img src="${otherMember.avatar}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="font-size: 40px; color: var(--color-text-tertiary)"></i>'}
+                        ${otherMember.avatar && !/^\s*(javascript|vbscript|data):/i.test(otherMember.avatar) ? `<img src="${this.escapeHtml(otherMember.avatar)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="ri-user-line" style="font-size: 40px; color: var(--color-text-tertiary)"></i>'}
                     </div>
                     <div style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">${this.escapeHtml(otherMember.nickname || otherMember.username)}</div>
                     <div style="font-size: 13px; color: var(--color-text-tertiary); margin-bottom: 24px;">@${this.escapeHtml(otherMember.username)}</div>

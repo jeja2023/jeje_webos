@@ -198,8 +198,8 @@ class CompareService:
             try:
                 duckdb_instance.query(f"DROP TABLE IF EXISTS {sample_t1}")
                 duckdb_instance.query(f"DROP TABLE IF EXISTS {sample_t2}")
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"清理采样临时表失败: {e}")
 
         return {
             "same": same_data,

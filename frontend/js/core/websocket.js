@@ -271,9 +271,9 @@ const WebSocketClient = {
             notification.onclick = () => {
                 window.focus();
                 if (options.url && window.Router) {
-                    Router.navigate(options.url);
+                    Router.push(options.url);
                 } else {
-                    Router.navigate('/notifications');
+                    Router.push('/notifications');
                 }
                 notification.close();
             };

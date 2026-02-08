@@ -21,6 +21,20 @@ class FileManagerPage extends Component {
         };
     }
 
+    /* 安全地渲染图标，防止 XSS */
+    _renderSafeIcon(icon, defaultIcon) {
+        if (!icon) return defaultIcon;
+        // 检查危险标签和事件处理程序
+        // 允许的标签通常是 i, span, img, 但禁止 script, iframe 等
+        if (/<(script|iframe|object|embed|meta|link|style|frame|frameset|form|input|button)/i.test(icon)) return defaultIcon;
+        // 禁止所有 on* 事件
+        if (/\s+on[a-z]+\s*=/i.test(icon)) return defaultIcon;
+        // 禁止 javascript: 伪协议
+        if (/javascript:/i.test(icon)) return defaultIcon;
+
+        return icon;
+    }
+
     async init() {
         await this.loadFolderTree();
         await this.loadDirectory();
@@ -292,7 +306,7 @@ class FileManagerPage extends Component {
                          data-type="folder" 
                          data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <div class="fm-item-icon">${folder.icon || '<i class="ri-folder-fill"></i>'}</div>
+                        <div class="fm-item-icon">${this._renderSafeIcon(folder.icon, '<i class="ri-folder-fill"></i>')}</div>
                         <div class="fm-item-name">${Utils.escapeHtml(folder.name)}</div>
                     </div>
                 `).join('')}
@@ -326,7 +340,7 @@ class FileManagerPage extends Component {
                          data-type="folder" 
                          data-is-virtual="${folder.is_virtual}"
                          data-id="${folder.id}">
-                        <span>${folder.icon || '<i class="ri-folder-line"></i>'}</span>
+                        <span>${this._renderSafeIcon(folder.icon, '<i class="ri-folder-line"></i>')}</span>
                         <span style="${folder.is_virtual ? 'color: var(--color-primary); font-weight: 500;' : ''}">${Utils.escapeHtml(folder.name)}</span>
                         <span>--</span>
                         <span>${Utils.formatDate(folder.updated_at)}</span>
@@ -341,15 +355,15 @@ class FileManagerPage extends Component {
                 ${files.map(file => `
                     <div class="fm-list-item ${selectedItems.includes('file-' + file.id) ? 'selected' : ''}" 
                          data-type="file" 
-                         data-id="${file.id}">
-                        <span>${file.icon || '<i class="ri-file-line"></i>'}</span>
+                         data-id="${Utils.escapeHtml(String(file.id))}">
+                        <span>${this._renderSafeIcon(file.icon, '<i class="ri-file-line"></i>')}</span>
                         <span>${file.is_starred ? '<i class="ri-star-fill"></i> ' : ''}${Utils.escapeHtml(file.name)}</span>
                         <span>${this.formatSize(file.file_size)}</span>
                         <span>${Utils.formatDate(file.updated_at)}</span>
                         <span>
-                            <button class="btn btn-ghost btn-sm" data-action="download" data-id="${file.id}"><i class="ri-download-line"></i></button>
-                            <button class="btn btn-ghost btn-sm" data-action="star" data-id="${file.id}"><i class="${file.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i></button>
-                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="file" data-id="${file.id}"><i class="ri-delete-bin-line"></i></button>
+                            <button class="btn btn-ghost btn-sm" data-action="download" data-id="${Utils.escapeHtml(String(file.id))}"><i class="ri-download-line"></i></button>
+                            <button class="btn btn-ghost btn-sm" data-action="star" data-id="${Utils.escapeHtml(String(file.id))}"><i class="${file.is_starred ? 'ri-star-fill' : 'ri-star-line'}"></i></button>
+                            <button class="btn btn-ghost btn-sm danger" data-action="delete" data-type="file" data-id="${Utils.escapeHtml(String(file.id))}"><i class="ri-delete-bin-line"></i></button>
                         </span>
                     </div>
                 `).join('')}
@@ -361,9 +375,19 @@ class FileManagerPage extends Component {
         // 如果是图片，可以显示缩略图
         if (file.mime_type && file.mime_type.startsWith('image/')) {
             const token = Store.get('token');
-            return `<img class="fm-item-preview" src="${file.preview_url}?token=${token}" alt="${file.name}" onerror="this.outerHTML='<div class=\\'fm-item-icon\\'>${file.icon || '<i class="ri-image-line"></i>'}</div>'">`;
+            const safeName = Utils.escapeHtml(file.name);
+            const safeUrl = Utils.escapeHtml(`${file.preview_url}?token=${token}`);
+            // 处理图片加载失败的情况：替换为图标
+            // 使用 _renderSafeIcon 替代简单的正则检查
+            const saferIconData = this._renderSafeIcon(file.icon, '<i class="ri-image-line"></i>');
+            // 注意：这里需要确保 saferIconData 在 outerHTML 中是安全的
+            // saferIconData 已经是经过 _renderSafeIcon 过滤的 HTML 字符串 (例如 <i class="..."></i>)
+            // 在 JS 字符串中使用时，需要转义单引号和换行
+            const jsSafeIcon = saferIconData.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
+
+            return `<img class="fm-item-preview" src="${safeUrl}" alt="${safeName}" onerror="this.onerror=null; this.outerHTML='<div class=\\'fm-item-icon\\'>${jsSafeIcon}</div>'">`;
         }
-        return `<div class="fm-item-icon">${file.icon || '<i class="ri-file-line"></i>'}</div>`;
+        return `<div class="fm-item-icon">${this._renderSafeIcon(file.icon, '<i class="ri-file-line"></i>')}</div>`;
     }
 
     renderFolderTree(nodes, level = 0) {
@@ -684,7 +708,7 @@ class FileManagerPage extends Component {
                     if (failCount > 0) {
                         message += `，${failCount} 个文件失败`;
                         // 显示失败文件的详细信息
-                        const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                        const errorMessages = errors.map(e => `${Utils.escapeHtml(String(e.filename))}: ${Utils.escapeHtml(String(e.error))}`).join('; ');
                         if (errorMessages) {
                             Toast.warning(message + '\n' + errorMessages);
                         } else {
@@ -696,7 +720,7 @@ class FileManagerPage extends Component {
                     this.loadDirectory(this.state.currentFolderId);
                     this.loadStats();
                 } else {
-                    const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                    const errorMessages = errors.map(e => `${Utils.escapeHtml(String(e.filename))}: ${Utils.escapeHtml(String(e.error))}`).join('; ');
                     Toast.error(`上传失败: ${errorMessages || '未知错误'}`);
                 }
             } else {
@@ -876,7 +900,7 @@ class FileManagerPage extends Component {
                     if (failCount > 0) {
                         message += `，${failCount} 项失败`;
                         const errorMessages = (result.errors || []).map(e =>
-                            `${e.type === 'file' ? '文件' : '文件夹'} ${e.id}: ${e.error}`
+                            `${e.type === 'file' ? '文件' : '文件夹'} ${Utils.escapeHtml(String(e.id))}: ${Utils.escapeHtml(String(e.error))}`
                         ).join('; ');
                         if (errorMessages) {
                             Toast.warning(message + '\n' + errorMessages);
@@ -888,7 +912,7 @@ class FileManagerPage extends Component {
                     }
                 } else {
                     const errorMessages = (result.errors || []).map(e =>
-                        `${e.type === 'file' ? '文件' : '文件夹'} ${e.id}: ${e.error}`
+                        `${e.type === 'file' ? '文件' : '文件夹'} ${Utils.escapeHtml(String(e.id))}: ${Utils.escapeHtml(String(e.error))}`
                     ).join('; ');
                     Toast.error(`删除失败: ${errorMessages || '未知错误'}`);
                 }
@@ -1014,7 +1038,7 @@ class FileManagerPage extends Component {
                     }
                     if (failCount > 0) {
                         message += `，${failCount} 个失败`;
-                        const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                        const errorMessages = errors.map(e => `${Utils.escapeHtml(String(e.filename))}: ${Utils.escapeHtml(String(e.error))}`).join('; ');
                         if (errorMessages) {
                             Toast.warning(message + '\n' + errorMessages);
                         } else {
@@ -1027,7 +1051,7 @@ class FileManagerPage extends Component {
                     this.loadFolderTree();
                     this.loadStats();
                 } else {
-                    const errorMessages = errors.map(e => `${e.filename}: ${e.error}`).join('; ');
+                    const errorMessages = errors.map(e => `${Utils.escapeHtml(String(e.filename))}: ${Utils.escapeHtml(String(e.error))}`).join('; ');
                     Toast.error(`上传失败: ${errorMessages || '未知错误'}`);
                 }
             } else {
@@ -1053,19 +1077,19 @@ class FileManagerPage extends Component {
         if (mime.startsWith('image/')) {
             // 图片预览
             Modal.show({
-                title: file.name,
+                title: Utils.escapeHtml(file.name),
                 content: `<div style="text-align: center; background: #1a1a1a; padding: 20px; border-radius: 8px;">
-                    <img src="${url}" style="max-width: 100%; max-height: 75vh; border-radius: 4px;" alt="${file.name}">
+                    <img src="${Utils.escapeHtml(url)}" style="max-width: 100%; max-height: 75vh; border-radius: 4px;" alt="${Utils.escapeHtml(file.name)}">
                 </div>`,
                 width: '900px'
             });
         } else if (mime.startsWith('video/')) {
             // 视频预览
             Modal.show({
-                title: `🎬 ${file.name}`,
+                title: `🎬 ${Utils.escapeHtml(file.name)}`,
                 content: `<div style="text-align: center; background: #000; border-radius: 8px; overflow: hidden;">
                     <video controls autoplay style="max-width: 100%; max-height: 75vh;">
-                        <source src="${url}" type="${mime}">
+                        <source src="${Utils.escapeHtml(url)}" type="${Utils.escapeHtml(mime)}">
                         您的浏览器不支持视频播放
                     </video>
                 </div>`,
@@ -1074,12 +1098,12 @@ class FileManagerPage extends Component {
         } else if (mime.startsWith('audio/')) {
             // 音频预览
             Modal.show({
-                title: `🎵 ${file.name}`,
+                title: `🎵 ${Utils.escapeHtml(file.name)}`,
                 content: `<div style="text-align: center; padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px;">
                     <div style="font-size: 64px; margin-bottom: 20px;">🎵</div>
                     <div style="color: white; font-size: 18px; margin-bottom: 20px;">${Utils.escapeHtml(file.name)}</div>
                     <audio controls autoplay style="width: 100%;">
-                        <source src="${url}" type="${mime}">
+                        <source src="${Utils.escapeHtml(url)}" type="${mime}">
                         您的浏览器不支持音频播放
                     </audio>
                 </div>`,
@@ -1096,8 +1120,8 @@ class FileManagerPage extends Component {
             } else {
                 // 降级处理：使用 iframe
                 Modal.show({
-                    title: `📕 ${file.name}`,
-                    content: `<iframe src="${url}" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>`,
+                    title: `📕 ${Utils.escapeHtml(file.name)}`,
+                    content: `<iframe src="${Utils.escapeHtml(url)}" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>`,
                     width: '900px'
                 });
             }
@@ -1107,7 +1131,7 @@ class FileManagerPage extends Component {
                 .then(res => res.text())
                 .then(text => {
                     Modal.show({
-                        title: `📄 ${file.name}`,
+                        title: `📄 ${Utils.escapeHtml(file.name)}`,
                         content: `<pre style="max-height: 70vh; overflow: auto; background: var(--color-bg-tertiary); padding: 16px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all;">${Utils.escapeHtml(text)}</pre>`,
                         width: '800px'
                     });
@@ -1122,7 +1146,7 @@ class FileManagerPage extends Component {
             } else {
                 // 降级处理
                 Modal.show({
-                    title: `📄 ${file.name}`,
+                    title: `📄 ${Utils.escapeHtml(file.name)}`,
                     content: `<div style="text-align: center; padding: 40px;">
                         <p style="margin-bottom: 20px;">Word 预览组件未加载</p>
                         <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
@@ -1137,7 +1161,7 @@ class FileManagerPage extends Component {
             } else {
                 // 降级处理
                 Modal.show({
-                    title: `📊 ${file.name}`,
+                    title: `📊 ${Utils.escapeHtml(file.name)}`,
                     content: `<div style="text-align: center; padding: 40px;">
                         <p style="margin-bottom: 20px;">Excel 预览组件未加载</p>
                         <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>
@@ -1148,7 +1172,7 @@ class FileManagerPage extends Component {
         } else if (mime.includes('presentation') || mime.includes('powerpoint')) {
             // PPT 暂不支持在线预览
             Modal.show({
-                title: `📽️ ${file.name}`,
+                title: `📽️ ${Utils.escapeHtml(file.name)}`,
                 content: `<div style="text-align: center; padding: 40px;">
                     <p style="margin-bottom: 20px;">PPT 文件暂不支持在线预览</p>
                     <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">下载查看</button>

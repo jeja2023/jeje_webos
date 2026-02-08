@@ -135,7 +135,7 @@ class TopBarComponent extends Component {
                      <!-- 品牌标题 -->
                     <div id="brandPill" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <img src="/static/images/logo.png" class="brand-icon" style="height: 28px; width: auto; border-radius: 6px;">
-                        <span class="brand-title">${displayAppName}</span>
+                        <span class="brand-title">${Utils.escapeHtml(displayAppName)}</span>
                     </div>
                 </div>
 
@@ -540,8 +540,8 @@ class TopBarComponent extends Component {
                     <div style="margin-bottom: 12px; animation: floatIcon 3s ease-in-out infinite;">
                         <img src="/static/images/logo.png" style="width: 48px; height: 48px; object-fit: contain;">
                     </div>
-                    <h2 style="margin: 0; font-size: 22px; font-weight: 600; color:var(--color-text-primary);">${displayAppName}</h2>
-                    <p style="color: var(--color-text-secondary); margin: 4px 0 16px; font-size: 14px;">Version ${displayVersion}</p>
+                    <h2 style="margin: 0; font-size: 22px; font-weight: 600; color:var(--color-text-primary);">${Utils.escapeHtml(displayAppName)}</h2>
+                    <p style="color: var(--color-text-secondary); margin: 4px 0 16px; font-size: 14px;">Version ${Utils.escapeHtml(displayVersion)}</p>
                     
                     <div style="background: rgba(125,125,125,0.1); border-radius: 12px; padding: 12px 16px; text-align: left; font-size: 13px; line-height: 1.8;">
                         <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(125,125,125,0.1); padding-bottom: 4px; margin-bottom: 4px;">

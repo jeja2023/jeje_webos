@@ -82,7 +82,9 @@ class AppCenterMarketPage extends Component {
     }
 
     async handleUninstall(moduleId) {
-        const confirmed = await Modal.confirm('确认卸载', `确定要卸载此应用吗？卸载后需要重新安装才能使用。`);
+        const module = this.state.modules?.find(m => m.id === moduleId);
+        const appName = module ? module.name : '应用';
+        const confirmed = await Modal.confirm('确认卸载', `确定要卸载应用 "${Utils.escapeHtml(appName)}" 吗？卸载后需要重新安装才能使用。`);
         if (!confirmed) return;
 
         try {
@@ -115,7 +117,7 @@ class AppCenterMarketPage extends Component {
         const module = this.state.marketModules?.find(m => m.id === moduleId);
         const appName = module ? module.name : '应用';
 
-        const confirmed = await Modal.confirm('确认卸载', `确定要从个人应用列表移除 "${appName}" 吗？`);
+        const confirmed = await Modal.confirm('确认卸载', `确定要从个人应用列表移除 "${Utils.escapeHtml(appName)}" 吗？`);
         if (!confirmed) return;
 
         try {
@@ -158,7 +160,7 @@ class AppCenterMarketPage extends Component {
         // 2. 只有在用户设置不存在时（初次使用），降级读取本地缓存或使用默认值
         if (pinned === null) {
             try {
-                const saved = localStorage.getItem('jeje_pinned_apps');
+                const saved = localStorage.getItem(Config.storageKeys.pinnedApps);
                 pinned = saved ? JSON.parse(saved) : DEFAULT_APPS;
             } catch (e) {
                 pinned = DEFAULT_APPS;
@@ -170,7 +172,7 @@ class AppCenterMarketPage extends Component {
 
     async savePinnedApps(apps) {
         // 1. 更新本地状态（乐观更新 UI）
-        localStorage.setItem('jeje_pinned_apps', JSON.stringify(apps));
+        localStorage.setItem(Config.storageKeys.pinnedApps, JSON.stringify(apps));
         Store.set('pinnedApps', apps);
 
         // 2. 同步到后端用户设置
@@ -240,7 +242,7 @@ class AppCenterMarketPage extends Component {
         const action = module.enabled ? '禁用' : '启用';
         // 核心模块警告：不再包含 blog, notes, feedback
         if (['system', 'auth', 'user', 'boot'].includes(module.id) && module.enabled) {
-            const confirm = await Modal.confirm(`禁用 ${module.name}`, `警告：禁用核心模块可能会导致相关功能不可用。确定要继续吗？`);
+            const confirm = await Modal.confirm(`禁用 ${Utils.escapeHtml(module.name)}`, `警告：禁用核心模块可能会导致相关功能不可用。确定要继续吗？`);
             if (!confirm) return;
         }
 
@@ -359,7 +361,8 @@ class AppCenterMarketPage extends Component {
             'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
         };
 
-        return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: item.icon || 'ri-apps-line' };
+        const safeEmoji = (item.icon && !/<script/i.test(item.icon)) ? item.icon : 'ri-apps-line';
+        return iconMap[item.id] || { ri: null, gradient: 'gradient-default', emoji: safeEmoji };
     }
 
     // 渲染主页：应用图标网格
@@ -385,14 +388,14 @@ class AppCenterMarketPage extends Component {
             const iconSpec = this._getIconSpec(item);
 
             return `
-                            <div class="app-card-wrapper" data-id="${item.id}">
-                                <div class="app-card clickable" data-app-path="${entryPath}">
+                            <div class="app-card-wrapper" data-id="${Utils.escapeHtml(String(item.id))}">
+                                <div class="app-card clickable" data-app-path="${Utils.escapeHtml(entryPath)}">
                                     <div class="app-icon-box ${iconSpec.gradient}">
-                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                     </div>
                                     <div class="app-name">${Utils.escapeHtml(item.name)}</div>
                                     <button class="pin-status ${isPinned ? 'pinned' : ''}" 
-                                            data-pin-app="${item.id}" 
+                                            data-pin-app="${Utils.escapeHtml(String(item.id))}" 
                                             title="${isPinned ? '从 Dock 取消固定' : '固定到 Dock'}">
                                         <i class="${isPinned ? 'ri-pushpin-2-fill' : 'ri-pushpin-2-line'}"></i>
                                     </button>
@@ -439,17 +442,17 @@ class AppCenterMarketPage extends Component {
                             <div class="card-body">
                                 <div class="module-header">
                                     <div class="module-icon-box ${iconSpec.gradient}">
-                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                        ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                     </div>
                                     <div class="module-info">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                             <h3 class="module-title">
                                                 ${Utils.escapeHtml(m.name)}
-                                                <span class="tag tag-default">${m.version || '1.0.0'}</span>
+                                                <span class="tag tag-default">${Utils.escapeHtml(m.version || '1.0.0')}</span>
                                             </h3>
                                             <div class="module-actions">
                                                 <label class="switch">
-                                                    <input type="checkbox" ${m.enabled ? 'checked' : ''} ${processingId === m.id ? 'disabled' : ''} data-toggle="${m.id}">
+                                                    <input type="checkbox" ${m.enabled ? 'checked' : ''} ${processingId === m.id ? 'disabled' : ''} data-toggle="${Utils.escapeHtml(String(m.id))}">
                                                     <span class="slider round"></span>
                                                 </label>
                                             </div>
@@ -509,7 +512,7 @@ class AppCenterMarketPage extends Component {
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
-                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                         </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
@@ -517,11 +520,11 @@ class AppCenterMarketPage extends Component {
                                         </div>
                                     </div>
                                     <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
-                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                        <span>版本: ${Utils.escapeHtml(app.version || '1.0.0')}</span>
                                         ${app.author ? `<span style="margin-left: 12px;">作者: ${Utils.escapeHtml(app.author)}</span>` : ''}
                                     </div>
                                     <div class="module-footer">
-                                        <button class="btn btn-primary btn-block" data-install="${app.id}">
+                                        <button class="btn btn-primary btn-block" data-install="${Utils.escapeHtml(String(app.id))}">
                                             <i class="ri-add-line"></i> 系统安装
                                         </button>
                                     </div>
@@ -542,7 +545,7 @@ class AppCenterMarketPage extends Component {
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
-                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                         </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
@@ -550,13 +553,13 @@ class AppCenterMarketPage extends Component {
                                         </div>
                                     </div>
                                     <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
-                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                        <span>版本: ${Utils.escapeHtml(app.version || '1.0.0')}</span>
                                         <span style="margin-left: 12px; color: ${app.enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)'};">
                                             ${app.enabled ? '● 系统已启用' : '○ 系统未启用'}
                                         </span>
                                     </div>
                                     <div class="module-footer" style="display: flex; gap: 8px;">
-                                        <button class="btn btn-ghost" data-uninstall="${app.id}" style="flex: 1;">
+                                        <button class="btn btn-ghost" data-uninstall="${Utils.escapeHtml(String(app.id))}" style="flex: 1;">
                                             <i class="ri-delete-bin-line"></i> 系统卸载
                                         </button>
                                         <button class="btn btn-secondary" data-view-target="manage" style="flex: 1;">
@@ -604,7 +607,7 @@ class AppCenterMarketPage extends Component {
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
-                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                         </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
@@ -612,10 +615,10 @@ class AppCenterMarketPage extends Component {
                                         </div>
                                     </div>
                                     <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
-                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                        <span>版本: ${Utils.escapeHtml(app.version || '1.0.0')}</span>
                                     </div>
                                     <div class="module-footer">
-                                        <button class="btn btn-primary btn-block" data-user-install="${app.id}">
+                                        <button class="btn btn-primary btn-block" data-user-install="${Utils.escapeHtml(String(app.id))}">
                                             <i class="ri-add-line"></i> 添加到我的应用
                                         </button>
                                     </div>
@@ -636,7 +639,7 @@ class AppCenterMarketPage extends Component {
                                 <div class="card-body">
                                     <div class="module-header">
                                         <div class="module-icon-box ${iconSpec.gradient}">
-                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : iconSpec.emoji}
+                                            ${iconSpec.ri ? `<i class="${iconSpec.ri}"></i>` : Utils.escapeHtml(iconSpec.emoji)}
                                         </div>
                                         <div class="module-info">
                                             <h3 class="module-title">${Utils.escapeHtml(app.name)}</h3>
@@ -644,16 +647,16 @@ class AppCenterMarketPage extends Component {
                                         </div>
                                     </div>
                                     <div class="module-meta" style="margin: 12px 0; font-size: 12px; color: var(--color-text-tertiary);">
-                                        <span>版本: ${app.version || '1.0.0'}</span>
+                                        <span>版本: ${Utils.escapeHtml(app.version || '1.0.0')}</span>
                                         <span style="margin-left: 12px; color: ${app.user_enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)'};">
                                             ${app.user_enabled ? '● 已启用' : '○ 已禁用'}
                                         </span>
                                     </div>
                                     <div class="module-footer" style="display: flex; gap: 8px;">
-                                        <button class="btn btn-ghost" data-user-uninstall="${app.id}" style="flex: 1;">
+                                        <button class="btn btn-ghost" data-user-uninstall="${Utils.escapeHtml(String(app.id))}" style="flex: 1;">
                                             <i class="ri-delete-bin-line"></i> 移除
                                         </button>
-                                        <button class="btn btn-secondary" data-user-toggle="${app.id}" data-enabled="${!app.user_enabled}" style="flex: 1;">
+                                        <button class="btn btn-secondary" data-user-toggle="${Utils.escapeHtml(String(app.id))}" data-enabled="${!app.user_enabled}" style="flex: 1;">
                                             ${app.user_enabled ? '<i class="ri-pause-circle-line"></i> 禁用' : '<i class="ri-play-circle-line"></i> 启用'}
                                         </button>
                                     </div>
@@ -758,7 +761,7 @@ class AppCenterMarketPage extends Component {
                     </div>
                     <div class="form-group">
                         <label>作者</label>
-                        <input type="text" class="form-input" name="author" value="${user?.nickname || user?.username || ''}">
+                        <input type="text" class="form-input" name="author" value="${Utils.escapeHtml(user?.nickname || user?.username || '')}">
                     </div>
                 </form>
             `,
@@ -775,7 +778,7 @@ class AppCenterMarketPage extends Component {
 
                 try {
                     await SystemApi.createModule(data);
-                    await Modal.alert('创建成功', '新应用模块已生成！<br>请<strong>手动重启后端服务</strong>以加载新模块。');
+                    await Modal.alert('创建成功', `新应用模块 <strong>${Utils.escapeHtml(data.name)}</strong> 已生成！<br>请<strong>手动重启后端服务</strong>以加载新模块。`);
                     return true;
                 } catch (e) {
                     Toast.error('创建失败: ' + e.message);
@@ -819,7 +822,7 @@ class AppCenterMarketPage extends Component {
             warningHtml += `
                 <div class="info-box" style="background: rgba(255, 204, 0, 0.1); color: #cc9900; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
                     <i class="ri-lightbulb-line"></i> 以下应用已安装，需先在「应用市场」中卸载后才能删除：<br>
-                    <strong>${installedModules.map(m => m.name).join('、')}</strong>
+                    <strong>${installedModules.map(m => Utils.escapeHtml(m.name)).join('、')}</strong>
                 </div>
             `;
         }
@@ -837,7 +840,7 @@ class AppCenterMarketPage extends Component {
                     <div class="form-group">
                         <label>选择要删除的应用</label>
                         <select class="form-select" name="module_id" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);">
-                            ${deletableModules.map(m => `<option value="${m.id}">${m.name} (${m.id})</option>`).join('')}
+                            ${deletableModules.map(m => `<option value="${Utils.escapeHtml(String(m.id))}">${Utils.escapeHtml(m.name)} (${Utils.escapeHtml(String(m.id))})</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group" style="margin-top:20px;">
@@ -857,7 +860,7 @@ class AppCenterMarketPage extends Component {
                 const moduleId = form.module_id.value;
                 const deleteDb = form.delete_db.checked;
 
-                const confirmed = await Modal.confirm('最终确认', `确定要彻底删除应用 "${moduleId}" 吗？此操作无法撤销。`);
+                const confirmed = await Modal.confirm('最终确认', `确定要彻底删除应用 "${Utils.escapeHtml(moduleId)}" 吗？此操作无法撤销。`);
                 if (!confirmed) return false;
 
                 try {
@@ -909,8 +912,8 @@ class AppCenterMarketPage extends Component {
 
                 const confirmed = await Modal.confirm('模块已存在', `
                     <div style="line-height: 1.6;">
-                        <p>模块 <strong>${moduleName}</strong> 已存在于系统中。</p>
-                        <p style="margin-top: 8px; color: var(--color-text-secondary);">当前版本: ${existingVersion}</p>
+                        <p>模块 <strong>${Utils.escapeHtml(moduleName)}</strong> 已存在于系统中。</p>
+                        <p style="margin-top: 8px; color: var(--color-text-secondary);">当前版本: ${Utils.escapeHtml(existingVersion)}</p>
                         <p style="margin-top: 12px;">是否要覆盖现有模块？</p>
                     </div>
                 `);
@@ -931,7 +934,7 @@ class AppCenterMarketPage extends Component {
 
             await Modal.alert('上传成功', `
                 <div class="alert alert-success" style="background: rgba(52,199,89,0.1); color: #34c759; padding: 16px; border-radius: 8px;">
-                    <p>模块 <strong>${moduleName}</strong> ${isOverwrite ? '已覆盖更新' : '已上传成功'}！</p>
+                    <p>模块 <strong>${Utils.escapeHtml(moduleName)}</strong> ${isOverwrite ? '已覆盖更新' : '已上传成功'}！</p>
                     <p style="margin-top:10px;">接下来请：</p>
                     <ol style="margin: 10px 0 0 20px;">
                         <li>进入「<strong>应用市场</strong>」，找到该模块并点击「<strong>安装</strong>」</li>
@@ -1007,9 +1010,9 @@ class AppCenterMarketPage extends Component {
 
                     <div class="sidebar-footer">
                         <div class="user-brief">
-                            <div class="user-avatar">${(Store.get('user')?.nickname || 'U').charAt(0)}</div>
+                            <div class="user-avatar">${Utils.escapeHtml((Store.get('user')?.nickname || 'U').charAt(0))}</div>
                             <div class="user-info">
-                                <div class="user-name">${Store.get('user')?.nickname || '用户'}</div>
+                                <div class="user-name">${Utils.escapeHtml(Store.get('user')?.nickname || '用户')}</div>
                                 <div class="user-role">${Store.get('user')?.role === 'admin' ? '管理员' : '普通用户'}</div>
                             </div>
                         </div>

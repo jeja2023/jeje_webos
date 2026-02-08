@@ -46,7 +46,7 @@ const AnalysisImportMixin = {
                             <span class="breadcrumb-item" data-id="">根目录</span>
                             ${this.state.folderPath ? this.state.folderPath.map(p => `
                                 <i class="ri-arrow-right-s-line"></i>
-                                <span class="breadcrumb-item" data-id="${p.id}">${p.name}</span>
+                                <span class="breadcrumb-item" data-id="${p.id}">${Utils.escapeHtml(p.name)}</span>
                             `).join('') : ''}
                         </div>
 
@@ -62,7 +62,7 @@ const AnalysisImportMixin = {
                                         <div class="fm-file-item-modern fm-folder-item" data-id="${f.id}">
                                             <div class="file-icon-box" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"><i class="ri-folder-fill"></i></div>
                                             <div class="file-details">
-                                                <span class="file-name">${f.name}</span>
+                                                <span class="file-name">${Utils.escapeHtml(f.name)}</span>
                                                 <span class="file-meta">文件夹 | ${f.file_count || 0} 文件</span>
                                             </div>
                                         </div>
@@ -75,10 +75,10 @@ const AnalysisImportMixin = {
 
             return `
                                         <label class="fm-file-item-modern ${isChecked ? 'active' : ''} ${!isSupported ? 'opacity-75' : ''}">
-                                            <input type="checkbox" class="fm-file-checkbox" value="${f.id}" data-filename="${f.name}" ${isChecked ? 'checked' : ''} ${!isSupported ? 'disabled' : ''}>
+                                            <input type="checkbox" class="fm-file-checkbox" value="${f.id}" data-filename="${Utils.escapeHtml(f.name)}" ${isChecked ? 'checked' : ''} ${!isSupported ? 'disabled' : ''}>
                                             <div class="file-icon-box">${isSupported ? '<i class="ri-bar-chart-2-line"></i>' : '<i class="ri-file-3-line"></i>'}</div>
                                             <div class="file-details">
-                                                <span class="file-name">${f.name}</span>
+                                                <span class="file-name">${Utils.escapeHtml(f.name)}</span>
                                                 <span class="file-meta">
                                                     ${!isSupported ? '<span class="text-warning"><i class="ri-alert-line"></i> 格式不支持</span> | ' : ''} 
                                                     ${Utils.formatBytes(f.file_size)} | ${Utils.formatDate(f.updated_at)}
@@ -116,7 +116,7 @@ const AnalysisImportMixin = {
                                 <div class="batch-file-item" data-index="${index}">
                                     <div class="file-icon"><i class="ri-file-3-line"></i></div>
                                     <div class="file-info">
-                                        <div class="file-name">${f.name}</div>
+                                        <div class="file-name">${Utils.escapeHtml(f.name)}</div>
                                         <div class="file-size">${(f.size / 1024).toFixed(1)} KB</div>
                                     </div>
                                     <div class="flex gap-10">
@@ -243,10 +243,10 @@ const AnalysisImportMixin = {
                             <div class="table-grid">
                                 ${filteredTables.length > 0 ? filteredTables.map(table => `
                                     <label class="table-card-item">
-                                        <input type="checkbox" class="db-table-checkbox" value="${table}">
+                                        <input type="checkbox" class="db-table-checkbox" value="${Utils.escapeHtml(table)}">
                                         <div class="table-icon"><i class="ri-table-line"></i></div>
                                         <div class="table-info">
-                                            <span class="table-name" title="${table}">${table}</span>
+                                            <span class="table-name" title="${Utils.escapeHtml(table)}">${Utils.escapeHtml(table)}</span>
                                         </div>
                                     </label>
                                 `).join('') : `
@@ -305,19 +305,19 @@ const AnalysisImportMixin = {
             </style>
             <div class="preview-modal-content">
                 <div class="mb-15 p-10 bg-tertiary rounded">
-                    <strong>文件名:</strong> ${data.filename}
+                    <strong>文件名:</strong> ${Utils.escapeHtml(data.filename)}
                 </div>
                 <div class="preview-container">
                     <table class="preview-table">
                         <thead>
                             <tr>
-                                ${data.columns.map(c => `<th>${c}</th>`).join('')}
+                                ${data.columns.map(c => `<th>${Utils.escapeHtml(c)}</th>`).join('')}
                             </tr>
                         </thead>
                         <tbody>
                             ${data.preview.map(row => `
                                 <tr>
-                                    ${data.columns.map(c => `<td>${row[c] !== null ? row[c] : ''}</td>`).join('')}
+                                    ${data.columns.map(c => `<td>${Utils.escapeHtml(String(row[c] !== null ? row[c] : ''))}</td>`).join('')}
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -356,9 +356,9 @@ const AnalysisImportMixin = {
                         <p class="text-secondary mb-20">为了查看完整数据内容，请先点击"开始批量导入"将文件上传至服务器。</p>
                         
                         <div class="p-15 bg-secondary rounded text-left" style="width: 100%; max-width: 400px;">
-                            <div class="mb-5"><strong>文件名:</strong> ${file.name}</div>
+                            <div class="mb-5"><strong>文件名:</strong> ${Utils.escapeHtml(file.name)}</div>
                             <div class="mb-5"><strong>大小:</strong> ${Utils.formatBytes(file.size)}</div>
-                            <div><strong>类型:</strong> ${file.type || '未识别'}</div>
+                            <div><strong>类型:</strong> ${Utils.escapeHtml(file.type || '未识别')}</div>
                         </div>
                     </div>
                 </div>
@@ -397,7 +397,7 @@ const AnalysisImportMixin = {
                 ${style}
                 <div class="preview-modal-content">
                     <div class="mb-15 p-10 bg-tertiary rounded">
-                        <strong>文件名:</strong> ${file.name} <span class="ml-10 text-secondary">(${Utils.formatBytes(file.size)})</span>
+                        <strong>文件名:</strong> ${Utils.escapeHtml(file.name)} <span class="ml-10 text-secondary">(${Utils.formatBytes(file.size)})</span>
                     </div>
                     <div class="preview-container">
                         <table class="preview-table">

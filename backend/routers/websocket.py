@@ -39,6 +39,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     """
     user_id = None
     user_info = None
+    connection_established = False  # 标记连接是否已建立
+    
+    async def safe_close(code: int, reason: str):
+        """安全关闭 WebSocket 连接，避免重复关闭"""
+        try:
+            if websocket.client_state.name != "DISCONNECTED":
+                await websocket.close(code=code, reason=reason)
+        except Exception:
+            pass  # 忽略关闭时的任何错误
     
     try:
         # 获取 token
@@ -54,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     token = auth_header[7:]
         
         if not token:
-            await websocket.close(code=1008, reason="缺少认证 token")
+            await safe_close(1008, "缺少认证 token")
             return
         
         # 验证 token 并获取用户信息
@@ -63,14 +72,23 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         
         # 建立连接
         await manager.connect(websocket, user_id)
+        connection_established = True
         
         # 发送连接成功消息
-        await websocket.send_text(json.dumps({
-            "type": "connected",
-            "message": "WebSocket 连接成功",
-            "user_id": user_id,
-            "timestamp": get_beijing_time().isoformat()
-        }, ensure_ascii=False))
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "connected",
+                "message": "WebSocket 连接成功",
+                "user_id": user_id,
+                "timestamp": get_beijing_time().isoformat()
+            }, ensure_ascii=False))
+        except WebSocketDisconnect:
+            # 发送时客户端已断开，直接退出
+            return
+        except Exception:
+            # 其他发送错误，尝试关闭
+            await safe_close(1011, "发送消息失败")
+            return
         
         # 保持连接并接收消息
         while True:
@@ -88,10 +106,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
 
                     # 处理心跳
                     if message_type == "ping":
-                        await websocket.send_text(json.dumps({
-                            "type": "pong",
-                            "timestamp": get_beijing_time().isoformat()
-                        }, ensure_ascii=False))
+                        try:
+                            await websocket.send_text(json.dumps({
+                                "type": "pong",
+                                "timestamp": get_beijing_time().isoformat()
+                            }, ensure_ascii=False))
+                        except Exception:
+                            break  # 发送失败，退出循环
                     
                     # 处理快传相关消息
                     elif message_type.startswith("transfer_"):
@@ -118,13 +139,18 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                 break
                 
     except HTTPException as e:
-        logger.error(f"WebSocket 认证失败: {e.detail}")
-        await websocket.close(code=1008, reason=e.detail)
+        logger.warning(f"WebSocket 认证失败: {e.detail}")
+        await safe_close(1008, e.detail)
+    except WebSocketDisconnect:
+        # 客户端主动断开，正常情况
+        logger.debug(f"WebSocket 客户端断开: user_id={user_id}")
     except Exception as e:
-        logger.error(f"WebSocket 连接异常: {e}", exc_info=True)
-        await websocket.close(code=1011, reason="服务器内部错误")
+        # 仅记录非预期的异常
+        if "disconnect" not in str(e).lower() and "closed" not in str(e).lower():
+            logger.error(f"WebSocket 连接异常: {e}", exc_info=True)
+        await safe_close(1011, "服务器内部错误")
     finally:
-        if user_id:
+        if user_id and connection_established:
             manager.disconnect(websocket, user_id)
 
 

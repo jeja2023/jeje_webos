@@ -248,12 +248,14 @@ const LazyLoader = {
         const { className = '', width = '', height = '', fallback = '' } = options;
         const placeholder = this.config.placeholder || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3C/svg%3E';
 
-        let attrs = `data-src="${src}" alt="${alt}" class="lazy-img ${className}"`;
-        if (width) attrs += ` width="${width}"`;
-        if (height) attrs += ` height="${height}"`;
-        if (fallback) attrs += ` data-fallback="${fallback}"`;
+        const esc = (s) => (window.Utils && window.Utils.escapeAttr) ? window.Utils.escapeAttr(s) : String(s).replace(/"/g, '&quot;');
 
-        return `<img src="${placeholder}" ${attrs}>`;
+        let attrs = `data-src="${esc(src)}" alt="${esc(alt)}" class="lazy-img ${esc(className)}"`;
+        if (width) attrs += ` width="${esc(width)}"`;
+        if (height) attrs += ` height="${esc(height)}"`;
+        if (fallback) attrs += ` data-fallback="${esc(fallback)}"`;
+
+        return `<img src="${esc(placeholder)}" ${attrs}>`;
     },
 
     /**

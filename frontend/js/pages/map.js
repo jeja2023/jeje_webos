@@ -183,20 +183,20 @@ class MapPage extends Component {
                 const dist = this.calculateDistance(ds.points);
                 const distStr = dist >= 1 ? `${dist.toFixed(2)} km` : `${(dist * 1000).toFixed(0)} m`;
                 return `
-                                    <div class="dataset-item" data-id="${ds.id}">
+                                    <div class="dataset-item" data-id="${escape(ds.id)}">
                                         <div class="ds-info">
-                                            <input type="checkbox" class="ds-toggle" data-id="${ds.id}" ${ds.visible ? 'checked' : ''}>
-                                            <span class="ds-color-dot" data-id="${ds.id}" style="background:${ds.color}; cursor: pointer;" title="点击修改颜色"></span>
+                                            <input type="checkbox" class="ds-toggle" data-id="${escape(ds.id)}" ${ds.visible ? 'checked' : ''}>
+                                            <span class="ds-color-dot" data-id="${escape(ds.id)}" style="background:${escape(ds.color)}; cursor: pointer;" title="点击修改颜色"></span>
                                             <div class="ds-text">
                                                 <span class="ds-name text-truncate" title="${escape(ds.name)}">${escape(ds.name)}</span>
                                                 <span class="ds-meta">${ds.points.length} 点 · ${distStr}</span>
                                             </div>
                                         </div>
                                         <div class="ds-actions">
-                                            <button class="btn-icon ds-info-btn" data-id="${ds.id}" title="详情"><i class="ri-information-line"></i></button>
-                                            <button class="btn-icon ds-export" data-id="${ds.id}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
-                                            <button class="btn-icon ds-locate" data-id="${ds.id}" title="定位"><i class="ri-focus-3-line"></i></button>
-                                            <button class="btn-icon ds-remove" data-id="${ds.id}" title="移除"><i class="ri-close-line"></i></button>
+                                            <button class="btn-icon ds-info-btn" data-id="${escape(ds.id)}" title="详情"><i class="ri-information-line"></i></button>
+                                            <button class="btn-icon ds-export" data-id="${escape(ds.id)}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
+                                            <button class="btn-icon ds-locate" data-id="${escape(ds.id)}" title="定位"><i class="ri-focus-3-line"></i></button>
+                                            <button class="btn-icon ds-remove" data-id="${escape(ds.id)}" title="移除"><i class="ri-close-line"></i></button>
                                         </div>
                                     </div>
                                 `}).join('')}
@@ -216,14 +216,14 @@ class MapPage extends Component {
                                     ${markers.length === 0 ? `
                                         <div class="empty-hint" style="padding: 10px 0; font-size: 11px; opacity: 0.5;">暂无本地标记点</div>
                                     ` : markers.map(m => `
-                                        <div class="dataset-item marker-item">
+                                    <div class="dataset-item marker-item">
                                             <div class="ds-info marker-info">
-                                                <i class="ri-map-pin-fill" style="color: ${m.color || '#ef4444'}"></i>
+                                                <i class="ri-map-pin-fill" style="color: ${escape(m.color || '#ef4444')}"></i>
                                                 <span class="ds-name text-truncate" title="${escape(m.name)}">${escape(m.name)}</span>
                                             </div>
                                             <div class="ds-actions">
-                                                <button class="btn-icon marker-locate" data-id="${m.id}" title="定位"><i class="ri-focus-3-line"></i></button>
-                                                <button class="btn-icon marker-delete" data-id="${m.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                                                <button class="btn-icon marker-locate" data-id="${escape(m.id)}" title="定位"><i class="ri-focus-3-line"></i></button>
+                                                <button class="btn-icon marker-delete" data-id="${escape(m.id)}" title="删除"><i class="ri-delete-bin-line"></i></button>
                                             </div>
                                         </div>
                                     `).join('')}
@@ -282,7 +282,7 @@ class MapPage extends Component {
             `;
         } catch (e) {
             console.error('地图渲染错误', e);
-            return `<div style="padding:20px;color:red;">地图渲染错误: ${e.message}</div>`;
+            return `<div style="padding:20px;color:red;">地图渲染错误: ${Utils.escapeHtml(e.message)}</div>`;
         }
     }
 
@@ -336,7 +336,7 @@ class MapPage extends Component {
             }
         } catch (e) {
             let savedMapConfig;
-            try { savedMapConfig = localStorage.getItem('jeje_map_config'); } catch (e) { }
+            try { savedMapConfig = localStorage.getItem(Config.storageKeys.mapConfig); } catch (e) { }
             if (savedMapConfig) {
                 try {
                     const config = JSON.parse(savedMapConfig);
@@ -437,20 +437,20 @@ class MapPage extends Component {
                     const dist = this.calculateDistance(ds.points);
                     const distStr = dist >= 1 ? `${dist.toFixed(2)} km` : `${(dist * 1000).toFixed(0)} m`;
                     return `
-                        <div class="dataset-item" data-id="${ds.id}">
+                        <div class="dataset-item" data-id="${escape(ds.id)}">
                             <div class="ds-info">
-                                <input type="checkbox" class="ds-toggle" data-id="${ds.id}" ${ds.visible ? 'checked' : ''}>
-                                <span class="ds-color-dot" data-id="${ds.id}" style="background:${ds.color}; cursor: pointer;" title="点击修改颜色"></span>
+                                <input type="checkbox" class="ds-toggle" data-id="${escape(ds.id)}" ${ds.visible ? 'checked' : ''}>
+                                <span class="ds-color-dot" data-id="${escape(ds.id)}" style="background:${escape(ds.color)}; cursor: pointer;" title="点击修改颜色"></span>
                                 <div class="ds-text">
                                     <span class="ds-name text-truncate" title="${escape(ds.name)}">${escape(ds.name)}</span>
                                     <span class="ds-meta">${ds.points.length} 点 · ${distStr}</span>
                                 </div>
                             </div>
                             <div class="ds-actions">
-                                <button class="btn-icon ds-info-btn" data-id="${ds.id}" title="详情"><i class="ri-information-line"></i></button>
-                                <button class="btn-icon ds-export" data-id="${ds.id}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
-                                <button class="btn-icon ds-locate" data-id="${ds.id}" title="定位"><i class="ri-focus-3-line"></i></button>
-                                <button class="btn-icon ds-remove" data-id="${ds.id}" title="移除"><i class="ri-close-line"></i></button>
+                                <button class="btn-icon ds-info-btn" data-id="${escape(ds.id)}" title="详情"><i class="ri-information-line"></i></button>
+                                <button class="btn-icon ds-export" data-id="${escape(ds.id)}" title="导出 GPX"><i class="ri-download-cloud-line"></i></button>
+                                <button class="btn-icon ds-locate" data-id="${escape(ds.id)}" title="定位"><i class="ri-focus-3-line"></i></button>
+                                <button class="btn-icon ds-remove" data-id="${escape(ds.id)}" title="移除"><i class="ri-close-line"></i></button>
                             </div>
                         </div>
                     `;
@@ -480,12 +480,12 @@ class MapPage extends Component {
                 markerList.innerHTML = markers.map(m => `
                     <div class="dataset-item marker-item">
                         <div class="ds-info marker-info">
-                            <i class="ri-map-pin-fill" style="color: ${m.color || '#ef4444'}"></i>
+                            <i class="ri-map-pin-fill" style="color: ${escape(m.color || '#ef4444')}"></i>
                             <span class="ds-name text-truncate" title="${escape(m.name)}">${escape(m.name)}</span>
                         </div>
                         <div class="ds-actions">
-                            <button class="btn-icon marker-locate" data-id="${m.id}" title="定位"><i class="ri-focus-3-line"></i></button>
-                            <button class="btn-icon marker-delete" data-id="${m.id}" title="删除"><i class="ri-delete-bin-line"></i></button>
+                            <button class="btn-icon marker-locate" data-id="${escape(m.id)}" title="定位"><i class="ri-focus-3-line"></i></button>
+                            <button class="btn-icon marker-delete" data-id="${escape(m.id)}" title="删除"><i class="ri-delete-bin-line"></i></button>
                         </div>
                     </div>
                 `).join('');
@@ -1113,7 +1113,7 @@ class MapPage extends Component {
         const lat = parseFloat(res.lat), lon = parseFloat(res.lon);
         if (this.searchResultsLayer) this.map.removeLayer(this.searchResultsLayer);
         this.searchResultsLayer = L.layerGroup().addTo(this.map);
-        L.marker([lat, lon]).addTo(this.searchResultsLayer).bindPopup(res.display_name).openPopup();
+        L.marker([lat, lon]).addTo(this.searchResultsLayer).bindPopup(Utils.escapeHtml(res.display_name)).openPopup();
         this.map.flyTo([lat, lon], 14);
         this.setState({ searchResults: [] });
     }
@@ -1268,7 +1268,7 @@ class MapPage extends Component {
                         color: ds.color,
                         fillOpacity: 0.8,
                         stroke: false
-                    }).bindPopup(`<b>${pt.name || '标记点'}</b><br>${pt.time || ''}`).addTo(group);
+                    }).bindPopup(`<b>${Utils.escapeHtml(pt.name || '标记点')}</b><br>${Utils.escapeHtml(pt.time || '')}`).addTo(group);
                 }
             }
         });
@@ -1411,7 +1411,7 @@ class MapPage extends Component {
                 <div style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="ds-color-dot" style="background:${ds.color}; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;"></span>
-                        <span style="font-weight: 600; font-size: 16px;">${ds.name}</span>
+                        <span style="font-weight: 600; font-size: 16px;">${Utils.escapeHtml(ds.name)}</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 10px; text-align: center;">
@@ -1456,16 +1456,8 @@ class MapPage extends Component {
         const { onlineTileUrl, tileSource } = this.state;
 
         Toast.info('正在获取瓦片信息...');
-        let sources = [];
-        try {
-            const res = await Api.get('/map/tiles/check');
-            if (res.code === 200) {
-                sources = res.data.sources;
-                this.state.sources = sources;
-            }
-        } catch (e) { }
-
-        const escape = (str) => (window.Utils && window.Utils.escapeHtml) ? window.Utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+        const sourcesRes = await Api.get('/map/tiles/check'); // 重新获取 sources 以防闭包问题
+        const currentSources = sourcesRes.code === 200 ? sourcesRes.data.sources : sources;
 
         Modal.show({
             title: '地图与离线资源管理',
@@ -1476,20 +1468,20 @@ class MapPage extends Component {
                         <label class="form-label" style="font-weight: 600; margin-bottom: 10px; display: block; font-size: 13px;">在线 XYZ 地图服务</label>
                         <input type="text" class="form-input" id="cfgOnlineUrl" 
                                placeholder="高德: https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
-                               value="${escape(onlineTileUrl)}" style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text); outline: none;">
+                               value="${Utils.escapeAttr(onlineTileUrl)}" style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text); outline: none;">
                     </div>
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600; margin-bottom: 10px; display: block; font-size: 13px;">离线源管理</label>
                         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                             <select id="cfgTileSource" style="flex: 1; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text); padding: 0 10px; cursor: pointer; outline: none;">
                                 <option value="">-- 手动输入 --</option>
-                                ${sources.map(s => `<option value="${escape(s.name)}" ${s.name === tileSource ? 'selected' : ''}>${escape(s.name)} (${s.count} 层)</option>`).join('')}
+                                ${currentSources.map(s => `<option value="${Utils.escapeAttr(s.name)}" ${s.name === tileSource ? 'selected' : ''}>${Utils.escapeHtml(s.name)} (${s.count} 层)</option>`).join('')}
                             </select>
                             <button class="btn-icon" id="btnDeleteSource" title="删除选中源" style="color: var(--color-error);"><i class="ri-delete-bin-line"></i></button>
                         </div>
                         <div id="cfgManualSourceBox" style="${sources.length > 0 && sources.some(s => s.name === tileSource) ? 'display:none;' : ''}">
                             <input type="text" class="form-input" id="cfgTileSourceManual" 
-                                   placeholder="例如: amap_offline" value="${escape(tileSource)}"
+                                   placeholder="例如: amap_offline" value="${Utils.escapeAttr(tileSource)}"
                                    style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text); outline: none;">
                         </div>
                     </div>
@@ -1529,7 +1521,7 @@ class MapPage extends Component {
 
                 const config = { onlineTileUrl, tileSource, mapMode: this.state.mapMode };
                 try {
-                    localStorage.setItem('jeje_map_config', JSON.stringify(config));
+                    localStorage.setItem(Config.storageKeys.mapConfig, JSON.stringify(config));
                 } catch (e) { }
                 this.setState(config);
                 this.updateTileLayer(true);
@@ -1601,11 +1593,11 @@ class MapPage extends Component {
         let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="JeJe WebOS Map" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
-    <name>${ds.name}</name>
+    <name>${Utils.escapeHtml(ds.name)}</name>
     <time>${new Date().toISOString()}</time>
   </metadata>
   <trk>
-    <name>${ds.name}</name>
+    <name>${Utils.escapeHtml(ds.name)}</name>
     <trkseg>`;
 
         ds.points.forEach(p => {
@@ -1640,7 +1632,7 @@ class MapPage extends Component {
                 const marker = L.marker([m.lat, m.lng], {
                     icon: L.divIcon({
                         className: 'custom-marker',
-                        html: `<i class="${m.icon || 'ri-map-pin-2-fill'}" style="color: ${m.color || '#ef4444'}; font-size: 24px; text-shadow: 0 0 3px white;"></i>`,
+                        html: `<i class="${Utils.escapeHtml(m.icon || 'ri-map-pin-2-fill')}" style="color: ${Utils.escapeHtml(m.color || '#ef4444')}; font-size: 24px; text-shadow: 0 0 3px white;"></i>`,
                         iconSize: [24, 24],
                         iconAnchor: [12, 24]
                     })
@@ -1648,8 +1640,8 @@ class MapPage extends Component {
 
                 marker.bindPopup(`
                     <div class="marker-popup" style="min-width: 180px;">
-                        <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:4px;">${m.name}</div>
-                        <div style="font-size:12px; color:#666;">${m.description || '无备注'}</div>
+                        <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:4px;">${Utils.escapeHtml(m.name)}</div>
+                        <div style="font-size:12px; color:#666;">${Utils.escapeHtml(m.description || '无备注')}</div>
                         <div style="margin-top:8px; display:flex; gap:8px;">
                             <button class="btn-xs btn-marker-edit" onclick="window._currentMap.editMarker(${m.id})" style="background:#dbeafe; color:#3b82f6; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
                                 <i class="ri-edit-line"></i> 编辑
@@ -1723,17 +1715,17 @@ class MapPage extends Component {
                 <div style="display: flex; flex-direction: column; gap: 16px;">
                     <div>
                         <label style="display: block; margin-bottom: 6px; font-weight: 500;">名称</label>
-                        <input type="text" id="editMarkerName" value="${marker.name}" 
+                        <input type="text" id="editMarkerName" value="${Utils.escapeHtml(marker.name)}" 
                                style="width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--color-border); padding: 0 14px; background: var(--color-bg-primary); color: var(--color-text);">
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 6px; font-weight: 500;">备注描述</label>
                         <textarea id="editMarkerDesc" rows="3" placeholder="可选..."
-                                  style="width: 100%; border-radius: 10px; border: 1px solid var(--color-border); padding: 10px 14px; background: var(--color-bg-primary); color: var(--color-text); resize: none;">${marker.description || ''}</textarea>
+                                  style="width: 100%; border-radius: 10px; border: 1px solid var(--color-border); padding: 10px 14px; background: var(--color-bg-primary); color: var(--color-text); resize: none;">${Utils.escapeHtml(marker.description || '')}</textarea>
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 6px; font-weight: 500;">颜色</label>
-                        <input type="color" id="editMarkerColor" value="${marker.color || '#ef4444'}" 
+                        <input type="color" id="editMarkerColor" value="${Utils.escapeHtml(marker.color || '#ef4444')}" 
                                style="width: 60px; height: 36px; border: none; cursor: pointer;">
                     </div>
                 </div>

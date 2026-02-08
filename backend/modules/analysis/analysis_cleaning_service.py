@@ -69,7 +69,7 @@ class CleaningService:
                 # 尝试转为数字
                 try:
                     val = float(fill_value)
-                except:
+                except (ValueError, TypeError):
                     val = fill_value
                 df[cols] = df[cols].fillna(val)
             else:
@@ -106,14 +106,14 @@ class CleaningService:
                     # 先尝试转为时间类型再格式化
                     tmp_dt = pd.to_datetime(df[col], errors='coerce')
                     df[col] = tmp_dt.dt.strftime(target_fmt)
-                except:
+                except (ValueError, TypeError):
                     pass
         elif op == "round_numeric":
             decimals = int(params.get("decimals", 2))
             for col in cols:
                 try:
                     df[col] = pd.to_numeric(df[col], errors='coerce').round(decimals)
-                except:
+                except (ValueError, TypeError):
                     pass
         elif op == "drop_empty_columns":
             # 删除所有值均为空的列

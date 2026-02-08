@@ -12,7 +12,7 @@ const FeedbackUI = {
             closed: { text: '已关闭', cls: 'tag-default' }
         };
         const info = map[status] || { text: status, cls: 'tag-default' };
-        return `<span class="tag ${info.cls}">${info.text}</span>`;
+        return `<span class="tag ${Utils.escapeHtml(info.cls)}">${Utils.escapeHtml(info.text)}</span>`;
     },
     typeTag(type) {
         const map = {
@@ -23,7 +23,7 @@ const FeedbackUI = {
             other: { text: '其他', cls: 'tag-default' }
         };
         const info = map[type] || { text: type, cls: 'tag-default' };
-        return `<span class="tag ${info.cls}">${info.text}</span>`;
+        return `<span class="tag ${Utils.escapeHtml(info.cls)}">${Utils.escapeHtml(info.text)}</span>`;
     },
     priorityTag(priority) {
         const map = {
@@ -33,7 +33,7 @@ const FeedbackUI = {
             urgent: { text: '紧急', cls: 'tag-danger' }
         };
         const info = map[priority] || { text: priority, cls: 'tag-default' };
-        return `<span class="tag ${info.cls}">${info.text}</span>`;
+        return `<span class="tag ${Utils.escapeHtml(info.cls)}">${Utils.escapeHtml(info.text)}</span>`;
     }
 };
 
@@ -181,7 +181,7 @@ class FeedbackListPage extends Component {
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">搜索</label>
                             <div class="search-group" style="max-width: 380px;">
-                                <input type="text" class="form-input" id="fbSearchInput" placeholder="标题、内容" value="${filters.keyword || ''}">
+                                <input type="text" class="form-input" id="fbSearchInput" placeholder="标题、内容" value="${Utils.escapeHtml(filters.keyword || '')}">
                                 <button class="btn btn-primary" id="fbSearchBtn">搜索</button>
                             </div>
                         </div>
@@ -206,15 +206,15 @@ class FeedbackListPage extends Component {
                                 <tbody>
                                     ${items.map(item => `
                                         <tr>
-                                            <td><a href="#/feedback/view/${item.id}" class="truncate" style="max-width: 260px; display:block">${Utils.escapeHtml(item.title)}</a></td>
+                                            <td><a href="#/feedback/view/${Utils.escapeHtml(String(item.id))}" class="truncate" style="max-width: 260px; display:block">${Utils.escapeHtml(item.title)}</a></td>
                                             <td>${FeedbackUI.typeTag(item.type)}</td>
                                             <td>${FeedbackUI.priorityTag(item.priority)}</td>
                                             <td>${FeedbackUI.statusTag(item.status)}</td>
                                             <td>${item.reply_at ? Utils.formatDate(item.reply_at) : '-'}</td>
                                             <td>${Utils.formatDate(item.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-view="${item.id}">查看</button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${item.id}" data-title="${Utils.escapeHtml(item.title)}">删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-view="${Utils.escapeHtml(String(item.id))}">查看</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${Utils.escapeHtml(String(item.id))}" data-title="${Utils.escapeHtml(item.title)}">删除</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -596,7 +596,7 @@ class FeedbackAdminPage extends Component {
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">搜索</label>
                             <div class="search-group" style="max-width: 380px;">
-                                <input type="text" class="form-input" id="adSearchInput" placeholder="标题、内容" value="${filters.keyword || ''}">
+                                <input type="text" class="form-input" id="adSearchInput" placeholder="标题、内容" value="${Utils.escapeHtml(filters.keyword || '')}">
                                 <button class="btn btn-primary" id="adSearchBtn">搜索</button>
                             </div>
                         </div>
@@ -622,18 +622,18 @@ class FeedbackAdminPage extends Component {
                                 <tbody>
                                     ${items.map(item => `
                                         <tr>
-                                            <td><a href="#/feedback/view/${item.id}" class="truncate" style="max-width: 200px; display:block">${Utils.escapeHtml(item.title)}</a></td>
+                                            <td><a href="#/feedback/view/${Utils.escapeHtml(String(item.id))}" class="truncate" style="max-width: 200px; display:block">${Utils.escapeHtml(item.title)}</a></td>
                                             <td>${FeedbackUI.typeTag(item.type)}</td>
                                             <td>${FeedbackUI.priorityTag(item.priority)}</td>
                                             <td>${FeedbackUI.statusTag(item.status)}</td>
-                                            <td>${item.user_id || '-'}</td>
+                                            <td>${Utils.escapeHtml(String(item.user_id || '-'))}</td>
                                             <td>${item.reply_at ? Utils.formatDate(item.reply_at) : '-'}</td>
                                             <td>${Utils.formatDate(item.created_at)}</td>
                                             <td>
-                                                <button class="btn btn-ghost btn-sm" data-view="${item.id}">查看</button>
-                                                <button class="btn btn-ghost btn-sm" data-reply="${item.id}">回复</button>
-                                                <button class="btn btn-ghost btn-sm" data-resolve="${item.id}">已解决</button>
-                                                <button class="btn btn-ghost btn-sm" data-delete="${item.id}" data-title="${Utils.escapeHtml(item.title)}">删除</button>
+                                                <button class="btn btn-ghost btn-sm" data-view="${Utils.escapeHtml(String(item.id))}">查看</button>
+                                                <button class="btn btn-ghost btn-sm" data-reply="${Utils.escapeHtml(String(item.id))}">回复</button>
+                                                <button class="btn btn-ghost btn-sm" data-resolve="${Utils.escapeHtml(String(item.id))}">已解决</button>
+                                                <button class="btn btn-ghost btn-sm" data-delete="${Utils.escapeHtml(String(item.id))}" data-title="${Utils.escapeHtml(item.title)}">删除</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -764,8 +764,8 @@ class FeedbackDetailPage extends Component {
                             <div style="margin-top: 12px; white-space: pre-wrap;">${Utils.escapeHtml(item.content)}</div>
                         </div>
                         <div class="detail-meta" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 8px;">
-                            <div>提交人：${item.user_id || '-'}</div>
-                            <div>处理人：${item.handler_id || '-'}</div>
+                            <div>提交人：${Utils.escapeHtml(String(item.user_id || '-'))}</div>
+                            <div>处理人：${Utils.escapeHtml(String(item.handler_id || '-'))}</div>
                             <div>创建时间：${Utils.formatDate(item.created_at)}</div>
                             <div>更新时间：${Utils.formatDate(item.updated_at)}</div>
                             <div>回复时间：${item.reply_at ? Utils.formatDate(item.reply_at) : '-'}</div>

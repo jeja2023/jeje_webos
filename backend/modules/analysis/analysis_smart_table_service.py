@@ -9,6 +9,7 @@ from .analysis_models import AnalysisSmartTable, AnalysisSmartTableData, Analysi
 from .analysis_schemas import SmartTableCreate, SmartTableUpdate
 from .analysis_duckdb_service import duckdb_instance
 from datetime import datetime
+from utils.timezone import get_beijing_time
 import re
 import logging
 
@@ -75,10 +76,17 @@ def safe_eval_dataframe_formula(df, formula: str, allowed_columns: List[str]) ->
     
     # 6. 使用 pandas 的向量化操作计算
     try:
-        # 使用 eval 但限制在局部变量范围内
-        # 这里我们使用 pandas 的 eval，但已经验证了所有输入
-        # 为了更安全，我们可以手动解析和计算
-        result = pd.eval(formula, local_dict=local_vars, global_dict={})
+        # 使用 pandas eval 但配置最严格的安全约束
+        # engine='python' 比默认的 numexpr 更受限制
+        # 由于已经验证了公式结构和所有变量，这是相对安全的
+        # 设置 global_dict={} 和 local_dict 只包含列 Series
+        result = pd.eval(
+            formula, 
+            local_dict=local_vars, 
+            global_dict={},  # 禁止访问任何全局变量
+            engine='python',  # 使用 Python 引擎（更可控）
+            parser='pandas'   # 使用 pandas 解析器
+        )
         return result
     except Exception as e:
         logger.warning(f"公式计算失败: {formula}, 错误: {e}")
@@ -306,6 +314,6 @@ class SmartTableService:
                 duckdb_instance.query(f"CREATE TABLE {dataset.table_name} (dummy VARCHAR)")
             dataset.row_count = 0
             
-        dataset.updated_at = datetime.now()
+        dataset.updated_at = get_beijing_time()
         await db.commit()
         return dataset

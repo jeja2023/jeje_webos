@@ -69,17 +69,17 @@ class SystemSettingsPage extends Component {
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">密码最小长度</label>
-                                    <input type="number" name="password_min_length" class="form-input" min="4" max="128" value="${data.password_min_length}">
+                                    <input type="number" name="password_min_length" class="form-input" min="4" max="128" value="${Utils.escapeHtml(String(data.password_min_length))}">
                                     <small class="form-hint">用户密码的最小字符数</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">登录失败锁定阈值</label>
-                                    <input type="number" name="login_fail_lock" class="form-input" min="3" max="20" value="${data.login_fail_lock}">
+                                    <input type="number" name="login_fail_lock" class="form-input" min="3" max="20" value="${Utils.escapeHtml(String(data.login_fail_lock))}">
                                     <small class="form-hint">连续登录失败多少次后锁定</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">JWT 过期时间（分钟）</label>
-                                    <input type="number" name="jwt_expire_minutes" class="form-input" min="15" max="${60 * 24 * 30}" value="${data.jwt_expire_minutes}">
+                                    <input type="number" name="jwt_expire_minutes" class="form-input" min="15" max="${60 * 24 * 30}" value="${Utils.escapeHtml(String(data.jwt_expire_minutes))}">
                                     <small class="form-hint">登录令牌有效期</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
@@ -103,17 +103,17 @@ class SystemSettingsPage extends Component {
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">请求速率限制 (次)</label>
-                                    <input type="number" name="rate_limit_requests" class="form-input" min="1" max="10000" value="${data.rate_limit_requests || 200}">
+                                    <input type="number" name="rate_limit_requests" class="form-input" min="1" max="10000" value="${Utils.escapeHtml(String(data.rate_limit_requests || 200))}">
                                     <small class="form-hint">每个窗口内的最大请求数</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">限制窗口时间 (秒)</label>
-                                    <input type="number" name="rate_limit_window" class="form-input" min="1" max="3600" value="${data.rate_limit_window || 60}">
+                                    <input type="number" name="rate_limit_window" class="form-input" min="1" max="3600" value="${Utils.escapeHtml(String(data.rate_limit_window || 60))}">
                                     <small class="form-hint">统计请求数的时间窗口</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">超限封禁时长 (秒)</label>
-                                    <input type="number" name="rate_limit_block_duration" class="form-input" min="1" max="3600" value="${data.rate_limit_block_duration || 30}">
+                                    <input type="number" name="rate_limit_block_duration" class="form-input" min="1" max="3600" value="${Utils.escapeHtml(String(data.rate_limit_block_duration || 30))}">
                                     <small class="form-hint">触发限制后的封禁时间</small>
                                 </div>
                             </div>
@@ -130,7 +130,7 @@ class SystemSettingsPage extends Component {
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">API Key</label>
                                     <div style="position:relative;">
-                                        <input type="password" name="ai_online_api_key" id="apiKeyInput" class="form-input" value="${data.ai_online_api_key || ''}" placeholder="sk-..." style="padding-right:40px;">
+                                        <input type="password" name="ai_online_api_key" id="apiKeyInput" class="form-input" value="${Utils.escapeHtml(data.ai_online_api_key || '')}" placeholder="sk-..." style="padding-right:40px;">
                                         <button type="button" id="toggleApiKey" class="btn btn-ghost btn-sm" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 8px;" title="显示/隐藏">
                                             <i class="ri-eye-line" id="toggleApiKeyIcon"></i>
                                         </button>
@@ -139,12 +139,12 @@ class SystemSettingsPage extends Component {
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">Base URL</label>
-                                    <input type="text" name="ai_online_base_url" class="form-input" value="${data.ai_online_base_url || 'https://api.deepseek.com/v1'}" placeholder="https://api.deepseek.com/v1">
+                                    <input type="text" name="ai_online_base_url" class="form-input" value="${Utils.escapeHtml(data.ai_online_base_url || 'https://api.deepseek.com/v1')}" placeholder="https://api.deepseek.com/v1">
                                     <small class="form-hint">API 服务地址</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">模型名称</label>
-                                    <input type="text" name="ai_online_model" class="form-input" value="${data.ai_online_model || 'deepseek-chat'}" placeholder="deepseek-chat">
+                                    <input type="text" name="ai_online_model" class="form-input" value="${Utils.escapeHtml(data.ai_online_model || 'deepseek-chat')}" placeholder="deepseek-chat">
                                     <small class="form-hint">使用的模型标识</small>
                                 </div>
                             </div>
@@ -279,13 +279,15 @@ class AuditLogsPage extends Component {
             action: '',
             startTime: '',
             endTime: '',
-            keyword: ''
+            keyword: '',
+            userId: '',
+            username: ''
         };
     }
 
     async loadData() {
         this.setState({ loading: true });
-        const { page, size, level, module, action, startTime, endTime, keyword } = this.state;
+        const { page, size, level, module, action, startTime, endTime, keyword, userId, username } = this.state;
         const params = {
             page,
             size,
@@ -294,7 +296,9 @@ class AuditLogsPage extends Component {
             ...(action ? { action } : {}),
             ...(startTime ? { start_time: startTime } : {}),
             ...(endTime ? { end_time: endTime } : {}),
-            ...(keyword ? { keyword } : {})
+            ...(keyword ? { keyword } : {}),
+            ...(userId ? { user_id: userId } : {}),
+            ...(username ? { username } : {})
         };
         try {
             const res = await SystemApi.getAuditLogs(params);
@@ -311,14 +315,16 @@ class AuditLogsPage extends Component {
     }
 
     handleExport() {
-        const { level, module, action, startTime, endTime, keyword } = this.state;
+        const { level, module, action, startTime, endTime, keyword, userId, username } = this.state;
         const params = {
             ...(level ? { level } : {}),
             ...(module ? { module } : {}),
             ...(action ? { action } : {}),
             ...(startTime ? { start_time: startTime } : {}),
             ...(endTime ? { end_time: endTime } : {}),
-            ...(keyword ? { keyword } : {})
+            ...(keyword ? { keyword } : {}),
+            ...(userId ? { user_id: userId } : {}),
+            ...(username ? { username } : {})
         };
         const token = localStorage.getItem(Config.storageKeys.token);
         const url = SystemApi.exportAuditLogs({ ...params, token });
@@ -339,7 +345,7 @@ class AuditLogsPage extends Component {
                 <div style="display:grid;gap:12px;font-size:14px;">
                     <div style="display:flex;gap:12px;">
                         <span style="color:var(--color-text-secondary);min-width:80px;">级别</span>
-                        <span class="tag ${item.level === 'ERROR' ? 'tag-danger' : item.level === 'WARNING' ? 'tag-warning' : 'tag-primary'}">${item.level}</span>
+                        <span class="tag ${item.level === 'ERROR' ? 'tag-danger' : item.level === 'WARNING' ? 'tag-warning' : 'tag-primary'}">${Utils.escapeHtml(item.level)}</span>
                     </div>
                     <div style="display:flex;gap:12px;">
                         <span style="color:var(--color-text-secondary);min-width:80px;">模块</span>
@@ -378,7 +384,7 @@ class AuditLogsPage extends Component {
     }
 
     render() {
-        const { items, total, page, size, loading, level, module, action, startTime, endTime, keyword } = this.state;
+        const { items, total, page, size, loading, level, module, action, startTime, endTime, keyword, userId, username } = this.state;
         const pages = Math.ceil(total / size) || 1;
         const formatTime = (t) => {
             if (!t) return '-';
@@ -433,6 +439,10 @@ class AuditLogsPage extends Component {
                                 <input type="text" id="filterKeyword" class="form-input" placeholder="关键词" value="${Utils.escapeHtml(keyword)}" style="width:150px;">
                             </div>
                             <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="font-size:12px;color:var(--color-text-secondary);">用户名</label>
+                                <input type="text" id="filterUsername" class="form-input" placeholder="用户名" value="${Utils.escapeHtml(username)}" style="width:100px;">
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:4px;">
                                 <label style="font-size:12px;color:var(--color-text-secondary);">开始时间</label>
                                 <input type="datetime-local" id="filterStartTime" class="form-input" value="${startTime}" style="width:180px;">
                             </div>
@@ -460,8 +470,8 @@ class AuditLogsPage extends Component {
                                 <th style="width:150px;">时间</th>
                                 <th style="width:80px;">级别</th>
                                 <th style="width:100px;">模块</th>
-                                <th style="width:150px;">动作</th>
-                                <th style="width:100px;">用户</th>
+                                <th style="width:120px;">动作</th>
+                                <th style="width:140px;">用户</th>
                                 <th style="width:120px;">IP</th>
                                 <th>消息</th>
                                 <th style="width:60px;">操作</th>
@@ -471,14 +481,16 @@ class AuditLogsPage extends Component {
                             ${items.map(i => `
                                 <tr>
                                     <td style="font-size:12px;">${formatTime(i.created_at)}</td>
-                                    <td><span class="tag ${i.level === 'ERROR' ? 'tag-danger' : i.level === 'WARNING' ? 'tag-warning' : 'tag-primary'}">${i.level}</span></td>
+                                    <td><span class="tag ${i.level === 'ERROR' ? 'tag-danger' : i.level === 'WARNING' ? 'tag-warning' : 'tag-primary'}">${Utils.escapeHtml(i.level)}</span></td>
                                     <td>${Utils.escapeHtml(i.module || '')}</td>
                                     <td>${Utils.escapeHtml(i.action || '')}</td>
-                                    <td>${i.username ?? '-'}</td>
-                                    <td style="font-size:12px;">${i.ip_address || '-'}</td>
+                                    <td style="white-space:nowrap;">
+                                        ${i.user_id ? `<a href="javascript:void(0)" class="filter-user-trigger" data-user-id="${Utils.escapeHtml(i.user_id)}" style="color:var(--color-primary);text-decoration:none;">${Utils.escapeHtml(i.username || '-')}</a>` : Utils.escapeHtml(i.username || '-')}
+                                    </td>
+                                    <td style="font-size:12px;">${Utils.escapeHtml(i.ip_address || '-')}</td>
                                     <td class="truncate" style="max-width:300px;" title="${Utils.escapeHtml(i.message || '')}">${Utils.escapeHtml(i.message || '')}</td>
                                     <td>
-                                        <button class="btn btn-ghost btn-sm" data-view-log='${JSON.stringify(i).replace(/'/g, "&#39;")}' title="查看详情">
+                                        <button class="btn btn-ghost btn-sm" data-view-log="${Utils.escapeHtml(JSON.stringify(i))}" title="查看详情">
                                             <i class="ri-eye-line"></i>
                                         </button>
                                     </td>
@@ -518,6 +530,8 @@ class AuditLogsPage extends Component {
                 this.state.module = (this.$('#filterModule')?.value || '').trim();
                 this.state.action = (this.$('#filterAction')?.value || '').trim();
                 this.state.keyword = (this.$('#filterKeyword')?.value || '').trim();
+                this.state.username = (this.$('#filterUsername')?.value || '').trim();
+                this.state.userId = ''; // 手动筛选用户名时清除用户 ID 精确匹配
                 this.state.startTime = this.$('#filterStartTime')?.value || '';
                 this.state.endTime = this.$('#filterEndTime')?.value || '';
                 this.state.page = 1;
@@ -530,6 +544,8 @@ class AuditLogsPage extends Component {
                 this.state.module = '';
                 this.state.action = '';
                 this.state.keyword = '';
+                this.state.userId = '';
+                this.state.username = '';
                 this.state.startTime = '';
                 this.state.endTime = '';
                 this.state.page = 1;
@@ -548,6 +564,20 @@ class AuditLogsPage extends Component {
                     this.showLogDetail(logData);
                 } catch (err) {
                     Toast.error('解析日志数据失败');
+                }
+            });
+
+            // 点击用户名进行筛选
+            this.delegate('click', '.filter-user-trigger', (e, t) => {
+                const uid = t.dataset.userId;
+                if (uid) {
+                    this.state.userId = uid;
+                    this.state.username = ''; // 精确筛选 ID 时清除用户名筛选
+                    this.state.page = 1;
+                    this.loadData();
+                    // 清除用户名输入框
+                    const input = this.$('#filterUsername');
+                    if (input) input.value = '';
                 }
             });
         }

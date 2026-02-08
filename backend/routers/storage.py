@@ -4,6 +4,7 @@
 """
 
 import os
+import logging
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
@@ -22,6 +23,7 @@ from core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/storage", tags=["文件存储"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
@@ -137,8 +139,8 @@ async def upload_file(
             try:
                 temp_file.close()
                 os.unlink(temp_file.name)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"清理临时文件失败: {e}")
         raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
     
     # 3. 验证文件类型（使用第一个块进行内容检测）
@@ -197,8 +199,8 @@ async def upload_file(
         # 清理临时文件
         try:
             os.unlink(temp_path)
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"清理临时文件失败: {e}")
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
     
     # 7. 保存文件记录到数据库
