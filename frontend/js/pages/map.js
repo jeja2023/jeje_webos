@@ -9,7 +9,7 @@ class MapPage extends Component {
         this.state = {
             datasets: [], // { id, name, points, color, visible }
             trailFiles: [], // { id, filename, size, created_at }
-            mapMode: 'offline', // 离线 | 在线
+            mapMode: 'online', // 离线 | 在线
             tileSource: 'amap_offline',
             onlineTileUrl: 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
             loading: false,
@@ -248,11 +248,11 @@ class MapPage extends Component {
                 <div class="mode-switch-group">
                     <div class="switch-label">底图渲染服务器</div>
                     <div class="mode-tabs">
-                        <div class="mode-tab ${mapMode === 'offline' ? 'active' : ''}" data-mode="offline">
-                            <i class="ri-database-2-line"></i> 本地离线
-                        </div>
                         <div class="mode-tab ${mapMode === 'online' ? 'active' : ''}" data-mode="online">
                             <i class="ri-cloud-line"></i> 在线遥感
+                        </div>
+                        <div class="mode-tab ${mapMode === 'offline' ? 'active' : ''}" data-mode="offline">
+                            <i class="ri-database-2-line"></i> 本地离线
                         </div>
                     </div>
                 </div>
@@ -328,7 +328,7 @@ class MapPage extends Component {
             const res = await Api.get('/map/config');
             if (res.code === 200 && res.data) {
                 const config = res.data;
-                this.state.mapMode = config.map_mode || 'offline';
+                this.state.mapMode = config.map_mode || 'online';
                 this.state.tileSource = config.tile_source || 'amap_offline';
                 this.state.onlineTileUrl = config.online_tile_url || this.state.onlineTileUrl;
                 this.state.lastCenter = config.last_center;

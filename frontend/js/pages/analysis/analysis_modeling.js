@@ -537,15 +537,7 @@ const AnalysisModelingMixin = {
                 el.disabled = true;
                 el.innerHTML = '⏳';
 
-                const token = Utils.getToken();
-                const response = await fetch(`/api/v1/analysis/models/${id}/execute`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                const res = await response.json();
+                const res = await Api.post(`/analysis/models/${id}/execute`);
 
                 if (res.code === 200) {
                     Toast.success(res.message || '执行成功');

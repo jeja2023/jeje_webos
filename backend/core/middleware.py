@@ -227,11 +227,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content-Security-Policy：按实际脚本/样式来源收紧；允许同源与常见内联（SPA 常用）
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.unpkg.com; "
+            "style-src 'self' 'unsafe-inline' *.unpkg.com; "
             "img-src 'self' data: blob: https:; "
             "font-src 'self' data:; "
-            "connect-src 'self' ws: wss:; "
+            "connect-src 'self' ws: wss: "
+            "*.autonavi.com *.amap.com *.openstreetmap.org *.stadiamaps.com *.google.com *.tianditu.gov.cn *.arcgisonline.com unpkg.com *.unpkg.com; "
             "frame-ancestors 'none'; "
             "base-uri 'self'"
         )

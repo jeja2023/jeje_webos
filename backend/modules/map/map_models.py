@@ -39,7 +39,7 @@ class MapConfig(Base):
     user_id = Column(Integer, ForeignKey("sys_users.id"), unique=True, index=True, comment="所属用户ID")
     
     # 地图状态
-    map_mode = Column(String(20), default="offline", comment="底图模式: online/offline")
+    map_mode = Column(String(20), default="online", comment="底图模式: online/offline")
     tile_source = Column(String(100), default="amap_offline", comment="当前离线源名称")
     online_tile_url = Column(String(500), comment="在线底图模板URL")
     

@@ -762,6 +762,7 @@ class PdfPage extends Component {
         try {
             // 使用 fetch 获取 blob
             const res = await fetch(`${Api.baseUrl}/pdf/download-result?filename=${encodeURIComponent(filename)}`, {
+                credentials: 'include',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
                 }
@@ -795,6 +796,7 @@ class PdfPage extends Component {
             // 兼容文件名或路径：统一分隔符并提取文件名
             const filename = fileArg.replace(/\\/g, '/').split('/').pop();
             const res = await fetch(`${Api.baseUrl}/pdf/download-result?filename=${encodeURIComponent(filename)}`, {
+                credentials: 'include',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
                 }
@@ -838,19 +840,11 @@ class PdfPage extends Component {
                 formData.append('file', file);
 
                 try {
-                    const res = await fetch(`${Api.baseUrl}/pdf/upload`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem(Config.storageKeys.token)}`
-                        },
-                        body: formData
-                    });
-
-                    const data = await res.json();
-                    if (data.code === 0) {
+                    const res = await Api.upload('/pdf/upload', formData);
+                    if (res.code === 0) {
                         successCount++;
                     } else {
-                        Toast.error(`文件 ${file.name} 上传失败: ${data.message}`);
+                        Toast.error(`文件 ${file.name} 上传失败: ${res.message}`);
                     }
                 } catch (err) {
                     console.error(err);

@@ -54,7 +54,7 @@ const OfficeViewer = {
 
             let buffer = arrayBuffer;
             if (!buffer && url) {
-                const response = await fetch(url);
+                const response = await fetch(url, { credentials: 'include' });
                 if (!response.ok) throw new Error('获取文件失败');
                 buffer = await response.arrayBuffer();
             }
@@ -98,7 +98,7 @@ const OfficeViewer = {
 
             let buffer = arrayBuffer;
             if (!buffer && url) {
-                const response = await fetch(url);
+                const response = await fetch(url, { credentials: 'include' });
                 if (!response.ok) throw new Error('获取文件失败');
                 buffer = await response.arrayBuffer();
             }

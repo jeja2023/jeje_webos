@@ -190,11 +190,9 @@ const ResourceLoader = {
                 '/static/css/pages/datalens/datalens.css',
                 '/static/css/pages/datalens/datalens_hub.css',
                 '/static/css/pages/datalens/datalens_viewer.css',
-                '/static/css/pages/datalens/datalens_editor.css',
-                '/static/css/pages/datalens/datalens_api.css'
+                '/static/css/pages/datalens/datalens_editor.css'
             ],
             js: [
-                '/static/js/pages/datalens/datalens_api.js',
                 '/static/js/pages/datalens/datalens.js',
                 '/static/js/pages/datalens/datalens_hub.js',
                 '/static/js/pages/datalens/datalens_viewer.js',

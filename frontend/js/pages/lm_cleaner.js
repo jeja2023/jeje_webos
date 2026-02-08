@@ -75,16 +75,8 @@ class LmCleanerPage extends Component {
             const formData = new FormData();
             formData.append('file', file);
 
-            // 使用原始 fetch 因为 Api 类可能对 FormData 支持不一
-            const response = await fetch('/api/v1/lm_cleaner/clean', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${Store.get('token')}`
-                },
-                body: formData
-            });
-
-            const result = await response.json();
+            // 使用统一的 Api.upload，它会自动处理 Token 和 CSRF
+            const result = await Api.upload('/lm_cleaner/clean', formData);
             if (result.code === 0) {
                 Toast.success('文件处理成功！可在下方历史记录中查看或下载。');
                 await this.loadData();

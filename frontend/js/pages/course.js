@@ -1100,14 +1100,12 @@ class CoursePage extends Component {
                         formData.append('file', videoFile);
 
                         try {
-                            await fetch(`/api/v1/course/chapters/${newChapterId}/video`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${Store.get('token')}`
-                                },
-                                body: formData
-                            });
-                            Toast.success('章节和视频添加成功！');
+                            const uploadRes = await Api.upload(`/course/chapters/${newChapterId}/video`, formData);
+                            if (uploadRes.code === 0) {
+                                Toast.success('章节和视频添加成功！');
+                            } else {
+                                throw new Error(uploadRes.message);
+                            }
                         } catch (uploadErr) {
                             Toast.warning('章节已创建，但视频上传失败，请在编辑中重新上传');
                         }
@@ -1341,6 +1339,12 @@ class CoursePage extends Component {
                         const xhr = new XMLHttpRequest();
                         xhr.open('POST', `/api/v1/course/chapters/${chapterId}/video`);
                         xhr.setRequestHeader('Authorization', `Bearer ${Store.get('token')}`);
+
+                        // 添加 CSRF Token
+                        const csrfToken = Store.get('csrfToken');
+                        if (csrfToken) {
+                            xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+                        }
 
                         xhr.upload.onprogress = (e) => {
                             if (e.lengthComputable) {

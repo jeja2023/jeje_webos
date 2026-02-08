@@ -814,38 +814,22 @@ class AlbumPage extends Component {
         if (selectedIds.size === 0) return;
 
         try {
-            const token = Utils.getToken();
-            const res = await fetch('/api/v1/album/photos/batch-download', {
+            const res = await Api.download('/album/photos/batch-download', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ ids: Array.from(selectedIds) })
             });
 
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                // 解析文件名
-                const disposition = res.headers.get('Content-Disposition');
-                let filename = `photos_${selectedIds.size}.zip`;
-                if (disposition && disposition.indexOf('filename=') !== -1) {
-                    filename = disposition.split('filename=')[1].replace(/['"]/g, '');
-                }
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
+            const url = window.URL.createObjectURL(res.blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = res.filename || `photos_${selectedIds.size}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
 
-                Toast.success('所有文件已加入下载队列');
-                this.toggleSelectionMode(); // 退出选择模式
-            } else {
-                Toast.error('下载请求失败');
-            }
+            Toast.success('所有文件已加入下载队列');
+            this.toggleSelectionMode(); // 退出选择模式
         } catch (e) {
             console.error(e);
             Toast.error('下载发生错误');

@@ -1174,7 +1174,7 @@ class FileManagerPage extends Component {
             }
         } else if (mime.startsWith('text/') || ['application/json', 'application/xml', 'application/javascript'].includes(mime)) {
             // 文本文件预览
-            fetch(url)
+            fetch(url, { credentials: 'include' })
                 .then(res => res.text())
                 .then(text => {
                     Modal.show({
