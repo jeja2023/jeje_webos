@@ -351,6 +351,13 @@ class MapPage extends Component {
         if (this.map) {
             this.updateTileLayer();
         }
+
+        // 同步 UI 状态：确保 Tab 高亮与当前 mapMode 一致
+        if (this.container) {
+            this.container.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === this.state.mapMode);
+            });
+        }
     }
 
     /**
