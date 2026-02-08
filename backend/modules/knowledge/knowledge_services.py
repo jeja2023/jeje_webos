@@ -339,11 +339,39 @@ class KnowledgeService:
     # ==================== 搜索功能 ====================
     
     @classmethod
-    async def search(cls, db: AsyncSession, base_id: Optional[int], q: str, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    async def search(cls, db: AsyncSession, base_id: Optional[int], q: str, filters: Optional[Dict[str, Any]] = None, mode: str = "full") -> List[Dict[str, Any]]:
         """
         混合搜索：结合语义向量搜索、视觉搜索和关键词搜索
+        mode: "full" (全量混合搜索), "quick" (快速关键词搜索)
         支持元数据过滤和结果重排序
         """
+        # 模式下发：如果是快捷搜索，仅执行关键词召回以保性能
+        if mode == "quick":
+            sql_conditions = [
+                or_(KnowledgeNode.title.like(f"%{q}%"), KnowledgeNode.content.like(f"%{q}%"))
+            ]
+            if base_id:
+                sql_conditions.append(KnowledgeNode.base_id == base_id)
+            if filters and filters.get("type"):
+                sql_conditions.append(KnowledgeNode.node_type == filters["type"])
+                
+            stmt = select(KnowledgeNode).where(and_(*sql_conditions)).limit(20)
+            result = await db.execute(stmt)
+            nodes = result.scalars().all()
+            
+            final_results = []
+            for n in nodes:
+                final_results.append({
+                    "node_id": n.id, 
+                    "score": 0.8, 
+                    "content": n.content[:200] if n.content else "", 
+                    "title": n.title,
+                    "metadata": {"title": n.title, "node_type": n.node_type},
+                    "sources": ["关键词"],
+                    "highlight": n.content[:200] if n.content else ""
+                })
+            return final_results
+
         # 检查缓存
         filter_str = str(sorted(filters.items())) if filters else ""
         cache_key = f"{base_id}:{q}:{filter_str}"
@@ -353,9 +381,22 @@ class KnowledgeService:
             return _search_cache[cache_key]
         
         # 构造向量库过滤条件
-        chroma_where = {"base_id": base_id} if base_id else {}
+        chroma_where = None
+        if base_id:
+            chroma_where = {"base_id": base_id}
+            
         if filters and filters.get("type"):
-            chroma_where["node_type"] = filters["type"]
+            if chroma_where:
+                # 如果已有 base_id，则使用 $and 合并 (Chroma 要求多个条件必须嵌套)
+                # 注意：Chroma 的 where 不支持空字典或不完整的逻辑操作
+                chroma_where = {
+                    "$and": [
+                        {"base_id": base_id},
+                        {"node_type": filters["type"]}
+                    ]
+                }
+            else:
+                chroma_where = {"node_type": filters["type"]}
             
         # 执行语义向量搜索
         vector_results = vector_store.query(q, n_results=30, where=chroma_where)

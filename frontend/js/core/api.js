@@ -612,6 +612,49 @@ const AnnouncementApi = {
     batch: (ids, action) => Api.post('/announcements/batch', { ids, action })
 };
 
+const AlbumApi = {
+    list: (params) => Api.get('/album/', params),
+    get: (id) => Api.get(`/album/${id}`),
+    create: (data) => Api.post('/album/', data),
+    update: (id, data) => Api.put(`/album/${id}`, data),
+    delete: (id) => Api.delete(`/album/${id}`),
+    getPhotos: (albumId, params) => Api.get(`/album/${albumId}/photos`, params),
+    uploadPhoto: (albumId, file) => Api.upload(`/album/${albumId}/upload`, file)
+};
+
+const VideoApi = {
+    list: (params) => Api.get('/video/', params),
+    get: (id) => Api.get(`/video/${id}`),
+    create: (data) => Api.post('/video/', data),
+    update: (id, data) => Api.put(`/video/${id}`, data),
+    delete: (id) => Api.delete(`/video/${id}`),
+    getVideos: (collectionId, params) => Api.get(`/video/${collectionId}/videos`, params)
+};
+
+const ImApi = {
+    getConversations: (params) => Api.get('/im/conversations', params),
+    getMessages: (conversationId, params) => Api.get(`/im/conversations/${conversationId}/messages`, params),
+    sendMessage: (data) => Api.post('/im/messages', data),
+    getContacts: (params) => Api.get('/im/contacts', params),
+    addContact: (data) => Api.post('/im/contacts', data),
+    searchUsers: (query) => Api.get('/users/search', { query })
+};
+
+// 数据透镜 API
+const LensApi = {
+    getOverview: () => Api.get('/lens/hub'),
+    getSources: () => Api.get('/lens/sources'),
+    getViews: (params) => Api.get('/lens/views', params),
+    getView: (id) => Api.get(`/lens/views/${id}`),
+    createView: (data) => Api.post('/lens/views', data),
+    updateView: (id, data) => Api.put(`/lens/views/${id}`, data),
+    deleteView: (id) => Api.delete(`/lens/views/${id}`),
+    getViewData: (id, data) => Api.post(`/lens/views/${id}/data`, data),
+    executePreview: (data) => Api.post('/lens/execute/preview', data),
+    getFavorites: () => Api.get('/lens/favorites'),
+    getRecent: (limit = 10) => Api.get('/lens/recent', { limit })
+};
+
 // 暴露到全局对象
 Api.baseUrl = Config.apiBase;
 window.Api = Api;
@@ -627,7 +670,11 @@ window.MonitorApi = MonitorApi;
 window.NotificationApi = NotificationApi;
 window.ExportApi = ExportApi;
 window.AnnouncementApi = AnnouncementApi;
+window.AlbumApi = AlbumApi;
+window.VideoApi = VideoApi;
+window.ImApi = ImApi;
 window.GroupApi = GroupApi;
 window.RoleApi = RoleApi;
 window.MarketApi = MarketApi;
+window.LensApi = LensApi;
 

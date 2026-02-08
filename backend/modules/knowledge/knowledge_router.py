@@ -3,7 +3,7 @@
 """
 
 import os
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -249,6 +249,7 @@ async def search_knowledge(
     q: str,
     base_id: Optional[int] = None,
     node_type: Optional[str] = None,
+    mode: str = Query("full", description="搜索模式: full(全量), quick(快速)"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):
@@ -257,7 +258,7 @@ async def search_knowledge(
     if node_type:
         filters["type"] = node_type
         
-    results = await KnowledgeService.search(db, base_id, q, filters=filters)
+    results = await KnowledgeService.search(db, base_id, q, filters=filters, mode=mode)
     return success(data=results)
 
 

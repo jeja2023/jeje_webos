@@ -25,9 +25,11 @@ const Spotlight = {
         { title: '消息中心', desc: '查看系统通知、即时通讯', icon: '💬', path: '/im' },
         { title: '应用中心', desc: '安装、管理应用模块', icon: '🧩', path: '/apps' },
         { title: '应用市场', desc: '浏览和下载新应用', icon: '🛍️', path: '/apps' },
-        { title: 'PDF 工具', desc: '处理 PDF 合并、拆分、提取文本', icon: '📄', path: '/pdf' },
+        { title: 'PDF工具', desc: '处理PDF合并、拆分、提取文本', icon: '📄', path: '/pdf' },
         { title: '公告管理', desc: '发布和管理系统公告', icon: '📢', path: '/announcement', permission: 'admin' },
         { title: '备份管理', desc: '系统数据备份与还原', icon: '💾', path: '/system/backup', permission: 'admin' },
+        { title: '数据透镜', desc: '可视化数据分析、报表看板', icon: '📊', path: '/lens' },
+        { title: '数据图表', desc: '浏览我的可视化数据视图', icon: '📈', path: '/lens/views' },
         { title: '关于系统', desc: '查看版本信息', icon: 'ℹ️', action: 'about' }
     ],
 
@@ -46,7 +48,7 @@ const Spotlight = {
             <div class="spotlight-container">
                 <div class="spotlight-header">
                     <div class="spotlight-icon">🔍</div>
-                    <input type="text" class="spotlight-input" placeholder="搜索功能、用户、文件、笔记..." autocomplete="off">
+                    <input type="text" class="spotlight-input" placeholder="搜索功能、文件、笔记、相册、视频、公告..." autocomplete="off">
                     <div class="spotlight-badge">ESC 关闭</div>
                 </div>
                 <div class="spotlight-results">
@@ -194,22 +196,22 @@ const Spotlight = {
 
             // 4. 搜索知识库
             searchPromises.push(
-                Api.get('/knowledge/search', { q: keyword })
+                Api.get('/knowledge/search', { q: keyword, mode: 'quick' })
                     .then(res => (res.code === 200 || res.code === 0) ? res.data.map(item => ({
-                        title: item.title,
-                        desc: item.type === 'folder' ? '文件夹' : '文档',
-                        icon: item.type === 'folder' ? '📁' : '📄',
+                        title: item.title || (item.metadata && item.metadata.title) || '未知文档',
+                        desc: (item.metadata && item.metadata.node_type === 'folder') ? '文件夹' : '文档',
+                        icon: (item.metadata && item.metadata.node_type === 'folder') ? '📁' : '📄',
                         type: 'knowledge',
                         group: '知识库',
-                        id: item.id,
-                        path: `/knowledge?node=${item.id}`
+                        id: item.node_id,
+                        path: `/knowledge?node=${item.node_id}`
                     })) : [])
                     .catch(() => [])
             );
 
             // 5. 搜索笔记
             searchPromises.push(
-                Api.get('/notes/', { keyword: keyword, page: 1, size: 5 })
+                Api.get('/notes/notes', { keyword: keyword, page: 1, size: 5 })
                     .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(note => ({
                         title: note.title,
                         desc: note.content_preview || '笔记内容',
@@ -248,8 +250,94 @@ const Spotlight = {
                             type: 'datalens',
                             group: '数据透镜',
                             id: view.id,
-                            path: `/lens/view/${view.id}`
+                            path: `/lens/viewer?id=${view.id}`
                         })) : [])
+                        .catch(() => [])
+                );
+            }
+
+            // 8. 搜索视频
+            searchPromises.push(
+                Api.get('/video/', { keyword: keyword, page: 1, page_size: 5 })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(video => ({
+                        title: video.name,
+                        desc: video.description || '视频集',
+                        icon: '🎬',
+                        type: 'video',
+                        group: '视频',
+                        id: video.id,
+                        path: `/video?id=${video.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 9. 搜索公告
+            searchPromises.push(
+                Api.get('/announcements', { keyword: keyword, page: 1, size: 5 })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(notice => ({
+                        title: notice.title,
+                        desc: notice.summary || '系统公告',
+                        icon: '📢',
+                        type: 'announcement',
+                        group: '公告',
+                        id: notice.id,
+                        path: `/announcement?id=${notice.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 10. 搜索博客文章
+            searchPromises.push(
+                Api.get('/blog/posts', { keyword: keyword, page: 1, size: 5 })
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.items.map(post => ({
+                        title: post.title,
+                        desc: post.summary || '博客文章',
+                        icon: '✍️',
+                        type: 'blog',
+                        group: '博客',
+                        id: post.id,
+                        path: `/blog/post/${post.id}`
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 11. 搜索应用市场 (本地过滤或服务端)
+            searchPromises.push(
+                Api.get('/system/market/list')
+                    .then(res => (res.code === 200 || res.code === 0) ? res.data.filter(app =>
+                        app.name.toLowerCase().includes(keyword.toLowerCase()) ||
+                        app.description.toLowerCase().includes(keyword.toLowerCase())
+                    ).slice(0, 3).map(app => ({
+                        title: app.name,
+                        desc: app.description,
+                        icon: app.icon || '🧩',
+                        type: 'market',
+                        group: '应用市场',
+                        id: app.id,
+                        path: '/apps'
+                    })) : [])
+                    .catch(() => [])
+            );
+
+            // 12. 搜索审计日志 (仅管理员)
+            const user = (typeof Store !== 'undefined') ? Store.get('user') : null;
+            if (user && (user.role === 'admin' || user.role === 'manager')) {
+                searchPromises.push(
+                    Api.get('/audit', { keyword: keyword, page: 1, size: 5 })
+                        .then(res => {
+                            if (res.code === 200 || res.code === 0) {
+                                return res.data.items.map(log => ({
+                                    title: `[${log.module || '系统'}] ${log.action}`,
+                                    desc: `${log.username}: ${log.message}`,
+                                    icon: log.level === 'ERROR' ? '❌' : '📜',
+                                    type: 'audit',
+                                    group: '审计日志',
+                                    id: log.id,
+                                    path: '/system/settings'
+                                }));
+                            }
+                            return [];
+                        })
                         .catch(() => [])
                 );
             }

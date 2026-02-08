@@ -132,6 +132,7 @@ class KnowledgeVectorStore:
 
     def query(self, query_text: str, n_results: int = 5, where: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """语义搜索"""
+        if where == {}: where = None
         try:
             results = self.collection.query(
                 query_texts=[query_text],
@@ -225,6 +226,7 @@ class KnowledgeVectorStore:
         try:
             # 将查询文本转为 CLIP 向量空间
             query_emb = clip_model.encode(query).tolist()
+            if where == {}: where = None
             
             results = self.clip_collection.query(
                 query_embeddings=[query_emb],
