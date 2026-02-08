@@ -29,6 +29,8 @@ docker/env_docker
 # IDE
 .idea/
 .vscode/
+.cursor/
+.cursorrules
 *.swp
 *.swo
 *~
