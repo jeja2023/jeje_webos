@@ -242,7 +242,7 @@ class MapPage extends Component {
                                     ${renderTrailTree(this.state.trailFiles)}
                                 </div>
                             </div>
-                        </div >
+                        </div>
 
             <div class="sidebar-footer">
                 <div class="mode-switch-group">
@@ -260,7 +260,7 @@ class MapPage extends Component {
                     ${window.ModuleHelp ? ModuleHelp.createHelpButton('map', '智能地图') : ''}
                 </div>
             </div>
-                    </div >
+                    </div>
 
                     <div class="map-main">
                         <div class="map-canvas"></div>
@@ -278,7 +278,7 @@ class MapPage extends Component {
                             测量模式: 点击地图添加测量点，再次点击测量按钮退出
                         </div>
                     </div>
-                </div >
+                </div>
             `;
         } catch (e) {
             console.error('地图渲染错误', e);

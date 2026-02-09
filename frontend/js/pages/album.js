@@ -615,7 +615,7 @@ class AlbumPage extends Component {
                             </button>
                         `}
                     </div>
-                </div >
+                </div>
 
     ${loading && photos.length === 0 ? '<div class="loading-center"><div class="loading-spinner"></div></div>' : `
                     <div class="photo-grid">
@@ -651,7 +651,7 @@ class AlbumPage extends Component {
         }).join('')}
                     </div>
                 `}
-            </div >
+            </div>
     `;
     }
 

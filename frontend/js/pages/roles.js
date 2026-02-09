@@ -273,7 +273,7 @@ class RolesPage extends Component {
                         </div>
                     `}
                 </div>
-            </div >
+            </div>
             `;
     }
 
@@ -336,7 +336,7 @@ class RolesPage extends Component {
                                     `).join('')}
                 </tbody>
             </table>
-                        </div >
+                        </div>
             ` : '<div style="color:var(--color-text-secondary);">暂无用户</div>';
                     Modal.show({
                         title: `用户组成员 - ID ${id}`,
