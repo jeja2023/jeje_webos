@@ -20,7 +20,17 @@
 APP_NAME=JeJe WebOS
 
 # 应用版本
-APP_VERSION=2.5.27
+APP_VERSION=2.5.28
+
+# --- 备案信息 ---
+# ICP 备案号
+ICP_NUMBER=
+# ICP 备案查询链接（默认已填好：https://beian.miit.gov.cn/）
+ICP_LINK=https://beian.miit.gov.cn/
+# 公安备案号
+PSB_NUMBER=
+# 公安备案查询链接
+PSB_LINK=
 
 # 调试模式（生产环境请设为 false）
 DEBUG=false

@@ -60,6 +60,37 @@ class SystemSettingsPage extends Component {
                         </div>
                     </div>
 
+                    <!-- ICP 备案设置卡片 -->
+                    <div class="card" style="margin-bottom:var(--spacing-md);">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="ri-government-line"></i> ICP 备案信息</h3>
+                        </div>
+                        <div class="card-body">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">ICP 备案号</label>
+                                    <input type="text" name="icp_number" class="form-input" value="${Utils.escapeHtml(data.icp_number || '')}" placeholder="如：京ICP备xxxxxxxx号">
+                                    <small class="form-hint">显示在登录页底部</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">ICP 备案查询链接</label>
+                                    <input type="text" name="icp_link" class="form-input" value="${Utils.escapeHtml(data.icp_link || 'https://beian.miit.gov.cn/')}" placeholder="https://beian.miit.gov.cn/">
+                                    <small class="form-hint">点击备案号跳转的链接</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">公安备案号</label>
+                                    <input type="text" name="psb_number" class="form-input" value="${Utils.escapeHtml(data.psb_number || '')}" placeholder="如：京公网安备 xxxxxxxxxxxxxx号">
+                                    <small class="form-hint">含图标显示在 ICP 备案下方</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">公安备案查询链接</label>
+                                    <input type="text" name="psb_link" class="form-input" value="${Utils.escapeHtml(data.psb_link || '')}" placeholder="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=xxx">
+                                    <small class="form-hint">点击公安备案号跳转的链接</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 安全策略卡片 -->
                     <div class="card" style="margin-bottom:var(--spacing-md);">
                         <div class="card-header">
@@ -245,7 +276,11 @@ class SystemSettingsPage extends Component {
             rate_limit_block_duration: parseInt(formData.get('rate_limit_block_duration')) || 30,
             ai_online_api_key: formData.get('ai_online_api_key') || '',
             ai_online_base_url: formData.get('ai_online_base_url') || '',
-            ai_online_model: formData.get('ai_online_model') || ''
+            ai_online_model: formData.get('ai_online_model') || '',
+            icp_number: formData.get('icp_number') || '',
+            icp_link: formData.get('icp_link') || 'https://beian.miit.gov.cn/',
+            psb_number: formData.get('psb_number') || '',
+            psb_link: formData.get('psb_link') || ''
         };
         try {
             const result = await SystemApi.updateSettings(payload);

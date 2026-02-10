@@ -20,6 +20,12 @@ class SystemSettingInfo(BaseModel):
     ai_online_api_key: Optional[str] = Field("sk-xxx", description="在线 AI API Key")
     ai_online_base_url: Optional[str] = Field("https://api.deepseek.com/v1", description="在线 AI API 地址")
     ai_online_model: Optional[str] = Field("deepseek-chat", description="在线 AI 模型名称")
+    # ICP 备案信息
+    icp_number: Optional[str] = Field("", description="ICP 备案号")
+    icp_link: Optional[str] = Field("https://beian.miit.gov.cn/", description="ICP 备案查询链接")
+    # 公安备案信息
+    psb_number: Optional[str] = Field("", description="公安备案号")
+    psb_link: Optional[str] = Field("", description="公安备案查询链接")
     
     @field_validator('theme_mode')
     @classmethod
@@ -44,6 +50,12 @@ class SystemSettingUpdate(BaseModel):
     ai_online_api_key: Optional[str] = None
     ai_online_base_url: Optional[str] = None
     ai_online_model: Optional[str] = None
+    # ICP 备案信息
+    icp_number: Optional[str] = None
+    icp_link: Optional[str] = None
+    # 公安备案信息
+    psb_number: Optional[str] = None
+    psb_link: Optional[str] = None
     
     @field_validator('theme_mode')
     @classmethod

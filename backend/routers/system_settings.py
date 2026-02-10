@@ -42,6 +42,10 @@ def _default_settings():
         ai_online_api_key=getattr(settings, "ai_online_api_key", "sk-xxx"),
         ai_online_base_url=getattr(settings, "ai_online_base_url", "https://api.deepseek.com/v1"),
         ai_online_model=getattr(settings, "ai_online_model", "deepseek-chat"),
+        icp_number=getattr(settings, "icp_number", ""),
+        icp_link=getattr(settings, "icp_link", "https://beian.miit.gov.cn/"),
+        psb_number=getattr(settings, "psb_number", ""),
+        psb_link=getattr(settings, "psb_link", ""),
     )
 
 

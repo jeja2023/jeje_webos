@@ -19,8 +19,14 @@ class Settings(BaseSettings):
     
     # 应用信息
     app_name: str = "JeJe WebOS"
-    app_version: str = "0.0.0"
+    app_version: str = "2.5.28"
     debug: bool = False
+    
+    # 备案信息 (ICP/公安备案)
+    icp_number: str = ""
+    icp_link: str = "https://beian.miit.gov.cn/"
+    psb_number: str = ""
+    psb_link: str = ""
     
     # 数据库配置
     db_host: str = "localhost"
