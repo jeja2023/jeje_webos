@@ -25,7 +25,7 @@ class TopBarComponent extends Component {
 
         // 保存所有 Store 取消订阅函数
         this._storeUnsubscribes = [];
-        
+
         this._storeUnsubscribes.push(
             Store.subscribe('user', (user) => {
                 this.setState({ user });
@@ -293,25 +293,25 @@ class TopBarComponent extends Component {
 
     destroy() {
         this.unbindEvents();
-        
+
         // 清理定时器
         if (this._timeInterval) {
             clearInterval(this._timeInterval);
             this._timeInterval = null;
         }
-        
+
         // 取消所有 Store 订阅
         if (this._storeUnsubscribes) {
             this._storeUnsubscribes.forEach(unsub => unsub && unsub());
             this._storeUnsubscribes = [];
         }
-        
+
         // 移除 WebSocket 监听器
         if (typeof WebSocketClient !== 'undefined') {
             if (this._wsConnectedHandler) WebSocketClient.off('connected', this._wsConnectedHandler);
             if (this._wsDisconnectedHandler) WebSocketClient.off('disconnected', this._wsDisconnectedHandler);
         }
-        
+
         super.destroy();
     }
 
@@ -346,10 +346,17 @@ class TopBarComponent extends Component {
 
             if (messageBtn && messageDropdown) {
                 messageBtn.onclick = (e) => {
-                    // 如果点击的是内部元素（如Tab或操作按钮），不要切换显示状态
-                    if (e.target.closest('.msg-tab') || e.target.closest('.msg-item') || e.target.closest('.msg-footer')) {
+                    // 如果点击的是消息项或底部查看全部，关闭下拉并允许事件冒泡以触发路由跳转
+                    if (e.target.closest('.msg-item') || e.target.closest('.msg-footer')) {
+                        messageDropdown.classList.remove('show');
+                        return; // 允许冒泡
+                    }
+
+                    // 如果点击的是 Tab，不需要关闭下拉菜单，也不需要冒泡给外层
+                    if (e.target.closest('.msg-tab')) {
                         return;
                     }
+
                     e.stopPropagation();
                     const isShowing = messageDropdown.classList.contains('show');
 
@@ -489,6 +496,12 @@ class TopBarComponent extends Component {
 
             if (userPill && userDropdown) {
                 userPill.onclick = (e) => {
+                    // 如果点击的是菜单项（且不是退出登录，退出登录有自己的 onclick 处理），关闭下拉并允许事件冒泡以触发路由跳转
+                    if (e.target.closest('.menu-item') && !e.target.closest('#btnLogout')) {
+                        userDropdown.classList.remove('show');
+                        return; // 允许冒泡
+                    }
+
                     e.stopPropagation();
                     // 关闭其他下拉菜单
                     this.container.querySelectorAll('.user-menu-dropdown.show').forEach(el => {

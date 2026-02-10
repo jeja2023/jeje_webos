@@ -45,7 +45,7 @@ async def generate_csrf_token() -> str:
 
 async def verify_and_consume_csrf_token(token: str) -> bool:
     """
-    原子化验证并消耗 CSRF Token（合并验证+标记已使用，避免 TOCTOU 竞态条件）
+    验证 CSRF Token 的有效性（不再物理删除，允许在有效期内多次使用，平衡安全与 SPA 体验）
     
     Args:
         token: CSRF Token
@@ -56,25 +56,20 @@ async def verify_and_consume_csrf_token(token: str) -> bool:
     if not token:
         return False
     
-    # 1. 尝试从 Redis 获取并原子化删除
+    # 1. 尝试从 Redis 获取
     redis_data = await get_cache(f"csrf:{token}")
     if redis_data:
-        # 必须是 dict 且包含 created_at，否则视为无效（防止损坏/伪造数据绕过）
+        # 必须是 dict 且包含 created_at，否则视为无效
         if not isinstance(redis_data, dict) or "created_at" not in redis_data:
-            await delete_cache(f"csrf:{token}")
             return False
-        if redis_data.get("used"):
-            await delete_cache(f"csrf:{token}")
+        if redis_data.get("used"): # 暂时保留逻辑，虽然现在不标记 used
             return False
         if time.time() - redis_data["created_at"] > TOKEN_EXPIRE_SECONDS:
-            await delete_cache(f"csrf:{token}")
             return False
-        # 验证通过，立即删除防止重放（原子化验证+消耗）
-        await delete_cache(f"csrf:{token}")
         return True
     
-    # 2. 尝试从内存获取并原子化消耗（pop 保证原子性）
-    token_info = _csrf_tokens.pop(token, None)
+    # 2. 尝试从内存获取
+    token_info = _csrf_tokens.get(token)
     if token_info:
         # 检查是否过期或已使用
         if token_info.get("used"):
@@ -180,6 +175,13 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 
                 # 原子化验证并消耗 Token（避免 TOCTOU 竞态条件）
                 if not token or not await verify_and_consume_csrf_token(token):
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    if not token:
+                        logger.warning(f"CSRF 验证失败: 缺失 Token | 路径: {request.url.path} | 方法: {request.method}")
+                    else:
+                        logger.warning(f"CSRF 验证失败: 无效或已过期 Token ({token[:10]}...) | 路径: {request.url.path} | 方法: {request.method}")
+                    
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=status.HTTP_403_FORBIDDEN,

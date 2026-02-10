@@ -648,6 +648,11 @@ class ChangePasswordPage extends Component {
         if (this.container && !this.container._bindedPassword) {
             this.container._bindedPassword = true;
 
+            // 返回个人中心
+            this.delegate('click', '[data-action="go-profile"]', () => {
+                Router.push('/profile');
+            });
+
             this.delegate('click', '#submitBtn', () => {
                 this.changePassword();
             });
