@@ -181,7 +181,7 @@ async def toggle_star(
 @router.get("/docs/{doc_id}/export")
 async def export_doc(
     doc_id: int,
-    format: str = Query("html", regex="^(html|markdown)$"),
+    format: str = Query("html", pattern="^(html|markdown)$"),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
 ):

@@ -87,7 +87,7 @@ async def clean_file(
 @router.get("/download/{item_id}", summary="下载文件")
 async def download_file(
     item_id: int,
-    type: str = Query("cleaned", regex="^(cleaned|source)$"),
+    type: str = Query("cleaned", pattern="^(cleaned|source)$"),
     preview: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     user: TokenData = Depends(get_current_user)
