@@ -216,6 +216,25 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[To
         return None
 
 
+async def resolve_permissions(db: "AsyncSession", permissions: Optional[list[str]], role_ids: Optional[list[int]]) -> list[str]:
+    """汇总直接权限与角色权限（去重）"""
+    try:
+        from models import UserGroup
+        from sqlalchemy import select
+    except ImportError:
+        return list(set(permissions or []))
+
+    all_perms = list(permissions or [])
+    if role_ids:
+        role_result = await db.execute(
+            select(UserGroup.permissions).where(UserGroup.id.in_(role_ids))
+        )
+        for (p,) in role_result.all():
+            if p:
+                all_perms.extend(p)
+    return list(set(all_perms))
+
+
 async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = True) -> TokenData:
     """
     共享的权限同步逻辑：从数据库实时加载用户最新权限和角色
@@ -234,7 +253,7 @@ async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = T
 
     try:
         from core.database import async_session
-        from models import User, UserGroup
+        from models import User
         from sqlalchemy import select
 
         async with async_session() as db:
@@ -242,16 +261,7 @@ async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = T
             user = result.scalar_one_or_none()
             if user and user.is_active:
                 # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
-                all_perms = list(user.permissions or [])
-                if user.role_ids:
-                    role_result = await db.execute(
-                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
-                    )
-                    for (role_perms,) in role_result.all():
-                        if role_perms:
-                            all_perms.extend(role_perms)
-                
-                token_data.permissions = list(set(all_perms))
+                token_data.permissions = await resolve_permissions(db, user.permissions, user.role_ids)
                 token_data.role = user.role
 
                 permission_cache[token_data.user_id] = {

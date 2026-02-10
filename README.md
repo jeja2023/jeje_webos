@@ -327,6 +327,7 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 ## 🛡️ 安全特性
 
 - **密码存储**：Bcrypt 强哈希加密
+- **认证加固**：重构 Auth 路由，统一权限汇总逻辑（直接权限+角色权限），支持 HttpOnly Cookie 安全存储与全流程审计日志追溯
 - **API 安全**：全局异常拦截、标准响应封装、CSRF 防护（异步+分布式支持）、SQL 标识符安全增强（支持中文标识符）
 - **前端安全**：全站 XSS 漏洞深度加固，强制 HTML 转义与属性属性脱敏 (`Utils.escape`)
 - **敏感数据脱敏**：日志记录自动脱敏（手机号、Token、密码等）

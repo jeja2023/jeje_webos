@@ -26,6 +26,7 @@ from core.security import (
     get_current_user,
     COOKIE_ACCESS_TOKEN,
     COOKIE_REFRESH_TOKEN,
+    resolve_permissions,
 )
 from core.events import event_bus, Events
 from core.config import get_settings
@@ -43,27 +44,15 @@ rate_limiter.configure_route("/api/v1/auth/register", requests=5, window=60, blo
 rate_limiter.configure_route("/api/v1/auth/password", requests=5, window=60, block_duration=300)  # 5次/分钟，5分钟封禁
 
 
-async def resolve_user_permissions(user: User, db: AsyncSession) -> list[str]:
-    """获取用户最终权限：汇总直接权限与所属角色的全部权限（实现自动增减同步）。"""
-    # 汇总直接权限
-    perms = list(user.permissions or [])
-    
-    # 汇总角色关联的权限
-    role_ids = user.role_ids or []
-    if role_ids:
-        role_result = await db.execute(select(UserGroup).where(UserGroup.id.in_(role_ids)))
-        roles = role_result.scalars().all()
-        for r in roles:
-            if r.permissions:
-                perms.extend(r.permissions)
-    
-    # 去重
-    return list(set(perms))
+
 
 
 @router.post("/register")
-async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, data: UserCreate, db: AsyncSession = Depends(get_db)):
     """用户注册"""
+    from utils.request import get_client_ip as _get_ip
+    client_ip = _get_ip(request)
+    
     # 检查用户名是否存在
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
@@ -98,6 +87,14 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     
     # 发布注册事件
     event_bus.emit(Events.USER_REGISTER, "auth", {"user_id": user.id})
+    
+    # 审计日志
+    reg_log = SystemLog(
+        level="INFO", module="auth", action="register",
+        message=f"用户注册成功: {user.username}", user_id=user.id, ip_address=client_ip
+    )
+    db.add(reg_log)
+    await db.commit()
     
     return success({"id": user.id}, "注册成功，请等待管理员审核")
 
@@ -140,7 +137,6 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         )
         db.add(fail_log)
         await db.commit()
-        logger.warning(f"登录失败 - IP: {client_ip}")
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     
     # 登录成功，清除失败计数
@@ -167,7 +163,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     await db.commit()
     
     # 获取全量权限（直接权限 + 角色权限）
-    permissions = await resolve_user_permissions(user, db)
+    permissions = await resolve_permissions(db, user.permissions, user.role_ids)
     
     # 生成令牌对（访问令牌 + 刷新令牌）
     token_data = TokenData(
@@ -188,7 +184,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         action="login",
         message="用户登录成功",
         user_id=user.id,
-        ip_address=request.client.host if request.client else None
+        ip_address=client_ip
     )
     db.add(log)
     await db.commit()
@@ -241,7 +237,7 @@ async def get_me(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 获取全量权限（直接权限 + 角色权限），与登录时保持一致
-    permissions = await resolve_user_permissions(user, db)
+    permissions = await resolve_permissions(db, user.permissions, user.role_ids)
     
     return success({
         "id": user.id,
@@ -267,7 +263,8 @@ async def change_password(
     db: AsyncSession = Depends(get_db)
 ):
     """修改密码"""
-    client_ip = request.client.host if request.client else "unknown"
+    from utils.request import get_client_ip as _get_ip
+    client_ip = _get_ip(request)
     
     result = await db.execute(select(User).where(User.id == current_user.user_id))
     user = result.scalar_one_or_none()
@@ -340,8 +337,9 @@ async def refresh_token(
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="用户不存在或已被禁用")
-
-    permissions = await resolve_user_permissions(user, db)
+    
+    # 获取实时权限
+    permissions = await resolve_permissions(db, user.permissions, user.role_ids)
     new_token_data = TokenData(
         user_id=user.id,
         username=user.username,
@@ -374,8 +372,27 @@ async def refresh_token(
 
 
 @router.post("/logout")
-async def logout(current_user: TokenData = Depends(get_current_user)):
+async def logout(
+    request: Request,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """登出（HttpOnly Cookie 模式下会清除 Cookie；否则客户端需自行清除令牌）"""
+    from utils.request import get_client_ip as _get_ip
+    client_ip = _get_ip(request)
+    
+    # 审计日志
+    log = SystemLog(
+        level="INFO",
+        module="auth",
+        action="logout",
+        message="用户登出",
+        user_id=current_user.user_id,
+        ip_address=client_ip
+    )
+    db.add(log)
+    await db.commit()
+    
     event_bus.emit(Events.USER_LOGOUT, "auth", {"user_id": current_user.user_id})
     if get_settings().auth_use_httponly_cookie:
         response = ORJSONResponse(content=success(message="登出成功"))
