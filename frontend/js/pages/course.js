@@ -243,7 +243,7 @@ class CoursePage extends Component {
                     ` : '<p class="course-desc">开始您的学习之旅</p>'}
 
                 </div>
-                <div class="card-footer-action" ${lastChapterId ? `onclick="event.stopPropagation(); app.coursePage.continueLearning(decodeURIComponent('${encodeURIComponent(String(course.id))}'), decodeURIComponent('${encodeURIComponent(String(lastChapterId))}'))"` : ''}>
+                <div class="card-footer-action btn-continue" data-course-id="${Utils.escapeHtml(String(course.id))}" ${lastChapterId ? `data-chapter-id="${Utils.escapeHtml(String(lastChapterId))}"` : ''}>
                     <span>${lastChapterId ? '继续学习' : '开始学习'}</span>
                     <i class="ri-arrow-right-line"></i>
                 </div>
@@ -370,7 +370,7 @@ class CoursePage extends Component {
                         <div class="empty-state small glass-effect">
                             <i class="ri-compass-discover-line"></i>
                             <p>还没开始学习吗？快去课程中心挑选你的课程吧！</p>
-                            <button class="btn btn-primary btn-sm" onclick="app.coursePage.switchToView('list')">探索课程</button>
+                            <button class="btn btn-primary btn-sm" data-action="switch-view" data-view="list">探索课程</button>
                         </div>
                     `}
                 </div>
@@ -535,7 +535,7 @@ class CoursePage extends Component {
 
         // 处理视频URL - 如果有视频则使用流式API
         const videoUrl = currentChapter.video_url
-            ? `/api/v1/course/video/${currentChapter.id}/stream?token=${Store.get('token')}`
+            ? Utils.withToken(`/api/v1/course/video/${currentChapter.id}/stream`)
             : null;
 
         // 获取保存的视频播放进度
@@ -678,6 +678,14 @@ class CoursePage extends Component {
         // 侧边栏导航
         this.delegate('click', '.nav-item', (e, el) => {
             const view = el.dataset.view;
+            this.setState({ view, currentCourse: null, currentChapter: null });
+            this.loadData();
+        });
+
+        // 空状态按钮：切换视图
+        this.delegate('click', '[data-action="switch-view"]', (e, el) => {
+            const view = el.dataset.view;
+            if (!view) return;
             this.setState({ view, currentCourse: null, currentChapter: null });
             this.loadData();
         });
@@ -971,7 +979,7 @@ class CoursePage extends Component {
             const res = await Api.get(`/course/${courseId}/chapters`);
             const chapters = res.data || [];
 
-            new Modal({
+            const modal = new Modal({
                 title: '管理章节',
                 width: '600px',
                 content: `
@@ -993,22 +1001,27 @@ class CoursePage extends Component {
                 `,
                 showCancel: false,
                 confirmText: '关闭'
-            }).show();
+            });
+
+            modal.show();
 
             // 绑定章节管理事件
+            // 使用 modal.overlay 来查找元素，确保只绑定到当前模态框，避免受到正在关闭的旧模态框干扰
             setTimeout(() => {
-                document.querySelector('#btn-add-chapter')?.addEventListener('click', () => {
+                if (!modal.overlay) return;
+
+                modal.overlay.querySelector('#btn-add-chapter')?.addEventListener('click', () => {
                     this.showAddChapterModal(courseId);
                 });
 
-                document.querySelectorAll('[data-edit-chapter]').forEach(btn => {
+                modal.overlay.querySelectorAll('[data-edit-chapter]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const chapterId = e.currentTarget.dataset.editChapter;
                         this.showEditChapterModal(chapterId, courseId);
                     });
                 });
 
-                document.querySelectorAll('[data-delete-chapter]').forEach(btn => {
+                modal.overlay.querySelectorAll('[data-delete-chapter]').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         const chapterId = e.currentTarget.dataset.deleteChapter;
                         if (await Modal.confirm('确认删除', '确定要删除此章节吗？')) {
@@ -1016,7 +1029,10 @@ class CoursePage extends Component {
                                 await Api.delete(`/course/chapters/${chapterId}`);
                                 Toast.success('章节已删除');
                                 Modal.closeAll();
-                                this.showManageChaptersModal(courseId);
+                                // 给一点延迟，让当前模态框开始关闭动画
+                                setTimeout(() => {
+                                    this.showManageChaptersModal(courseId);
+                                }, 50);
                             } catch (err) {
                                 Toast.error('删除失败');
                             }
@@ -1030,6 +1046,9 @@ class CoursePage extends Component {
     }
 
     async showAddChapterModal(courseId) {
+        let tempChapterId = null;
+        let isVideoUploaded = false;
+
         const modal = new Modal({
             title: '添加章节',
             width: '550px',
@@ -1055,18 +1074,28 @@ class CoursePage extends Component {
                             </div>
                             <input type="file" id="add-video-file-input" accept="video/*" style="display: none;">
                         </div>
+                        
                         <div class="upload-progress" id="add-upload-progress" style="display: none;">
                             <div class="progress-bar-bg">
                                 <div class="progress-bar-fill" id="add-progress-fill" style="width: 0%"></div>
                             </div>
                             <span id="add-progress-text">上传中...</span>
                         </div>
-                        <div class="video-selected" id="add-video-selected" style="display: none;">
-                            <i class="ri-video-fill"></i>
-                            <span id="add-video-filename">已选择视频</span>
-                            <button type="button" class="btn btn-sm btn-secondary" id="add-video-remove">
-                                <i class="ri-close-line"></i>
+                        
+                        <div class="video-selected" id="add-video-selected" style="display: none; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; width: 100%; gap: 12px; margin-bottom: 8px;">
+                                <i class="ri-video-fill"></i>
+                                <span id="add-video-filename" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">已选择视频</span>
+                                <button type="button" class="btn btn-sm btn-secondary" id="add-video-remove">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-manual-upload" style="width: 100%;">
+                                <i class="ri-upload-2-line"></i> 点击上传视频
                             </button>
+                            <div id="upload-success-msg" style="display: none; color: #22c55e; font-size: 13px; align-items: center; gap: 6px; width: 100%;">
+                                <i class="ri-checkbox-circle-fill"></i> 视频上传成功
+                            </div>
                         </div>
                     </div>
                     
@@ -1076,10 +1105,16 @@ class CoursePage extends Component {
                     </div>
                 </form>
             `,
-            confirmText: '添加章节',
+            confirmText: '完成',
             onConfirm: async () => {
                 const form = document.getElementById('add-chapter-form');
                 if (!form.reportValidity()) return false;
+
+                // 如果选择了视频但未上传，提示用户
+                if (this._pendingVideoFile && !isVideoUploaded) {
+                    Toast.warning('请先点击"点击上传视频"按钮完成上传');
+                    return false;
+                }
 
                 const data = {
                     title: form.title.value.trim(),
@@ -1088,46 +1123,46 @@ class CoursePage extends Component {
                 };
 
                 try {
-                    // 1. 先创建章节
-                    const res = await Api.post(`/course/${courseId}/chapters`, data);
-                    const newChapterId = res.data?.id;
-
-                    // 2. 如果有选择视频文件，则上传视频
-                    const videoFile = this._pendingVideoFile;
-                    if (videoFile && newChapterId) {
-                        Toast.info('正在上传视频...');
-                        const formData = new FormData();
-                        formData.append('file', videoFile);
-
-                        try {
-                            const uploadRes = await Api.upload(`/course/chapters/${newChapterId}/video`, formData);
-                            if (uploadRes.code === 0) {
-                                Toast.success('章节和视频添加成功！');
-                            } else {
-                                throw new Error(uploadRes.message);
-                            }
-                        } catch (uploadErr) {
-                            Toast.warning('章节已创建，但视频上传失败，请在编辑中重新上传');
-                        }
+                    if (tempChapterId) {
+                        // 如果已经创建了临时章节（为了上传视频），则更新它
+                        await Api.put(`/course/chapters/${tempChapterId}`, data);
+                        Toast.success('章节添加成功');
                     } else {
+                        // 如果没有上传视频，直接创建
+                        await Api.post(`/course/${courseId}/chapters`, data);
                         Toast.success('章节添加成功');
                     }
 
+                    // 清理状态
+                    tempChapterId = null; // 防止 onCancel 删除
                     this._pendingVideoFile = null;
                     Modal.closeAll();
-                    this.showManageChaptersModal(courseId);
+                    setTimeout(() => {
+                        this.showManageChaptersModal(courseId);
+                    }, 50);
                     return true;
                 } catch (e) {
-                    Toast.error('添加失败');
+                    Toast.error('保存失败: ' + e.message);
                     return false;
                 }
+            },
+            onCancel: async () => {
+                // 如果用户中途取消，且已经创建了临时章节，则删除它
+                if (tempChapterId) {
+                    try {
+                        await Api.delete(`/course/chapters/${tempChapterId}`);
+                    } catch (e) {
+                        console.error('清理临时章节失败:', e);
+                    }
+                }
+                this._pendingVideoFile = null;
             }
         });
 
         modal.show();
         this._pendingVideoFile = null;
 
-        // 绑定视频上传事件
+        // 绑定事件
         setTimeout(() => {
             const fileInput = document.getElementById('add-video-file-input');
             const placeholder = document.getElementById('add-video-placeholder');
@@ -1135,6 +1170,12 @@ class CoursePage extends Component {
             const selectedDiv = document.getElementById('add-video-selected');
             const filenameSpan = document.getElementById('add-video-filename');
             const removeBtn = document.getElementById('add-video-remove');
+            const uploadBtn = document.getElementById('btn-manual-upload');
+            const successMsg = document.getElementById('upload-success-msg');
+            const progressDiv = document.getElementById('add-upload-progress');
+            const progressFill = document.getElementById('add-progress-fill');
+            const progressText = document.getElementById('add-progress-text');
+            const form = document.getElementById('add-chapter-form');
 
             // 点击上传
             if (placeholder) {
@@ -1176,20 +1217,118 @@ class CoursePage extends Component {
                     return;
                 }
                 this._pendingVideoFile = file;
+                isVideoUploaded = false; // 重置上传状态
+
                 placeholder.style.display = 'none';
                 selectedDiv.style.display = 'flex';
                 filenameSpan.textContent = file.name;
+
+                uploadBtn.style.display = 'flex'; // 显示上传按钮
+                successMsg.style.display = 'none'; // 隐藏成功消息
             };
 
             // 移除视频
             if (removeBtn) {
-                removeBtn.addEventListener('click', () => {
+                removeBtn.addEventListener('click', async () => {
+                    if (tempChapterId && isVideoUploaded) {
+                        // 如果已经上传了，提示是否删除
+                        if (!await Modal.confirm('删除视频', '视频已上传，确认移除吗？这将删除已上传的视频文件。')) {
+                            return;
+                        }
+                        try {
+                            await Api.delete(`/course/chapters/${tempChapterId}/video`);
+                            isVideoUploaded = false;
+                        } catch (e) {
+                            Toast.error('删除失败');
+                            return;
+                        }
+                    }
+
                     this._pendingVideoFile = null;
                     placeholder.style.display = 'flex';
                     selectedDiv.style.display = 'none';
                     fileInput.value = '';
                 });
             }
+
+            // 手动上传按钮点击
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', async () => {
+                    if (!this._pendingVideoFile) return;
+                    if (!form.reportValidity()) {
+                        Toast.info('请先填写章节标题');
+                        return;
+                    }
+
+                    const data = {
+                        title: form.title.value.trim(),
+                        content: form.content.value.trim(),
+                        duration_minutes: parseInt(form.duration_minutes.value) || 0
+                    };
+
+                    try {
+                        uploadBtn.disabled = true;
+                        uploadBtn.innerHTML = '<i class="ri-loader-4-line spin"></i> 准备中...';
+
+                        // 1. 如果还没创建章节，先创建
+                        if (!tempChapterId) {
+                            const res = await Api.post(`/course/${courseId}/chapters`, data);
+                            tempChapterId = res.data?.id;
+                        } else {
+                            // 更新一下标题以防修改
+                            await Api.put(`/course/chapters/${tempChapterId}`, data);
+                        }
+
+                        // 2. 上传视频
+                        progressDiv.style.display = 'block';
+                        uploadBtn.style.display = 'none'; // 隐藏按钮，显示进度
+
+                        await new Promise((resolve, reject) => {
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('POST', `/api/v1/course/chapters/${tempChapterId}/video`);
+                            xhr.setRequestHeader('Authorization', `Bearer ${Store.get('token')}`);
+
+                            const csrfToken = Store.get('csrfToken');
+                            if (csrfToken) xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+
+                            const formData = new FormData();
+                            formData.append('file', this._pendingVideoFile);
+
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable) {
+                                    const percent = Math.round((e.loaded / e.total) * 100);
+                                    if (progressFill) progressFill.style.width = percent + '%';
+                                    if (progressText) progressText.textContent = `上传中 ${percent}%`;
+                                }
+                            };
+
+                            xhr.onload = () => {
+                                if (xhr.status === 200) {
+                                    resolve();
+                                } else {
+                                    reject(new Error('上传失败'));
+                                }
+                            };
+                            xhr.onerror = () => reject(new Error('网络错误'));
+                            xhr.send(formData);
+                        });
+
+                        // 3. 上传成功
+                        progressDiv.style.display = 'none';
+                        isVideoUploaded = true;
+                        successMsg.style.display = 'flex';
+                        Toast.success('视频上传成功，请点击"完成"保存章节');
+
+                    } catch (e) {
+                        uploadBtn.disabled = false;
+                        uploadBtn.style.display = 'flex';
+                        uploadBtn.innerHTML = '<i class="ri-upload-2-line"></i> 重试上传';
+                        progressDiv.style.display = 'none';
+                        Toast.error('上传失败: ' + e.message);
+                    }
+                });
+            }
+
         }, 100);
     }
 
@@ -1404,7 +1543,7 @@ class CoursePage extends Component {
                 const previewBtn = document.getElementById('btn-preview-video');
                 if (previewBtn) {
                     previewBtn.addEventListener('click', () => {
-                        const videoUrl = `/api/v1/course/video/${chapterId}/stream?token=${Store.get('token')}`;
+                        const videoUrl = Utils.withToken(`/api/v1/course/video/${chapterId}/stream`);
                         new Modal({
                             title: '视频预览',
                             width: '800px',

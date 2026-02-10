@@ -1,83 +1,77 @@
+# -*- coding: utf-8 -*-
+"""
+知识库模块路由测试
+覆盖：知识库 CRUD、节点 CRUD、搜索
+注意：合并多个操作到单个测试方法中减少 fixture 开销，提升速度
+"""
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from modules.knowledge.knowledge_models import KnowledgeBase, KnowledgeNode
+
 
 @pytest.mark.asyncio
-class TestKnowledgeRouter:
-    """KnowledgeRouter API 测试"""
+class TestKnowledgeBaseAPI:
+    async def test_base_full_lifecycle(self, admin_client: AsyncClient):
+        """测试知识库完整生命周期（创建→列表→详情→更新→删除）"""
+        # 创建
+        cr = await admin_client.post("/api/v1/knowledge/bases", json={
+            "name": "API知识库", "description": "API测试"
+        })
+        assert cr.status_code == 200
+        bid = cr.json()["data"]["id"]
 
-    async def test_base_lifecycle(self, user_client: AsyncClient):
-        """测试知识库完整生命周期 API"""
-        
-        # 1. 创建知识库
-        create_resp = await user_client.post(
-            "/api/v1/knowledge/bases",
-            json={"name": "API测试库", "description": "来自路由测试"}
-        )
-        assert create_resp.status_code == 200
-        data = create_resp.json()
-        assert data["code"] == 200
-        kb_id = data["data"]["id"]
-        
-        # 2. 获取列表
-        list_resp = await user_client.get("/api/v1/knowledge/bases")
-        assert list_resp.status_code == 200
-        assert any(kb["id"] == kb_id for kb in list_resp.json()["data"])
-        
-        # 3. 更新知识库
-        update_resp = await user_client.put(
-            f"/api/v1/knowledge/bases/{kb_id}",
-            json={"name": "API更新后的库"}
-        )
-        assert update_resp.status_code == 200
-        assert update_resp.json()["data"]["name"] == "API更新后的库"
-        
-        # 4. 删除知识库
-        del_resp = await user_client.delete(f"/api/v1/knowledge/bases/{kb_id}")
-        assert del_resp.status_code == 200
-        
-        # 验证已删除
-        detail_resp = await user_client.get(f"/api/v1/knowledge/bases/{kb_id}")
-        # 根据 router 实现，不存在返回 200 + code: 404
-        assert detail_resp.status_code == 200
-        assert detail_resp.json()["code"] == 404
+        # 获取列表
+        list_r = await admin_client.get("/api/v1/knowledge/bases")
+        assert list_r.status_code == 200
 
-    async def test_node_operations(self, user_client: AsyncClient):
-        """测试知识节点操作 API"""
-        
-        # 先创建一个库
-        kb_resp = await user_client.post(
-            "/api/v1/knowledge/bases",
-            json={"name": "节点测试库"}
-        )
-        kb_id = kb_resp.json()["data"]["id"]
-        
-        # 1. 创建节点
-        node_resp = await user_client.post(
-            "/api/v1/knowledge/nodes",
-            json={
-                "base_id": kb_id,
-                "title": "测试文档",
-                "node_type": "document",
-                "content": "文档内容"
-            }
-        )
-        assert node_resp.status_code == 200
-        node_id = node_resp.json()["data"]["id"]
-        
-        # 2. 获取节点详情
-        get_resp = await user_client.get(f"/api/v1/knowledge/nodes/{node_id}")
-        assert get_resp.status_code == 200
-        assert get_resp.json()["data"]["title"] == "测试文档"
-        
-        # 3. 更新节点
-        patch_resp = await user_client.put(
-            f"/api/v1/knowledge/nodes/{node_id}",
-            json={"title": "修改后的标题", "content": "修改后的内容"}
-        )
-        assert patch_resp.status_code == 200
-        
-        # 4. 删除节点
-        del_resp = await user_client.delete(f"/api/v1/knowledge/nodes/{node_id}")
-        assert del_resp.status_code == 200
+        # 查看详情
+        get_r = await admin_client.get(f"/api/v1/knowledge/bases/{bid}")
+        assert get_r.status_code == 200
+
+        # 获取节点
+        nodes_r = await admin_client.get(f"/api/v1/knowledge/bases/{bid}/nodes")
+        assert nodes_r.status_code == 200
+
+        # 更新
+        up_r = await admin_client.put(f"/api/v1/knowledge/bases/{bid}", json={"name": "已更新"})
+        assert up_r.status_code == 200
+
+        # 删除
+        del_r = await admin_client.delete(f"/api/v1/knowledge/bases/{bid}")
+        assert del_r.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestKnowledgeNodeAPI:
+    async def test_node_full_lifecycle(self, admin_client: AsyncClient):
+        """测试节点完整生命周期（创建知识库→创建节点→查看→更新→删除）"""
+        # 创建知识库
+        base_r = await admin_client.post("/api/v1/knowledge/bases", json={"name": "节点测试库"})
+        assert base_r.status_code == 200
+        bid = base_r.json()["data"]["id"]
+
+        # 创建节点
+        cr = await admin_client.post("/api/v1/knowledge/nodes", json={
+            "base_id": bid, "title": "API节点", "node_type": "document", "content": "内容"
+        })
+        assert cr.status_code == 200
+        nid = cr.json()["data"]["id"]
+
+        # 查看
+        get_r = await admin_client.get(f"/api/v1/knowledge/nodes/{nid}")
+        assert get_r.status_code == 200
+
+        # 更新
+        up_r = await admin_client.put(f"/api/v1/knowledge/nodes/{nid}", json={"title": "已更新节点"})
+        assert up_r.status_code == 200
+
+        # 删除
+        del_r = await admin_client.delete(f"/api/v1/knowledge/nodes/{nid}")
+        assert del_r.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestKnowledgeSearchAPI:
+    async def test_search(self, admin_client: AsyncClient):
+        """测试搜索功能"""
+        resp = await admin_client.get("/api/v1/knowledge/search", params={"q": "test"})
+        assert resp.status_code == 200

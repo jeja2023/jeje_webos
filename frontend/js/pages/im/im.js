@@ -112,10 +112,33 @@ class IMPage extends Component {
         this.setupWebSocketListeners();
         this.bindEvents();
 
-        // 绑定refs
+        // 绑定refs并初始化滚动
         this.setTimeout(() => {
             this.updateRefs();
+            if (this.state.currentConversation) {
+                this.scrollToBottom();
+            }
         }, 0);
+    }
+
+    /**
+     * 组件更新后的回调
+     */
+    afterUpdate() {
+        this.updateRefs();
+
+        // 尝试恢复焦点 (如果之前是在输入状态)
+        if (this._wasInputFocused && this.messageInput) {
+            this.messageInput.focus();
+            this._wasInputFocused = false;
+        }
+
+        // 如果需要滚动 (例如刚发了新消息或切换了会话)
+        if (this.state.currentConversation && (this._shouldScrollToBottom || this._wasOwnMessage)) {
+            this.scrollToBottom(this._wasOwnMessage ? 'smooth' : 'auto');
+            this._shouldScrollToBottom = false;
+            this._wasOwnMessage = false;
+        }
     }
 
     updateRefs() {
@@ -164,6 +187,19 @@ class IMPage extends Component {
             }
         });
 
+        // 输入框回车发送（避免 inline JS）
+        this.delegate('keydown', '.im-input', (e, el) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage(el.value);
+            }
+        });
+
+        // 输入中提示对方正在输入（避免 inline JS）
+        this.delegate('input', '.im-input', () => {
+            this.sendTypingStatus(true);
+        });
+
         // 会话项点击
         this.delegate('click', '.im-conversation-item', (e, el) => {
             const id = parseInt(el.dataset.id);
@@ -188,11 +224,25 @@ class IMPage extends Component {
             if (fileInput) fileInput.click();
         });
 
+        // 取消回复
+        this.delegate('click', '.btn-close-reply', () => {
+            this.cancelReply();
+        });
+
         // 文件上传
         this.delegate('change', '#imFileInput', (e, el) => {
             if (el.files && el.files[0]) {
                 this.uploadFile(el.files[0]);
                 el.value = ''; // 清空，允许重复上传同一文件
+            }
+        });
+
+        // 右键菜单（避免 inline JS）
+        this.delegate('contextmenu', '.im-message-content', (e, el) => {
+            const msgEl = el.closest('.im-message');
+            const msgId = msgEl?.dataset?.id;
+            if (msgId) {
+                this.handleContextMenu(e, msgId);
             }
         });
 
@@ -462,31 +512,31 @@ class IMPage extends Component {
 
         // 新消息
         this._wsHandlers.newMessage = (data) => {
-            this.handleNewMessage(data.data);
+            this.handleNewMessage(data);
         };
         WebSocketClient.on('im_message_new', this._wsHandlers.newMessage);
 
         // 消息发送确认
         this._wsHandlers.messageSent = (data) => {
-            this.handleNewMessage(data.data);
+            this.handleNewMessage(data);
         };
         WebSocketClient.on('im_message_sent', this._wsHandlers.messageSent);
 
         // 已读通知
         this._wsHandlers.readNotify = (data) => {
-            this.handleReadNotify(data.data);
+            this.handleReadNotify(data);
         };
         WebSocketClient.on('im_message_read_notify', this._wsHandlers.readNotify);
 
         // 输入状态
         this._wsHandlers.typing = (data) => {
-            this.handleTyping(data.data);
+            this.handleTyping(data);
         };
         WebSocketClient.on('im_typing', this._wsHandlers.typing);
 
         // 消息撤回
         this._wsHandlers.recalled = (data) => {
-            this.handleMessageRecalled(data.data);
+            this.handleMessageRecalled(data);
         };
         WebSocketClient.on('im_message_recalled', this._wsHandlers.recalled);
 
@@ -656,16 +706,23 @@ class IMPage extends Component {
                 content: trimmedContent
             };
 
+            // 添加回复引用
+            if (this.state.replyTo) {
+                messageData.reply_to_id = this.state.replyTo.id;
+            }
+
             // 通过WebSocket发送
             if (typeof WebSocketClient !== 'undefined' && WebSocketClient.ws && WebSocketClient.ws.readyState === WebSocket.OPEN) {
                 // 修复：send方法接收两个参数 (type, data)
                 WebSocketClient.send('im_send', messageData);
-                // WebSocket发送后，会通过 im_message_sent 或 im_message_new 收到回执，此处不做额外处理
+                // WebSocket发送后，会通过 im_message_sent 或 im_message_new 收到回执
+                this.cancelReply(); // 发送动作触发后立即清除回复状态
             } else {
                 // 降级到HTTP
                 const res = await Api.post('/im/messages', messageData);
                 if (res.code === 200 || res.code === 0) {
                     this.handleNewMessage(res.data);
+                    this.cancelReply(); // 发送成功清除回复状态
                 } else {
                     Toast.error(res.message || '发送失败');
                     // 发送失败，恢复输入框内容
@@ -685,22 +742,41 @@ class IMPage extends Component {
     }
 
     handleNewMessage(message) {
+        if (!message) return;
+
         // 如果是当前会话的消息，添加到消息列表（避免重复）
         if (this.state.currentConversation &&
-            message.conversation_id === this.state.currentConversation.id) {
+            Number(message.conversation_id) === Number(this.state.currentConversation.id)) {
 
             // 检查是否已存在该消息
-            const exists = this.state.messages.some(m => m.id === message.id);
+            const exists = this.state.messages.some(m => String(m.id) === String(message.id));
             if (!exists) {
-                // 直接修改状态以提升性能（避免全量重绘导致输入框失焦）
+                // 记录当前是否已触底，用于决定是否自动滚动
+                const container = this.container.querySelector('.im-messages');
+                const isAtBottom = container && (container.scrollHeight - container.scrollTop - container.clientHeight < 100);
+                const isOwn = message.sender_id === Store.get('user')?.id;
+
+                // 记录焦点状态
+                this._wasInputFocused = document.activeElement === this.messageInput;
+
+                // 直接修改状态
                 this.state.messages.push(message);
 
-                // 手动将消息追加到 DOM，避免全量重绘导致输入框失焦
+                // 手动将消息追加到 DOM 以获得即时反馈
                 this.appendMessageToDom(message);
+
+                // 标记需要在 afterUpdate 中滚动
+                this._shouldScrollToBottom = isAtBottom;
+                this._wasOwnMessage = isOwn;
+
+                // 如果是自己的消息或本来就在底部，则滚动
+                if (isOwn || isAtBottom) {
+                    this.scrollToBottom();
+                }
             }
         }
 
-        // 增量更新会话列表
+        // 增量更新会话列表预览（这会触发 setState 并重新渲染全量 DOM）
         this.updateConversationPreview(message);
     }
 
@@ -800,9 +876,9 @@ class IMPage extends Component {
         let conversationFound = false;
 
         const updatedConversations = this.state.conversations.map(c => {
-            if (c.id === message.conversation_id) {
+            if (Number(c.id) === Number(message.conversation_id)) {
                 conversationFound = true;
-                const isCurrent = this.state.currentConversation && this.state.currentConversation.id === c.id;
+                const isCurrent = this.state.currentConversation && Number(this.state.currentConversation.id) === Number(c.id);
 
                 // 构建预览文本
                 let preview = '';
@@ -838,7 +914,8 @@ class IMPage extends Component {
     }
 
     handleTyping(data) {
-        if (data.conversation_id === this.state.currentConversation?.id) {
+        if (!data) return;
+        if (this.state.currentConversation && Number(data.conversation_id) === Number(this.state.currentConversation.id)) {
             const typingUsers = new Set(this.state.typingUsers);
             if (data.is_typing) {
                 typingUsers.add(data.user_id);
@@ -889,12 +966,13 @@ class IMPage extends Component {
     }
 
     handleMessageRecalled(data) {
+        if (!data) return;
         if (this.state.currentConversation &&
-            data.conversation_id === this.state.currentConversation.id) {
+            Number(data.conversation_id) === Number(this.state.currentConversation.id)) {
 
             // 更新状态
             this.state.messages = this.state.messages.map(msg => {
-                if (msg.id === data.message_id) {
+                if (String(msg.id) === String(data.message_id)) {
                     return { ...msg, is_recalled: true, content: '[消息已撤回]' };
                 }
                 return msg;
@@ -902,6 +980,32 @@ class IMPage extends Component {
 
             // 全量重绘较为安全，因为撤回不常发生
             this.setState({ messages: this.state.messages });
+        }
+    }
+
+    /**
+     * 处理已读通知
+     */
+    handleReadNotify(data) {
+        if (!data) return;
+
+        // 如果是当前会话的已读通知，可以更新 UI（如：所有消息显示“已读”）
+        if (this.state.currentConversation &&
+            Number(data.conversation_id) === Number(this.state.currentConversation.id)) {
+            // 目前 UI 可能还没做单条消息已读标记，但可以在这里更新状态
+            // 以后可以给 message 加 is_read 字段并局部刷新 DOM
+        }
+
+        // 更新会话列表中的未读数
+        const updatedConversations = this.state.conversations.map(c => {
+            if (Number(c.id) === Number(data.conversation_id)) {
+                return { ...c, unread_count: 0 };
+            }
+            return c;
+        });
+
+        if (JSON.stringify(updatedConversations) !== JSON.stringify(this.state.conversations)) {
+            this.setState({ conversations: updatedConversations });
         }
     }
 
@@ -972,13 +1076,12 @@ class IMPage extends Component {
         });
     }
 
-    scrollToBottom() {
+    scrollToBottom(behavior = 'smooth') {
         const container = this.container.querySelector('.im-messages');
         if (container) {
-            // 使用平滑滚动增强体验
             container.scrollTo({
                 top: container.scrollHeight,
-                behavior: 'smooth'
+                behavior: behavior
             });
         }
     }
@@ -1233,6 +1336,27 @@ class IMPage extends Component {
 
         // 渲染引用回复（如果存在）
         let replyHtml = '';
+        if (msg.reply_to_message) {
+            const replyMsg = msg.reply_to_message;
+            const replySender = replyMsg.sender_nickname || replyMsg.sender_username || '用户';
+            let replyContent = replyMsg.content || '';
+
+            // 简单处理引用内容类型
+            if (replyMsg.type === 'image') replyContent = '[图片]';
+            else if (replyMsg.type === 'file') replyContent = '[文件]';
+            else if (replyMsg.is_recalled) replyContent = '[消息已撤回]';
+            else if (replyContent.length > 50) replyContent = replyContent.substring(0, 50) + '...';
+
+            replyHtml = `
+                <div class="im-msg-reply-quote" onclick="document.querySelector('[data-id=\\'${replyMsg.id}\\']')?.scrollIntoView({behavior: 'smooth', block: 'center'})">
+                    <span class="reply-sender">${this.escapeHtml(replySender)}:</span>
+                    <span class="reply-content">${this.escapeHtml(replyContent)}</span>
+                </div>
+            `;
+        } else if (msg.reply_to_id) {
+            // 只有 ID 没有详情时的降级显示
+            replyHtml = `<div class="im-msg-reply-quote"><span class="reply-content">回复了一条消息</span></div>`;
+        }
 
         // 检查消息是否在2分钟内（可撤回）
         const isRecallable = (new Date() - new Date(msg.created_at)) < 120000;
@@ -1248,9 +1372,6 @@ class IMPage extends Component {
             </div>
         `;
 
-        // 右键菜单触发区域，对 ID 进行转义以防万一
-        const contextMenuAttr = `oncontextmenu="window.imPageInstance?.handleContextMenu(event, '${this.escapeHtml(String(msg.id))}')"`
-
         return `
             <div class="im-message ${isOwn ? 'own' : ''} ${isSameSender ? 'same-sender' : ''}" data-id="${Utils.escapeHtml(String(msg.id))}" style="${msg.state === 'error' ? 'opacity: 0.7;' : ''}">
                 ${actionHtml}
@@ -1258,10 +1379,11 @@ class IMPage extends Component {
                    ${msg.sender_avatar && !/^\s*(javascript|vbscript|data):/i.test(msg.sender_avatar) ? `<img src="${this.escapeHtml(msg.sender_avatar)}" />` : '<i class="ri-user-3-fill"></i>'}
                    <div class="im-status-dot"></div>
                 </div>
-                <div class="im-message-content" ${contextMenuAttr}>
+                <div class="im-message-content">
                     ${!isSameSender ? `<div class="im-message-sender">
                         ${this.escapeHtml(msg.sender_nickname || msg.sender_username || '用户')}
                     </div>` : ''}
+                    ${replyHtml}
                     <div class="im-message-text">
                         ${contentHtml}
                         ${msg.state === 'error' ? '<i class="ri-error-warning-fill im-msg-retry" title="发送失败，点击重试"></i>' : ''}
@@ -1352,7 +1474,7 @@ class IMPage extends Component {
                                 <div class="im-reply-bar" style="display:none;" id="imReplyBar">
                                     <i class="ri-reply-fill" style="color:var(--color-primary)"></i>
                                     <div class="reply-content">回复 <span id="replyToName" style="font-weight:600"></span>: <span id="replyToText"></span></div>
-                                    <button class="btn-close-reply" onclick="window.imPageInstance?.cancelReply()"><i class="ri-close-line"></i></button>
+                                    <button class="btn-close-reply"><i class="ri-close-line"></i></button>
                                 </div>
 
                                 <div class="im-input-area" style="border-top:none;">
@@ -1361,9 +1483,7 @@ class IMPage extends Component {
                                             ${EMOJIS.map(emoji => `<div class="im-emoji-item">${emoji}</div>`).join('')}
                                         </div>
                                     </div>
-                                    <textarea class="im-input" placeholder="输入消息..." 
-                                              onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); window.imPageInstance?.sendMessage(this.value); }"
-                                              oninput="window.imPageInstance?.sendTypingStatus(true)"></textarea>
+                                    <textarea class="im-input" placeholder="输入消息..."></textarea>
                                     <div class="im-input-actions">
                                         <button class="btn-icon im-emoji-btn" title="表情"><i class="ri-emotion-line"></i></button>
                                         <button class="btn-icon im-attach-btn" title="附件"><i class="ri-attachment-line"></i></button>

@@ -112,43 +112,51 @@ def execute_backup_task_sync(backup_id: int, backup_type: str, encrypt_password:
         error_messages = []
         backup_files = []  # 存储需要加密的文件路径
         
-        if backup_type == BackupType.DATABASE.value or backup_type == BackupType.FULL.value:
-            # 备份数据库
-            logger.info(f"备份数据库: {backup_id}")
-            db_success, file_path, file_size = backup_manager.backup_database(str(backup_id))
-
-            if db_success:
+        if backup_type == BackupType.FULL.value:
+            # 执行统一的全量打包备份
+            logger.info(f"开始执行全量打包备份: {backup_id}")
+            full_success, file_path, file_size = backup_manager.backup_full(str(backup_id))
+            if full_success:
                 backup_files.append(file_path)
                 backup.file_path = file_path
                 backup.file_size = file_size
-                logger.info(f"数据库备份成功: {file_path}")
-                _notify_backup_status_sync(backup_id, "running", "数据库备份完成", 30)
+                logger.info(f"全量打包备份成功: {file_path}")
+                _notify_backup_status_sync(backup_id, "running", "全量打包备份完成", 80)
             else:
-                error_messages.append("数据库备份失败（可能需要安装 mysqldump 工具）")
-                logger.error(f"数据库备份失败: {backup_id}")
-                _notify_backup_status_sync(backup_id, "running", "数据库备份失败", 30)
-        
-        if backup_type == BackupType.FILES.value or backup_type == BackupType.FULL.value:
-            # 备份文件
-            logger.info(f"备份文件: {backup_id}")
-            files_success, file_path, file_size = backup_manager.backup_files(str(backup_id))
-            if files_success:
-                backup_files.append(file_path)
-                # 如果是全量备份，文件路径会追加
-                if backup.file_path:
-                    backup.file_path += f",{file_path}"
-                else:
+                error_messages.append(f"全量打包失败: {file_path}")
+                logger.error(f"全量打包备份失败: {backup_id}")
+                _notify_backup_status_sync(backup_id, "running", "全量打包备份失败", 80)
+
+        else:
+            # 独立备份逻辑
+            if backup_type == BackupType.DATABASE.value:
+                # 仅备份数据库（不含 analysis.db）
+                logger.info(f"备份数据库: {backup_id}")
+                db_success, file_path, file_size = backup_manager.backup_database(str(backup_id), include_analysis=False)
+
+                if db_success:
+                    backup_files.append(file_path)
                     backup.file_path = file_path
-                if backup.file_size:
-                    backup.file_size += file_size
-                else:
                     backup.file_size = file_size
-                logger.info(f"文件备份成功: {file_path}")
-                _notify_backup_status_sync(backup_id, "running", "文件备份完成", 60)
-            else:
-                error_messages.append("文件备份失败")
-                logger.error(f"文件备份失败: {backup_id}")
-                _notify_backup_status_sync(backup_id, "running", "文件备份失败", 60)
+                    logger.info(f"数据库备份成功: {file_path}")
+                    _notify_backup_status_sync(backup_id, "running", "数据库备份完成", 30)
+                else:
+                    error_messages.append("数据库备份失败")
+                    _notify_backup_status_sync(backup_id, "running", "数据库备份失败", 30)
+            
+            if backup_type == BackupType.FILES.value:
+                # 仅备份文件（不含 analysis.db）
+                logger.info(f"备份文件: {backup_id}")
+                files_success, file_path, file_size = backup_manager.backup_files(str(backup_id))
+                if files_success:
+                    backup_files.append(file_path)
+                    backup.file_path = file_path
+                    backup.file_size = file_size
+                    logger.info(f"文件备份成功: {file_path}")
+                    _notify_backup_status_sync(backup_id, "running", "文件备份完成", 60)
+                else:
+                    error_messages.append("文件备份失败")
+                    _notify_backup_status_sync(backup_id, "running", "文件备份失败", 60)
         
         # 如果需要加密，对所有备份文件进行加密
         if encrypt_password and backup_files:

@@ -140,8 +140,8 @@ class FeedbackListPage extends Component {
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('feedback', '反馈') : ''}
-                        <button class="btn btn-primary" onclick="Router.push('/feedback/create')"><i class="ri-add-line"></i> 提交反馈</button>
-                        <button class="btn btn-ghost" onclick="Router.push('/feedback/list')">管理视图</button>
+                        <button class="btn btn-primary" data-route="/feedback/create"><i class="ri-add-line"></i> 提交反馈</button>
+                        <button class="btn btn-ghost" data-route="/feedback/list">管理视图</button>
                     </div>
                 </div>
 
@@ -228,7 +228,7 @@ class FeedbackListPage extends Component {
                         <div class="empty-state">
                             <div class="empty-icon"><i class="ri-message-3-line"></i></div>
                             <p class="empty-text">暂无反馈</p>
-                            <button class="btn btn-primary" onclick="Router.push('/feedback/create')">立即提交</button>
+                            <button class="btn btn-primary" data-route="/feedback/create">立即提交</button>
                         </div>
                     </div>
                 `}
@@ -257,6 +257,7 @@ class FeedbackListPage extends Component {
         if (!this.container || this.container._bindFeedbackList) return;
         this.container._bindFeedbackList = true;
 
+        this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
         this.delegate('change', '#filterStatus', (e) => this.handleFilter('status', e.target.value));
         this.delegate('change', '#filterType', (e) => this.handleFilter('type', e.target.value));
         this.delegate('change', '#filterPriority', (e) => this.handleFilter('priority', e.target.value));

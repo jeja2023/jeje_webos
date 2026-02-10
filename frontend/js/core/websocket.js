@@ -17,8 +17,9 @@ const WebSocketClient = {
             return;
         }
 
-        const token = localStorage.getItem(Config.storageKeys.token);
-        if (!token) {
+        const useCookie = !!Config.useHttpOnlyCookie;
+        const token = useCookie ? null : localStorage.getItem(Config.storageKeys.token);
+        if (!useCookie && !token) {
             Config.log('WebSocket: 无 token，跳过连接');
             return;
         }
@@ -26,12 +27,14 @@ const WebSocketClient = {
         // 构建 WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/api/v1/ws?token=${token}`;
+        const wsUrl = `${protocol}//${host}/api/v1/ws`;
 
         Config.log('WebSocket: 正在连接...', wsUrl);
 
         try {
-            this.ws = new WebSocket(wsUrl);
+            const protocols = (!useCookie && token) ? ['bearer', token] : undefined;
+            this.ws = protocols ? new WebSocket(wsUrl, protocols) : new WebSocket(wsUrl);
+
 
             this.ws.onopen = () => {
                 Config.log('WebSocket: 连接成功');
@@ -39,8 +42,8 @@ const WebSocketClient = {
                 this.startHeartbeat();
                 this.emit('connected');
 
-                // 请求浏览器通知权限
-                this.requestNotificationPermission();
+                // 不在此处自动请求通知权限（会导致浏览器 Violation）
+                // 权限请求交由 App 初始化时的第一次用户交互处理
             };
 
             this.ws.onmessage = (event) => {

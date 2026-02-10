@@ -5,13 +5,12 @@
 
 import logging
 from typing import Optional
-from datetime import datetime, timedelta
 from utils.timezone import get_beijing_time
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
 from pathlib import Path
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, update, delete
+from sqlalchemy import select, func, desc, update
 
 from core.database import get_db
 from core.security import require_admin, TokenData, decode_token
@@ -190,11 +189,10 @@ async def update_schedule(
     if not schedule:
         raise HTTPException(status_code=404, detail="调度计划不存在")
     
-    # 更新字段
+    # 更新字段（exclude_unset 已过滤未发送的字段，允许显式设为 None 的值通过）
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        if value is not None:
-            setattr(schedule, key, value)
+        setattr(schedule, key, value)
     
     # 如果更新了时间相关字段，重新计算下次执行时间
     if any(k in update_data for k in ["schedule_type", "schedule_time", "schedule_day"]):
@@ -385,36 +383,6 @@ async def restore_backup(
                 except Exception as e:
                     logger.warning(f"无法删除临时文件 {temp_file}: {e}")
             
-        # 修复数据状态和文件大小
-        try:
-             # 计算文件总大小
-             total_size = 0
-             if file_path:
-                 try:
-                    for path in file_path.split(","):
-                        p = Path(path)
-                        if p.exists():
-                            total_size += p.stat().st_size
-                 except Exception:
-                    pass
-
-             from sqlalchemy import update
-             from core.database import async_session
-             
-             async with async_session() as new_session:
-                stmt = (
-                    update(BackupRecord)
-                    .where(BackupRecord.id == data.backup_id)
-                    .where(BackupRecord.status == BackupStatus.RUNNING.value)
-                    .values(status=BackupStatus.SUCCESS.value, file_size=total_size)
-                )
-                await new_session.execute(stmt)
-                await new_session.commit()
-                
-             logger.info(f"已修复备份记录状态和大小: {data.backup_id}")
-        except Exception as fix_error:
-             logger.warning(f"尝试修复备份状态失败: {fix_error}")
-
         logger.info(f"备份恢复全部完成: {data.backup_id}")
         return success(message="备份恢复成功，请重启系统以确保数据一致性")
         
@@ -422,7 +390,7 @@ async def restore_backup(
         raise
     except Exception as e:
         logger.error(f"恢复过程发生未捕获异常: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"恢复过程出错: {str(e)}")
+        raise HTTPException(status_code=500, detail="恢复过程出错，请查看服务器日志获取详情")
 
 
 @router.delete("/{backup_id}")
@@ -450,7 +418,6 @@ async def delete_backup(
     
     # 删除数据库记录
     await db.delete(backup)
-    await db.flush()
     await db.commit()
     
     return success(message="备份已删除")
@@ -487,7 +454,15 @@ async def download_backup(
         raise HTTPException(status_code=400, detail="文件索引超出范围")
     
     file_path = file_paths[file_index]
-    full_path = Path(file_path)
+    full_path = Path(file_path).resolve()
+    
+    # 安全检查：确保备份文件在预期的存储目录内，防止路径遍历
+    from utils.storage import get_storage_manager
+    storage = get_storage_manager()
+    backup_base = Path(storage.root_dir).resolve()
+    if not str(full_path).startswith(str(backup_base)):
+        logger.warning(f"备份文件路径越界: {full_path} 不在 {backup_base} 内")
+        raise HTTPException(status_code=403, detail="备份文件路径不合法")
     
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="备份文件已丢失")

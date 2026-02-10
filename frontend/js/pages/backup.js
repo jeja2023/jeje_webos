@@ -374,7 +374,7 @@ class BackupPage extends Component {
 
     handleDownload(backupId) {
         const token = localStorage.getItem(Config.storageKeys.token);
-        window.open(`${BackupApi.download(backupId)}?token=${token}`, '_blank');
+        window.open(Utils.withToken(BackupApi.download(backupId)), '_blank');
     }
 
     formatSize(bytes) {
@@ -536,61 +536,94 @@ class BackupPage extends Component {
 
     renderScheduleTab(schedules, loading) {
         const getFreqLabel = (s) => {
-            const time = s.schedule_time;
-            if (s.schedule_type === 'daily') return `每天 ${time}`;
-            if (s.schedule_type === 'weekly') {
+            const time = s.schedule_time || '00:00';
+            let label = '';
+            let icon = 'ri-time-line';
+
+            if (s.schedule_type === 'daily') {
+                label = `每天 ${time}`;
+                icon = 'ri-repeat-2-line';
+            } else if (s.schedule_type === 'weekly') {
                 const days = ['一', '二', '三', '四', '五', '六', '日'];
-                return `每周${days[s.schedule_day - 1] || s.schedule_day} ${time}`;
+                label = `每周${days[s.schedule_day - 1] || s.schedule_day} ${time}`;
+                icon = 'ri-calendar-event-line';
+            } else if (s.schedule_type === 'monthly') {
+                label = `每月${s.schedule_day}号 ${time}`;
+                icon = 'ri-calendar-check-line';
+            } else {
+                label = s.schedule_type;
             }
-            if (s.schedule_type === 'monthly') return `每月${s.schedule_day}号 ${time}`;
-            return s.schedule_type;
+
+            return `<div class="freq-tag"><i class="${icon}"></i> <span>${label}</span></div>`;
         };
 
         return `
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="ri-calendar-check-line"></i> 自动备份计划</h3>
-                    <button class="btn btn-primary btn-sm" id="createSchedule"><i class="ri-add-line"></i> 新建计划</button>
+            <div class="card schedule-card fade-in">
+                <div class="card-header flex-between">
+                    <div class="header-info">
+                        <h3 class="card-title"><i class="ri-calendar-check-line"></i> 自动备份计划</h3>
+                        <p class="card-subtitle">系统将按照设定的时间自动执行备份任务</p>
+                    </div>
+                    <button class="btn btn-primary" id="createSchedule">
+                        <i class="ri-add-line"></i> 新建计划
+                    </button>
                 </div>
                 ${loading ? '<div class="loading"></div>' : schedules.length === 0 ? `
-                    <div class="empty-state" style="padding: 60px 0;">
-                        <div class="empty-icon"><i class="ri-time-line"></i></div>
-                        <p class="empty-text">暂无自动备份计划</p>
-                        <p style="color: var(--color-text-secondary);">点击上方按钮创建自动备份任务</p>
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="ri-history-line"></i></div>
+                        <p class="empty-text">计划列表为空</p>
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('createSchedule').click()">立即创建</button>
                     </div>
                 ` : `
                     <div class="table-wrapper">
-                        <table class="table">
+                        <table class="table schedule-table">
                             <thead>
                                 <tr>
-                                    <th>计划名称</th>
-                                    <th>类型</th>
-                                    <th>执行频率</th>
-                                    <th>下次执行</th>
-                                    <th>保留策略</th>
-                                    <th>状态</th>
-                                    <th>操作</th>
+                                    <th style="min-width: 200px;">计划名称</th>
+                                    <th style="width: 120px;">备份类型</th>
+                                    <th style="width: 180px;">执行频率</th>
+                                    <th style="width: 180px;">下次执行时间</th>
+                                    <th style="width: 120px;">保留策略</th>
+                                    <th style="width: 100px; text-align: center;">状态</th>
+                                    <th style="width: 80px; text-align: right;">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${schedules.map(s => `
                                     <tr>
                                         <td>
-                                            <div style="font-weight:500;">${Utils.escapeHtml(s.name)}</div>
-                                            ${s.is_encrypted ? '<small style="color:var(--color-success);"><i class="ri-lock-2-line"></i> 加密存储</small>' : ''}
+                                            <div class="sch-name-wrap">
+                                                <span class="sch-name">${Utils.escapeHtml(s.name)}</span>
+                                                ${s.is_encrypted ? '<span class="sch-encrypt-tag" title="启用加密存储"><i class="ri-lock-2-line"></i> 加密</span>' : ''}
+                                            </div>
                                         </td>
-                                        <td><span class="tag">${this.getTypeLabel(s.backup_type)}</span></td>
+                                        <td>
+                                            <span class="tag tag-outline">${this.getTypeLabel(s.backup_type)}</span>
+                                        </td>
                                         <td>${getFreqLabel(s)}</td>
-                                        <td>${Utils.formatDate(s.next_run_at)}</td>
-                                        <td>保留 ${s.retention_days} 天</td>
                                         <td>
-                                            <label class="switch">
-                                                <input type="checkbox" ${s.is_enabled ? 'checked' : ''} data-toggle-sch="${Utils.escapeHtml(String(s.id))}">
-                                                <span class="slider round"></span>
-                                            </label>
+                                            <div class="sch-time-cell">
+                                                <i class="ri-calendar-line"></i>
+                                                <span>${Utils.formatDate(s.next_run_at)}</span>
+                                            </div>
                                         </td>
                                         <td>
-                                            <button class="btn btn-ghost btn-sm btn-danger-hover" data-delete-sch="${Utils.escapeHtml(String(s.id))}" title="删除计划"><i class="ri-delete-bin-line"></i></button>
+                                            <span class="retention-info">保留 ${s.retention_days} 天</span>
+                                        </td>
+                                        <td>
+                                            <div class="flex-center">
+                                                <label class="switch">
+                                                    <input type="checkbox" ${s.is_enabled ? 'checked' : ''} data-toggle-sch="${Utils.escapeHtml(String(s.id))}">
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="flex-end">
+                                                <button class="btn btn-ghost btn-sm btn-icon btn-danger-hover" data-delete-sch="${Utils.escapeHtml(String(s.id))}" title="删除计划">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -612,7 +645,7 @@ class BackupPage extends Component {
             WebSocketClient.on('system.backup_status', this.statusListener);
         }
 
-        // 样式修正：Tab 选中效果
+        // 样式修正：更加现代和高级的表格样式
         const style = document.createElement('style');
         style.innerHTML = `
             .tab-item.active {
@@ -622,6 +655,90 @@ class BackupPage extends Component {
             .tab-item:hover {
                 color: var(--color-primary);
                 background: var(--color-bg-secondary);
+            }
+            
+            /* 自动备份计划列表样式优化 */
+            .schedule-table {
+                border-spacing: 0;
+                width: 100%;
+                table-layout: auto;
+            }
+            .schedule-table th, .schedule-table td {
+                display: table-cell !important;
+                white-space: nowrap !important;
+                vertical-align: middle !important;
+                padding: 16px !important;
+                word-break: normal !important;
+            }
+            .schedule-table th {
+                background: var(--color-bg-tertiary);
+                font-weight: 600;
+                color: var(--color-text-secondary);
+                text-transform: none;
+                letter-spacing: normal;
+                border-bottom: 2px solid var(--color-border);
+            }
+            .sch-name-wrap {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .sch-name {
+                font-weight: 600;
+                color: var(--color-text-primary);
+                font-size: 0.95rem;
+            }
+            .sch-encrypt-tag {
+                background: rgba(16, 185, 129, 0.1);
+                color: var(--color-success);
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 11px;
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                border: 1px solid rgba(16, 185, 129, 0.2);
+            }
+            .freq-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                color: var(--color-info);
+                background: rgba(59, 130, 246, 0.08);
+                padding: 4px 10px;
+                border-radius: 20px;
+                font-size: 13px;
+                border: 1px solid rgba(59, 130, 246, 0.15);
+            }
+            .sch-time-cell {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: var(--color-text-secondary);
+                font-size: 13px;
+            }
+            .retention-info {
+                color: var(--color-text-tertiary);
+                font-size: 13px;
+            }
+            .tag-outline {
+                background: transparent;
+                border: 1px solid var(--color-border);
+                color: var(--color-text-secondary);
+                font-weight: 500;
+            }
+            .card-subtitle {
+                font-size: 12px;
+                color: var(--color-text-muted);
+                margin-top: 2px;
+            }
+            .btn-icon {
+                padding: 6px;
+                border-radius: 8px;
+            }
+            .schedule-card {
+                box-shadow: var(--shadow-sm);
+                border: 1px solid var(--color-border-light);
             }
         `;
         this.container.appendChild(style);

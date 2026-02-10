@@ -138,7 +138,7 @@ const OfficeViewer = {
         // 生成工作表标签
         const tabsHtml = sheetNames.map((name, index) => `
             <button class="office-excel-tab ${index === 0 ? 'active' : ''}" 
-                    onclick="OfficeViewer._switchSheet(this, decodeURIComponent('${encodeURIComponent(name)}'))">
+                    data-switch-sheet="${encodeURIComponent(name)}">
                 ${this._escapeHtml(name)}
             </button>
         `).join('');
@@ -225,15 +225,29 @@ const OfficeViewer = {
     _showViewerModal(options) {
         const { title, content, width = '900px', onClose } = options;
 
-        Modal.show({
+        const modal = Modal.show({
             title: title,
             content: content,
             width: width,
             footer: `
-                <button class="btn btn-text" onclick="Modal.closeAll()">关闭</button>
+                <button class="btn btn-text" data-action="close-modal">关闭</button>
             `,
             onClose: onClose
         });
+
+        if (modal?.overlay) {
+            modal.overlay.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action="close-modal"]')) {
+                    Modal.closeAll();
+                    return;
+                }
+                const tab = e.target.closest('[data-switch-sheet]');
+                if (tab) {
+                    const sheetName = decodeURIComponent(tab.dataset.switchSheet);
+                    OfficeViewer._switchSheet(tab, sheetName);
+                }
+            });
+        }
     },
 
     /**

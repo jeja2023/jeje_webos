@@ -7,13 +7,13 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from core.database import get_db
-from core.security import get_current_user, TokenData, require_permission, decode_token
+from core.security import get_current_user, TokenData
 from models.storage import FileRecord
 from models.account import User
 from schemas.storage import FileInfo, FileUploadResponse, FileListResponse
@@ -128,9 +128,10 @@ async def upload_file(
             try:
                 temp_file.close()
                 os.unlink(temp_file.name)
-            except Exception as e:
-                logger.debug(f"清理临时文件失败: {e}")
-        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+            except Exception as cleanup_err:
+                logger.debug(f"清理临时文件失败: {cleanup_err}")
+        logger.error(f"读取文件失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="读取文件失败，请稍后重试")
     
     # 3. 验证文件类型（使用第一个块进行内容检测）
     is_valid, error_msg = storage.validate_file(file.filename or "unknown", file_size, first_chunk)
@@ -140,18 +141,14 @@ async def upload_file(
     
     # 4. 检查用户存储配额（头像除外）
     if category != "avatar":
-        from sqlalchemy import func, select
-        from models.account import User
-        from models.storage import FileRecord as StorageFileRecord
-        
         user_result = await db.execute(select(User).where(User.id == current_user.user_id))
         user = user_result.scalar_one_or_none()
         
         if user and user.storage_quota is not None:
             size_result = await db.execute(
-                select(func.coalesce(func.sum(StorageFileRecord.file_size), 0))
-                .select_from(StorageFileRecord)
-                .where(StorageFileRecord.uploader_id == current_user.user_id)
+                select(func.coalesce(func.sum(FileRecord.file_size), 0))
+                .select_from(FileRecord)
+                .where(FileRecord.uploader_id == current_user.user_id)
             )
             current_size = size_result.scalar_one()
             
@@ -188,9 +185,10 @@ async def upload_file(
         # 清理临时文件
         try:
             os.unlink(temp_path)
-        except Exception as e:
-            logger.debug(f"清理临时文件失败: {e}")
-        raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
+        except Exception as cleanup_err:
+            logger.debug(f"清理临时文件失败: {cleanup_err}")
+        logger.error(f"文件保存失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="文件保存失败，请稍后重试")
     
     # 7. 保存文件记录到数据库
     mime_type = file.content_type
@@ -300,7 +298,9 @@ async def list_files(
     
     # 关键词搜索
     if keyword:
-        query = query.where(FileRecord.filename.contains(keyword))
+        # 转义 LIKE 通配符，防止通过 % 和 _ 匹配任意内容
+        safe_keyword = keyword.replace('%', r'\%').replace('_', r'\_')
+        query = query.where(FileRecord.filename.ilike(f"%{safe_keyword}%"))
     
     # 总数查询
     count_query = select(func.count()).select_from(query.subquery())
@@ -356,7 +356,6 @@ async def delete_file(
     
     # 删除数据库记录
     await db.delete(file_record)
-    await db.flush()
     await db.commit()
     
     return success(message="文件已删除")

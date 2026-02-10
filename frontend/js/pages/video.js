@@ -223,10 +223,7 @@ class VideoPage extends Component {
         if (!url) return url;
         // 安全协议检查
         if (/^\s*(javascript|vbscript|data):/i.test(url)) return '#';
-        const token = Utils.getToken();
-        if (!token) return url;
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}token=${encodeURIComponent(token)}`;
+        return Utils.withToken(url);
     }
 
     /**
@@ -364,14 +361,35 @@ class VideoPage extends Component {
         const total = videoFiles.length;
         const CONCURRENT_LIMIT = 2; // 视频并发限制较小，避免带宽拥堵
 
+        // 进度跟踪
+        const fileProgress = new Map(); // Map<File, loadedBytes>
+        const totalBytes = videoFiles.reduce((sum, f) => sum + f.size, 0);
+
+        const updateGlobalProgress = () => {
+            const loadedBytes = Array.from(fileProgress.values()).reduce((sum, bytes) => sum + bytes, 0);
+            const percent = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
+            // 避免频繁 setState，仅当变化时更新 (React 批处理通常会自动处理，但这里是手动节流更安全)
+            if (percent !== this.state.uploadProgress) {
+                this.setState({ uploadProgress: percent });
+            }
+        };
+
         // 辅助函数：单个上传
         const uploadFile = async (file) => {
             try {
+                fileProgress.set(file, 0); // 初始化
+
                 const formData = new FormData();
                 formData.append('file', file);
-                await Api.upload(`/video/${currentCollection.id}/videos`, formData);
+
+                await Api.upload(`/video/${currentCollection.id}/videos`, formData, 'file', {
+                    onProgress: (percent, loaded) => {
+                        fileProgress.set(file, loaded);
+                        updateGlobalProgress();
+                    }
+                });
+
                 uploadedCount++;
-                this.setState({ uploadProgress: Math.round((uploadedCount / total) * 100) });
                 return true;
             } catch (err) {
                 console.error('上传失败:', file.name, err);
@@ -402,11 +420,15 @@ class VideoPage extends Component {
 
         if (successCount > 0) {
             Toast.success(`成功上传 ${successCount} 个视频`);
-            await this.loadCollectionDetail(currentCollection.id);
+            this.setState({ uploadProgress: 100 }); // 确保最后显示100%
+            await this.setTimeout(() => { // 延迟一点关闭，让用户看到100%
+                this.setState({ uploading: false, uploadProgress: 0 });
+                this.loadCollectionDetail(currentCollection.id);
+            }, 500);
         } else {
             Toast.error('视频上传失败');
+            this.setState({ uploading: false, uploadProgress: 0 });
         }
-        this.setState({ uploading: false, uploadProgress: 0 });
     }
 
     toggleSelectionMode() {
@@ -747,7 +769,7 @@ class VideoPage extends Component {
             <div class="video-player-overlay">
                 <div class="player-header">
                     <div class="player-info">
-                        <div class="player-counter">VIDEO ${selectedIndex + 1} OF ${videos.length}</div>
+                        <div class="player-counter">第 ${selectedIndex + 1} / ${videos.length} 个视频</div>
                         <div class="player-title">${Utils.escapeHtml(selectedVideo.filename)}</div>
                     </div>
                     <button class="player-close-btn" data-action="close-player">

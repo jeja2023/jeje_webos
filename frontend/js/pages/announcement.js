@@ -156,7 +156,7 @@ class AnnouncementListPage extends Component {
                     <div style="display: flex; gap: 8px; align-items: center;">
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('announcement', '公告') : ''}
                         ${isAdmin ? `
-                        <button class="btn btn-primary" onclick="Router.push('/announcement/edit')">
+                        <button class="btn btn-primary" data-route="/announcement/edit">
                             <i class="ri-add-line"></i> 发布公告
                         </button>
                         ` : ''}
@@ -319,6 +319,9 @@ class AnnouncementListPage extends Component {
         if (this.container && !this.container._bindedAnnouncementList) {
             this.container._bindedAnnouncementList = true;
 
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
+
             // 筛选器
             this.delegate('change', '#filterStatus', (e) => {
                 this.handleFilter('is_published', e.target.value);
@@ -446,12 +449,11 @@ class AnnouncementEditPage extends Component {
             if (this.announcementId) {
                 await AnnouncementApi.update(this.announcementId, data);
                 Toast.success('更新成功');
-                Router.push(`/announcement/view/${this.announcementId}`);
+                Router.replace('/announcement/list');
             } else {
-                const res = await AnnouncementApi.create(data);
-                const newId = res.data?.id;
+                await AnnouncementApi.create(data);
                 Toast.success('发布成功');
-                Router.push(newId ? `/announcement/view/${newId}` : '/announcement/list');
+                Router.replace('/announcement/list');
             }
         } catch (error) {
             Toast.error(error.message);
@@ -546,7 +548,7 @@ class AnnouncementEditPage extends Component {
                                 <i class="${saving ? 'ri-loader-4-line spin' : 'ri-save-line'}"></i>
                                 ${saving ? '保存中...' : (isEdit ? '更新公告' : '发布公告')}
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="Router.back()">取消</button>
+                            <button type="button" class="btn btn-secondary" data-action="go-back">取消</button>
                         </div>
                     </form>
                 </div>
@@ -601,10 +603,16 @@ class AnnouncementEditPage extends Component {
     }
 
     bindEvents() {
-        const form = this.$('#announcementForm');
-        if (form && !form._bindedAnnouncementEdit) {
-            form._bindedAnnouncementEdit = true;
-            form.addEventListener('submit', (e) => this.handleSubmit(e));
+        if (this.container && !this.container._bindedAnnouncementEdit) {
+            this.container._bindedAnnouncementEdit = true;
+
+            const form = this.$('#announcementForm');
+            if (form) {
+                form.addEventListener('submit', (e) => this.handleSubmit(e));
+            }
+
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
         }
     }
 }
@@ -660,7 +668,7 @@ class AnnouncementViewPage extends Component {
                     <div class="empty-state" style="padding-top: 80px">
                         <div class="empty-icon"><i class="ri-file-warning-line"></i></div>
                         <p class="empty-text">公告不存在或已删除</p>
-                        <button class="btn btn-primary" onclick="Router.push('/announcement/list')">
+                        <button class="btn btn-primary" data-route="/announcement/list">
                             <i class="ri-arrow-left-line"></i> 返回列表
                         </button>
                     </div>
@@ -694,10 +702,10 @@ class AnnouncementViewPage extends Component {
                         </p>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-secondary" id="backBtn">
+                        <button class="btn btn-secondary" data-route="/announcement/list">
                             <i class="ri-arrow-left-line"></i> 返回
                         </button>
-                        <button class="btn btn-primary" id="editBtn">
+                        <button class="btn btn-primary" data-route="/announcement/edit/${this.announcementId}">
                             <i class="ri-edit-line"></i> 编辑公告
                         </button>
                     </div>
@@ -747,16 +755,11 @@ class AnnouncementViewPage extends Component {
     }
 
     bindEvents() {
-        const backBtn = this.$('#backBtn');
-        if (backBtn && !backBtn._bindedBack) {
-            backBtn._bindedBack = true;
-            backBtn.addEventListener('click', () => Router.back());
-        }
+        if (this.container && !this.container._bindedAnnouncementView) {
+            this.container._bindedAnnouncementView = true;
 
-        const editBtn = this.$('#editBtn');
-        if (editBtn && !editBtn._bindedEdit) {
-            editBtn._bindedEdit = true;
-            editBtn.addEventListener('click', () => Router.push(`/announcement/edit/${this.announcementId}`));
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
         }
     }
 }

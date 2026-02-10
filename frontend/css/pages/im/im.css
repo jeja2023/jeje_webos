@@ -957,3 +957,108 @@
 .im-context-menu-item.danger i {
     color: var(--color-error);
 }
+
+/* 引用消息样式补丁 */
+.im-msg-reply-quote {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    background: rgba(0, 0, 0, 0.05);
+    border-left: 3px solid var(--color-primary);
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+    max-width: 100%;
+}
+
+.im-msg-reply-quote:hover {
+    background: rgba(0, 0, 0, 0.08);
+    opacity: 1;
+}
+
+.im-msg-reply-quote .reply-sender {
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 2px;
+    opacity: 0.9;
+}
+
+.im-msg-reply-quote .reply-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.8;
+}
+
+/* 自己的消息中的引用样式 */
+.im-message.own .im-msg-reply-quote {
+    background: rgba(255, 255, 255, 0.2);
+    border-left-color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.9);
+    text-align: left;
+    /* 关键：即使在右侧的消息气泡中，引用内容也应该左对齐易读 */
+}
+
+.im-message.own .im-msg-reply-quote:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 回复输入栏样式 */
+.im-reply-bar {
+    display: flex;
+    /* overridden by JS toggle */
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--color-bg-tertiary);
+    /* 轻微背景区别于输入框背景 */
+    border-bottom: 1px solid var(--color-border);
+    gap: 8px;
+    font-size: 13px;
+    animation: slideUp 0.2s ease-out;
+    flex-shrink: 0;
+}
+
+.im-reply-bar i:first-child {
+    font-size: 16px;
+}
+
+.im-reply-bar .reply-content {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-text-secondary);
+}
+
+.im-reply-bar .btn-close-reply {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    color: var(--color-text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.im-reply-bar .btn-close-reply:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

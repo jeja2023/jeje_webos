@@ -801,7 +801,22 @@ class ExamPage extends Component {
     // ==================== 智能组卷 ====================
 
     async showSmartPaperModal() {
-        new Modal({
+        const ruleItemHtml = `
+            <div class="smart-rule-item">
+                <select name="rule_type">
+                    <option value="single">单选题</option>
+                    <option value="multiple">多选题</option>
+                    <option value="judge">判断题</option>
+                    <option value="fill">填空题</option>
+                    <option value="essay">问答题</option>
+                </select>
+                <input type="number" name="rule_count" value="5" placeholder="数量" min="1">
+                <input type="number" name="rule_score" value="2" placeholder="每题分值" min="0" step="0.5">
+                <button type="button" class="remove-rule">×</button>
+            </div>
+        `;
+
+        const modal = new Modal({
             title: '🎲 智能组卷',
             width: 600,
             content: `
@@ -833,10 +848,10 @@ class ExamPage extends Component {
                                 </select>
                                 <input type="number" name="rule_count" value="10" placeholder="数量" min="1">
                                 <input type="number" name="rule_score" value="2" placeholder="每题分值" min="0" step="0.5">
-                                <button type="button" class="remove-rule" onclick="this.parentElement.remove()">×</button>
+                                <button type="button" class="remove-rule">×</button>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('rulesContainer').insertAdjacentHTML('beforeend', '<div class=smart-rule-item><select name=rule_type><option value=single>单选题</option><option value=multiple>多选题</option><option value=judge>判断题</option><option value=fill>填空题</option><option value=essay>问答题</option></select><input type=number name=rule_count value=5 placeholder=数量 min=1><input type=number name=rule_score value=2 placeholder=每题分值 min=0 step=0.5><button type=button class=remove-rule onclick=this.parentElement.remove()>×</button></div>')">+ 添加规则</button>
+                        <button type="button" class="btn btn-sm btn-ghost btn-add-rule">+ 添加规则</button>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -885,6 +900,25 @@ class ExamPage extends Component {
                 }
             }
         }).show();
+
+        // 绑定规则项的添加/删除（避免 inline JS）
+        if (modal?.overlay) {
+            modal.overlay.addEventListener('click', (e) => {
+                const addBtn = e.target.closest('.btn-add-rule');
+                if (addBtn) {
+                    const container = modal.overlay.querySelector('#rulesContainer');
+                    if (container) {
+                        container.insertAdjacentHTML('beforeend', ruleItemHtml);
+                    }
+                    return;
+                }
+
+                const removeBtn = e.target.closest('.remove-rule');
+                if (removeBtn && removeBtn.parentElement) {
+                    removeBtn.parentElement.remove();
+                }
+            });
+        }
     }
 
     // ==================== 题库操作 ====================
@@ -1693,7 +1727,27 @@ class ExamPage extends Component {
         const question = questionId ? this.state.questions.find(q => q.id === questionId) : null;
         const { banks } = this.state;
 
-        new Modal({
+        const createOptionRow = (value = '') => {
+            const row = document.createElement('div');
+            row.className = 'option-row';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.placeholder = '选项内容';
+            input.value = value;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-remove-option';
+            removeBtn.textContent = '×';
+
+            row.appendChild(input);
+            row.appendChild(removeBtn);
+            return row;
+        };
+
+        const modal = new Modal({
             title: question ? '编辑题目' : '新增题目',
             width: 600,
             content: `
@@ -1724,7 +1778,7 @@ class ExamPage extends Component {
                     <div class="form-group" id="optionsGroup">
                         <label>选项</label>
                         <div id="optionsList"></div>
-                        <button type="button" class="btn btn-sm btn-ghost" onclick="this.parentElement.querySelector('#optionsList').innerHTML += '<div class=option-row><input type=text class=form-control placeholder=选项内容><button type=button onclick=this.parentElement.remove()>×</button></div>'">+ 添加选项</button>
+                        <button type="button" class="btn btn-sm btn-ghost btn-add-option">+ 添加选项</button>
                     </div>
                     <div class="form-group">
                         <label>正确答案 <span class="required">*</span></label>
@@ -1787,6 +1841,31 @@ class ExamPage extends Component {
                 }
             }
         }).show();
+
+        if (modal?.overlay) {
+            const optionsList = modal.overlay.querySelector('#optionsList');
+            const addBtn = modal.overlay.querySelector('.btn-add-option');
+
+            if (optionsList && addBtn) {
+                addBtn.addEventListener('click', () => {
+                    optionsList.appendChild(createOptionRow());
+                });
+
+                optionsList.addEventListener('click', (e) => {
+                    const removeBtn = e.target.closest('.btn-remove-option');
+                    if (removeBtn) {
+                        const row = removeBtn.closest('.option-row');
+                        if (row) row.remove();
+                    }
+                });
+
+                if (question?.options && Array.isArray(question.options)) {
+                    question.options.forEach(opt => {
+                        optionsList.appendChild(createOptionRow(opt?.value || ''));
+                    });
+                }
+            }
+        }
     }
 
     async deleteQuestion(questionId) {
@@ -2225,7 +2304,7 @@ class ExamPage extends Component {
     // ==================== 批量导入 ====================
 
     async showImportModal() {
-        new Modal({
+        const modal = new Modal({
             title: '批量导入题目',
             width: 700,
             content: `
@@ -2245,7 +2324,7 @@ class ExamPage extends Component {
   }
 ]'></textarea>
                     <div class="import-actions" style="margin-top: 12px;">
-                        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importJson').value = JSON.stringify([{'question_type':'single','title':'','option_a':'','option_b':'','option_c':'','option_d':'','answer':'','score':2,'difficulty':1}], null, 2)">插入模板</button>
+                        <button class="btn btn-ghost btn-sm btn-insert-template">插入模板</button>
                     </div>
                 </div>
             `,
@@ -2278,5 +2357,25 @@ class ExamPage extends Component {
                 }
             }
         }).show();
+
+        if (modal?.overlay) {
+            const btn = modal.overlay.querySelector('.btn-insert-template');
+            const textarea = modal.overlay.querySelector('#importJson');
+            if (btn && textarea) {
+                btn.addEventListener('click', () => {
+                    textarea.value = JSON.stringify([{
+                        question_type: 'single',
+                        title: '',
+                        option_a: '',
+                        option_b: '',
+                        option_c: '',
+                        option_d: '',
+                        answer: '',
+                        score: 2,
+                        difficulty: 1
+                    }], null, 2);
+                });
+            }
+        }
     }
 }

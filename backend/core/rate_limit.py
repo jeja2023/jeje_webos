@@ -6,8 +6,7 @@
 import time
 import logging
 from typing import Dict, Optional, Callable
-from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import wraps
 
 from fastapi import Request, HTTPException, status, Response
@@ -70,9 +69,9 @@ class RateLimiter:
     
     def configure(
         self,
-        requests: int = 100,
+        requests: int = 200,
         window: int = 60,
-        block_duration: int = 60
+        block_duration: int = 30
     ):
         """配置默认速率限制"""
         self._default_config = RateLimitConfig(
@@ -166,7 +165,12 @@ class RateLimiter:
         
         return self._default_config
     
-    def check(self, request: Request) -> tuple[bool, Optional[dict]]:
+    def check(
+        self,
+        request: Request,
+        override_config: Optional[RateLimitConfig] = None,
+        override_key: Optional[str] = None
+    ) -> tuple[bool, Optional[dict]]:
         """
         检查请求是否允许
         
@@ -194,12 +198,15 @@ class RateLimiter:
                 "message": "IP已被封禁"
             }
         
-        config = self._get_config(path)
+        config = override_config or self._get_config(path)
+        
+        # 速率限制键：优先使用用户身份（如果可解析），否则回退到 IP
+        rate_key = override_key or client_ip
         
         # 获取或创建客户端状态
-        if client_ip not in self._clients:
-            self._clients[client_ip] = ClientState(window_start=current_time)
-        state = self._clients[client_ip]
+        if rate_key not in self._clients:
+            self._clients[rate_key] = ClientState(window_start=current_time)
+        state = self._clients[rate_key]
         
         # 检查是否在封禁期
         if state.blocked_until > current_time:
@@ -221,7 +228,7 @@ class RateLimiter:
         if state.requests > config.requests:
             # 超限，设置封禁
             state.blocked_until = current_time + config.block_duration
-            logger.warning(f"IP {client_ip} 请求超限，已封禁 {config.block_duration} 秒")
+            logger.warning(f"速率限制触发: key={rate_key} 已封禁 {config.block_duration} 秒")
             return False, {
                 "reason": "rate_limited",
                 "message": f"请求过于频繁，请 {config.block_duration} 秒后重试",
@@ -343,6 +350,40 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 
+def _get_rate_limit_key(request: Request) -> str:
+    """
+    获取速率限制键。
+    - 优先使用已认证用户 ID（减少 NAT 下的误伤）
+    - 回退到客户端 IP
+    """
+    client_ip = _get_client_ip_util(request)
+    try:
+        from core.security import decode_token, COOKIE_ACCESS_TOKEN
+        from core.config import get_settings as _get_settings
+        
+        settings = _get_settings()
+        token = None
+        
+        # 优先 Cookie（HttpOnly 模式）
+        if settings.auth_use_httponly_cookie:
+            token = request.cookies.get(COOKIE_ACCESS_TOKEN)
+        
+        # 回退到 Authorization Bearer
+        if not token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+        
+        if token:
+            token_data = decode_token(token)
+            if token_data and getattr(token_data, "user_id", None) is not None:
+                return f"user:{token_data.user_id}"
+    except Exception:
+        pass
+    
+    return client_ip
+
+
 def init_rate_limiter():
     """初始化速率限制器"""
     try:
@@ -371,7 +412,7 @@ def init_rate_limiter():
         logger.warning(f"速率限制初始化使用默认配置: {e}")
 
 
-def limit(requests: int = 10, window: int = 60):
+def limit(requests: int = 10, window: int = 60, block_duration: Optional[int] = None):
     """
     速率限制装饰器（用于单个路由）
     
@@ -393,7 +434,16 @@ def limit(requests: int = 10, window: int = 60):
                         break
             
             if request:
-                allowed, info = rate_limiter.check(request)
+                config = RateLimitConfig(
+                    requests=requests,
+                    window=window,
+                    block_duration=block_duration if block_duration is not None else rate_limiter._default_config.block_duration
+                )
+                allowed, info = rate_limiter.check(
+                    request,
+                    override_config=config,
+                    override_key=_get_rate_limit_key(request)
+                )
                 if not allowed:
                     raise HTTPException(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -412,11 +462,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     在main.py中通过 app.add_middleware(RateLimitMiddleware) 注册
     """
     
-    # 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
-    STREAMING_PATHS = [
-        "/api/v1/ai/chat",  # AI 聊天流式响应
-    ]
-    
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         
@@ -425,11 +470,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(p) for p in skip_paths):
             return await call_next(request)
         
-        # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
-        if any(path.startswith(sp) for sp in self.STREAMING_PATHS):
+        # 复用中间件模块中定义的统一 STREAMING_PATHS，保持一致性
+        from core.middleware import STREAMING_PATHS
+        if any(path.startswith(sp) for sp in STREAMING_PATHS):
             return await call_next(request)
         
-        allowed, info = rate_limiter.check(request)
+        allowed, info = rate_limiter.check(request, override_key=_get_rate_limit_key(request))
         
         if not allowed:
             return JSONResponse(
@@ -445,15 +491,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
-                path = str(request.url.path)
-                if path.startswith("/api/v1/ai/chat"):
-                    logger.debug(f"[客户端断开] {request.method} {path} (RateLimitMiddleware)")
-                else:
-                    logger.info(f"[客户端断开] {request.method} {path} (RateLimitMiddleware)")
-                return Response(status_code=499)
-            # 其他运行时错误才记录为错误
+            if "No response returned" in str(e):
+                from core.middleware import _handle_no_response_error
+                return _handle_no_response_error(request, "RateLimit")
             logger.error(f"速率限制中间件捕获运行时错误: {e}")
             raise
         except Exception as e:

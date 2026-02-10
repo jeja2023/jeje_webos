@@ -10,7 +10,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, De
 from utils.timezone import get_beijing_time
 
 from core.ws_manager import manager
-from core.security import decode_token, TokenData, require_manager
+from core.security import decode_token, TokenData, require_manager, get_current_user, COOKIE_ACCESS_TOKEN
 
 router = APIRouter(prefix="/api/v1", tags=["WebSocket"])
 logger = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     """
     user_id = None
     user_info = None
+    selected_subprotocol = None
     connection_established = False  # 标记连接是否已建立
     
     async def safe_close(code: int, reason: str):
@@ -63,6 +64,35 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     token = auth_header[7:]
         
         if not token:
+            # 尝试从 WebSocket 子协议获取（Sec-WebSocket-Protocol）
+            proto_header = websocket.headers.get("sec-websocket-protocol", "")
+            if proto_header:
+                parts = [p.strip() for p in proto_header.split(",") if p.strip()]
+                # 约定：["bearer", "<token>"]
+                if len(parts) >= 2 and parts[0].lower() == "bearer":
+                    token = parts[1]
+                    selected_subprotocol = parts[0]
+                elif "bearer" in [p.lower() for p in parts]:
+                    # 兜底：取第一个非 bearer 的值作为 token
+                    for p in parts:
+                        if p.lower() != "bearer":
+                            token = p
+                            selected_subprotocol = "bearer"
+                            break
+        
+        if not token:
+            # 尝试从 Cookie 获取（HttpOnly Cookie 模式）
+            cookie_header = websocket.headers.get("cookie", "")
+            if cookie_header:
+                # 简单解析 Cookie 字符串
+                cookies = {}
+                for part in cookie_header.split(";"):
+                    if "=" in part:
+                        k, v = part.split("=", 1)
+                        cookies[k.strip()] = v.strip()
+                token = cookies.get(COOKIE_ACCESS_TOKEN)
+        
+        if not token:
             await safe_close(1008, "缺少认证 token")
             return
         
@@ -71,7 +101,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         user_id = user_info.user_id
         
         # 建立连接
-        await manager.connect(websocket, user_id)
+        await manager.connect(websocket, user_id, subprotocol=selected_subprotocol)
         connection_established = True
         
         # 发送连接成功消息
@@ -94,6 +124,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         while True:
             try:
                 data = await websocket.receive_text()
+                # 限制消息大小，防止 DoS（1MB）
+                if data and len(data) > 1024 * 1024:
+                    await safe_close(1009, "消息过大")
+                    break
                 
                 # 解析消息
                 try:
@@ -156,7 +190,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
 
 @router.get("/ws/online-users")
 async def get_online_users(
-    current_user: TokenData = Depends(require_manager())
+    current_user: TokenData = Depends(get_current_user)
 ):
     """
     获取在线用户列表
@@ -210,6 +244,12 @@ async def handle_transfer_message(websocket: WebSocket, user_id: int, message_ty
     - transfer_close: 关闭会话
     """
     session_code = data.get("session_code")
+    
+    # 验证 session_code 格式（防止恶意输入和内存滥用）
+    if session_code:
+        if not isinstance(session_code, str) or len(session_code) > 64 or not session_code.replace('-', '').replace('_', '').isalnum():
+            logger.warning(f"非法 session_code 格式: user_id={user_id}")
+            return
     
     if message_type == "transfer_create":
         # 发送方创建会话，进入等待状态

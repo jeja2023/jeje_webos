@@ -62,28 +62,39 @@ const Api = {
                         }
 
                         Config.log('检测到401，尝试刷新令牌...');
-                        this._refreshPromise = fetch(`${Config.apiBase}/auth/refresh`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
-                        });
+                        // 将整个刷新+存储过程作为一个 Promise，避免竞态条件
+                        this._refreshPromise = (async () => {
+                            const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
+                            });
 
-                        const refreshRes = await this._refreshPromise;
-                        this._refreshPromise = null;
-
-                        if (refreshRes.ok) {
-                            const refreshData = await refreshRes.json();
-                            if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
-                                if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
-                                    localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
-                                    if (refreshData.data.refresh_token) {
-                                        localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                            if (refreshRes.ok) {
+                                const refreshData = await refreshRes.json();
+                                if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
+                                    if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
+                                        localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
+                                        if (refreshData.data.refresh_token) {
+                                            localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                                        }
                                     }
+                                    Config.log('令牌刷新成功');
+                                    return true;
                                 }
+                            }
+                            return false;
+                        })();
+
+                        try {
+                            const refreshOk = await this._refreshPromise;
+                            if (refreshOk) {
                                 Config.log('令牌刷新成功，准备重试请求');
                                 return this.request(url, { ...options, _isRetry: true });
                             }
+                        } finally {
+                            this._refreshPromise = null;
                         }
                     } catch (e) {
                         this._refreshPromise = null;
@@ -273,7 +284,8 @@ const Api = {
      * 上传文件
      */
     async upload(url, fileOrFormData, fieldName = 'file', options = {}) {
-        const token = localStorage.getItem(Config.storageKeys.token);
+        // 与 request 方法保持一致：HttpOnly Cookie 模式下不使用 localStorage token
+        const token = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.token);
 
         let body;
         if (fileOrFormData instanceof FormData) {
@@ -295,13 +307,114 @@ const Api = {
             headers['X-CSRF-Token'] = csrfToken;
         }
 
-        const response = await fetch(`${Config.apiBase}${url}`, {
-            method: 'POST',
-            ...options,
-            credentials: 'include',  // 携带 Cookie
-            headers,
-            body
-        });
+        let response;
+
+        if (options.onProgress) {
+            response = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${Config.apiBase}${url}`);
+                xhr.withCredentials = true;
+
+                // 设置头部
+                Object.entries(headers).forEach(([k, v]) => {
+                    // For FormData, let the browser set the Content-Type with boundary
+                    if (k.toLowerCase() !== 'content-type') {
+                        xhr.setRequestHeader(k, v);
+                    }
+                });
+
+                // 进度监听
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        options.onProgress(percent, e.loaded, e.total);
+                    }
+                };
+
+                xhr.onload = () => {
+                    resolve({
+                        ok: xhr.status >= 200 && xhr.status < 300,
+                        status: xhr.status,
+                        json: async () => JSON.parse(xhr.responseText),
+                        text: async () => xhr.responseText,
+                        headers: {
+                            get: (name) => xhr.getResponseHeader(name)
+                        }
+                    });
+                };
+
+                xhr.onerror = () => {
+                    reject(new TypeError('Network request failed'));
+                };
+
+                xhr.send(body);
+            });
+        } else {
+            response = await fetch(`${Config.apiBase}${url}`, {
+                method: 'POST',
+                ...options,
+                credentials: 'include',  // 携带 Cookie
+                headers,
+                body
+            });
+        }
+
+        // 处理 401：复用 _refreshPromise 防止并发上传时重复刷新（与 request 方法一致）
+        if (response.status === 401 && !options._isRetry) {
+            const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
+            const canRefresh = Config.useHttpOnlyCookie || refreshToken;
+            if (canRefresh) {
+                try {
+                    // 复用已有的刷新 Promise（防止并发上传同时触发多次刷新）
+                    if (this._refreshPromise) {
+                        Config.log('上传: 等待已有的令牌刷新完成...');
+                        await this._refreshPromise;
+                        return this.upload(url, fileOrFormData, fieldName, { ...options, _isRetry: true });
+                    }
+
+                    Config.log('上传: 检测到401，尝试刷新令牌...');
+                    this._refreshPromise = (async () => {
+                        const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
+                        });
+                        if (refreshRes.ok) {
+                            const refreshData = await refreshRes.json();
+                            if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
+                                if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
+                                    localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
+                                    if (refreshData.data.refresh_token) {
+                                        localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                        return false;
+                    })();
+
+                    try {
+                        const refreshOk = await this._refreshPromise;
+                        if (refreshOk) {
+                            return this.upload(url, fileOrFormData, fieldName, { ...options, _isRetry: true });
+                        }
+                    } finally {
+                        this._refreshPromise = null;
+                    }
+                } catch (e) {
+                    this._refreshPromise = null;
+                    Config.error('上传时刷新令牌失败:', e);
+                }
+            }
+            // 刷新失败，清除认证并跳转登录
+            if (Store.get('isLoggedIn')) {
+                Store.clearAuth();
+                Router.push('/login');
+            }
+            throw new Error('登录已过期，请重新登录');
+        }
 
         const data = await response.json();
 
@@ -324,7 +437,8 @@ const Api = {
      * 注意：不走 JSON 流程，避免二进制解析异常
      */
     async download(url, options = {}) {
-        const token = localStorage.getItem(Config.storageKeys.token);
+        // 与 request 方法保持一致：HttpOnly Cookie 模式下不使用 localStorage token
+        const token = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.token);
         const fullUrl = url.startsWith('http') ? url : `${Config.apiBase}${url}`;
 
         const headers = {
@@ -409,7 +523,7 @@ const SystemApi = {
     // 导出审计日志
     exportAuditLogs: (params) => {
         const query = new URLSearchParams(params).toString();
-        return `${Config.api.baseUrl}/audit/export?${query}`;
+        return `${Config.apiBase}/audit/export?${query}`;
     },
     createModule: (data) => Api.post('/system/modules', data),
     deleteModule: (id, params) => Api.delete(`/system/modules/${id}` + (params ? '?' + new URLSearchParams(params).toString() : ''))

@@ -10,8 +10,7 @@ from datetime import datetime
 from utils.timezone import get_beijing_time
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, update, or_, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func
 
 from .filemanager_models import VirtualFolder, VirtualFile
 from models import User
@@ -74,7 +73,7 @@ class FileManagerService:
             select(VirtualFolder).where(
                 VirtualFolder.name == folder_name,
                 VirtualFolder.user_id == self.user_id,
-                VirtualFolder.parent_id == None
+                VirtualFolder.parent_id.is_(None)
             )
         )
         folder = folder.scalar_one_or_none()
@@ -92,9 +91,10 @@ class FileManagerService:
             self.db.add(folder)
             await self.db.flush()
             
-        # 2. 处理重名
+        # 2. 处理重名（限制最大尝试次数防止无限循环）
         base_name, ext = os.path.splitext(filename)
         counter = 1
+        max_rename_attempts = 200
         final_name = filename
         while True:
             existing = await self.db.execute(
@@ -106,6 +106,8 @@ class FileManagerService:
             )
             if not existing.scalar_one_or_none():
                 break
+            if counter > max_rename_attempts:
+                raise ValueError(f"文件重名过多（超过 {max_rename_attempts} 次），请清理同名文件后重试")
             final_name = f"{base_name}_{counter}{ext}"
             counter += 1
             
@@ -147,8 +149,29 @@ class FileManagerService:
         }
         return mime_map.get(ext, "application/octet-stream")
     
+    @staticmethod
+    def _validate_name(name: str):
+        """验证文件/文件夹名称，过滤危险字符"""
+        if not name or not name.strip():
+            raise ValueError("名称不能为空")
+        name = name.strip()
+        if len(name) > 255:
+            raise ValueError("名称长度不能超过 255 个字符")
+        # 禁止路径遍历和文件系统危险字符
+        dangerous_chars = ['/', '\\', '\x00', '..']
+        for char in dangerous_chars:
+            if char in name:
+                raise ValueError(f"名称不能包含特殊字符: {repr(char)}")
+        # 禁止 Windows 保留设备名
+        reserved_names = {'CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4',
+                         'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3',
+                         'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'}
+        if name.upper().split('.')[0] in reserved_names:
+            raise ValueError("名称不能使用系统保留名称")
+    
     async def create_folder(self, data: FolderCreate) -> VirtualFolder:
         """创建文件夹"""
+        self._validate_name(data.name)
         parent_path = "/"
         if data.parent_id:
             parent = await self.get_folder(data.parent_id)
@@ -181,6 +204,7 @@ class FileManagerService:
             return None
         
         if data.name:
+            self._validate_name(data.name)
             if folder.is_system:
                 raise ValueError("系统保护文件夹不允许重命名")
 
@@ -253,8 +277,8 @@ class FileManagerService:
         
         return folder
     
-    async def delete_folder(self, folder_id: int) -> bool:
-        """删除文件夹（级联删除文件）"""
+    async def delete_folder(self, folder_id: int, _is_root: bool = True) -> bool:
+        """删除文件夹（级联删除文件），仅顶层调用 commit 保证事务一致性"""
         folder = await self.get_folder(folder_id)
         if not folder:
             return False
@@ -270,16 +294,19 @@ class FileManagerService:
         )
         children = result.scalars().all()
         for child in children:
-            await self.delete_folder(child.id)
+            await self.delete_folder(child.id, _is_root=False)
         
         await self.db.delete(folder)
-        await self.db.commit()
+        
+        # 仅在顶层调用 commit，避免递归中多次 commit 导致不一致
+        if _is_root:
+            await self.db.commit()
         
         logger.info(f"用户 {self.user_id} 删除文件夹: {folder.path}")
         return True
     
     async def _delete_folder_files(self, folder_id: int):
-        """删除文件夹下的所有物理文件"""
+        """删除文件夹下的所有物理文件及其数据库记录"""
         result = await self.db.execute(
             select(VirtualFile)
             .where(VirtualFile.folder_id == folder_id, VirtualFile.user_id == self.user_id)
@@ -293,6 +320,8 @@ class FileManagerService:
                     self.storage.delete_file(file.storage_path)
             except Exception as e:
                 logger.warning(f"删除物理文件失败: {file.storage_path}, 错误: {e}")
+            # 同时删除数据库记录，避免孤儿记录
+            await self.db.delete(file)
     
     async def get_folder_tree(self) -> List[FolderTreeNode]:
         """获取完整文件夹树"""
@@ -412,6 +441,10 @@ class FileManagerService:
         if not update_data:
             return file
         
+        # 验证文件名（如果更新了名称）
+        if "name" in update_data and update_data["name"]:
+            self._validate_name(update_data["name"])
+        
         for key, value in update_data.items():
             setattr(file, key, value)
         
@@ -518,11 +551,38 @@ class FileManagerService:
             VirtualFolder.parent_id == folder_id
         )
         if keyword:
-            folder_query = folder_query.where(VirtualFolder.name.ilike(f"%{keyword}%"))
+            # 转义 LIKE 通配符，防止用户通过 % 和 _ 匹配任意内容
+            safe_keyword = keyword.replace('%', r'\%').replace('_', r'\_')
+            folder_query = folder_query.where(VirtualFolder.name.ilike(f"%{safe_keyword}%"))
         folder_query = folder_query.order_by(VirtualFolder.name)
         
         result = await self.db.execute(folder_query)
         folders = result.scalars().all()
+        
+        # 批量查询所有子文件夹的文件数和子文件夹数（避免 N+1 查询）
+        folder_ids = [f.id for f in folders]
+        file_counts = {}
+        subfolder_counts = {}
+        
+        if folder_ids:
+            # 批量查询文件数
+            from sqlalchemy import case
+            file_count_result = await self.db.execute(
+                select(VirtualFile.folder_id, func.count(VirtualFile.id))
+                .where(VirtualFile.folder_id.in_(folder_ids), VirtualFile.user_id == self.user_id)
+                .group_by(VirtualFile.folder_id)
+            )
+            for fid, cnt in file_count_result.all():
+                file_counts[fid] = cnt
+            
+            # 批量查询子文件夹数
+            subfolder_count_result = await self.db.execute(
+                select(VirtualFolder.parent_id, func.count(VirtualFolder.id))
+                .where(VirtualFolder.parent_id.in_(folder_ids), VirtualFolder.user_id == self.user_id)
+                .group_by(VirtualFolder.parent_id)
+            )
+            for fid, cnt in subfolder_count_result.all():
+                subfolder_counts[fid] = cnt
         
         folder_infos = []
         for f in folders:
@@ -533,8 +593,8 @@ class FileManagerService:
                 path=f.path,
                 created_at=f.created_at,
                 updated_at=f.updated_at,
-                file_count=await self._count_folder_files(f.id),
-                folder_count=await self._count_subfolders(f.id),
+                file_count=file_counts.get(f.id, 0),
+                folder_count=subfolder_counts.get(f.id, 0),
                 icon=f.icon or "📁",
                 is_system=f.is_system,
                 is_virtual=f.is_virtual
@@ -546,7 +606,8 @@ class FileManagerService:
             VirtualFile.folder_id == folder_id
         )
         if keyword:
-            file_query = file_query.where(VirtualFile.name.ilike(f"%{keyword}%"))
+            safe_keyword = keyword.replace('%', r'\%').replace('_', r'\_')
+            file_query = file_query.where(VirtualFile.name.ilike(f"%{safe_keyword}%"))
         file_query = file_query.order_by(VirtualFile.name)
         
         result = await self.db.execute(file_query)
@@ -574,21 +635,41 @@ class FileManagerService:
         )
 
     async def _get_breadcrumbs(self, folder_id: Optional[int]) -> List[BreadcrumbItem]:
-        """获取面包屑导航"""
+        """获取面包屑导航（优化：收集所有祖先 ID 后批量查询）"""
         breadcrumbs = [BreadcrumbItem(id=None, name="根目录", path="/")]
         if not folder_id:
             return breadcrumbs
         
+        # 先收集所有祖先 ID（逐级上溯，但只查 id 和 parent_id）
+        ancestor_ids = []
         current_id = folder_id
-        path_parts = []
-        while current_id:
-            folder = await self.get_folder(current_id)
-            if not folder:
+        # 最多 20 层防止无限循环
+        for _ in range(20):
+            if current_id is None:
                 break
-            path_parts.append(BreadcrumbItem(id=folder.id, name=folder.name, path=folder.path))
-            current_id = folder.parent_id
+            ancestor_ids.append(current_id)
+            result = await self.db.execute(
+                select(VirtualFolder.parent_id).where(VirtualFolder.id == current_id)
+            )
+            row = result.scalar_one_or_none()
+            current_id = row if row else None
         
-        path_parts.reverse()
+        if not ancestor_ids:
+            return breadcrumbs
+        
+        # 批量查询所有祖先文件夹
+        result = await self.db.execute(
+            select(VirtualFolder).where(VirtualFolder.id.in_(ancestor_ids))
+        )
+        folders_map = {f.id: f for f in result.scalars().all()}
+        
+        # 按 ancestor_ids 倒序（从根到当前）构建面包屑
+        path_parts = []
+        for aid in reversed(ancestor_ids):
+            folder = folders_map.get(aid)
+            if folder:
+                path_parts.append(BreadcrumbItem(id=folder.id, name=folder.name, path=folder.path))
+        
         breadcrumbs.extend(path_parts)
         return breadcrumbs
     
@@ -687,8 +768,63 @@ class FileManagerService:
         )
     
     async def search(self, keyword: str) -> DirectoryContents:
-        """全局搜索"""
-        return await self.browse_directory(keyword=keyword)
+        """全局搜索（跨所有文件夹）"""
+        safe_keyword = keyword.replace('%', r'\%').replace('_', r'\_')
+        
+        # 搜索所有匹配的文件夹
+        folder_query = select(VirtualFolder).where(
+            VirtualFolder.user_id == self.user_id,
+            VirtualFolder.name.ilike(f"%{safe_keyword}%")
+        ).order_by(VirtualFolder.name)
+        result = await self.db.execute(folder_query)
+        folders = result.scalars().all()
+        
+        folder_ids = [f.id for f in folders]
+        file_counts = {}
+        subfolder_counts = {}
+        if folder_ids:
+            file_count_result = await self.db.execute(
+                select(VirtualFile.folder_id, func.count(VirtualFile.id))
+                .where(VirtualFile.folder_id.in_(folder_ids), VirtualFile.user_id == self.user_id)
+                .group_by(VirtualFile.folder_id)
+            )
+            for fid, cnt in file_count_result.all():
+                file_counts[fid] = cnt
+            subfolder_count_result = await self.db.execute(
+                select(VirtualFolder.parent_id, func.count(VirtualFolder.id))
+                .where(VirtualFolder.parent_id.in_(folder_ids), VirtualFolder.user_id == self.user_id)
+                .group_by(VirtualFolder.parent_id)
+            )
+            for fid, cnt in subfolder_count_result.all():
+                subfolder_counts[fid] = cnt
+        
+        folder_infos = [
+            FolderInfo(
+                id=f.id, name=f.name, parent_id=f.parent_id, path=f.path,
+                created_at=f.created_at, updated_at=f.updated_at,
+                file_count=file_counts.get(f.id, 0),
+                folder_count=subfolder_counts.get(f.id, 0),
+                icon=f.icon or "📁", is_system=f.is_system, is_virtual=f.is_virtual
+            ) for f in folders
+        ]
+        
+        # 搜索所有匹配的文件（不限文件夹）
+        file_query = select(VirtualFile).where(
+            VirtualFile.user_id == self.user_id,
+            VirtualFile.name.ilike(f"%{safe_keyword}%")
+        ).order_by(VirtualFile.name)
+        result = await self.db.execute(file_query)
+        files = result.scalars().all()
+        file_infos = [self._file_to_info(f) for f in files]
+        
+        return DirectoryContents(
+            current_folder=None,
+            breadcrumbs=[BreadcrumbItem(id=None, name="搜索结果", path="/")],
+            folders=folder_infos,
+            files=file_infos,
+            total_folders=len(folder_infos),
+            total_files=len(file_infos)
+        )
     
     async def get_starred_files(self) -> List[FileInfo]:
         """获取收藏的文件"""

@@ -36,7 +36,7 @@ class DataReportPage extends Component {
 
         // 添加 token 到 URL
         const separator = url.includes('?') ? '&' : '?';
-        window.open(`${url}${separator}token=${token}`, '_blank');
+        window.open(Utils.withToken(url), '_blank');
         Toast.success(`正在导出${typeName}...`);
     }
 

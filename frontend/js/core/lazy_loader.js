@@ -54,7 +54,7 @@ const LazyLoader = {
         );
 
         this.initialized = true;
-        console.log('[LazyLoader] 图片懒加载器初始化完成');
+        Config.log('图片懒加载器初始化完成');
 
         // 自动观察现有的懒加载图片
         this.observeAll();

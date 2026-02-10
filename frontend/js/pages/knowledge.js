@@ -20,12 +20,17 @@ const KnowledgeApi = {
     batchSortNodes: (updates) => Api.post('/knowledge/nodes/sort', updates),
 
     // 文件上传
-    uploadFile: (baseId, parentId, file) => {
+    uploadFile(baseId, parentId, file) {
         const formData = new FormData();
         formData.append('base_id', baseId);
         if (parentId) formData.append('parent_id', parentId);
         formData.append('file', file);
         return Api.upload('/knowledge/upload', formData);
+    },
+
+    // 中止解析
+    cancelProcessing(nodeId) {
+        return Api.post(`/knowledge/nodes/${nodeId}/cancel`);
     },
 
     // 混合搜索
@@ -37,7 +42,7 @@ const KnowledgeApi = {
     },
 
     // 获取文件预览URL
-    getPreviewUrl: (nodeId) => `/api/v1/knowledge/nodes/${nodeId}/preview?token=${localStorage.getItem(Config.storageKeys.token)}`,
+    getPreviewUrl: (nodeId) => Utils.withToken(`/api/v1/knowledge/nodes/${nodeId}/preview`),
 
     // 获取知识图谱数据
     getGraph: (baseId) => Api.get(`/knowledge/bases/${baseId}/graph`)
@@ -529,9 +534,33 @@ class KnowledgeViewPage extends Component {
                 <div class="empty-state">
                     <div class="empty-icon" style="animation:spin 2s linear infinite"><i class="ri-settings-3-line"></i></div>
                     <p>文档正在后台解析中...</p>
-                    <p class="text-secondary" style="font-size:12px">解析完成后将自动显示内容</p>
+                    <p class="text-secondary" style="font-size:12px; margin-bottom:15px">解析完成后将自动显示内容</p>
+                    <button class="btn btn-outline-danger btn-sm" id="btnCancelProcessing"><i class="ri-stop-circle-line"></i> 取消解析</button>
                 </div>
             `;
+
+            // 绑定取消按钮事件
+            const btnCancel = container.querySelector('#btnCancelProcessing');
+            if (btnCancel) {
+                btnCancel.onclick = async () => {
+                    if (confirm('确定要中止解析吗？已解析的内容可能会丢失。')) {
+                        try {
+                            await KnowledgeApi.cancelProcessing(node.id);
+                            Toast.info('已请求中止');
+                            // 停止轮询，等待下次手动刷新或状态变更
+                            if (this.pollingTimer) {
+                                clearInterval(this.pollingTimer);
+                                this.pollingTimer = null;
+                            }
+                            // 刷新状态
+                            this.checkNodeStatus(node.id);
+                        } catch (e) {
+                            Toast.error('取消失败');
+                        }
+                    }
+                };
+            }
+
             // 如果还没有启动轮询，则启动
             if (!this.pollingTimer) {
                 this.pollingTimer = setInterval(() => this.checkNodeStatus(node.id), 2000);
@@ -551,6 +580,20 @@ class KnowledgeViewPage extends Component {
                      <div class="empty-icon"><i class="ri-folder-line"></i></div>
                      <p>文件夹：${Utils.escapeHtml(node.title)}</p>
                      <p class="text-secondary">请在左侧选择子文档或上传文件</p>
+                 </div>
+             `;
+            return;
+        }
+
+        if (node.status === 'cancelled') {
+            container.innerHTML = `
+                 <div class="empty-state">
+                     <div class="empty-icon text-muted"><i class="ri-stop-circle-line"></i></div>
+                     <p>文档解析已中止</p>
+                     <p class="text-secondary">您可以删除该文件后重新上传</p>
+                     <div class="mt-3">
+                         <button class="btn btn-outline-danger btn-sm" onclick="document.getElementById('btnDeleteDoc').click()"><i class="ri-delete-bin-line"></i> 删除文件</button>
+                     </div>
                  </div>
              `;
             return;

@@ -9,42 +9,109 @@ if (typeof DEBUG_MODE === 'undefined') {
 }
 
 /**
- * 安全的数学表达式计算器（替代 eval）
+ * 安全的数学表达式计算器（替代 eval / Function）
  * 只支持基本数学运算：+、-、*、/、%、括号、数字
  * 不支持函数调用、变量访问等危险操作
  */
 function safeEvalMath(expression) {
-    try {
-        // 移除所有空白字符
-        expression = expression.replace(/\s/g, '');
+    // 移除所有空白字符
+    const expr = expression.replace(/\s/g, '');
 
-        // 验证表达式只包含允许的字符：数字、小数点、运算符、括号
-        if (!/^[0-9+\-*/().%]+$/.test(expression)) {
-            throw new Error('表达式包含不允许的字符');
-        }
-
-        // 验证括号匹配
-        let parenCount = 0;
-        for (let i = 0; i < expression.length; i++) {
-            if (expression[i] === '(') parenCount++;
-            if (expression[i] === ')') parenCount--;
-            if (parenCount < 0) throw new Error('括号不匹配');
-        }
-        if (parenCount !== 0) throw new Error('括号不匹配');
-
-        // 使用 Function 构造函数（比 eval 稍安全，但仍需限制）
-        // 只允许数学运算，不允许访问全局对象
-        const result = new Function('return ' + expression)();
-
-        // 验证结果是数字
-        if (typeof result !== 'number' || !isFinite(result)) {
-            throw new Error('计算结果不是有效数字');
-        }
-
-        return result;
-    } catch (e) {
-        throw e;
+    // 验证表达式只包含允许的字符：数字、小数点、运算符、括号
+    if (!/^[0-9+\-*/().%]+$/.test(expr)) {
+        throw new Error('表达式包含不允许的字符');
     }
+
+    // Tokenize
+    const tokens = [];
+    let num = '';
+    for (let i = 0; i < expr.length; i++) {
+        const ch = expr[i];
+        if (/\d|\./.test(ch)) {
+            num += ch;
+            continue;
+        }
+        if (num) {
+            tokens.push(num);
+            num = '';
+        }
+        tokens.push(ch);
+    }
+    if (num) tokens.push(num);
+
+    // Shunting-yard to RPN
+    const output = [];
+    const ops = [];
+    const prec = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2 };
+    const isOp = (t) => t in prec;
+
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (/^\d+(\.\d+)?$/.test(t)) {
+            output.push(t);
+            continue;
+        }
+        if (t === '(') {
+            ops.push(t);
+            continue;
+        }
+        if (t === ')') {
+            while (ops.length && ops[ops.length - 1] !== '(') {
+                output.push(ops.pop());
+            }
+            if (!ops.length) throw new Error('括号不匹配');
+            ops.pop();
+            continue;
+        }
+        if (isOp(t)) {
+            // 处理一元负号（如 -1 或 ( -2 )）
+            const prev = tokens[i - 1];
+            if (t === '-' && (i === 0 || (prev && (isOp(prev) || prev === '(')))) {
+                output.push('0');
+            }
+            while (ops.length && isOp(ops[ops.length - 1]) && prec[ops[ops.length - 1]] >= prec[t]) {
+                output.push(ops.pop());
+            }
+            ops.push(t);
+            continue;
+        }
+        throw new Error('表达式格式错误');
+    }
+    while (ops.length) {
+        const op = ops.pop();
+        if (op === '(' || op === ')') throw new Error('括号不匹配');
+        output.push(op);
+    }
+
+    // Evaluate RPN
+    const stack = [];
+    for (const t of output) {
+        if (/^\d+(\.\d+)?$/.test(t)) {
+            stack.push(Number(t));
+        } else if (isOp(t)) {
+            const b = stack.pop();
+            const a = stack.pop();
+            if (a === undefined || b === undefined) throw new Error('表达式格式错误');
+            let r;
+            switch (t) {
+                case '+': r = a + b; break;
+                case '-': r = a - b; break;
+                case '*': r = a * b; break;
+                case '/': r = a / b; break;
+                case '%': r = a % b; break;
+                default: throw new Error('不支持的运算符');
+            }
+            stack.push(r);
+        } else {
+            throw new Error('表达式格式错误');
+        }
+    }
+    if (stack.length !== 1) throw new Error('表达式格式错误');
+    const result = stack[0];
+    if (typeof result !== 'number' || !isFinite(result)) {
+        throw new Error('计算结果不是有效数字');
+    }
+    return result;
 }
 
 const AnalysisSmartTableMixin = {
@@ -212,14 +279,26 @@ const AnalysisSmartTableMixin = {
                 // 计算合计（基于全部筛选后数据）
                 const totals = {};
                 table.fields.forEach(f => {
-                    if (f.type === 'number' || f.type === 'calculated') {
+                    // 仅对非日期和非下拉字段尝试计算合计
+                    if (f.type !== 'date' && f.type !== 'select') {
                         let sum = 0;
+                        let hasNumeric = false;
                         filteredData.forEach(row => {
                             const val = formatCellValue(f, row);
+                            if (val === null || val === undefined || val === '') return;
+
+                            // 尝试清理非数字符号并转换为浮点数
                             const num = parseFloat(String(val).replace(/[^\d.-]/g, ''));
-                            if (!isNaN(num)) sum += num;
+                            if (!isNaN(num)) {
+                                sum += num;
+                                hasNumeric = true;
+                            }
                         });
-                        totals[f.name] = sum;
+
+                        // 如果该列确实含有有效数字，或者本来就是数字/计算类型，则记录合计值
+                        if (hasNumeric || f.type === 'number' || f.type === 'calculated') {
+                            totals[f.name] = sum;
+                        }
                     }
                 });
 
@@ -352,37 +431,37 @@ const AnalysisSmartTableMixin = {
                 if (!f.name) f.name = `col_${Math.random().toString(36).substr(2, 6)}`;
 
                 return `
-                <div class="field-setup-item p-12 mb-10 border-radius-sm bg-light relative ${isCalc && !f._collapsed ? 'wide' : 'half'}" data-index="${i}" draggable="true" ondragstart="AnalysisPage.prototype.handleFieldDragStart(event, ${i})" ondragover="AnalysisPage.prototype.handleFieldDragOver(event)" ondrop="AnalysisPage.prototype.handleFieldDrop(event, ${i})">
+                <div class="field-setup-item p-12 mb-10 border-radius-sm bg-light relative ${isCalc && !f._collapsed ? 'wide' : 'half'}" data-index="${i}" draggable="true">
                     <div class="flex gap-10 align-items-center">
                         <div class="field-drag-handle" style="cursor: grab; padding: 5px; color: var(--color-text-secondary);" title="拖拽排序">⋮⋮</div>
                         <div class="flex-center font-bold text-primary" style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: white; font-size: 12px;">${i + 1}</div>
                         <div style="flex: 1.5;">
-                            <input type="text" class="form-control form-control-sm field-label" placeholder="字段名称 (如: 语文)" value="${Utils.escapeHtml(f.label || '')}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'label', this.value)">
+                            <input type="text" class="form-control form-control-sm field-label" placeholder="字段名称 (如: 语文)" value="${Utils.escapeHtml(f.label || '')}" data-field-action="update" data-field-key="label">
                         </div>
                         <div style="flex: 1;">
-                            <select class="form-control form-control-sm field-type" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'type', this.value); if(this.value === 'calculated') { AnalysisPage.prototype.updateFieldState(${i}, 'precision', 2); }">
+                            <select class="form-control form-control-sm field-type" data-field-action="update-type">
                                 <option value="text" ${f.type === 'text' ? 'selected' : ''}>文本</option>
                                 <option value="number" ${f.type === 'number' ? 'selected' : ''}>数字</option>
                                 <option value="date" ${f.type === 'date' ? 'selected' : ''}>日期</option>
                                 <option value="select" ${f.type === 'select' ? 'selected' : ''}>下拉选择</option>
-                                <option value="calculated" ${f.type === 'calculated' ? 'selected' : ''}><i class="ri-flashlight-line"></i> 自动计算</option>
+                                <option value="calculated" ${f.type === 'calculated' ? 'selected' : ''}> 自动计算</option>
                             </select>
                         </div>
                         ${!isCalc ? `
                         <label class="flex-center gap-4 cursor-pointer text-xs" title="设为必填字段">
-                            <input type="checkbox" ${f.required ? 'checked' : ''} onchange="AnalysisPage.prototype.updateFieldState(${i}, 'required', this.checked)">
+                            <input type="checkbox" ${f.required ? 'checked' : ''} data-field-action="update-check" data-field-key="required">
                             必填
                         </label>
                         ` : ''}
                         ${isNumber ? `
-                        <button class="btn btn-ghost btn-xs" onclick="AnalysisPage.prototype.showConditionalFormatModal(${i})" title="条件格式"><i class="ri-palette-line"></i></button>
+                        <button class="btn btn-ghost btn-xs" data-field-action="conditional-format" title="条件格式"><i class="ri-palette-line"></i></button>
                         ` : ''}
-                        <button class="btn btn-ghost btn-xs text-danger" onclick="AnalysisPage.prototype.removeField(${i})" title="移除字段">✕</button>
+                        <button class="btn btn-ghost btn-xs text-danger" data-field-action="remove" title="移除字段">✕</button>
                     </div>
 
                     ${f.type === 'select' ? `
                         <div class="mt-8">
-                            <input type="text" class="form-control form-control-sm" placeholder="选项配置，用英文逗号分隔 (如: 优秀,良好,及格)" value="${Utils.escapeHtml(f.options || '')}" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'options', this.value)">
+                            <input type="text" class="form-control form-control-sm" placeholder="选项配置，用英文逗号分隔 (如: 优秀,良好,及格)" value="${Utils.escapeHtml(f.options || '')}" data-field-action="update" data-field-key="options">
                         </div>
                     ` : ''}
 
@@ -393,27 +472,27 @@ const AnalysisSmartTableMixin = {
                             <div class="mb-10">
                                 <div class="text-xs text-secondary mb-5">运算方式:</div>
                                 <div class="flex flex-wrap gap-5 mb-10">
-                                    <button class="btn btn-xs ${f.calcMode === 'sum' || !f.calcMode ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'sum')"><i class="ri-add-line"></i> 求和</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'product' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'product')"><i class="ri-close-line"></i> 乘积</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'diff' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'diff')"><i class="ri-subtract-line"></i> 差值</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'divide' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'divide')"><i class="ri-divide-line"></i> 除法</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'avg' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'avg')"><i class="ri-bar-chart-line"></i> 平均值</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'percent' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'percent')"><i class="ri-percent-line"></i> 百分比</button>
-                                    <button class="btn btn-xs ${f.calcMode === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}" onclick="AnalysisPage.prototype.setCalcMode(${i}, 'custom')"><i class="ri-edit-2-line"></i> 自定义</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'sum' || !f.calcMode ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="sum"><i class="ri-add-line"></i> 求和</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'product' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="product"><i class="ri-close-line"></i> 乘积</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'diff' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="diff"><i class="ri-subtract-line"></i> 差值</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'divide' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="divide"><i class="ri-divide-line"></i> 除法</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'avg' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="avg"><i class="ri-bar-chart-line"></i> 平均值</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'percent' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="percent"><i class="ri-percent-line"></i> 百分比</button>
+                                    <button class="btn btn-xs ${f.calcMode === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}" data-field-action="calc-mode" data-mode="custom"><i class="ri-edit-2-line"></i> 自定义</button>
                                 </div>
                                 
                                 ${f.calcMode === 'percent' ? `
                                     <div class="mb-10 p-10 bg-light border-radius-sm">
                                         <div class="text-xs text-secondary mb-5">百分比计算: 分子 ÷ 分母 × 100%</div>
                                         <div class="flex gap-10 align-items-center">
-                                            <select class="form-control form-control-sm" style="flex:1;" onchange="AnalysisPage.prototype.setPercentField(${i}, 'numerator', this.value)">
+                                            <select class="form-control form-control-sm" style="flex:1;" data-field-action="percent-field" data-percent-key="numerator">
                                                 <option value="">选择分子</option>
                                                  ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
                     `<option value="${Utils.escapeAttr(other.label)}" ${f.numerator === other.label ? 'selected' : ''}>${Utils.escapeHtml(other.label || '未命名')}</option>`
                 ).join('')}
                                             </select>
                                             <span>÷</span>
-                                            <select class="form-control form-control-sm" style="flex:1;" onchange="AnalysisPage.prototype.setPercentField(${i}, 'denominator', this.value)">
+                                            <select class="form-control form-control-sm" style="flex:1;" data-field-action="percent-field" data-percent-key="denominator">
                                                 <option value="">选择分母</option>
                                                  ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
                     `<option value="${Utils.escapeAttr(other.label)}" ${f.denominator === other.label ? 'selected' : ''}>${Utils.escapeHtml(other.label || '未命名')}</option>`
@@ -425,17 +504,17 @@ const AnalysisSmartTableMixin = {
                                 ` : f.calcMode === 'custom' ? `
                                     <div class="mb-10">
                                         <div class="text-xs text-secondary mb-5">输入公式（点击字段插入）:</div>
-                                        <input type="text" class="form-control form-control-sm font-mono mb-5" value="${Utils.escapeHtml(f.formula || '')}" oninput="AnalysisPage.prototype.updateFormula(${i}, this.value)" placeholder="例如: 语文 + 数学 * 2">
+                                        <input type="text" class="form-control form-control-sm font-mono mb-5 formula-input" value="${Utils.escapeHtml(f.formula || '')}" data-field-action="formula-input" placeholder="例如: 语文 + 数学 * 2">
                                         <div class="flex flex-wrap gap-5">
                                             ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other =>
-                    `<button class="btn btn-outline-primary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, decodeURIComponent('${encodeURIComponent(other.label || '')}'))">${Utils.escapeHtml(other.label || '未命名')}</button>`
+                    `<button class="btn btn-outline-primary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(other.label || '')}">${Utils.escapeHtml(other.label || '未命名')}</button>`
                 ).join('')}
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' + ')">+</button>
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' - ')">-</button>
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' * ')">×</button>
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ' / ')">÷</button>
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, '(')">(</button>
-                                            <button class="btn btn-outline-secondary btn-xs" onclick="AnalysisPage.prototype.insertToFormula(${i}, ')')">)</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(' + ')}">+</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(' - ')}">-</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(' * ')}">×</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(' / ')}">÷</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent('(')}">(</button>
+                                            <button class="btn btn-outline-secondary btn-xs" data-field-action="insert-formula" data-insert="${encodeURIComponent(')')}"}>)</button>
                                         </div>
                                     </div>
                                 ` : `
@@ -444,7 +523,7 @@ const AnalysisSmartTableMixin = {
                                         ${fields.filter((_, idx) => idx !== i && fields[idx].type !== 'calculated').map(other => {
                     const isChecked = f.sourceFields && f.sourceFields.includes(other.label);
                     return `<label class="flex-center gap-4 cursor-pointer px-10 py-5 border-radius-sm ${isChecked ? 'bg-primary text-white' : 'bg-light border'}" style="font-size: 12px;">
-                                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="AnalysisPage.prototype.toggleFieldCheck(${i}, '${other.label}')" style="display:none;">
+                                                <input type="checkbox" ${isChecked ? 'checked' : ''} data-field-action="toggle-check" data-check-label="${Utils.escapeAttr(other.label)}" style="display:none;">
                                                 ${other.label || '未命名'}
                                             </label>`;
                 }).join('')}
@@ -454,7 +533,7 @@ const AnalysisSmartTableMixin = {
                             
                             <div class="flex gap-10 align-items-center mb-10">
                                 <div class="text-xs text-secondary">小数精度:</div>
-                                <select class="form-control form-control-sm" style="width: 80px;" onchange="AnalysisPage.prototype.updateFieldState(${i}, 'precision', parseInt(this.value))">
+                                <select class="form-control form-control-sm" style="width: 80px;" data-field-action="update-precision">
                                     <option value="0" ${f.precision === 0 ? 'selected' : ''}>整数</option>
                                     <option value="1" ${f.precision === 1 ? 'selected' : ''}>1位</option>
                                     <option value="2" ${f.precision === 2 || f.precision === undefined ? 'selected' : ''}>2位</option>
@@ -462,7 +541,7 @@ const AnalysisSmartTableMixin = {
                                     <option value="4" ${f.precision === 4 ? 'selected' : ''}>4位</option>
                                 </select>
                                 <label class="flex-center gap-5 cursor-pointer text-xs">
-                                    <input type="checkbox" ${f.showPercent ? 'checked' : ''} onchange="AnalysisPage.prototype.updateFieldState(${i}, 'showPercent', this.checked)">
+                                    <input type="checkbox" ${f.showPercent ? 'checked' : ''} data-field-action="update-check" data-field-key="showPercent">
                                     显示%符号
                                 </label>
                             </div>
@@ -471,10 +550,10 @@ const AnalysisSmartTableMixin = {
                                 <div class="text-xs font-mono bg-light px-10 py-5 border-radius-sm" style="max-width: 70%; overflow: hidden; text-overflow: ellipsis;">
                                     <i class="ri-file-edit-line"></i> ${Utils.escapeHtml(f.formula || '(请配置公式)')}
                                 </div>
-                                <button class="btn btn-primary btn-xs" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, true)">确定</button>
+                                <button class="btn btn-primary btn-xs" data-field-action="toggle-panel" data-collapse="true">确定</button>
                             </div>
                         </div>
-                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" onclick="AnalysisPage.prototype.toggleCalcPanel(${i}, false)"><i class="ri-file-edit-line"></i> ${Utils.escapeHtml(f.formula || '(未设置)')}${f.showPercent ? '%' : ''}</div>` : ''}
+                        ${f._collapsed ? `<div class="text-xs text-primary cursor-pointer mt-8 px-10 py-5 bg-white border-radius-sm font-mono" style="border: 1px solid var(--color-primary);" data-field-action="toggle-panel" data-collapse="false"><i class="ri-file-edit-line"></i> ${Utils.escapeHtml(f.formula || '(未设置)')}${f.showPercent ? '%' : ''}</div>` : ''}
                     ` : ''}
                 </div>
                 `;
@@ -747,6 +826,107 @@ const AnalysisSmartTableMixin = {
             });
             document.getElementById('fields-setup-container').innerHTML = renderFields();
         };
+
+        // 统一事件委托（替代所有 inline 事件）
+        const container = document.getElementById('fields-setup-container');
+        if (container && !container._fieldBound) {
+            container._fieldBound = true;
+
+            const getIndex = (el) => {
+                const item = el.closest('.field-setup-item');
+                return item ? parseInt(item.dataset.index) : -1;
+            };
+
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-field-action]');
+                if (!btn) return;
+                const act = btn.dataset.fieldAction;
+                const idx = getIndex(btn);
+                if (idx < 0 && act !== 'insert-formula') return;
+
+                switch (act) {
+                    case 'remove':
+                        AnalysisPage.prototype.removeField(idx);
+                        break;
+                    case 'conditional-format':
+                        AnalysisPage.prototype.showConditionalFormatModal(idx);
+                        break;
+                    case 'calc-mode':
+                        AnalysisPage.prototype.setCalcMode(idx, btn.dataset.mode);
+                        break;
+                    case 'insert-formula':
+                        AnalysisPage.prototype.insertToFormula(idx, decodeURIComponent(btn.dataset.insert || ''));
+                        break;
+                    case 'toggle-panel':
+                        AnalysisPage.prototype.toggleCalcPanel(idx, btn.dataset.collapse === 'true');
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+            container.addEventListener('change', (e) => {
+                const el = e.target.closest('[data-field-action]');
+                if (!el) return;
+                const act = el.dataset.fieldAction;
+                const idx = getIndex(el);
+                if (idx < 0) return;
+
+                switch (act) {
+                    case 'update':
+                        AnalysisPage.prototype.updateFieldState(idx, el.dataset.fieldKey, el.value);
+                        break;
+                    case 'update-type':
+                        AnalysisPage.prototype.updateFieldState(idx, 'type', el.value);
+                        if (el.value === 'calculated') {
+                            AnalysisPage.prototype.updateFieldState(idx, 'precision', 2);
+                        }
+                        break;
+                    case 'update-check':
+                        AnalysisPage.prototype.updateFieldState(idx, el.dataset.fieldKey, el.checked);
+                        break;
+                    case 'update-precision':
+                        AnalysisPage.prototype.updateFieldState(idx, 'precision', parseInt(el.value));
+                        break;
+                    case 'percent-field':
+                        AnalysisPage.prototype.setPercentField(idx, el.dataset.percentKey, el.value);
+                        break;
+                    case 'toggle-check':
+                        AnalysisPage.prototype.toggleFieldCheck(idx, el.dataset.checkLabel);
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+            container.addEventListener('input', (e) => {
+                const el = e.target.closest('[data-field-action="formula-input"]');
+                if (el) {
+                    const idx = getIndex(el);
+                    if (idx >= 0) AnalysisPage.prototype.updateFormula(idx, el.value);
+                }
+            });
+
+            // 拖拽排序
+            container.addEventListener('dragstart', (e) => {
+                const item = e.target.closest('.field-setup-item');
+                if (item) {
+                    const idx = parseInt(item.dataset.index);
+                    AnalysisPage.prototype.handleFieldDragStart(e, idx);
+                }
+            });
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            container.addEventListener('drop', (e) => {
+                const item = e.target.closest('.field-setup-item');
+                if (item) {
+                    const idx = parseInt(item.dataset.index);
+                    AnalysisPage.prototype.handleFieldDrop(e, idx);
+                }
+            });
+        }
     },
 
     /**

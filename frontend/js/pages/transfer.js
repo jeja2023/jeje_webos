@@ -434,8 +434,7 @@ class TransferPage extends Component {
     }
 
     downloadFile(sessionCode) {
-        const token = localStorage.getItem(Config.storageKeys.token);
-        const url = `${Config.apiBase}/transfer/download/${sessionCode}?token=${token}`;
+        const url = Utils.withToken(`${Config.apiBase}/transfer/download/${sessionCode}`);
 
         // 创建隐藏的 iframe 或 a 标签下载
         const link = document.createElement('a');

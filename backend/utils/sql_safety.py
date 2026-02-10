@@ -34,8 +34,9 @@ def is_safe_table_name(table_name: str) -> bool:
     if len(table_name) < 1 or len(table_name) > 128:
         return False
     
-    # 只允许字母、数字、下划线，必须以字母或下划线开头
-    pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
+    # 只允许字母、数字、下划线、中文字符，必须以非数字开头
+    # \w 在 Python 3 中默认包含 Unicode 字母（如中文）
+    pattern = r'^[^\d\W][\w]*$'
     if not re.match(pattern, table_name):
         return False
     

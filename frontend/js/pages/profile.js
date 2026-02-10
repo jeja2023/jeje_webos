@@ -83,7 +83,7 @@ class ProfilePage extends Component {
                             <div class="profile-header-compact">
                                 <div class="profile-avatar-large" id="avatarUploadTrigger">
                                     ${user.avatar ?
-                `<img src="${Utils.escapeHtml(user.avatar.includes('?') ? user.avatar : user.avatar + '?token=' + Store.get('token'))}" alt="Avatar">` :
+                `<img src="${Utils.escapeHtml(Utils.withToken(user.avatar))}" alt="Avatar">` :
                 Utils.escapeHtml(initials)
             }
                                     <div class="avatar-overlay"><i class="ri-camera-line"></i></div>
@@ -520,6 +520,10 @@ class ProfilePage extends Component {
             this.delegate('click', '#changePasswordBtn', () => {
                 Router.push('/profile/password');
             });
+
+            this.delegate('click', '[data-action="go-profile"]', () => {
+                Router.push('/profile');
+            });
         }
     }
 }
@@ -590,7 +594,7 @@ class ChangePasswordPage extends Component {
                 <!-- 顶部导航栏 (绝对定位) -->
                 <div style="position: absolute; top: 0; left: 0; right: 0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 10;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button class="btn btn-ghost btn-sm" onclick="Router.push('/profile')" style="padding-left: 0; color: var(--color-text-primary);">
+                        <button class="btn btn-ghost btn-sm" data-action="go-profile" style="padding-left: 0; color: var(--color-text-primary);">
                             ← 返回个人中心
                         </button>
                     </div>

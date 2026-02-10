@@ -14,6 +14,7 @@ from core.cache import set_cache, get_cache, delete_cache
 # 存储 CSRF Token（当 Redis 不可用时的内存回退方案）
 _csrf_tokens: dict[str, dict] = {}
 TOKEN_EXPIRE_SECONDS = 3600  # Token 有效期：1小时
+MAX_MEMORY_TOKENS = 10000    # 内存中最大 Token 数量，防止 DoS
 
 
 async def generate_csrf_token() -> str:
@@ -42,9 +43,9 @@ async def generate_csrf_token() -> str:
     return token
 
 
-async def verify_csrf_token(token: str) -> bool:
+async def verify_and_consume_csrf_token(token: str) -> bool:
     """
-    验证 CSRF Token
+    原子化验证并消耗 CSRF Token（合并验证+标记已使用，避免 TOCTOU 竞态条件）
     
     Args:
         token: CSRF Token
@@ -55,46 +56,51 @@ async def verify_csrf_token(token: str) -> bool:
     if not token:
         return False
     
-    # 1. 尝试从 Redis 获取
+    # 1. 尝试从 Redis 获取并原子化删除
     redis_data = await get_cache(f"csrf:{token}")
     if redis_data:
-        # 验证 Token 有效期（双重保障，即使 Redis TTL 未正确设置）
-        if isinstance(redis_data, dict) and "created_at" in redis_data:
-            if time.time() - redis_data["created_at"] > TOKEN_EXPIRE_SECONDS:
-                await delete_cache(f"csrf:{token}")
-                return False
+        # 必须是 dict 且包含 created_at，否则视为无效（防止损坏/伪造数据绕过）
+        if not isinstance(redis_data, dict) or "created_at" not in redis_data:
+            await delete_cache(f"csrf:{token}")
+            return False
+        if redis_data.get("used"):
+            await delete_cache(f"csrf:{token}")
+            return False
+        if time.time() - redis_data["created_at"] > TOKEN_EXPIRE_SECONDS:
+            await delete_cache(f"csrf:{token}")
+            return False
+        # 验证通过，立即删除防止重放（原子化验证+消耗）
+        await delete_cache(f"csrf:{token}")
         return True
     
-    # 2. 尝试从内存获取
-    if token in _csrf_tokens:
-        token_info = _csrf_tokens[token]
-        
-        # 检查是否过期
-        if time.time() - token_info["created_at"] > TOKEN_EXPIRE_SECONDS:
-            del _csrf_tokens[token]
+    # 2. 尝试从内存获取并原子化消耗（pop 保证原子性）
+    token_info = _csrf_tokens.pop(token, None)
+    if token_info:
+        # 检查是否过期或已使用
+        if token_info.get("used"):
             return False
-        
+        if time.time() - token_info["created_at"] > TOKEN_EXPIRE_SECONDS:
+            return False
         return True
     
     return False
 
 
-async def mark_token_used(token: str):
-    """标记 Token 为已使用（可选：单次使用）"""
-    # 尝试更新 Redis
-    redis_data = await get_cache(f"csrf:{token}")
-    if redis_data:
-        redis_data["used"] = True
-        await set_cache(f"csrf:{token}", redis_data, TOKEN_EXPIRE_SECONDS)
-        return
+# 保留向后兼容别名
+async def verify_csrf_token(token: str) -> bool:
+    """验证 CSRF Token（已弃用，请使用 verify_and_consume_csrf_token）"""
+    return await verify_and_consume_csrf_token(token)
 
-    # 尝试更新内存
-    if token in _csrf_tokens:
-        _csrf_tokens[token]["used"] = True
+
+async def mark_token_used(token: str):
+    """标记 Token 为已使用（已弃用，verify_and_consume_csrf_token 已原子化处理）"""
+    # 兜底清理：如果 token 仍然存在则删除
+    await delete_cache(f"csrf:{token}")
+    _csrf_tokens.pop(token, None)
 
 
 def _cleanup_expired_tokens():
-    """清理过期的内存 Token"""
+    """清理过期的内存 Token，并限制最大数量防止 DoS"""
     current_time = time.time()
     expired = [
         token for token, info in _csrf_tokens.items()
@@ -102,6 +108,13 @@ def _cleanup_expired_tokens():
     ]
     for token in expired:
         del _csrf_tokens[token]
+    
+    # 超过上限时，移除最早创建的 Token
+    if len(_csrf_tokens) > MAX_MEMORY_TOKENS:
+        sorted_tokens = sorted(_csrf_tokens.items(), key=lambda x: x[1]["created_at"])
+        to_remove = len(_csrf_tokens) - MAX_MEMORY_TOKENS
+        for token, _ in sorted_tokens[:to_remove]:
+            del _csrf_tokens[token]
 
 
 def get_csrf_token_from_request(request: Request) -> Optional[str]:
@@ -117,17 +130,6 @@ def get_csrf_token_from_request(request: Request) -> Optional[str]:
     token = request.headers.get("X-CSRF-Token")
     if token:
         return token
-    
-    # 从表单数据获取
-    if hasattr(request, "form"):
-        try:
-            # 注意：request.form() 是 async 的，但在 BaseHTTPMiddleware 中无法轻易 await
-            # 这里的 request 已经被处理过，或者假设是 Starlette Request
-            # 实际上在 Middleware 中获取 form data 会消耗 request body stream，可能导致后续 router 无法读取
-            # 因此，通常建议 CSRF 只检查 Header
-            pass
-        except Exception:
-            pass
     
     # 从查询参数获取
     token = request.query_params.get("csrf_token")
@@ -166,13 +168,18 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             if any(request.url.path.startswith(path) for path in self.SKIP_PATHS):
                 return await call_next(request)
             
+            # 跳过流式响应路径，避免与 StreamingResponse 的兼容性问题
+            from core.middleware import STREAMING_PATHS
+            if any(request.url.path.startswith(sp) for sp in STREAMING_PATHS):
+                return await call_next(request)
+            
             # 只对状态变更操作进行验证
             if request.method in self.PROTECTED_METHODS:
                 # 获取 CSRF Token
                 token = get_csrf_token_from_request(request)
                 
-                # 验证 Token (await async function)
-                if not token or not await verify_csrf_token(token):
+                # 原子化验证并消耗 Token（避免 TOCTOU 竞态条件）
+                if not token or not await verify_and_consume_csrf_token(token):
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=status.HTTP_403_FORBIDDEN,
@@ -182,12 +189,21 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                             "data": None
                         }
                     )
-                
-                # 标记 Token 为已使用（可选）
-                # await mark_token_used(token)
             
             response = await call_next(request)
             return response
+        except RuntimeError as e:
+            if "No response returned" in str(e):
+                from fastapi import Response
+                import logging
+                logger = logging.getLogger(__name__)
+                path = request.url.path
+                logger.info(f"[客户端断开] {request.method} {path} (CSRF)")
+                return Response(status_code=499)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"CSRF 中间件捕获运行时错误: {e}")
+            raise
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)

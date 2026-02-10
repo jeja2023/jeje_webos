@@ -221,49 +221,50 @@ class DockComponent extends Component {
 
     // 获取应用对应的图标配置（同步设计规约）
     _getIconSpec(id, defaultIcon = 'ri-apps-line') {
-        const iconMap = {
-            'launcher': { ri: 'ri-menu-line', gradient: 'gradient-blue' }, // 开始按钮（菜单图标）
-            'notification': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' }, // 通知
-            'knowledge': { ri: 'ri-book-read-line', gradient: 'gradient-blue' },
-            'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
-            'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
-            'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
-            'announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' }, // 公告模块
-            'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
-            'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
-            'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
-            'datalens': { ri: 'ri-database-2-line', gradient: 'gradient-violet' },
-            'monitor': { ri: 'ri-dashboard-2-line', gradient: 'gradient-rose' },
-            'system': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
-            'backup': { ri: 'ri-history-line', gradient: 'gradient-slate' },
-            'theme_editor': { ri: 'ri-palette-line', gradient: 'gradient-pink' },
-            'sys_manage': { ri: 'ri-settings-3-line', gradient: 'gradient-green' },
-            'sys_market': { ri: 'ri-store-2-line', gradient: 'gradient-amber' },
-            'sys_dev': { ri: 'ri-code-s-slash-line', gradient: 'gradient-emerald' },
-            'market': { ri: 'ri-apps-2-line', gradient: 'gradient-blue' },
-            'transfer': { ri: 'ri-share-forward-line', gradient: 'gradient-cyan' },
-            'message': { ri: 'ri-message-3-line', gradient: 'gradient-indigo' },
-            'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
-            'sys_announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' }, // 公告管理
-            'sys_users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
-            'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
-            'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
-            'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
-
-            'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
-            'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
-            'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
-            'exam': { ri: 'ri-file-list-3-line', gradient: 'gradient-orange' },
-            'ocr': { ri: 'ri-scan-2-line', gradient: 'gradient-cyan' },
-            'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
-            'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
-            'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
-            'pdf': { ri: 'ri-file-pdf-2-fill', gradient: 'gradient-red' },
-            'markdown': { ri: 'ri-markdown-line', gradient: 'gradient-slate' },
-            'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
-        };
-
-        return iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
+        // 使用静态缓存避免每次调用都创建对象
+        if (!DockComponent._iconMap) {
+            DockComponent._iconMap = {
+                'launcher': { ri: 'ri-menu-line', gradient: 'gradient-blue' },
+                'notification': { ri: 'ri-notification-3-line', gradient: 'gradient-orange' },
+                'knowledge': { ri: 'ri-book-read-line', gradient: 'gradient-blue' },
+                'blog': { ri: 'ri-article-line', gradient: 'gradient-blue' },
+                'notes': { ri: 'ri-sticky-note-line', gradient: 'gradient-yellow' },
+                'feedback': { ri: 'ri-feedback-line', gradient: 'gradient-teal' },
+                'announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' },
+                'users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
+                'filemanager': { ri: 'ri-folder-5-line', gradient: 'gradient-indigo' },
+                'analysis': { ri: 'ri-bar-chart-grouped-line', gradient: 'gradient-purple' },
+                'datalens': { ri: 'ri-database-2-line', gradient: 'gradient-violet' },
+                'monitor': { ri: 'ri-dashboard-2-line', gradient: 'gradient-rose' },
+                'system': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+                'backup': { ri: 'ri-history-line', gradient: 'gradient-slate' },
+                'theme_editor': { ri: 'ri-palette-line', gradient: 'gradient-pink' },
+                'sys_manage': { ri: 'ri-settings-3-line', gradient: 'gradient-green' },
+                'sys_market': { ri: 'ri-store-2-line', gradient: 'gradient-amber' },
+                'sys_dev': { ri: 'ri-code-s-slash-line', gradient: 'gradient-emerald' },
+                'market': { ri: 'ri-apps-2-line', gradient: 'gradient-blue' },
+                'transfer': { ri: 'ri-share-forward-line', gradient: 'gradient-cyan' },
+                'message': { ri: 'ri-message-3-line', gradient: 'gradient-indigo' },
+                'roles': { ri: 'ri-shield-user-line', gradient: 'gradient-red' },
+                'sys_announcement': { ri: 'ri-megaphone-line', gradient: 'gradient-orange' },
+                'sys_users': { ri: 'ri-group-line', gradient: 'gradient-cyan' },
+                'sys_ops': { ri: 'ri-settings-4-line', gradient: 'gradient-grey' },
+                'ai': { ri: 'ri-brain-line', gradient: 'gradient-indigo' },
+                'map': { ri: 'ri-map-2-line', gradient: 'gradient-emerald' },
+                'im': { ri: 'ri-message-3-line', gradient: 'gradient-cyan' },
+                'album': { ri: 'ri-image-2-line', gradient: 'gradient-pink' },
+                'video': { ri: 'ri-video-line', gradient: 'gradient-red' },
+                'exam': { ri: 'ri-file-list-3-line', gradient: 'gradient-orange' },
+                'ocr': { ri: 'ri-scan-2-line', gradient: 'gradient-cyan' },
+                'course': { ri: 'ri-book-open-line', gradient: 'gradient-violet' },
+                'schedule': { ri: 'ri-calendar-schedule-line', gradient: 'gradient-indigo' },
+                'vault': { ri: 'ri-shield-keyhole-line', gradient: 'gradient-purple' },
+                'pdf': { ri: 'ri-file-pdf-2-fill', gradient: 'gradient-red' },
+                'markdown': { ri: 'ri-markdown-line', gradient: 'gradient-slate' },
+                'lm_cleaner': { ri: 'ri-magic-line', gradient: 'gradient-indigo' },
+            };
+        }
+        return DockComponent._iconMap[id] || { ri: null, gradient: 'gradient-default', emoji: defaultIcon };
     }
 
     // 渲染图标 HTML 辅助函数
@@ -407,7 +408,7 @@ class DockComponent extends Component {
                     
                     <!-- 应用中心（最右侧） -->
                     <div class="dock-item ${isAppsActive ? 'active' : ''}" 
-                         onclick="Router.push('/apps')" 
+                         data-nav-path="/apps" 
                          title="应用中心">
                         <span class="dock-icon">${this._renderIcon('market', 'ri-store-2-line')}</span>
                         <div class="dock-tooltip">应用中心</div>
@@ -445,7 +446,7 @@ class DockComponent extends Component {
         if (!hasChildren && !hasSubgroups) {
             return `
                 <div class="dock-item ${isActive ? 'active' : ''}" 
-                     onclick="Router.push('${Utils.escapeHtml(category.path)}')" 
+                     data-nav-path="${Utils.escapeHtml(category.path)}" 
                      title="${Utils.escapeHtml(category.title)}">
                     <span class="dock-icon">${this._renderIcon(category.id, category.icon)}</span>
                     <div class="dock-tooltip">${Utils.escapeHtml(category.title)}</div>
@@ -473,7 +474,7 @@ class DockComponent extends Component {
                     <div class="folder-subgroup-items">
                         ${group.children.map(child => `
                             <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
-                                 data-path="${child.path}">
+                                 data-path="${Utils.escapeHtml(child.path)}">
                                 <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
                                 <span class="folder-app-title">${Utils.escapeHtml(child.title)}</span>
                             </div>
@@ -485,7 +486,7 @@ class DockComponent extends Component {
             // 普通子项列表
             popupContent = category.children.map(child => `
                 <div class="folder-app-item ${activeApp.startsWith(child.path) ? 'active' : ''}" 
-                     data-path="${child.path}">
+                     data-path="${Utils.escapeHtml(child.path)}">
                     <span class="folder-app-icon">${renderSimpleIcon(child.icon)}</span>
                     <span class="folder-app-title">${Utils.escapeHtml(child.title)}</span>
                 </div>
@@ -524,51 +525,61 @@ class DockComponent extends Component {
         if (window.innerWidth <= 768) return;
 
         const HOTZONE_HEIGHT = 8; // 底部热区高度（像素）
-        let hideTimeout = null;
+        this._autoHideTimeout = null; // 保存为实例属性，便于 destroy 时清理
         let isTriggered = false; // 是否已通过热区触发
+        const self = this; // 保存引用供闭包使用
 
-        document.addEventListener('mousemove', (e) => {
-            const dock = document.querySelector('.dock.auto-hide');
-            if (!dock) return;
+        // 使用 requestAnimationFrame 节流 mousemove，减少性能开销
+        let _rafPending = false;
+        this._autoHideMouseMoveHandler = (e) => {
+            if (_rafPending) return;
+            _rafPending = true;
+            requestAnimationFrame(() => {
+                _rafPending = false;
+                const dock = document.querySelector('.dock.auto-hide');
+                if (!dock) return;
 
-            const windowHeight = window.innerHeight;
-            const isInHotzone = e.clientY >= windowHeight - HOTZONE_HEIGHT;
-            const isHoveringDock = dock.classList.contains('show') && e.target.closest('.dock');
+                const windowHeight = window.innerHeight;
+                const isInHotzone = e.clientY >= windowHeight - HOTZONE_HEIGHT;
+                const isHoveringDock = dock.classList.contains('show') && e.target.closest('.dock');
 
-            // 只有在底部热区内才触发显示
-            if (isInHotzone) {
-                isTriggered = true;
-                if (hideTimeout) {
-                    clearTimeout(hideTimeout);
-                    hideTimeout = null;
+                // 只有在底部热区内才触发显示
+                if (isInHotzone) {
+                    isTriggered = true;
+                    if (self._autoHideTimeout) {
+                        clearTimeout(self._autoHideTimeout);
+                        self._autoHideTimeout = null;
+                    }
+                    dock.classList.add('show');
+                } else if (isTriggered && isHoveringDock) {
+                    // Dock 已显示且鼠标在 Dock 上，保持显示
+                    if (self._autoHideTimeout) {
+                        clearTimeout(self._autoHideTimeout);
+                        self._autoHideTimeout = null;
+                    }
+                } else {
+                    // 延迟隐藏 Dock
+                    if (dock.classList.contains('show') && !self._autoHideTimeout) {
+                        self._autoHideTimeout = setTimeout(() => {
+                            dock.classList.remove('show');
+                            isTriggered = false;
+                            self._autoHideTimeout = null;
+                        }, 300);
+                    }
                 }
-                dock.classList.add('show');
-            } else if (isTriggered && isHoveringDock) {
-                // Dock 已显示且鼠标在 Dock 上，保持显示
-                if (hideTimeout) {
-                    clearTimeout(hideTimeout);
-                    hideTimeout = null;
-                }
-            } else {
-                // 延迟隐藏 Dock
-                if (dock.classList.contains('show') && !hideTimeout) {
-                    hideTimeout = setTimeout(() => {
-                        dock.classList.remove('show');
-                        isTriggered = false;
-                        hideTimeout = null;
-                    }, 300);
-                }
-            }
-        });
+            });
+        };
+        document.addEventListener('mousemove', this._autoHideMouseMoveHandler);
 
         // 鼠标离开窗口时隐藏
-        document.addEventListener('mouseleave', () => {
+        this._autoHideMouseLeaveHandler = () => {
             const dock = document.querySelector('.dock.auto-hide');
             if (dock) {
                 dock.classList.remove('show');
                 isTriggered = false;
             }
-        });
+        };
+        document.addEventListener('mouseleave', this._autoHideMouseLeaveHandler);
     }
 
     afterUpdate() {
@@ -582,6 +593,15 @@ class DockComponent extends Component {
             this.closeFolder();
             if (App && App.startMenu) {
                 App.startMenu.toggle();
+            }
+        });
+
+        // 单个应用点击（通过 data-nav-path 属性安全导航，避免 onclick 中的 XSS）
+        this.delegate('click', '[data-nav-path]', (e, el) => {
+            e.stopPropagation();
+            const path = el.dataset.navPath;
+            if (path) {
+                Router.push(path);
             }
         });
 
@@ -624,6 +644,19 @@ class DockComponent extends Component {
         if (this._docClickHandler) {
             document.removeEventListener('click', this._docClickHandler);
             this._docClickHandler = null;
+        }
+        // 移除 auto-hide 相关监听器和计时器
+        if (this._autoHideMouseMoveHandler) {
+            document.removeEventListener('mousemove', this._autoHideMouseMoveHandler);
+            this._autoHideMouseMoveHandler = null;
+        }
+        if (this._autoHideMouseLeaveHandler) {
+            document.removeEventListener('mouseleave', this._autoHideMouseLeaveHandler);
+            this._autoHideMouseLeaveHandler = null;
+        }
+        if (this._autoHideTimeout) {
+            clearTimeout(this._autoHideTimeout);
+            this._autoHideTimeout = null;
         }
         super.destroy();
     }

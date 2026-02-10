@@ -526,8 +526,8 @@ const DataLensEditorMixin = {
                                 <div class="flex-between mt-5">
                                     <small class="form-hint">支持多表关联 (JOIN) 查询。系统会自动处理分页。</small>
                                     <div class="flex gap-5">
-                                        <button class="lens-btn lens-btn-xs" style="font-size:11px; padding:2px 8px;" onclick="document.getElementById('lens-view-sql').value += '\\nSELECT t1.*, t2.* \\nFROM table1 t1 \\nLEFT JOIN table2 t2 ON t1.id = t2.t1_id \\nWHERE t1.status = 1'">插入 JOIN 模板</button>
-                                        <button class="lens-btn lens-btn-xs" style="font-size:11px; padding:2px 8px;" onclick="document.getElementById('lens-view-sql').value = 'SELECT * FROM (' + document.getElementById('lens-view-sql').value + ') AS sub_t'">包装子查询</button>
+                                        <button class="lens-btn lens-btn-xs" style="font-size:11px; padding:2px 8px;" data-sql-action="insert-join">插入 JOIN 模板</button>
+                                        <button class="lens-btn lens-btn-xs" style="font-size:11px; padding:2px 8px;" data-sql-action="wrap-subquery">包装子查询</button>
                                     </div>
                                 </div>
                             </div>
@@ -928,6 +928,19 @@ const DataLensEditorMixin = {
 
             // 预览按钮
             previewBtn?.addEventListener('click', () => this._previewViewQuery());
+
+            // SQL 快捷操作按钮（替代 inline onclick）
+            overlay.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-sql-action]');
+                if (!btn) return;
+                const sqlArea = document.getElementById('lens-view-sql');
+                if (!sqlArea) return;
+                if (btn.dataset.sqlAction === 'insert-join') {
+                    sqlArea.value += '\nSELECT t1.*, t2.* \nFROM table1 t1 \nLEFT JOIN table2 t2 ON t1.id = t2.t1_id \nWHERE t1.status = 1';
+                } else if (btn.dataset.sqlAction === 'wrap-subquery') {
+                    sqlArea.value = 'SELECT * FROM (' + sqlArea.value + ') AS sub_t';
+                }
+            });
 
             // 高级配置折叠切换
             if (advancedToggle) {

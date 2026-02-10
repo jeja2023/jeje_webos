@@ -53,11 +53,10 @@ const ModuleHelp = {
         const moduleIdEscaped = Utils.escapeHtml(moduleId);
         const titleEscaped = Utils.escapeHtml(helpTitle);
         return `
-            <button class="btn-help ${className}" 
+            <button class="btn-help" 
                     data-help-module="${moduleIdEscaped}"
                     data-help-title="${titleEscaped}"
-                    title="查看帮助"
-                    onclick="if(window.ModuleHelp){window.ModuleHelp.show('${moduleIdEscaped}','${titleEscaped}');}">
+                    title="查看帮助">
                 <i class="ri-question-line"></i><span class="help-text"> 帮助</span>
             </button>
         `;

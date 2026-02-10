@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .analysis_models import AnalysisDataset, AnalysisModel
 from .analysis_duckdb_service import duckdb_instance
-from utils.sql_safety import is_safe_table_name
+from utils.sql_safety import is_safe_table_name, escape_sql_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +159,11 @@ class ETLExecutionService:
         # 计算当前缓存总大小（粗略估算）
         total_size_mb = 0
         for df in cls._node_cache.values():
-            # 估算 DataFrame 大小（MB）
-            total_size_mb += sys.getsizeof(df) / (1024 * 1024)
-            # 加上数据大小（粗略估算）
-            if len(df) > 0:
-                total_size_mb += (len(df) * len(df.columns) * 8) / (1024 * 1024)  # 假设每列8字节
+            # 使用 memory_usage(deep=True) 获取精确内存占用（含字符串等变长数据）
+            try:
+                total_size_mb += df.memory_usage(deep=True).sum() / (1024 * 1024)
+            except Exception:
+                total_size_mb += sys.getsizeof(df) / (1024 * 1024)
         
         # 如果超过限制，清理最久未使用的缓存
         if total_size_mb > cls._max_cache_size_mb:
@@ -175,9 +175,10 @@ class ETLExecutionService:
                     break
                 if key in cls._node_cache:
                     df = cls._node_cache[key]
-                    size_mb = sys.getsizeof(df) / (1024 * 1024)
-                    if len(df) > 0:
-                        size_mb += (len(df) * len(df.columns) * 8) / (1024 * 1024)
+                    try:
+                        size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+                    except Exception:
+                        size_mb = sys.getsizeof(df) / (1024 * 1024)
                     del cls._node_cache[key]
                     del cls._cache_access_time[key]
                     total_size_mb -= size_mb
@@ -546,7 +547,8 @@ class ETLExecutionService:
             raise ValueError(f"数据集不存在: {table_name}")
         
         # 从 DuckDB 读取数据
-        df = duckdb_instance.fetch_df(f"SELECT * FROM {dataset.table_name}")
+        safe_table = escape_sql_identifier(dataset.table_name)
+        df = duckdb_instance.fetch_df(f"SELECT * FROM {safe_table}")
         logger.info(f"Source 节点读取数据: {dataset.table_name}, 行数: {len(df)}")
         return df
     
@@ -580,7 +582,8 @@ class ETLExecutionService:
                 if mode == 'overwrite':
                     # 覆盖模式：删除旧表，使用新表名
                     try:
-                        duckdb_instance.conn.execute(f"DROP TABLE IF EXISTS {existing_dataset.table_name}")
+                        safe_existing = escape_sql_identifier(existing_dataset.table_name)
+                        duckdb_instance.conn.execute(f"DROP TABLE IF EXISTS {safe_existing}")
                     except Exception as e:
                         logger.debug(f"删除旧表失败: {e}")
                     # 更新现有记录
@@ -597,11 +600,14 @@ class ETLExecutionService:
                 else:
                     # 追加模式：向现有表追加数据
                     duckdb_instance.conn.register('_temp_sink_df', df)
-                    duckdb_instance.conn.execute(f"INSERT INTO {existing_dataset.table_name} SELECT * FROM _temp_sink_df")
+                    safe_existing = escape_sql_identifier(existing_dataset.table_name)
+                    duckdb_instance.conn.execute(f"INSERT INTO {safe_existing} SELECT * FROM _temp_sink_df")
                     duckdb_instance.conn.unregister('_temp_sink_df')
                     
                     # 更新行数
-                    count_result = duckdb_instance.conn.execute(f"SELECT COUNT(*) FROM {existing_dataset.table_name}").fetchone()
+                    count_result = duckdb_instance.conn.execute(
+                        f"SELECT COUNT(*) FROM {safe_existing}"
+                    ).fetchone()
                     existing_dataset.row_count = count_result[0] if count_result else len(df)
                     
                     await db.commit()
@@ -1157,36 +1163,24 @@ class ETLExecutionService:
         if not query:
             return df
         
-        # 安全检查：禁止危险操作
-        sql_upper = query.upper().strip()
-        forbidden_keywords = [
-            'DROP', 'DELETE', 'TRUNCATE', 'ALTER', 'CREATE DATABASE', 
-            'INSERT', 'UPDATE', 'CREATE TABLE', 'CREATE VIEW',
-            'EXEC', 'EXECUTE', 'CALL', 'GRANT', 'REVOKE'
-        ]
+        # 安全检查：使用与 ModelingService 一致的严格验证（白名单 + 黑名单）
+        from .analysis_modeling_service import _validate_sql_readonly
+        _validate_sql_readonly(query)
         
-        # 检查是否包含危险关键字
-        for keyword in forbidden_keywords:
-            if keyword in sql_upper:
-                raise ValueError(f"禁止使用 {keyword} 操作，SQL 节点只允许 SELECT 查询")
-        
-        # 验证必须是 SELECT 语句（允许 WITH 子句）
-        if not sql_upper.startswith('SELECT') and not sql_upper.startswith('WITH'):
-            raise ValueError("SQL 节点只允许 SELECT 或 WITH 查询语句")
-        
-        # 将输入数据注册为临时表 'input'
-        duckdb_instance.conn.register('input', df)
-        
+        # 使用隔离的内存连接，仅注册 input 表，防止访问其他表
+        import duckdb
+        conn = duckdb.connect(database=":memory:")
         try:
-            result = duckdb_instance.fetch_df(query)
+            conn.register('input', df)
+            result = conn.execute(query).df()
             logger.info(f"SQL 节点执行成功, 结果行数: {len(result)}")
             return result
         finally:
-            # 清理临时表
             try:
-                duckdb_instance.conn.unregister('input')
+                conn.unregister('input')
             except Exception as e:
                 logger.debug(f"清理临时表失败: {e}")
+            conn.close()
     
     @classmethod
     def _execute_text_ops(cls, df: pd.DataFrame, node_data: Dict) -> pd.DataFrame:
@@ -1365,7 +1359,10 @@ class ETLExecutionService:
             
         # 注册临时表
         temp_name = f"temp_window_{uuid.uuid4().hex[:8]}"
-        duckdb_instance.conn.register(temp_name, df)
+        # 使用隔离的内存连接（与 _execute_sql 一致，防止跨数据集访问）
+        import duckdb as _duckdb
+        _isolated_conn = _duckdb.connect(":memory:")
+        _isolated_conn.register(temp_name, df)
         
         try:
             # 构建 OVER 子句
@@ -1401,10 +1398,14 @@ class ETLExecutionService:
             """
             
             logger.info(f"Window 节点 (SQL): {new_col} = {func} OVER(...)")
-            return duckdb_instance.fetch_df(sql)
+            return _isolated_conn.execute(sql).fetchdf()
             
         finally:
-            duckdb_instance.conn.unregister(temp_name)
+            try:
+                _isolated_conn.unregister(temp_name)
+                _isolated_conn.close()
+            except Exception:
+                pass
 
     @classmethod
     def _df_to_records(cls, df: pd.DataFrame) -> List[Dict]:

@@ -104,7 +104,10 @@ class TestRateLimiter:
         self.limiter._request_count = self.limiter.CLEANUP_INTERVAL
         self.limiter._last_cleanup = time.time() - 61 # 达到清理间隔
         
-        self.limiter.check(MagicMock(client=MagicMock(host="2.2.2.2")))
+        mock_request = MagicMock()
+        mock_request.client = MagicMock(host="2.2.2.2")
+        mock_request.headers = {}
+        self.limiter.check(mock_request)
         
         # 期望 stale_ip 被清理掉
         assert stale_ip not in self.limiter._clients

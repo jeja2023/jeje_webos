@@ -236,7 +236,7 @@ const DataLensViewerMixin = {
     <div class="lens-chart-container">
         <div class="lens-chart-loading">
             <p>该视图尚未配置图表展示</p>
-            ${this._hasPermission('datalens.update') ? `<button class="lens-btn lens-btn-primary mt-10" onclick="window.DataLensPageInstance._showVisualSettings(${tab.id})">去配置图表</button>` : ''}
+            ${this._hasPermission('datalens.update') ? `<button class="lens-btn lens-btn-primary mt-10" data-action="show-visual-settings" data-tab-id="${tab.id}">去配置图表</button>` : ''}
         </div>
                     </div>
     `;
@@ -501,7 +501,7 @@ const DataLensViewerMixin = {
                 let imgSrc = strValue;
                 // 如果是本地路径且不是 data URL，则使用代理
                 if (isLocalPath && !strValue.startsWith('data:image')) {
-                    let url = `${Config.apiBase}/lens/image?path=${encodeURIComponent(strValue)}&token=${Utils.getToken()}`;
+                    let url = Utils.withToken(`${Config.apiBase}/lens/image?path=${encodeURIComponent(strValue)}`);
                     // 如果视图有配置图片根路径，则附加参数
                     if (this.currentView?.display_config?.image_base_path) {
                         url += `&base_path=${encodeURIComponent(this.currentView.display_config.image_base_path)}`;
@@ -509,7 +509,7 @@ const DataLensViewerMixin = {
                     imgSrc = url;
                 } else if (!strValue.startsWith('http') && !strValue.startsWith('data:image')) {
                     // 可能是相对路径，也尝试走代理
-                    let url = `${Config.apiBase}/lens/image?path=${encodeURIComponent(strValue)}&token=${Utils.getToken()}`;
+                    let url = Utils.withToken(`${Config.apiBase}/lens/image?path=${encodeURIComponent(strValue)}`);
                     if (this.currentView?.display_config?.image_base_path) {
                         url += `&base_path=${encodeURIComponent(this.currentView.display_config.image_base_path)}`;
                     }
@@ -520,7 +520,7 @@ const DataLensViewerMixin = {
                 const escapedImgSrc = Utils.escapeHtml(imgSrc);
                 // encodeURIComponent does NOT escape single quotes, so we must do it manually to prevent breaking out of the JS string
                 const safeUrlForJs = encodeURIComponent(imgSrc).replace(/'/g, '%27');
-                return `<img src="${escapedImgSrc}" class="lens-cell-img" onclick="window.DataLensPageInstance._showImagePreview(decodeURIComponent('${safeUrlForJs}'))" onerror="this.src='frontend/img/image_error.png';this.title='图片加载失败';">`;
+                return `<img src="${escapedImgSrc}" class="lens-cell-img" data-preview-url="${escapedImgSrc}">`;
             }
 
             // 2. 如果显式指定为链接，或者自动检出链接

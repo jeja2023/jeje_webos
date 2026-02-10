@@ -51,17 +51,17 @@ class PdfPage extends Component {
             <div class="pdf-app-container">
                 <div class="pdf-sidebar">
                     <div class="pdf-upload-btn-container">
-                        <button class="pdf-upload-btn" onclick="window._pdfPage.handleUpload()">
+                        <button class="pdf-upload-btn" data-action="upload">
                             <i class="ri-upload-cloud-2-line"></i> 上传文件
                         </button>
                     </div>
-                    <div class="pdf-nav-item ${this.state.activeTab === 'files' ? 'active' : ''}" onclick="window._pdfPage.switchTab('files')">
+                    <div class="pdf-nav-item ${this.state.activeTab === 'files' ? 'active' : ''}" data-tab="files">
                         <i class="ri-folder-open-line"></i> <span>我的文档</span>
                     </div>
-                    <div class="pdf-nav-item ${this.state.activeTab === 'toolbox' ? 'active' : ''}" onclick="window._pdfPage.switchTab('toolbox')">
+                    <div class="pdf-nav-item ${this.state.activeTab === 'toolbox' ? 'active' : ''}" data-tab="toolbox">
                         <i class="ri-apps-2-line"></i> <span>工具箱</span>
                     </div>
-                    <div class="pdf-nav-item ${this.state.activeTab === 'history' ? 'active' : ''}" onclick="window._pdfPage.switchTab('history')">
+                    <div class="pdf-nav-item ${this.state.activeTab === 'history' ? 'active' : ''}" data-tab="history">
                         <i class="ri-history-line"></i> <span>历史记录</span>
                     </div>
                     <div class="pdf-sidebar-spacer" style="flex: 1"></div>
@@ -117,16 +117,117 @@ class PdfPage extends Component {
     }
 
     afterRender() {
+        if (!this._eventsBound) {
+            this._eventsBound = true;
+            this.container.addEventListener('click', (e) => {
+                const tabEl = e.target.closest('[data-tab]');
+                if (tabEl?.dataset?.tab) {
+                    this.switchTab(tabEl.dataset.tab);
+                    return;
+                }
+
+                const actionEl = e.target.closest('[data-action]');
+                if (!actionEl) {
+                    // PDF 工具卡片与文档卡片
+                    const toolCard = e.target.closest('.pdf-tool-card[data-action]');
+                    if (toolCard) {
+                        const method = toolCard.dataset.action;
+                        if (typeof this[method] === 'function') this[method]();
+                        return;
+                    }
+                    const docCard = e.target.closest('.pdf-item-card[data-card-action]');
+                    if (docCard && !e.target.closest('[data-action]')) {
+                        const cardAction = docCard.dataset.cardAction;
+                        const fileName = decodeURIComponent(docCard.dataset.fileName || '');
+                        const filePath = decodeURIComponent(docCard.dataset.filePath || '');
+                        if (cardAction === 'open-pdf') {
+                            const fileJson = { id: null, name: fileName, path: filePath, source: 'pdf' };
+                            this.openReader(fileJson, fileName, 'pdf');
+                        } else if (cardAction === 'tip-word') {
+                            Toast.info('请使用 [Word转PDF] 功能转换此文件');
+                        } else if (cardAction === 'tip-excel') {
+                            Toast.info('请使用 [Excel转PDF] 功能转换此文件');
+                        } else if (cardAction === 'tip-image') {
+                            Toast.info('请使用 [图片转PDF] 功能转换此文件');
+                        }
+                        return;
+                    }
+                    return;
+                }
+                const act = actionEl.dataset.action;
+                switch (act) {
+                    case 'upload':
+                        this.handleUpload();
+                        break;
+                    case 'open-files':
+                    case 'back-files':
+                        this.switchTab('files');
+                        break;
+                    case 'reader-prev':
+                        this.changePage(-1);
+                        break;
+                    case 'reader-next':
+                        this.changePage(1);
+                        break;
+                    case 'reader-zoom-in':
+                        this.changeZoom(0.25);
+                        break;
+                    case 'reader-zoom-out':
+                        this.changeZoom(-0.25);
+                        break;
+                    case 'reselect':
+                        this.updateToolboxSelection();
+                        break;
+                    case 'remove-file': {
+                        const fileId = actionEl.dataset.fileId || '';
+                        const filePath = decodeURIComponent(actionEl.dataset.filePath || '');
+                        this.removeSelectedFile(fileId, filePath);
+                        break;
+                    }
+                    case 'download-pdf': {
+                        const fn = decodeURIComponent(actionEl.dataset.fileName || '');
+                        e.stopPropagation();
+                        this.downloadPdfFile(fn);
+                        break;
+                    }
+                    case 'delete-pdf': {
+                        const fn = decodeURIComponent(actionEl.dataset.fileName || '');
+                        const cat = actionEl.dataset.fileCategory || '';
+                        e.stopPropagation();
+                        this.handleDelete(fn, cat);
+                        break;
+                    }
+                    case 'download-result': {
+                        const filename = decodeURIComponent(actionEl.dataset.filename || '');
+                        this.downloadResult(filename);
+                        break;
+                    }
+                    default:
+                        // 尝试作为方法名调用（工具卡片）
+                        if (typeof this[act] === 'function') this[act]();
+                        break;
+                }
+            });
+        }
+
         const actionsContainer = document.getElementById('pdf-header-actions');
         if (!actionsContainer) return;
         if (this.state.activeTab === 'reader' && (this.state.reader.fileId || this.state.reader.filePath)) {
             actionsContainer.innerHTML = `
-                <button class="btn btn-ghost btn-sm" onclick="window._pdfPage.switchTab('files')">
+                <button class="btn btn-ghost btn-sm" data-action="back-files">
                     <i class="ri-arrow-left-line"></i> 退出阅读
                 </button>
             `;
         } else {
             actionsContainer.innerHTML = '';
+        }
+
+        const img = this.container.querySelector('#pdf-page-img');
+        if (img && !img._pdfBound) {
+            img._pdfBound = true;
+            img.addEventListener('load', () => {
+                img.style.opacity = '1';
+            });
         }
     }
 
@@ -454,18 +555,30 @@ class PdfPage extends Component {
                         }
                     };
 
-                    Modal.show({
+                    const modal = Modal.show({
                         title: '提取结果',
                         content: `
                             <textarea id="pdf-extract-result" class="form-control" style="height: 400px; font-family: monospace; margin-bottom: 15px;">${safeText}</textarea>
                             <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid var(--border-color);">
-                                <button class="btn btn-text" onclick="Modal.closeAll()">关闭</button>
-                                <button class="btn btn-primary" onclick="window._tempExtractFn.saveToCloud()"><i class="ri-save-line"></i> 保存到我的文档</button>
+                                <button class="btn btn-text" data-action="close-modal">关闭</button>
+                                <button class="btn btn-primary" data-action="save-extract"><i class="ri-save-line"></i> 保存到我的文档</button>
                             </div>
                         `,
                         width: '80%',
                         footer: false
                     });
+
+                    if (modal?.overlay) {
+                        modal.overlay.addEventListener('click', (e) => {
+                            const actionEl = e.target.closest('[data-action]');
+                            if (!actionEl) return;
+                            if (actionEl.dataset.action === 'close-modal') {
+                                Modal.closeAll();
+                            } else if (actionEl.dataset.action === 'save-extract') {
+                                window._tempExtractFn?.saveToCloud?.();
+                            }
+                        });
+                    }
                 } else Toast.error(res.message);
             } catch (e) { console.error(e); Toast.error('提取失败'); }
         });

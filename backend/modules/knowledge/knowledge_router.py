@@ -168,6 +168,21 @@ async def upload_file(
     
     return success(data=KbNodeResponse.model_validate(node).model_dump())
 
+
+@router.post("/nodes/{node_id}/cancel", response_model=dict)
+async def cancel_processing(
+    node_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: TokenData = Depends(get_current_user)
+):
+    """中止文档解析"""
+    node = await KnowledgeService.cancel_processing(db, node_id, user.user_id)
+    if not node:
+        # 如果返回None，可能是权限不足或节点不存在
+        return error(404, "操作失败：文档不存在或无权操作")
+        
+    return success(data=KbNodeDetail.model_validate(node).model_dump(), message="已中止解析任务")
+
 @router.get("/nodes/{node_id}/preview")
 async def preview_file(
     node_id: int,

@@ -3,6 +3,7 @@
 提供异步数据库连接和会话管理
 """
 
+import re
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
@@ -12,6 +13,8 @@ from typing import AsyncGenerator
 from .config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# 注意：此处在模块级获取配置用于引擎初始化，后续运行时应使用 get_settings() 获取最新配置
 settings = get_settings()
 
 # 创建异步引擎（初始化会话时区）
@@ -28,13 +31,19 @@ engine_kwargs = {
 
 # 仅在 MySQL 时使用连接池和时区设置
 if settings.db_url.startswith("mysql"):
+    # 验证时区格式，防止 SQL 注入（仅允许 ±HH:MM 格式）
+    _tz_value = settings.db_time_zone
+    if not re.match(r'^[+-]\d{2}:\d{2}$', _tz_value):
+        logger.warning(f"时区格式不合法: {_tz_value}，使用默认 +08:00")
+        _tz_value = "+08:00"
+    
     engine_kwargs.update({
         "pool_size": settings.db_pool_size,
         "max_overflow": settings.db_max_overflow,
         "pool_recycle": settings.db_pool_recycle,
         "pool_timeout": 30,
         "connect_args": {
-            "init_command": f"SET time_zone = '{settings.db_time_zone}'"
+            "init_command": f"SET time_zone = '{_tz_value}'"
         }
     })
 else:
@@ -47,17 +56,20 @@ else:
 
 engine = create_async_engine(settings.db_url, **engine_kwargs)
 
-
-@event.listens_for(engine.sync_engine, "connect")
-def _set_session_time_zone(dbapi_connection, connection_record):
-    """确保每个连接会话时区一致"""
-    try:
-        cursor = dbapi_connection.cursor()
-        cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
-        cursor.close()
-    except Exception:
-        # 如果 cursor 不支持上下文管理器或执行失败，忽略
-        pass
+# 仅在 MySQL 时注册时区设置事件（SQLite 等不支持 SET time_zone）
+if settings.db_url.startswith("mysql"):
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_session_time_zone(dbapi_connection, connection_record):
+        """确保每个 MySQL 连接会话时区一致"""
+        try:
+            tz_val = settings.db_time_zone
+            if not re.match(r'^[+-]\d{2}:\d{2}$', tz_val):
+                tz_val = "+08:00"
+            cursor = dbapi_connection.cursor()
+            cursor.execute(f"SET time_zone = '{tz_val}'")
+            cursor.close()
+        except Exception as e:
+            logger.warning(f"设置数据库时区失败: {e}")
 
 # 会话工厂
 async_session = async_sessionmaker(
@@ -133,11 +145,18 @@ async def ensure_database_exists():
     encoded_user = quote_plus(settings.db_user)
     encoded_pwd = quote_plus(settings.db_password)
     admin_url = f"mysql+aiomysql://{encoded_user}:{encoded_pwd}@{settings.db_host}:{settings.db_port}"
+    # 验证时区格式，防止 SQL 注入（与主引擎保持一致）
+    import re as _tz_re_admin
+    _admin_tz_value = settings.db_time_zone
+    if not _tz_re_admin.match(r'^[+-]\d{2}:\d{2}$', _admin_tz_value):
+        logger.warning(f"admin_engine 时区格式不合法: {_admin_tz_value}，使用默认 +08:00")
+        _admin_tz_value = "+08:00"
+    
     admin_engine = create_engine(
         admin_url,
         echo=False,
         connect_args={
-            "init_command": f"SET time_zone = '{settings.db_time_zone}'"
+            "init_command": f"SET time_zone = '{_admin_tz_value}'"
         }
     )
 
@@ -145,10 +164,10 @@ async def ensure_database_exists():
     def _set_admin_time_zone(dbapi_connection, connection_record):
         try:
             cursor = dbapi_connection.cursor()
-            cursor.execute(f"SET time_zone = '{settings.db_time_zone}'")
+            cursor.execute(f"SET time_zone = '{_admin_tz_value}'")
             cursor.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"设置 admin_engine 时区失败: {e}")
     
     try:
         async with admin_engine.connect() as conn:

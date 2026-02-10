@@ -153,22 +153,27 @@
 }
 
 .lens-page-btn {
-    padding: 6px 12px;
+    padding: 6px 14px;
     border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
 }
 
 .lens-page-btn:hover:not(:disabled) {
     border-color: var(--color-primary);
-    color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .lens-page-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.35;
     cursor: not-allowed;
+    filter: grayscale(1);
 }
 
 /* 搜索框 */

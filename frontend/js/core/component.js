@@ -360,6 +360,13 @@ const Utils = {
     },
 
     /**
+     * 转义 HTML 属性
+     */
+    escapeAttr(str) {
+        return this.escapeHtml(str);
+    },
+
+    /**
      * 验证 URL 协议是否安全
      */
     validateProtocol(url) {
@@ -485,6 +492,17 @@ const Utils = {
         return Store.get('token')
             || localStorage.getItem(Config.storageKeys.token)
             || null;
+    },
+
+    /**
+     * 为 URL 追加 token（仅在非 HttpOnly Cookie 模式）
+     */
+    withToken(url) {
+        if (Config.useHttpOnlyCookie) return url;
+        const token = Utils.getToken();
+        if (!token) return url;
+        const sep = url.includes('?') ? '&' : '?';
+        return `${url}${sep}token=${encodeURIComponent(token)}`;
     },
 
     /**

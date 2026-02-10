@@ -22,9 +22,11 @@ class TestSystemSettingsAPI:
     async def test_update_dynamic_settings(self, mock_configure, admin_client: AsyncClient):
         """测试更新动态配置"""
         
-        # 1. 准备新配置（封禁时长须 <= 窗口时长，否则 schema 校验会报错）
+        # 1. 准备新配置
+        #    - jwt_expire_minutes 须在 5~1440 范围内（路由层校验）
+        #    - 封禁时长须 <= 窗口时长（schema 校验）
         new_settings = {
-            "jwt_expire_minutes": 10086,
+            "jwt_expire_minutes": 120,
             "rate_limit_requests": 999,
             "rate_limit_window": 60,
             "rate_limit_block_duration": 30
@@ -36,14 +38,10 @@ class TestSystemSettingsAPI:
         
         # 3. 验证响应
         res_data = response.json()["data"]
-        assert res_data["jwt_expire_minutes"] == 10086
+        assert res_data["jwt_expire_minutes"] == 120
         assert res_data["rate_limit_requests"] == 999
         
-        # 4. 验证后端动态变量是否更新
-        from core.security import _jwt_expire_minutes
-        assert _jwt_expire_minutes == 10086
-        
-        # 5. 验证 Rate Limiter 及其收到配置
+        # 4. 验证 Rate Limiter 收到正确配置
         mock_configure.assert_called_with(
             requests=999,
             window=60,

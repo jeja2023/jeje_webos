@@ -4,7 +4,7 @@
 """
 
 from typing import Optional, List, Tuple
-from utils.timezone import get_beijing_time
+from utils.timezone import get_beijing_time, to_beijing_naive
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
@@ -28,7 +28,7 @@ async def list_announcements(
     is_published: Optional[bool] = None,
     type: Optional[str] = None,
     keyword: Optional[str] = None,
-    include_expired: bool = Query(False, description="是否包含已过期公告"),
+    include_expired: bool = Query(True, description="是否包含已过期公告"),
     db: AsyncSession = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
@@ -53,7 +53,7 @@ async def list_announcements(
     
     # 有效期筛选
     if not include_expired:
-        now = get_beijing_time()
+        now = get_beijing_time().replace(tzinfo=None)
         conditions.append(
             or_(
                 Announcement.start_at.is_(None),
@@ -122,7 +122,7 @@ async def list_published_announcements(
     db: AsyncSession = Depends(get_db)
 ):
     """获取已发布的公告（公开接口，无需登录）"""
-    now = get_beijing_time()
+    now = get_beijing_time().replace(tzinfo=None)
     query = select(Announcement).options(selectinload(Announcement.author)).where(
         and_(
             Announcement.is_published == True,
@@ -167,8 +167,8 @@ async def create_announcement(
         author_id=current_user.user_id,
         is_published=data.is_published,
         is_top=data.is_top,
-        start_at=data.start_at,
-        end_at=data.end_at
+        start_at=to_beijing_naive(data.start_at),
+        end_at=to_beijing_naive(data.end_at)
     )
     db.add(announcement)
     await db.commit()
@@ -193,6 +193,8 @@ async def update_announcement(
     
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
+        if key in ["start_at", "end_at"] and value is not None:
+            value = to_beijing_naive(value)
         setattr(announcement, key, value)
     
     await db.commit()

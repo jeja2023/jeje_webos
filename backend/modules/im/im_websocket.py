@@ -14,13 +14,13 @@ from sqlalchemy import select
 from core.ws_manager import manager
 from core.database import get_db, async_session
 from .im_services import IMService, get_encryption
-from .im_schemas import MessageCreate
+from .im_schemas import MessageCreate, MessageResponse
 from .im_models import IMMessage, IMConversationMember
 
 logger = logging.getLogger(__name__)
 
 
-async def notify_new_message(db: AsyncSession, message: IMMessage):
+async def notify_new_message(db: AsyncSession, message: IMMessage, exclude_user_id: Optional[int] = None):
     """通知会话成员收到新消息"""
     # 获取会话成员
     stmt = select(IMConversationMember).where(
@@ -29,40 +29,43 @@ async def notify_new_message(db: AsyncSession, message: IMMessage):
     result = await db.execute(stmt)
     members = result.scalars().all()
     
-    # 解密消息内容
+    # 解密消息内容 (如果尚为密文)
     encryption = get_encryption()
+    decrypted_content = message.content
+    
+    if str(message.content).startswith("gAAAA"):
+        try:
+            decrypted_content = encryption.decrypt(message.content)
+        except Exception as e:
+            logger.warning(f"WebSocket消息解密失败 (MsgID: {message.id}): {e}")
+            decrypted_content = "[消息内容]"
+    
+    # 临时将 content 替换为解密后的内容用于序列化（不保存到库）
+    # 注意：如果 message 已经 detached，修改它是安全的
+    original_content = message.content
+    message.content = decrypted_content
+    
     try:
-        decrypted_content = encryption.decrypt(message.content)
-    except Exception as e:
-        logger.warning(f"WebSocket消息解密失败 (MsgID: {message.id}): {e}")
-        decrypted_content = "[消息内容]"
-    
-    # 构建消息响应
-    message_response = {
-        "id": message.id,
-        "conversation_id": message.conversation_id,
-        "sender_id": message.sender_id,
-        "type": message.type,
-        "content": decrypted_content,
-        "file_path": message.file_path,
-        "file_name": message.file_name,
-        "file_size": message.file_size,
-        "file_mime": message.file_mime,
-        "reply_to_id": message.reply_to_id,
-        "is_recalled": message.is_recalled,
-        "created_at": message.created_at.isoformat() if hasattr(message.created_at, 'isoformat') else str(message.created_at)
-    }
-    
-    # 需要获取发送者信息（如果可能）
-    # 注意：在 notify 逻辑中，我们假设 message 已经被加载了基本信息，或者前端会自行处理
-    
-    # 发送给会话所有成员（包括发送者，以便多端同步）
+        data = MessageResponse.model_validate(message).model_dump(mode='json')
+    finally:
+        # 恢复（如果需要的话，但在 notify 中通常不需要，只是为了副作用最小化）
+        if not str(original_content).startswith("gAAAA") and str(message.content) == str(original_content):
+            pass # 没变
+        elif str(original_content).startswith("gAAAA"):
+             message.content = original_content
+
+    # 发送给会话所有成员
+    logger.debug(f"IM: 准备推送新消息 (MsgID: {message.id})")
     for member in members:
+        if exclude_user_id and member.user_id == exclude_user_id:
+            continue
+            
         await manager.send_personal_message({
             "type": "im_message_new",
-            "data": message_response,
+            "data": data,
             "timestamp": get_beijing_time().isoformat()
         }, member.user_id)
+    logger.debug(f"IM: 新消息推送完成 (MsgID: {message.id})")
 
 
 async def notify_message_recalled(db: AsyncSession, conversation_id: int, message_id: int, user_id: int):
@@ -127,7 +130,21 @@ async def handle_im_message(
                     reply_to_id=data.get("reply_to_id")
                 )
                 message = await service.send_message(user_id, message_data)
-                await notify_new_message(db, message)
+                
+                # 加载额外的消息详情（发送者信息、引用信息等）
+                await service.load_message_details(message)
+                
+                # 1. 先给发送者明确的回执 (im_message_sent)
+                # 使用 model_dump(mode='json') 确保 datetime 序列化成功
+                data = MessageResponse.model_validate(message).model_dump(mode='json')
+                await manager.send_personal_message({
+                    "type": "im_message_sent",
+                    "data": data,
+                    "timestamp": get_beijing_time().isoformat()
+                }, user_id)
+                
+                # 2. 通知会话其它成员 (im_message_new)，排除发送者
+                await notify_new_message(db, message, exclude_user_id=user_id)
             
             elif message_type == "im_typing":
                 conversation_id = data.get("conversation_id")

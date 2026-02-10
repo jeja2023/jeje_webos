@@ -1496,10 +1496,10 @@ const AnalysisModelingMixin = {
                                         <option value="">选择字段</option>
                                         ${availableFields.map(f => `<option value="${Utils.escapeHtml(f.name)}" ${cond.field === f.name ? 'selected' : ''}>${Utils.escapeHtml(f.name)}</option>`).join('')}
                                     </select>
-                                    ${i > 0 ? `<button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>` : ''}
+                                    ${i > 0 ? `<button class="btn btn-ghost btn-xs text-error btn-remove-filter-row">🗑️</button>` : ''}
                                 </div>
                                 <div class="mb-5">
-                                    <select class="form-control w-100 filter-op" onchange="this.parentElement.nextElementSibling.style.display = ['is_null','not_null','is_empty','not_empty'].includes(this.value) ? 'none' : 'block'">
+                                    <select class="form-control w-100 filter-op">
                                         ${renderOpOptions(cond.operator)}
                                     </select>
                                 </div>
@@ -1525,10 +1525,10 @@ const AnalysisModelingMixin = {
                                     <option value="">选择字段</option>
                                     ${availableFields.map(f => `<option value="${Utils.escapeHtml(f.name)}">${Utils.escapeHtml(f.name)}</option>`).join('')}
                                 </select>
-                                <button class="btn btn-ghost btn-xs text-error btn-remove-filter-row" onclick="this.closest('.etl-filter-row').remove()">🗑️</button>
+                                <button class="btn btn-ghost btn-xs text-error btn-remove-filter-row">🗑️</button>
                             </div>
                             <div class="mb-5">
-                                <select class="form-control w-100 filter-op" onchange="this.parentElement.nextElementSibling.style.display = ['is_null','not_null','is_empty','not_empty'].includes(this.value) ? 'none' : 'block'">
+                                <select class="form-control w-100 filter-op">
                                     ${renderOpOptions('=')}
                                 </select>
                             </div>
@@ -1547,8 +1547,41 @@ const AnalysisModelingMixin = {
                             const list = document.getElementById('cfg-filters-list');
                             if (tpl && list) {
                                 list.insertAdjacentHTML('beforeend', tpl.innerHTML);
+                                const lastOp = list.querySelector('.etl-filter-row:last-child .filter-op');
+                                if (lastOp) {
+                                    const needsValue = !['is_null', 'not_null', 'is_empty', 'not_empty'].includes(lastOp.value);
+                                    const row = lastOp.closest('.etl-filter-row');
+                                    const valInput = row?.querySelector('.filter-val');
+                                    if (valInput) valInput.style.display = needsValue ? 'block' : 'none';
+                                }
                             }
                         };
+                    }
+
+                    const list = document.getElementById('cfg-filters-list');
+                    if (list && !list._filterBound) {
+                        list._filterBound = true;
+                        const applyValueVisibility = (selectEl) => {
+                            const needsValue = !['is_null', 'not_null', 'is_empty', 'not_empty'].includes(selectEl.value);
+                            const row = selectEl.closest('.etl-filter-row');
+                            const valInput = row?.querySelector('.filter-val');
+                            if (valInput) valInput.style.display = needsValue ? 'block' : 'none';
+                        };
+
+                        list.addEventListener('click', (e) => {
+                            const removeBtn = e.target.closest('.btn-remove-filter-row');
+                            if (removeBtn) {
+                                const row = removeBtn.closest('.etl-filter-row');
+                                if (row) row.remove();
+                            }
+                        });
+
+                        list.addEventListener('change', (e) => {
+                            const opSelect = e.target.closest('.filter-op');
+                            if (opSelect) applyValueVisibility(opSelect);
+                        });
+
+                        list.querySelectorAll('.filter-op').forEach(applyValueVisibility);
                     }
                 }, 100);
                 break;
@@ -1563,12 +1596,22 @@ const AnalysisModelingMixin = {
             case 'sample':
                 fields = renderGroup('采样比例 (%)', `
                     <div class="flex align-center gap-10">
-                         <input type="range" class="flex-1" id="cfg-sample-range" min="1" max="100" value="${node.data?.rate || 20}" 
-                                oninput="document.getElementById('cfg-sample-rate').value = this.value">
+                         <input type="range" class="flex-1" id="cfg-sample-range" min="1" max="100" value="${node.data?.rate || 20}">
                          <input type="number" class="form-control" id="cfg-sample-rate" style="width: 60px;"
                                 min="1" max="100" value="${node.data?.rate || 20}">
                     </div>
                 `, '随机抽取数据的百分比');
+
+                setTimeout(() => {
+                    const range = document.getElementById('cfg-sample-range');
+                    const num = document.getElementById('cfg-sample-rate');
+                    if (range && num && !range._bound) {
+                        range._bound = true;
+                        range.addEventListener('input', () => {
+                            num.value = range.value;
+                        });
+                    }
+                }, 50);
                 break;
 
             case 'limit':

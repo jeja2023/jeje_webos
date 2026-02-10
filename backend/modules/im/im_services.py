@@ -10,6 +10,8 @@ from datetime import timedelta
 from utils.timezone import get_beijing_time, BEIJING_TZ
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_, update
+from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import InvalidRequestError
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -46,7 +48,7 @@ class MessageEncryption:
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
                 length=32,
-                salt=b'im_message_encryption_salt',  # 固定盐值
+                salt=settings.jwt_secret[:16].encode('utf-8'),  # 使用 JWT Secret 前 16 字节作为动态盐值
                 iterations=100000,
                 backend=default_backend()
             )
@@ -60,7 +62,7 @@ class MessageEncryption:
                 kdf = PBKDF2HMAC(
                     algorithm=hashes.SHA256(),
                     length=32,
-                    salt=b'im_message_encryption_salt',
+                    salt=encryption_key[:16].encode('utf-8') if len(encryption_key) >= 16 else b'im_enc_fallback!',
                     iterations=100000,
                     backend=default_backend()
                 )
@@ -488,6 +490,13 @@ class IMService:
         
         await self.db.commit()
         await self.db.refresh(message)
+        
+        # 如果是回复消息，重新加载以获取关联对象
+        if message.reply_to_id:
+             stmt = select(IMMessage).options(selectinload(IMMessage.reply_to_message)).where(IMMessage.id == message.id)
+             result = await self.db.execute(stmt)
+             message = result.scalar_one()
+             
         return message
     
     async def get_messages(
@@ -531,6 +540,10 @@ class IMService:
         # 分页（按时间倒序，最新的在前）
         stmt = stmt.order_by(desc(IMMessage.created_at))
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+        
+        # 预加载回复消息
+        stmt = stmt.options(selectinload(IMMessage.reply_to_message))
+        
         result = await self.db.execute(stmt)
         messages = result.scalars().all()
         
@@ -751,4 +764,38 @@ class IMService:
         await self.db.flush()
         await self.db.commit()
         return True
+    
+    async def load_message_details(
+        self,
+        message: IMMessage,
+        recursive: bool = True
+    ):
+        """加载消息详情（发送者信息、解密内容），用于展示"""
+        from models import User
+        # 加载发送者信息
+        stmt = select(User).where(User.id == message.sender_id)
+        result = await self.db.execute(stmt)
+        sender = result.scalar_one_or_none()
+        if sender:
+            message.sender_username = sender.username
+            message.sender_nickname = sender.nickname
+            message.sender_avatar = sender.avatar
+        
+        # 递归处理引用回复的消息
+        if recursive and getattr(message, "reply_to_message", None):
+            await self.load_message_details(message.reply_to_message, recursive=True)
+            
+        # 解密内容
+        # 将消息对象从会话中移除，避免解密后的明文或错误信息被保存回数据库
+        try:
+            self.db.expunge(message)
+        except InvalidRequestError:
+            # 对象可能已经被递归处理时移除了，忽略此错误
+            pass
+        
+        try:
+            message.content = self.encryption.decrypt(message.content)
+        except Exception as e:
+            logger.error(f"解密消息失败 {message.id}: {e}")
+            message.content = "[消息解密失败]"
 

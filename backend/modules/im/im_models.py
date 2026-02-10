@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, ForeignKey, BigInteger, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models import User
@@ -72,6 +72,9 @@ class IMMessage(Base):
     reply_to_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("im_messages.id"), nullable=True, comment="回复消息ID")
     is_recalled: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否撤回")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, index=True, comment="发送时间")
+    
+    # 自关联关系：获取被回复的消息
+    reply_to_message: Mapped[Optional["IMMessage"]] = relationship("IMMessage", remote_side=[id])
 
 
 class IMMessageRead(Base):

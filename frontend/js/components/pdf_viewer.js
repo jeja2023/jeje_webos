@@ -72,7 +72,7 @@ const PdfViewer = {
     _showModal() {
         const content = this._renderContent();
 
-        Modal.show({
+        const modal = Modal.show({
             title: `📕 ${Utils.escapeHtml(this._state.filename)}`,
             content: content,
             width: '95%',
@@ -81,6 +81,44 @@ const PdfViewer = {
                 this._state = { fileId: null, filePath: null, filename: '', currentPage: 0, totalPages: 0, zoom: 1.5, source: 'filemanager' };
             }
         });
+
+        if (modal?.overlay) {
+            const overlay = modal.overlay;
+            const img = overlay.querySelector('#pdf-standalone-img');
+            if (img) {
+                img.addEventListener('load', () => {
+                    img.style.opacity = '1';
+                });
+                img.addEventListener('error', () => {
+                    img.src = '';
+                    img.alt = '加载失败';
+                });
+            }
+
+            overlay.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                switch (btn.dataset.action) {
+                    case 'prev':
+                        this.changePage(-1);
+                        break;
+                    case 'next':
+                        this.changePage(1);
+                        break;
+                    case 'zoom-in':
+                        this.changeZoom(0.25);
+                        break;
+                    case 'zoom-out':
+                        this.changeZoom(-0.25);
+                        break;
+                    case 'close':
+                        Modal.closeAll();
+                        break;
+                    default:
+                        break;
+                }
+            });
+        }
     },
 
     /**
@@ -88,9 +126,8 @@ const PdfViewer = {
      */
     _renderContent() {
         const { fileId, filePath, currentPage, totalPages, zoom, source } = this._state;
-        const token = localStorage.getItem(Config.storageKeys.token);
-
-        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${source}&token=${token}`;
+        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${source}`;
+        renderUrl = Utils.withToken(renderUrl);
         if (fileId) renderUrl += `&file_id=${fileId}`;
         if (filePath) renderUrl += `&path=${encodeURIComponent(filePath)}`;
 
@@ -100,29 +137,27 @@ const PdfViewer = {
                     <img src="${renderUrl}" 
                          class="pdf-viewer-page-image" 
                          id="pdf-standalone-img"
-                         onload="this.style.opacity=1"
-                         onerror="this.src=''; this.alt='加载失败'"
                          style="opacity: 0; transition: opacity 0.3s">
                 </div>
                 
                 <div class="pdf-viewer-toolbar">
-                    <button class="btn btn-icon" onclick="PdfViewer.changePage(-1)" ${currentPage <= 0 ? 'disabled' : ''} title="上一页">
+                    <button class="btn btn-icon" data-action="prev" ${currentPage <= 0 ? 'disabled' : ''} title="上一页">
                         <i class="ri-arrow-left-s-line"></i>
                     </button>
                     <span class="pdf-viewer-page-info">第 ${currentPage + 1} / ${totalPages} 页</span>
-                    <button class="btn btn-icon" onclick="PdfViewer.changePage(1)" ${currentPage >= totalPages - 1 ? 'disabled' : ''} title="下一页">
+                    <button class="btn btn-icon" data-action="next" ${currentPage >= totalPages - 1 ? 'disabled' : ''} title="下一页">
                         <i class="ri-arrow-right-s-line"></i>
                     </button>
                     <div class="pdf-viewer-divider"></div>
-                    <button class="btn btn-icon" onclick="PdfViewer.changeZoom(0.25)" title="放大">
+                    <button class="btn btn-icon" data-action="zoom-in" title="放大">
                         <i class="ri-zoom-in-line"></i>
                     </button>
                     <span class="pdf-viewer-zoom-info">${Math.round(zoom * 100)}%</span>
-                    <button class="btn btn-icon" onclick="PdfViewer.changeZoom(-0.25)" title="缩小">
+                    <button class="btn btn-icon" data-action="zoom-out" title="缩小">
                         <i class="ri-zoom-out-line"></i>
                     </button>
                     <div class="pdf-viewer-divider"></div>
-                    <button class="btn btn-icon" onclick="Modal.closeAll()" title="关闭">
+                    <button class="btn btn-icon" data-action="close" title="关闭">
                         <i class="ri-close-line"></i>
                     </button>
                 </div>
@@ -168,9 +203,8 @@ const PdfViewer = {
 
         // 更简单的方式：直接更新图片和控件
         const { fileId, filePath, currentPage, totalPages, zoom, source } = this._state;
-        const token = localStorage.getItem(Config.storageKeys.token);
-
-        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${source}&token=${token}`;
+        let renderUrl = `${Api.baseUrl}/pdf/render?page=${currentPage}&zoom=${zoom}&source=${source}`;
+        renderUrl = Utils.withToken(renderUrl);
         if (fileId) renderUrl += `&file_id=${fileId}`;
         if (filePath) renderUrl += `&path=${encodeURIComponent(filePath)}`;
 

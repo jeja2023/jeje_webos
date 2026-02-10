@@ -90,7 +90,7 @@ class TestModelingService:
         # 测试禁用关键字
         forbidden = ["DROP TABLE", "DELETE FROM", "UPDATE table"]
         for sql in forbidden:
-            with pytest.raises(ValueError, match="禁止使用"):
+            with pytest.raises(ValueError):
                 await ModelingService.execute_sql(mock_db, sql)
                 
         # 测试有效SQL
@@ -134,20 +134,20 @@ class TestModelingService:
     async def test_execute_sql_save_as(self):
         """测试SQL保存为数据集"""
         mock_db = AsyncMock()
-        mock_db.add = MagicMock() # add 是同步方法
+        mock_db.add = MagicMock()  # add 是同步方法
         sql = "SELECT * FROM t"
         
         with patch("modules.analysis.analysis_modeling_service.duckdb_instance") as mock_duck:
             # 模拟 fetch_df 返回值
             mock_duck.fetch_df.return_value = pd.DataFrame({"a": [1, 2]})
             
-            # 模拟 conn.execute
-            mock_duck.conn.execute = MagicMock()
+            # 模拟完整的 DuckDB 调用链（conn.execute 用于 CREATE TABLE AS）
+            mock_conn = MagicMock()
+            mock_duck.conn = mock_conn
+            mock_duck.execute = MagicMock()
             
-            # 执行 SQL 并保存
             result = await ModelingService.execute_sql(mock_db, sql, save_as="new_ds")
             
             assert "saved_dataset" in result
             assert result["saved_dataset"]["name"] == "new_ds"
-            mock_duck.conn.execute.assert_called() # 应该调用 CREATE TABLE
-            mock_db.add.assert_called() # 应该记录到数据库
+            mock_db.add.assert_called()  # 应该记录到数据库

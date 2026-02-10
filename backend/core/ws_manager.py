@@ -19,9 +19,12 @@ class ConnectionManager:
         # 用户ID -> WebSocket 连接集合（一个用户可能有多个连接）
         self.active_connections: Dict[int, Set[WebSocket]] = {}
     
-    async def connect(self, websocket: WebSocket, user_id: int):
+    async def connect(self, websocket: WebSocket, user_id: int, subprotocol: str = None):
         """接受连接"""
-        await websocket.accept()
+        if subprotocol:
+            await websocket.accept(subprotocol=subprotocol)
+        else:
+            await websocket.accept()
         
         if user_id not in self.active_connections:
             self.active_connections[user_id] = set()

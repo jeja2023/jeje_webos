@@ -1503,3 +1503,75 @@ body.focus-mode-active .video-player {
 .chapter-completed-badge i {
     font-size: 12px;
 }
+
+/* 模态框表单样式优化 */
+#create-course-form .form-group,
+#edit-course-form .form-group {
+    margin-bottom: 20px;
+}
+
+#create-course-form .form-label,
+#edit-course-form .form-label,
+#create-course-form label,
+#edit-course-form label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: block;
+    font-weight: 500;
+}
+
+#create-course-form .form-input,
+#edit-course-form .form-input,
+#create-course-form .form-select,
+#edit-course-form .form-select {
+    width: 100%;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 针对下拉框的特定优化 */
+#create-course-form .form-select,
+#edit-course-form .form-select {
+    appearance: none;
+    /* 使用深色主题适配的箭头图标 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+    line-height: normal;
+}
+
+/* 悬停与聚焦状态 */
+#create-course-form .form-input:hover,
+#create-course-form .form-select:hover,
+#edit-course-form .form-input:hover,
+#edit-course-form .form-select:hover {
+    border-color: var(--text-muted);
+    background-color: var(--bg-hover);
+}
+
+#create-course-form .form-input:focus,
+#create-course-form .form-select:focus,
+#edit-course-form .form-input:focus,
+#edit-course-form .form-select:focus {
+    border-color: var(--accent-color);
+    background-color: var(--bg-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+    outline: none;
+}
+
+/* 下拉选项样式兼容 */
+#create-course-form .form-select option,
+#edit-course-form .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 12px;
+}

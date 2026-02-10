@@ -10,6 +10,7 @@ from .analysis_schemas import SmartTableCreate, SmartTableUpdate
 from .analysis_duckdb_service import duckdb_instance
 from datetime import datetime
 from utils.timezone import get_beijing_time
+from utils.sql_safety import is_safe_table_name, escape_sql_identifier
 import re
 import logging
 
@@ -299,19 +300,26 @@ class SmartTableService:
             table.dataset_id = dataset.id
         
         # 5. 更新 DuckDB 表
-        duckdb_instance.query(f"DROP TABLE IF EXISTS {dataset.table_name}")
+        table_name = dataset.table_name
+        if not is_safe_table_name(table_name):
+            raise ValueError(f"数据集表名不合法: {table_name}")
+        safe_tn = escape_sql_identifier(table_name)
+        duckdb_instance.query(f"DROP TABLE IF EXISTS {safe_tn}")
         
         # 将数据写入 DuckDB
         if not df.empty:
-            duckdb_instance.conn.execute(f"CREATE TABLE {dataset.table_name} AS SELECT * FROM df")
+            duckdb_instance.register("df", df)
+            duckdb_instance.query(f"CREATE TABLE {safe_tn} AS SELECT * FROM df")
+            duckdb_instance.unregister("df")
             dataset.row_count = len(df)
         else:
             # 创建空表
             if df.columns.tolist():
-                col_defs = ", ".join([f'"{c}" VARCHAR' for c in df.columns])
-                duckdb_instance.query(f"CREATE TABLE {dataset.table_name} ({col_defs})")
+                # 转义列名中的双引号，保留空格等合法字符
+                col_defs = ", ".join([f"\"{str(c).replace('\"', '\"\"')}\" VARCHAR" for c in df.columns])
+                duckdb_instance.query(f"CREATE TABLE {safe_tn} ({col_defs})")
             else:
-                duckdb_instance.query(f"CREATE TABLE {dataset.table_name} (dummy VARCHAR)")
+                duckdb_instance.query(f"CREATE TABLE {safe_tn} (dummy VARCHAR)")
             dataset.row_count = 0
             
         dataset.updated_at = get_beijing_time()

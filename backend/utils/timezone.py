@@ -41,6 +41,22 @@ def to_beijing_time(dt: datetime) -> datetime:
         return dt.astimezone(BEIJING_TZ)
 
 
+def to_beijing_naive(dt: datetime) -> datetime:
+    """
+    将任意时间转换为北京时间（不带时区信息，用于数据库存储）
+    
+    Args:
+        dt: 待转换的时间对象
+        
+    Returns:
+        datetime: 转换后的无时区北京时间
+    """
+    if dt is None:
+        return None
+    bj_time = to_beijing_time(dt)
+    return bj_time.replace(tzinfo=None)
+
+
 def utc_to_beijing(dt: datetime) -> datetime:
     """
     将UTC时间转换为北京时间

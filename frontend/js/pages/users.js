@@ -928,7 +928,7 @@ class UserListPage extends Component {
             // 下载导入模板按钮
             this.delegate('click', '#downloadTemplateBtn', () => {
                 const token = Store.get('token');
-                window.open(`/api/v1/export/import/users/template?format=xlsx&token=${token}`, '_blank');
+                window.open(Utils.withToken(`/api/v1/export/import/users/template?format=xlsx`), '_blank');
             });
 
             // 筛选器
@@ -1446,12 +1446,11 @@ class UserListPage extends Component {
     }
 
     handleExport() {
-        const token = localStorage.getItem(Config.storageKeys.token);
-        if (!token) {
+        if (!Store.get('isLoggedIn')) {
             Toast.error('请先登录');
             return;
         }
-        window.open(`${ExportApi.exportUsers('xlsx')}&token=${token}`, '_blank');
+        window.open(Utils.withToken(ExportApi.exportUsers('xlsx')), '_blank');
     }
 
     destroy() {
@@ -1569,7 +1568,7 @@ class PendingUsersPage extends Component {
                         <p class="page-desc">共 ${users.length} 个待审核用户</p>
                     </div>
                     <div class="page-header-actions">
-                        <button class="btn btn-secondary" onclick="window.history.back()">
+                        <button class="btn btn-secondary" data-action="go-back">
                             <i class="ri-arrow-left-line"></i> 返回
                         </button>
                     </div>
@@ -1666,6 +1665,10 @@ class PendingUsersPage extends Component {
     bindEvents() {
         if (this.container && !this._eventsBinded) {
             this._eventsBinded = true;
+
+            this.delegate('click', '[data-action="go-back"]', () => {
+                window.history.back();
+            });
 
             // 批量选择：全选复选框
             this.delegate('change', '#selectAllPending', (e) => {

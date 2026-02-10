@@ -37,10 +37,10 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["认证"])
 
-# 配置认证相关接口的速率限制
-rate_limiter.configure_route("/api/v1/auth/login", requests=30, window=60, block_duration=300)  # 30次/分钟，防暴力破解依然有效
-rate_limiter.configure_route("/api/v1/auth/register", requests=10, window=60, block_duration=600)  # 10次/分钟
-rate_limiter.configure_route("/api/v1/auth/password", requests=10, window=60, block_duration=300)  # 10次/分钟
+# 配置认证相关接口的速率限制（严格限制防暴力破解）
+rate_limiter.configure_route("/api/v1/auth/login", requests=10, window=60, block_duration=300)  # 10次/分钟，5分钟封禁
+rate_limiter.configure_route("/api/v1/auth/register", requests=5, window=60, block_duration=600)  # 5次/分钟，10分钟封禁
+rate_limiter.configure_route("/api/v1/auth/password", requests=5, window=60, block_duration=300)  # 5次/分钟，5分钟封禁
 
 
 async def resolve_user_permissions(user: User, db: AsyncSession) -> list[str]:
@@ -105,26 +105,47 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/login")
 async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
     """用户登录"""
-    client_ip = request.client.host if request.client else "unknown"
+    from utils.request import get_client_ip as _get_ip
+    from core.cache import Cache
+    client_ip = _get_ip(request)
     
     # 查找用户
     result = await db.execute(select(User).where(User.username == data.username))
     user = result.scalar_one_or_none()
     
+    # ---- 账户级别锁定检查（防分布式暴力破解）----
+    if user:
+        lock_key = f"auth:lock:{user.id}"
+        if await Cache.get(lock_key):
+            logger.warning(f"登录被拒: 账户已锁定 - IP: {client_ip}, user_id: {user.id}")
+            raise HTTPException(status_code=429, detail="账户已被临时锁定，请稍后重试")
+    
     # 登录失败：统一返回“用户名或密码错误”，不区分用户是否存在，防止用户名枚举（安全最佳实践）
     if not user or not verify_password(data.password, user.password_hash):
+        # 账户级失败计数（仅在用户存在时，不泄露用户是否存在）
+        if user:
+            fail_key = f"auth:fail:{user.id}"
+            fail_count = await Cache.increment(fail_key) or 1
+            await Cache.expire(fail_key, 600)  # 10 分钟窗口
+            max_attempts = getattr(get_settings(), 'login_fail_lock', 5)
+            if fail_count >= max_attempts:
+                await Cache.set(f"auth:lock:{user.id}", True, expire=300)  # 锁定 5 分钟
+                await Cache.delete(fail_key)
+                logger.warning(f"账户锁定: 连续失败 {fail_count} 次 - IP: {client_ip}, user_id: {user.id}")
+        
         # 记录失败日志（安全审计）
         fail_log = SystemLog(
-            level="WARNING",
-            module="auth",
-            action="login_failed",
-            message=f"登录失败: 用户名或密码错误 (username: {data.username})",
-            ip_address=client_ip
+            level="WARNING", module="auth", action="login_failed",
+            message="登录失败: 用户名或密码错误", ip_address=client_ip
         )
         db.add(fail_log)
         await db.commit()
-        logger.warning(f"登录失败 - IP: {client_ip}, 用户名: {data.username}")
+        logger.warning(f"登录失败 - IP: {client_ip}")
         raise HTTPException(status_code=401, detail="用户名或密码错误")
+    
+    # 登录成功，清除失败计数
+    if user:
+        await Cache.delete(f"auth:fail:{user.id}")
     
     # 登录失败 - 账户未激活
     if not user.is_active:
@@ -186,7 +207,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
             "nickname": user.nickname,
             "avatar": user.avatar,
             "role": user.role,
-            "permissions": user.permissions or [],
+            "permissions": permissions,  # 返回完整权限（直接权限 + 角色权限），与 JWT 一致
             "role_ids": user.role_ids or [],
             "settings": user.settings or {}
         }
@@ -219,6 +240,9 @@ async def get_me(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
+    # 获取全量权限（直接权限 + 角色权限），与登录时保持一致
+    permissions = await resolve_user_permissions(user, db)
+    
     return success({
         "id": user.id,
         "username": user.username,
@@ -226,7 +250,7 @@ async def get_me(
         "nickname": user.nickname,
         "avatar": user.avatar,
         "role": user.role,
-        "permissions": user.permissions or [],
+        "permissions": permissions,
         "role_ids": user.role_ids or [],
         "is_active": user.is_active,
         "settings": user.settings or {},

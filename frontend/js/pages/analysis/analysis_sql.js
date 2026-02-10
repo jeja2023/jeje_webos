@@ -373,6 +373,42 @@ const AnalysisSqlMixin = {
             const colsList = treeItem.querySelector('.sql-columns-list');
             const icon = el.querySelector('.tree-icon');
 
+            const renderMessage = (message) => {
+                colsList.innerHTML = '';
+                const msg = document.createElement('div');
+                msg.className = 'p-10 text-xs text-secondary';
+                msg.textContent = message;
+                colsList.appendChild(msg);
+            };
+
+            const renderColumns = (columns) => {
+                colsList.innerHTML = '';
+                if (!columns || columns.length === 0) {
+                    renderMessage('无法获取字段信息');
+                    return;
+                }
+                const frag = document.createDocumentFragment();
+                columns.forEach((col) => {
+                    const item = document.createElement('div');
+                    item.className = 'sql-col-item';
+                    item.dataset.table = String(tableName || '');
+                    item.dataset.col = String(col || '');
+
+                    const iconEl = document.createElement('span');
+                    iconEl.className = 'col-icon';
+                    iconEl.textContent = '🔹';
+
+                    const nameEl = document.createElement('span');
+                    nameEl.className = 'col-name';
+                    nameEl.textContent = String(col || '');
+
+                    item.appendChild(iconEl);
+                    item.appendChild(nameEl);
+                    frag.appendChild(item);
+                });
+                colsList.appendChild(frag);
+            };
+
             if (colsList.style.display === 'none') {
                 colsList.style.display = 'block';
                 icon.textContent = '▼';
@@ -384,17 +420,12 @@ const AnalysisSqlMixin = {
                     if (ds) {
                         const res = await AnalysisApi.getDatasetData(ds.id, { page: 1, size: 1 });
                         const columns = res.data?.columns || [];
-                        colsList.innerHTML = columns.map(c => `
-                            <div class="sql-col-item" data-table="${Utils.escapeHtml(tableName)}" data-col="${Utils.escapeHtml(c)}">
-                                <span class="col-icon">🔹</span>
-                                <span class="col-name">${Utils.escapeHtml(c)}</span>
-                            </div>
-                        `).join('');
+                        renderColumns(columns);
                     } else {
-                        colsList.innerHTML = '<div class="p-10 text-xs text-secondary">无法获取字段信息</div>';
+                        renderMessage('无法获取字段信息');
                     }
                 } catch (e) {
-                    colsList.innerHTML = '<div class="p-10 text-xs text-secondary">加载失败</div>';
+                    renderMessage('加载失败');
                 }
             } else {
                 colsList.style.display = 'none';

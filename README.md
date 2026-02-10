@@ -301,7 +301,7 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.24 |
+| | `APP_VERSION` | 系统版本 | 2.5.27 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

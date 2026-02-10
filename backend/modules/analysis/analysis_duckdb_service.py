@@ -5,9 +5,9 @@ Analysis 模块业务服务层
 import os
 import duckdb
 import logging
+import threading
 from typing import List, Dict, Any, Optional
 import pandas as pd
-from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,13 @@ class DuckDBService:
     _instance = None
     _conn = None
     _initialized = False
+    _lock = threading.RLock()  # 使用可重入锁，避免 query/fetch 方法内调用 ensure_connection 时死锁
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DuckDBService, cls).__new__(cls)
-        return cls._instance
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(DuckDBService, cls).__new__(cls)
+            return cls._instance
 
     def __init__(self):
         if DuckDBService._initialized:
@@ -33,11 +35,20 @@ class DuckDBService:
         self.db_dir = storage.get_module_dir("analysis", "")
         self.db_path = os.path.join(self.db_dir, "analysis.db")
         
+        # 注册退出时关闭连接
+        import atexit
+        atexit.register(self.close)
 
 
     def ensure_connection(self):
         """确保连接已建立（用于初始化时创建数据库文件）"""
-        if self._conn is None:
+        if self._conn is not None:
+            return self._conn
+        
+        with self._lock:
+            # 双重检查锁定
+            if self._conn is not None:
+                return self._conn
             import time
             max_retries = 5
             retry_delay = 1.0  # 秒
@@ -58,7 +69,7 @@ class DuckDBService:
                         else:
                             logger.error(f"❌ DuckDB 文件锁冲突！数据库文件被另一个进程占用。")
                             logger.error(f"请检查并关闭多余的 Python 后端进程。")
-                            raise HTTPException(status_code=500, detail="数据库文件被锁定，请确保只运行了一个后端实例。")
+                            raise RuntimeError("数据库文件被锁定，请确保只运行了一个后端实例。")
                     logger.error(f"DuckDB 连接失败: {e}")
                     raise
         return self._conn
@@ -69,30 +80,44 @@ class DuckDBService:
         return self.ensure_connection()
 
     def query(self, sql: str, params: Any = None):
-        """执行查询并返回结果"""
-        if params:
-            return self.conn.execute(sql, params)
-        return self.conn.execute(sql)
+        """执行查询并返回结果（线程安全）"""
+        with self._lock:
+            if params:
+                return self.conn.execute(sql, params)
+            return self.conn.execute(sql)
 
-    def fetch_all(self, sql: str, params: Any = None) -> List[Dict[str, Any]]:
-        """执行查询并返回字典列表"""
-        rel = self.query(sql, params)
-        return rel.fetchall()
+    def fetch_all(self, sql: str, params: Any = None) -> List[tuple]:
+        """执行查询并返回元组列表（线程安全）"""
+        with self._lock:
+            rel = self.conn.execute(sql, params) if params else self.conn.execute(sql)
+            return rel.fetchall()
 
     def fetch_df(self, sql: str, params: Any = None) -> pd.DataFrame:
-        """执行查询并返回 DataFrame"""
-        rel = self.query(sql, params)
-        return rel.df()
+        """执行查询并返回 DataFrame（线程安全）"""
+        with self._lock:
+            rel = self.conn.execute(sql, params) if params else self.conn.execute(sql)
+            return rel.df()
 
     def table_exists(self, table_name: str) -> bool:
         """检查表是否存在"""
         res = self.fetch_all("SELECT count(*) FROM information_schema.tables WHERE table_name = ?", [table_name])
         return res[0][0] > 0
 
+    def register(self, name: str, obj: Any):
+        """将 Python 对象注册为虚拟表"""
+        with self._lock:
+            self.conn.register(name, obj)
+
+    def unregister(self, name: str):
+        """注销虚拟表"""
+        with self._lock:
+            self.conn.unregister(name)
+
     def close(self):
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        with self._lock:
+            if self._conn:
+                self._conn.close()
+                self._conn = None
 
 # 创建单例实例
 duckdb_instance = DuckDBService()

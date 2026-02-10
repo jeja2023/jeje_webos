@@ -5,10 +5,10 @@
 services:
   # ==================== 应用服务（前后端一体） ====================
   app:
-    # 移除 build 部分，直接使用导入的镜像
-    image: jeje_webos:v2.5.0
-    # 强制优先使用本地镜像，避免网络超时
-    pull_policy: if_not_present
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: jeje_webos:latest
     container_name: jeje-webos-app
     restart: unless-stopped
     env_file:

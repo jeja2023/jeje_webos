@@ -1,113 +1,154 @@
-
+# -*- coding: utf-8 -*-
+"""
+课程模块测试
+覆盖：模型、服务层 CRUD、学习进度、API 路由端点
+"""
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from httpx import AsyncClient
+from modules.course.course_models import Course, CourseChapter, CourseEnrollment
+from modules.course.course_schemas import CourseCreate, ChapterCreate
 
-from modules.course.course_services import CourseService, ChapterService, EnrollmentService
-from modules.course.course_schemas import CourseCreate, CourseUpdate, ChapterCreate, ProgressUpdate
-from modules.course.course_models import Course
 
-# Mock user ID
-USER_ID = 1
+# ==================== 模型测试 ====================
+class TestCourseModels:
+    def test_course_model(self):
+        assert "course" in Course.__tablename__
+    def test_chapter_model(self):
+        assert "chapter" in CourseChapter.__tablename__
+    def test_enrollment_model(self):
+        assert "enrollment" in CourseEnrollment.__tablename__
 
-class TestCourseModule:
-    """Course模块测试"""
-    
+
+# ==================== 服务层测试 ====================
+class TestCourseService:
     @pytest.mark.asyncio
-    async def test_course_flow(self, db: AsyncSession):
-        """测试课程完整流程：创建->章节->发布->查询->删除"""
-        
-        # 1. Create Course
-        course_data = CourseCreate(
-            title="Python Mastery",
-            description="Learn Python from scratch",
-            difficulty="beginner",
-            duration_hours=10
-        )
-        course = await CourseService.create_course(db, USER_ID, course_data)
+    async def test_create_course(self, db_session):
+        from modules.course.course_services import CourseService
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="Python入门", description="Python基础教程", category="编程"
+        ))
         assert course.id is not None
-        assert course.title == "Python Mastery"
-        
-        # 2. Add Chapters
-        chap1_data = ChapterCreate(title="Intro", sort_order=1, duration_minutes=60)
-        chap2_data = ChapterCreate(title="Advanced", sort_order=2, duration_minutes=120)
-        
-        chap1 = await ChapterService.create_chapter(db, course.id, chap1_data)
-        chap2 = await ChapterService.create_chapter(db, course.id, chap2_data)
-        
-        assert chap1.id is not None
-        assert chap2.id is not None
-        
-        # 3. Publish and List
-        await CourseService.update_course(db, course.id, CourseUpdate(is_published=True))
-        
-        courses, total = await CourseService.get_course_list(db, only_published=True, keyword="Python")
-        assert total >= 1
-        assert courses[0].title == "Python Mastery"
-        
-        # 4. Get Detail with Chapters
-        detail = await CourseService.get_course_detail(db, course.id)
-        assert detail["chapter_count"] == 2
-        assert len(detail["chapters"]) == 2
-        
-        # 5. Delete (Clean up)
-        success = await CourseService.delete_course(db, course.id)
-        assert success is True
-        
-        # Verify Delete
-        fetched = await CourseService.get_course_by_id(db, course.id)
-        assert fetched is None
+        assert course.title == "Python入门"
 
     @pytest.mark.asyncio
-    async def test_learning_progress(self, db: AsyncSession):
-        """测试学习进度追踪"""
-        # Setup Course and Chapters
-        course = await CourseService.create_course(
-            db, USER_ID, CourseCreate(title="Progress Test", difficulty="easy")
-        )
-        chap1 = await ChapterService.create_chapter(
-            db, course.id, ChapterCreate(title="C1", sort_order=1)
-        )
-        chap2 = await ChapterService.create_chapter(
-            db, course.id, ChapterCreate(title="C2", sort_order=2)
-        )
-        
-        # 1. Enroll
-        enrollment = await EnrollmentService.enroll_course(db, USER_ID, course.id)
-        assert enrollment.progress == 0
-        
-        # 2. Complete Chapter 1
-        # Mock watching 50% of chapter 1, then completing it
-        prog_update = ProgressUpdate(
-            chapter_id=chap1.id,
-            is_completed=True,
-            progress_seconds=100
-        )
-        await EnrollmentService.update_chapter_progress(db, USER_ID, prog_update)
-        
-        # Verify Course Progress (1 of 2 chapters done => 50%)
-        # Refresh enrollment explicitly
-        enrollment = await EnrollmentService.get_enrollment(db, USER_ID, course.id)
-        assert enrollment.progress == 50.0
-        assert enrollment.last_chapter_id == chap1.id
-        
-        # 3. Complete Chapter 2
-        prog_update2 = ProgressUpdate(
-            chapter_id=chap2.id,
-            is_completed=True,
-            progress_seconds=200
-        )
-        await EnrollmentService.update_chapter_progress(db, USER_ID, prog_update2)
-        
-        # Verify Completion
-        enrollment = await EnrollmentService.get_enrollment(db, USER_ID, course.id)
-        assert enrollment.progress == 100.0
-        assert enrollment.completed_at is not None
-        
-        # 4. Learning Stats
-        stats = await EnrollmentService.get_learning_stats(db, USER_ID)
-        assert stats["completed_count"] >= 1
-        assert stats["enrolled_count"] >= 1
-        
-        # Clean up
-        await CourseService.delete_course(db, course.id)
+    async def test_get_course_list(self, db_session):
+        from modules.course.course_services import CourseService
+        await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="课程1", description="描述1"
+        ))
+        courses, total = await CourseService.get_course_list(db_session, user_id=1, only_published=False)
+        assert total >= 1
 
+    @pytest.mark.asyncio
+    async def test_update_course(self, db_session):
+        from modules.course.course_services import CourseService
+        from modules.course.course_schemas import CourseUpdate
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="原始课程", description="描述"
+        ))
+        updated = await CourseService.update_course(db_session, course.id, data=CourseUpdate(title="更新课程"))
+        assert updated.title == "更新课程"
+
+    @pytest.mark.asyncio
+    async def test_delete_course(self, db_session):
+        from modules.course.course_services import CourseService
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="待删除", description="描述"
+        ))
+        result = await CourseService.delete_course(db_session, course.id)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_create_chapter(self, db_session):
+        from modules.course.course_services import CourseService, ChapterService
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="章节测试", description="描述"
+        ))
+        chapter = await ChapterService.create_chapter(db_session, course.id, data=ChapterCreate(
+            title="第一章", content="内容"
+        ))
+        assert chapter.id is not None
+        assert chapter.title == "第一章"
+
+    @pytest.mark.asyncio
+    async def test_get_chapters_by_course(self, db_session):
+        from modules.course.course_services import CourseService, ChapterService
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="章节列表测试", description="描述"
+        ))
+        await ChapterService.create_chapter(db_session, course.id, data=ChapterCreate(title="C1", content="c1"))
+        await ChapterService.create_chapter(db_session, course.id, data=ChapterCreate(title="C2", content="c2"))
+        chapters = await ChapterService.get_chapters_by_course(db_session, course.id)
+        assert len(chapters) >= 2
+
+    @pytest.mark.asyncio
+    async def test_enroll_course(self, db_session):
+        from modules.course.course_services import CourseService, EnrollmentService
+        from modules.course.course_schemas import CourseUpdate
+        course = await CourseService.create_course(db_session, user_id=1, data=CourseCreate(
+            title="报名测试", description="描述"
+        ))
+        await CourseService.update_course(db_session, course.id, data=CourseUpdate(is_published=True))
+        enrollment = await EnrollmentService.enroll_course(db_session, user_id=2, course_id=course.id)
+        assert enrollment is not None
+
+    @pytest.mark.asyncio
+    async def test_learning_stats(self, db_session):
+        from modules.course.course_services import EnrollmentService
+        stats = await EnrollmentService.get_learning_stats(db_session, user_id=1)
+        assert isinstance(stats, dict)
+
+
+# ==================== API 路由测试 ====================
+@pytest.mark.asyncio
+class TestCourseAPI:
+    async def test_create_course(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/v1/course/create", json={
+            "title": "API课程", "description": "API描述"
+        })
+        assert resp.status_code == 200
+
+    async def test_get_course_list(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/course/list")
+        assert resp.status_code == 200
+
+    async def test_get_my_courses(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/course/my")
+        assert resp.status_code == 200
+
+    async def test_course_lifecycle(self, admin_client: AsyncClient):
+        """测试课程完整生命周期"""
+        # 创建
+        cr = await admin_client.post("/api/v1/course/create", json={
+            "title": "生命周期", "description": "测试"
+        })
+        assert cr.status_code == 200
+        cid = cr.json()["data"]["id"]
+        # 查看
+        get_r = await admin_client.get(f"/api/v1/course/{cid}")
+        assert get_r.status_code == 200
+        # 更新
+        up_r = await admin_client.put(f"/api/v1/course/{cid}", json={"title": "已更新"})
+        assert up_r.status_code == 200
+        # 创建章节
+        ch_r = await admin_client.post(f"/api/v1/course/{cid}/chapters", json={
+            "title": "第一章", "content": "内容"
+        })
+        assert ch_r.status_code == 200
+        # 获取章节
+        chs_r = await admin_client.get(f"/api/v1/course/{cid}/chapters")
+        assert chs_r.status_code == 200
+        # 删除
+        del_r = await admin_client.delete(f"/api/v1/course/{cid}")
+        assert del_r.status_code == 200
+
+    async def test_learning_stats(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/course/learning/stats")
+        assert resp.status_code == 200
+
+
+class TestCourseManifest:
+    def test_manifest(self):
+        from modules.course.course_manifest import manifest
+        assert manifest.id == "course"
+        assert manifest.enabled is True

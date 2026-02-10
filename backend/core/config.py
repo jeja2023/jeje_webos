@@ -6,7 +6,6 @@
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -20,7 +19,7 @@ class Settings(BaseSettings):
     
     # 应用信息
     app_name: str = "JeJe WebOS"
-    app_version: str
+    app_version: str = "0.0.0"
     debug: bool = False
     
     # 数据库配置
@@ -47,6 +46,9 @@ class Settings(BaseSettings):
     
     @property
     def db_url_sync(self) -> str:
+        if self.database_url:
+            # 将异步驱动替换为同步驱动，保持与 db_url 一致
+            return self.database_url.replace("aiomysql", "pymysql").replace("asyncpg", "psycopg2")
         encoded_user = quote_plus(self.db_user)
         encoded_pwd = quote_plus(self.db_password)
         return f"mysql+pymysql://{encoded_user}:{encoded_pwd}@{self.db_host}:{self.db_port}/{self.db_name}"
@@ -76,10 +78,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60  # 1小时 (配合刷新令牌使用)
     
-    @classmethod
-    def check_production_security(cls, values):
-        """检查生产环境安全配置"""
-        pass
+    # 生产环境安全检查由 get_settings() 在初始化后调用
     
     # JWT密钥自动轮换配置
     jwt_auto_rotate: bool = True  # 是否启用自动轮换
@@ -139,17 +138,44 @@ def get_settings() -> Settings:
     if _settings_instance is None:
         _settings_instance = Settings()
         
-        if not _settings_instance.debug and _settings_instance.jwt_secret == "your-secret-key-change-in-production":
-            import logging
-            logging.getLogger("core.config").warning(
-                "🚨 [安全警告] 您正在生产环境模式下使用默认的 JWT_SECRET！"
-                "请立即在 .env 文件中配置 JWT_SECRET。"
-            )
-        if not _settings_instance.debug and _settings_instance.allow_origins == ["*"]:
-            import logging
-            logging.getLogger("core.config").warning(
-                "⚠️ [安全建议] 生产环境 CORS 为 allow_origins=['*']，建议在 .env 中设置 ALLOW_ORIGINS 为具体前端域名列表。"
-            )
+        import logging
+        _logger = logging.getLogger("core.config")
+        
+        # 生产环境安全检查
+        if not _settings_instance.debug:
+            # P0: 默认 JWT Secret 必须修改
+            if _settings_instance.jwt_secret == "your-secret-key-change-in-production":
+                _logger.critical(
+                    "🚨 [严重安全风险] 生产环境使用默认 JWT_SECRET！系统拒绝启动。"
+                    "请立即在 .env 文件中配置一个安全的 JWT_SECRET（建议至少 32 位随机字符串）。"
+                )
+                raise SystemExit("安全错误: 生产环境禁止使用默认 JWT_SECRET，请在 .env 中配置")
+            
+            # P0: 默认管理员密码必须修改
+            if _settings_instance.admin_password == "admin123":
+                if not _settings_instance.debug:
+                    _logger.critical(
+                        "🚨 [严重安全风险] 生产环境使用默认管理员密码 'admin123'！"
+                        "请立即在 .env 文件中修改 ADMIN_PASSWORD 为强密码。"
+                    )
+                else:
+                    _logger.warning(
+                        "⚠️ [安全警告] 管理员密码为默认值 'admin123'，"
+                        "请在部署前修改 ADMIN_PASSWORD。"
+                    )
+            
+            # CORS 配置检查
+            if _settings_instance.allow_origins == ["*"]:
+                _logger.warning(
+                    "⚠️ [安全建议] 生产环境 CORS 为 allow_origins=['*']，"
+                    "建议在 .env 中设置 ALLOW_ORIGINS 为具体前端域名列表。"
+                )
+        else:
+            # debug 模式下仅警告
+            if _settings_instance.jwt_secret == "your-secret-key-change-in-production":
+                _logger.warning(
+                    "⚠️ [调试模式] 使用默认 JWT_SECRET，请勿在生产环境中使用。"
+                )
     return _settings_instance
 
 
@@ -159,6 +185,6 @@ def reload_settings():
     仅重新加载配置，不清理已签发的Token
     """
     global _settings_instance
-    _settings_instance = Settings()
-    return _settings_instance
+    _settings_instance = None  # 先清空，让 get_settings() 重新走安全校验逻辑
+    return get_settings()
 

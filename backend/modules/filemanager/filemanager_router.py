@@ -51,12 +51,22 @@ def get_service(db: AsyncSession, user: TokenData) -> FileManagerService:
     return FileManagerService(db, user.user_id)
 
 
-def get_user_from_token(token: Optional[str] = Query(None)) -> TokenData:
-    """从 URL 参数获取 Token 并验证（用于下载/预览）"""
-    if not token:
+def get_user_from_token(request = None, token: Optional[str] = Query(None)) -> TokenData:
+    """从 URL 参数或 HttpOnly Cookie 获取 Token 并验证（用于下载/预览）"""
+    jwt_token = token
+    
+    # 如果 query 参数没有 token，尝试从 HttpOnly Cookie 获取
+    if not jwt_token and request:
+        from core.security import COOKIE_ACCESS_TOKEN
+        from core.config import get_settings
+        settings = get_settings()
+        if settings.auth_use_httponly_cookie:
+            jwt_token = request.cookies.get(COOKIE_ACCESS_TOKEN)
+    
+    if not jwt_token:
         raise HTTPException(status_code=401, detail="未认证")
     
-    token_data = decode_token(token)
+    token_data = decode_token(jwt_token)
     if not token_data:
         raise HTTPException(status_code=401, detail="无效的令牌")
     
@@ -81,7 +91,7 @@ async def browse_directory(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"浏览目录失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"浏览失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="浏览失败，请稍后重试")
 
 
 @router.get("/search")
@@ -244,49 +254,59 @@ async def _process_single_file(
             except (ValueError, TypeError):
                 pass
     
-    # 2. 流式读取并检查大小
-    content_chunks = []
+    # 2. 流式读取到临时文件（避免大文件占用内存）
+    import tempfile
+    import os
+    
     total_size = 0
     chunk_size = 1024 * 1024  # 1MB 块大小
+    temp_file_path = None
     
     try:
-        while True:
-            chunk = await file.read(chunk_size)
-            if not chunk:
-                break
-            
-            total_size += len(chunk)
-            
-            if total_size > max_size:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
-                )
-            
-            content_chunks.append(chunk)
-            
-            if content_length and total_size > content_length:
-                logger.warning(f"文件 {file.filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
-                break
+        # 使用临时文件而非内存缓冲
+        temp_fd, temp_file_path = tempfile.mkstemp(suffix=os.path.splitext(file.filename or "")[1])
+        try:
+            with os.fdopen(temp_fd, 'wb') as tmp_f:
+                while True:
+                    chunk = await file.read(chunk_size)
+                    if not chunk:
+                        break
+                    
+                    total_size += len(chunk)
+                    
+                    if total_size > max_size:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                        )
+                    
+                    tmp_f.write(chunk)
+                    
+                    if content_length and total_size > content_length:
+                        logger.warning(f"文件 {file.filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
+                        break
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"读取文件 {file.filename} 时发生错误: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+        
+        # 3. 从临时文件读取内容用于上传
+        with open(temp_file_path, 'rb') as tmp_f:
+            content = tmp_f.read()
+        actual_size = len(content)
     
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"读取文件 {file.filename} 时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+    finally:
+        # 清理临时文件
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception:
+                pass
     
-    # 3. 合并所有块
-    content = b''.join(content_chunks)
-    actual_size = len(content)
-    
-    # 4. 最终验证
-    if actual_size > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size / 1024 / 1024:.1f}MB）"
-        )
-    
-    # 5. 上传文件
+    # 4. 上传文件
     try:
         uploaded = await service.upload_file(
             filename=file.filename or "unknown",
@@ -559,7 +579,13 @@ async def upload_folder(
     folder_paths = set()
     for rel_path in relative_paths:
         # 分解路径，收集所有父目录
-        parts = rel_path.replace("\\", "/").split("/")
+        # 安全检查：过滤路径遍历组件
+        normalized = rel_path.replace("\\", "/")
+        parts = normalized.split("/")
+        # 过滤掉 ".." 和 "." 以及空字符串，防止路径遍历
+        parts = [p for p in parts if p and p != "." and p != ".."]
+        if not parts:
+            continue
         for i in range(1, len(parts)):  # 不包含文件名本身
             folder_path = "/".join(parts[:i])
             if folder_path:
@@ -922,7 +948,11 @@ async def download_file(
     
     # 处理文件名编码
     encoded_filename = encode_filename_for_header(file.name)
-    cd_type = 'inline' if file.mime_type and ('image' in file.mime_type or 'video' in file.mime_type or 'pdf' in file.mime_type) else 'attachment'
+    # SVG 可包含嵌入脚本，必须以附件方式下载，防止 XSS
+    if file.mime_type and file.mime_type != 'image/svg+xml' and ('image' in file.mime_type or 'video' in file.mime_type or 'pdf' in file.mime_type):
+        cd_type = 'inline'
+    else:
+        cd_type = 'attachment'
     cd_header = f"{cd_type}; filename={encoded_filename}" if encoded_filename.startswith('"') else f"{cd_type}; filename*={encoded_filename}"
     
     return FileResponse(

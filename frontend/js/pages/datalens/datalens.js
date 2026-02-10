@@ -428,6 +428,29 @@ class DataLensPage extends Component {
             const row = el.closest('.lens-sort-row');
             if (row) row.remove();
         });
+
+        // 图表配置按钮（替代 inline onclick）
+        this.delegate('click', '[data-action="show-visual-settings"]', (e, el) => {
+            const tabId = parseInt(el.dataset.tabId);
+            if (tabId) this._showVisualSettings(tabId);
+        });
+
+        // 图片预览（替代 inline onclick）
+        this.delegate('click', '.lens-cell-img[data-preview-url]', (e, el) => {
+            const url = el.dataset.previewUrl;
+            if (url) this._showImagePreview(url);
+        });
+
+        // 图片 onerror 兜底（error 不冒泡，需用 capture）
+        if (this.container && !this.container._lensImgErrorBound) {
+            this.container._lensImgErrorBound = true;
+            this.container.addEventListener('error', (e) => {
+                if (e.target?.classList?.contains('lens-cell-img')) {
+                    e.target.src = 'frontend/img/image_error.png';
+                    e.target.title = '图片加载失败';
+                }
+            }, true);
+        }
     }
 
     _renderHeader() {

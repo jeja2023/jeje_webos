@@ -240,25 +240,27 @@
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: auto;
     padding-top: 8px;
     border-top: 1px solid var(--border-color-light);
+    opacity: 0.8;
 }
 
 .lens-view-card-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 10px 12px;
     background: var(--bg-tertiary);
     border-top: 1px solid var(--border-color);
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
+    backdrop-filter: blur(8px);
 }
 
 .lens-view-card:hover .lens-view-card-actions {
@@ -272,29 +274,32 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
+    color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 16px;
 }
 
 .lens-view-card-btn:hover {
     background: var(--color-primary);
     color: #fff;
     border-color: var(--color-primary);
-    transform: scale(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .lens-view-card-btn.active {
     color: var(--color-primary);
     border-color: var(--color-primary);
-    background: rgba(var(--color-primary-rgb), 0.1);
+    background: rgba(var(--color-primary-rgb), 0.15);
 }
 
 .lens-view-card-btn.pin.active {
     color: var(--color-warning);
     border-color: var(--color-warning);
-    background: rgba(var(--color-warning-rgb), 0.1);
+    background: rgba(var(--color-warning-rgb), 0.15);
 }
 
 .lens-empty {

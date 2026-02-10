@@ -285,12 +285,16 @@ class AuditLogger:
     async def _flush_logs(cls):
         """批量刷新日志到数据库"""
         queue = cls._get_queue()
-        if not queue or cls._is_flushing:
+        if not queue:
             return
         
         entries_to_flush = []
         async with cls._get_lock():
+            # 在锁内检查 _is_flushing，避免 TOCTOU 竞态条件
+            if cls._is_flushing:
+                return
             cls._is_flushing = True
+            queue = cls._get_queue()
             if queue:
                 entries_to_flush = queue[:cls._batch_size]
                 cls._log_queue = queue[cls._batch_size:]
@@ -389,17 +393,9 @@ class AuditLogger:
     
     @staticmethod
     def get_client_ip(request: Request) -> str:
-        """获取客户端 IP"""
-        # 尝试从代理头获取真实 IP
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
-        
-        return request.client.host if request.client else "unknown"
+        """获取客户端 IP（委托给安全版本，含格式验证防日志注入）"""
+        from utils.request import get_client_ip
+        return get_client_ip(request)
     
     @classmethod
     async def log(

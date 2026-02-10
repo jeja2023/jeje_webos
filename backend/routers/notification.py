@@ -46,6 +46,11 @@ async def create_notification(
 
     if target_user_id is None:
         raise HTTPException(status_code=400, detail="必须指定接收用户ID或用户名")
+    
+    # 权限检查：仅管理员可发送通知给其他用户（防止滥用通知功能进行骚扰）
+    if target_user_id != current_user.user_id and target_user_id != 0:
+        if current_user.role not in ("admin", "manager"):
+            raise HTTPException(status_code=403, detail="仅管理员可向其他用户发送通知")
 
     if target_user_id == 0:
         # 发送给所有用户 (仅管理员)

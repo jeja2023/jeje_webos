@@ -6,6 +6,7 @@
 import os
 import logging
 from typing import Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -352,27 +353,16 @@ async def download_file(
     下载完整文件
     
     传输完成后，接收方可以下载完整文件
-    支持通过 token 参数传递认证信息（用于浏览器直接下载）
+    支持通过 Cookie、Header 或 Query 参数传递认证信息
     """
-    user_id = None
+    from utils.auth_helpers import get_user_from_token
     
-    # 1. 尝试从 Query 参数获取 Token
-    if token:
-        from core.security import decode_token
-        token_data = decode_token(token)
-        if token_data:
-            user_id = token_data.user_id
-            
-    # 2. 尝试从 Header 获取 Token
-    if not user_id and request and "Authorization" in request.headers:
-        auth = request.headers["Authorization"]
-        if auth.startswith("Bearer "):
-            from core.security import decode_token
-            token_data = decode_token(auth[7:])
-            if token_data:
-                user_id = token_data.user_id
-    
-    if not user_id:
+    try:
+        current_user = get_user_from_token(request, token)
+        user_id = current_user.user_id
+    except HTTPException as e:
+        raise e
+    except Exception:
         raise HTTPException(status_code=401, detail="无效的认证凭据")
         
     session = await TransferService.get_session(db, session_code, user_id)

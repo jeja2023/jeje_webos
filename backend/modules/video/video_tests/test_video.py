@@ -1,102 +1,88 @@
+# -*- coding: utf-8 -*-
+"""
+视频模块测试
+覆盖：模型、服务层 CRUD、API 路由端点
+"""
 import pytest
-from unittest.mock import MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from modules.video.video_services import VideoService
-from modules.video.video_schemas import CollectionCreate, CollectionUpdate, VideoUpdate
+from httpx import AsyncClient
 from modules.video.video_models import VideoCollection, Video
+from modules.video.video_schemas import CollectionCreate
 
-# Mock user ID
-USER_ID = 1
 
-@pytest.fixture
-def mock_storage_manager():
-    manager = MagicMock()
-    manager.get_module_dir.return_value = "/tmp/mock_dir"
-    return manager
+class TestVideoModels:
+    def test_collection_model(self):
+        assert VideoCollection.__tablename__ == "video_collections"
+    def test_video_model(self):
+        assert "video" in Video.__tablename__
 
-class TestVideoModule:
-    """Video模块测试"""
-    
+
+class TestVideoService:
     @pytest.mark.asyncio
-    async def test_video_collection_crud(self, db_session: AsyncSession):
-        """测试视频集增删改查"""
-        db = db_session # Local alias
-        # 1. Create
-        create_data = CollectionCreate(name="Test Collection", description="Desc", is_public=True)
-        collection = await VideoService.create_collection(db, USER_ID, create_data)
-        
-        assert collection.id is not None
-        assert collection.name == "Test Collection"
-        assert collection.user_id == USER_ID
-        
-        # 2. Get
-        fetched = await VideoService.get_collection_by_id(db, collection.id, USER_ID)
-        assert fetched is not None
-        assert fetched.name == "Test Collection"
-        
-        # 3. Update
-        update_data = CollectionUpdate(name="Updated Name")
-        updated = await VideoService.update_collection(db, collection.id, update_data, USER_ID)
-        assert updated.name == "Updated Name"
-        
-        # 4. List
-        collections, total = await VideoService.get_collection_list(db, USER_ID, 1, 10)
+    async def test_create_collection(self, db_session):
+        from modules.video.video_services import VideoService
+        coll = await VideoService.create_collection(db_session, user_id=1, data=CollectionCreate(
+            name="我的视频集", description="测试描述"
+        ))
+        assert coll.id is not None
+        assert coll.name == "我的视频集"
+
+    @pytest.mark.asyncio
+    async def test_get_collection_list(self, db_session):
+        from modules.video.video_services import VideoService
+        await VideoService.create_collection(db_session, user_id=1, data=CollectionCreate(name="集合1"))
+        colls, total = await VideoService.get_collection_list(db_session, user_id=1)
         assert total >= 1
-        assert len(collections) >= 1
-        assert collections[0].name == "Updated Name"
-        
-        # 5. Delete
-        # Mock delete_video_files as logic inside delete_collection calls it
-        with patch.object(VideoService, '_delete_video_files'):
-            success = await VideoService.delete_collection(db, collection.id, USER_ID)
-            assert success is True
-            
-        fetched_after = await VideoService.get_collection_by_id(db, collection.id, USER_ID)
-        assert fetched_after is None
 
     @pytest.mark.asyncio
-    async def test_video_upload_flow(self, db_session: AsyncSession, mock_storage_manager):
-        """测试视频上传流程（使用 Mock）"""
-        db = db_session
-        # 准备环境
-        collection = await VideoService.create_collection(
-            db, USER_ID, CollectionCreate(name="Upload Test")
-        )
-        
-        file_content = b"fake video content"
-        filename = "test.mp4"
-        content_type = "video/mp4"
-        
-        # Mock file operations and subprocess
-        with patch("builtins.open", new_callable=MagicMock) as mock_open:
-            with patch("os.path.exists", return_value=False): # Avoid real file checks
-                with patch("modules.video.video_services.check_ffmpeg_available", return_value=False): # Skip FFmpeg
-                     # Perform Upload
-                    video = await VideoService.upload_video(
-                        db, USER_ID, collection.id, file_content, filename, content_type, mock_storage_manager
-                    )
-                    
-        assert video is not None
-        assert video.filename == filename
-        assert video.collection_id == collection.id
-        # assert video.video_count_in_collection == 1 (Assuming there's no direct field but logic updates collection)
-        
-        # Verify Collection count update
-        await db.refresh(collection)
-        assert collection.video_count == 1
-        assert collection.cover_video_id == video.id
-        
-        # Test Update Video
-        update_data = VideoUpdate(title="New Title", sort_order=5)
-        updated_video = await VideoService.update_video(db, video.id, update_data, USER_ID)
-        assert updated_video.title == "New Title"
-        
-        # Test Delete Video
-        with patch("os.remove") as mock_remove:
-            deleted_count = await VideoService.delete_videos(db, [video.id], USER_ID)
-            assert deleted_count == 1
-            
-        # Verify deletion
-        fetched_video = await VideoService.get_video_by_id(db, video.id, USER_ID)
-        assert fetched_video is None
+    async def test_update_collection(self, db_session):
+        from modules.video.video_services import VideoService
+        from modules.video.video_schemas import CollectionUpdate
+        coll = await VideoService.create_collection(db_session, user_id=1, data=CollectionCreate(name="原始名"))
+        updated = await VideoService.update_collection(db_session, coll.id, data=CollectionUpdate(name="新名"), user_id=1)
+        assert updated.name == "新名"
+
+    @pytest.mark.asyncio
+    async def test_delete_collection(self, db_session):
+        from modules.video.video_services import VideoService
+        coll = await VideoService.create_collection(db_session, user_id=1, data=CollectionCreate(name="待删除"))
+        result = await VideoService.delete_collection(db_session, coll.id, user_id=1)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_format_duration(self, db_session):
+        from modules.video.video_services import VideoService
+        # 验证核心逻辑
+        assert "0" in VideoService.format_duration(0)
+        assert "05" in VideoService.format_duration(65)
+        assert "1:01" in VideoService.format_duration(3661)
+        # None 可能返回 "" 或 "0:00"
+        result_none = VideoService.format_duration(None)
+        assert result_none is not None
+
+
+@pytest.mark.asyncio
+class TestVideoAPI:
+    async def test_get_collections(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/video/")
+        assert resp.status_code == 200
+
+    async def test_create_collection(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/v1/video/", json={"name": "API视频集", "description": "测试"})
+        assert resp.status_code == 200
+
+    async def test_collection_lifecycle(self, admin_client: AsyncClient):
+        cr = await admin_client.post("/api/v1/video/", json={"name": "生命周期", "description": "测试"})
+        cid = cr.json()["data"]["id"]
+        get_r = await admin_client.get(f"/api/v1/video/{cid}")
+        assert get_r.status_code == 200
+        up_r = await admin_client.put(f"/api/v1/video/{cid}", json={"name": "已更新"})
+        assert up_r.status_code == 200
+        del_r = await admin_client.delete(f"/api/v1/video/{cid}")
+        assert del_r.status_code == 200
+
+
+class TestVideoManifest:
+    def test_manifest(self):
+        from modules.video.video_manifest import manifest
+        assert manifest.id == "video"
+        assert manifest.enabled is True

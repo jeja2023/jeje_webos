@@ -100,7 +100,27 @@ async def update_system_settings(
     """更新系统设置（仅管理员）"""
     current = await _get_settings(db)
     new_data = current.model_dump()
-    for k, v in data.model_dump(exclude_unset=True).items():
+    update_fields = data.model_dump(exclude_unset=True)
+    
+    # 安全边界检查：防止恶意设置值
+    if "jwt_expire_minutes" in update_fields:
+        val = update_fields["jwt_expire_minutes"]
+        if not isinstance(val, int) or val < 5 or val > 1440:
+            raise HTTPException(status_code=400, detail="JWT 有效期必须在 5~1440 分钟之间")
+    if "rate_limit_requests" in update_fields:
+        val = update_fields["rate_limit_requests"]
+        if not isinstance(val, int) or val < 1 or val > 100000:
+            raise HTTPException(status_code=400, detail="速率限制请求数必须在 1~100000 之间")
+    if "rate_limit_window" in update_fields:
+        val = update_fields["rate_limit_window"]
+        if not isinstance(val, int) or val < 1 or val > 3600:
+            raise HTTPException(status_code=400, detail="速率限制时间窗口必须在 1~3600 秒之间")
+    if "password_min_length" in update_fields:
+        val = update_fields["password_min_length"]
+        if not isinstance(val, int) or val < 4 or val > 128:
+            raise HTTPException(status_code=400, detail="密码最小长度必须在 4~128 之间")
+    
+    for k, v in update_fields.items():
         new_data[k] = v
     
     result = await db.execute(select(SystemSetting).where(SystemSetting.key == "system"))

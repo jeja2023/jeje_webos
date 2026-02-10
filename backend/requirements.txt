@@ -9,11 +9,10 @@ pydantic-settings>=2.0.0
 # ========== 数据库驱动 ==========
 aiomysql>=0.2.0
 pymysql>=1.1.0
-# 注：如需 PostgreSQL/Oracle/ODBC 支持，请取消下方注释
-# psycopg2-binary>=2.9.0
-# asyncpg>=0.29.0
-# oracledb>=2.0.0
-# pyodbc>=5.0.0
+psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
+oracledb>=2.0.0
+pyodbc>=5.0.0
 
 # ========== 安全与认证 ==========
 python-jose[cryptography]>=3.3.0

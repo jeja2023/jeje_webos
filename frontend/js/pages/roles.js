@@ -217,6 +217,9 @@ class RolesPage extends Component {
                         <p class="page-desc">用户组定义模块及子功能的允许范围，用户在组内可再收紧</p>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn btn-ghost" data-action="go-back" title="返回">
+                            <i class="ri-arrow-left-line"></i> 返回
+                        </button>
                         ${window.ModuleHelp ? ModuleHelp.createHelpButton('roles', '角色管理') : ''}
                         <button class="btn btn-primary" id="createRole">
                             <i class="ri-add-line"></i> 新建用户组
@@ -296,6 +299,10 @@ class RolesPage extends Component {
         if (this.container && !this.container._bindedRoles) {
             this.container._bindedRoles = true;
             // 用事件委托，避免重渲染后失效
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
+
+            this.delegate('click', '#createRole', () => this.openEditor());
+
             this.delegate('click', '[data-edit-role]', (e, t) => {
                 const id = parseInt(t.dataset.editRole);
                 const role = this.state.roles.find(r => r.id === id);

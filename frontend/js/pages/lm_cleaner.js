@@ -7,6 +7,7 @@ class LmCleanerPage extends Component {
     constructor(container) {
         super();
         this.container = container;
+        this._eventsBound = false;
         this.state = {
             items: [],
             loading: false,
@@ -31,7 +32,46 @@ class LmCleanerPage extends Component {
     updateView() {
         if (this.container) {
             this.container.innerHTML = this.render();
+            this.bindEvents();
         }
+    }
+
+    bindEvents() {
+        if (!this.container || this._eventsBound) return;
+        this._eventsBound = true;
+
+        // 上传文件（委托）
+        this.container.addEventListener('change', (e) => {
+            const input = e.target.closest('input[data-action="lm-upload"]');
+            if (input) {
+                this.handleUpload(e);
+            }
+        });
+
+        // 操作按钮（委托）
+        this.container.addEventListener('click', (e) => {
+            const previewBtn = e.target.closest('[data-action="lm-preview"]');
+            if (previewBtn) {
+                const id = previewBtn.dataset.id;
+                const type = previewBtn.dataset.type || 'cleaned';
+                this.previewImage(id, type);
+                return;
+            }
+
+            const downloadBtn = e.target.closest('[data-action="lm-download"]');
+            if (downloadBtn) {
+                const id = downloadBtn.dataset.id;
+                const type = downloadBtn.dataset.type || 'cleaned';
+                this.downloadFile(id, type);
+                return;
+            }
+
+            const deleteBtn = e.target.closest('[data-action="lm-delete"]');
+            if (deleteBtn) {
+                const id = deleteBtn.dataset.id;
+                this.deleteRecord(id);
+            }
+        });
     }
 
     async loadData() {
@@ -96,7 +136,7 @@ class LmCleanerPage extends Component {
     }
 
     downloadFile(id, type = 'cleaned') {
-        window.open(`/api/v1/lm_cleaner/download/${id}?type=${type}&token=${Store.get('token')}`, '_blank');
+        window.open(Utils.withToken(`/api/v1/lm_cleaner/download/${id}?type=${type}`), '_blank');
     }
 
     async deleteRecord(id) {
@@ -118,7 +158,7 @@ class LmCleanerPage extends Component {
             title = item ? item.title : '未知文件';
         }
 
-        const url = `/api/v1/lm_cleaner/download/${id}?type=${type}&preview=true&token=${Store.get('token')}`;
+        const url = Utils.withToken(`/api/v1/lm_cleaner/download/${id}?type=${type}&preview=true`);
         const isPdf = title.toLowerCase().endsWith('.pdf');
         const typeLabel = type === 'source' ? '原件' : '处理后';
 
@@ -128,19 +168,30 @@ class LmCleanerPage extends Component {
         }
 
         if (window.Modal) {
-            window.Modal.show({
+            const modal = window.Modal.show({
                 title: `预览 (${typeLabel}): ${Utils.escapeHtml(title)}`,
                 content: `
                     <div class="text-center p-md">
                         <img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);">
                         <div class="mt-md display-flex gap-sm justify-center">
-                            <button class="btn btn-primary" onclick="window._lm_cleanerPage.downloadFile(${id}, 'cleaned')">下载处理后图片</button>
-                            <button class="btn btn-outline-secondary" onclick="window._lm_cleanerPage.downloadFile(${id}, 'source')">下载原图</button>
+                            <button class="btn btn-primary" data-action="lm-download" data-id="${id}" data-type="cleaned">下载处理后图片</button>
+                            <button class="btn btn-outline-secondary" data-action="lm-download" data-id="${id}" data-type="source">下载原图</button>
                         </div>
                     </div>
                 `,
                 width: 900
             });
+            if (modal?.overlay && !modal.overlay._lmCleanerBound) {
+                modal.overlay._lmCleanerBound = true;
+                modal.overlay.addEventListener('click', (e) => {
+                    const downloadBtn = e.target.closest('[data-action="lm-download"]');
+                    if (downloadBtn) {
+                        const btnId = downloadBtn.dataset.id;
+                        const btnType = downloadBtn.dataset.type || 'cleaned';
+                        this.downloadFile(btnId, btnType);
+                    }
+                });
+            }
         } else {
             window.open(url, '_blank');
         }
@@ -178,7 +229,7 @@ class LmCleanerPage extends Component {
                                 <span>上传/拖拽文件</span>
                             </div>
                             <span class="upload-hint">支持 PDF, PNG, JPG, WEBP</span>
-                            <input type="file" onchange="window._lm_cleanerPage.handleUpload(event)" accept=".pdf,image/*">
+                            <input type="file" data-action="lm-upload" accept=".pdf,image/*">
                         `}
                     </div>
                 </div>
@@ -220,18 +271,18 @@ class LmCleanerPage extends Component {
                                                     ${new Date(item.created_at).toLocaleString()}
                                                 </div>
                                                 <div class="col-actions">
-                                                    <button class="btn btn-sm btn-primary" onclick="window._lm_cleanerPage.previewImage(${item.id}, 'cleaned')">
+                                                    <button class="btn btn-sm btn-primary" data-action="lm-preview" data-id="${item.id}" data-type="cleaned">
                                                         <i class="ri-eye-line"></i> 查看
                                                     </button>
-                                                    <button class="btn btn-sm btn-success" onclick="window._lm_cleanerPage.downloadFile(${item.id})">
+                                                    <button class="btn btn-sm btn-success" data-action="lm-download" data-id="${item.id}" data-type="cleaned">
                                                         <i class="ri-download-line"></i> 下载
                                                     </button>
                                                     ${item.source_file ? `
-                                                        <button class="btn btn-sm btn-outline-secondary" onclick="window._lm_cleanerPage.previewImage(${item.id}, 'source')" title="预览原始文件">
+                                                        <button class="btn btn-sm btn-outline-secondary" data-action="lm-preview" data-id="${item.id}" data-type="source" title="预览原始文件">
                                                             原件
                                                         </button>
                                                     ` : ''}
-                                                    <button class="btn btn-sm btn-ghost btn-outline-danger" onclick="window._lm_cleanerPage.deleteRecord(${item.id})">
+                                                    <button class="btn btn-sm btn-ghost btn-outline-danger" data-action="lm-delete" data-id="${item.id}">
                                                         <i class="ri-delete-bin-line"></i>
                                                     </button>
                                                 </div>

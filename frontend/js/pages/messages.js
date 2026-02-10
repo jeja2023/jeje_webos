@@ -105,18 +105,19 @@ class NotificationsPage extends Component {
         try {
             await NotificationApi.create(data);
             Toast.success('通知发送成功');
-            this.setState({ showSendModal: false });
             this.loadData();
             // 立即刷新未读数（即时反馈给自己）
             this.updateUnreadCount();
+            return true;
         } catch (e) {
             Toast.error(e.message || '发送失败');
+            return false;
         }
     }
 
     handleExport() {
         const token = Store.get('token');
-        window.open(`/api/v1/export/notification?token=${token}&format=xlsx`, '_blank');
+        window.open(Utils.withToken(`/api/v1/export/notification?format=xlsx`), '_blank');
     }
 
     async showSendNotificationModal() {
@@ -178,7 +179,7 @@ class NotificationsPage extends Component {
             </div>
         `;
 
-        const { overlay, close } = Modal.show({
+        const modal = Modal.show({
             title: '<i class="ri-send-plane-line"></i> 发送通知',
             content,
             footer: `
@@ -189,8 +190,8 @@ class NotificationsPage extends Component {
         });
 
         if (isAdmin) {
-            const rads = overlay.querySelectorAll('input[name="msgTargetType"]');
-            const targetInput = overlay.querySelector('#targetUserInput');
+            const rads = modal.overlay.querySelectorAll('input[name="msgTargetType"]');
+            const targetInput = modal.overlay.querySelector('#targetUserInput');
             rads.forEach(rad => {
                 rad.onchange = () => {
                     targetInput.style.display = rad.value === 'user' ? 'block' : 'none';
@@ -198,39 +199,44 @@ class NotificationsPage extends Component {
             });
         }
 
-        const sendBtn = overlay.querySelector('#sendMsgBtn');
-        sendBtn?.addEventListener('click', () => {
+        const sendBtn = modal.overlay.querySelector('#sendMsgBtn');
+        sendBtn?.addEventListener('click', async () => {
             let userId = null;
             let receiverUsername = null;
 
             if (isAdmin) {
-                const targetType = overlay.querySelector('input[name="msgTargetType"]:checked').value;
+                const targetType = modal.overlay.querySelector('input[name="msgTargetType"]:checked').value;
                 if (targetType === 'all') {
                     userId = 0;
                 } else {
-                    receiverUsername = overlay.querySelector('#msgReceiverUsername').value.trim();
+                    receiverUsername = modal.overlay.querySelector('#msgReceiverUsername').value.trim();
                     if (!receiverUsername) {
                         Toast.error('请输入用户名'); return;
                     }
                 }
             } else {
-                receiverUsername = overlay.querySelector('#msgReceiverUsername').value.trim();
+                receiverUsername = modal.overlay.querySelector('#msgReceiverUsername').value.trim();
                 if (!receiverUsername) {
                     Toast.error('请输入用户名'); return;
                 }
             }
 
-            const type = overlay.querySelector('#msgType').value;
-            const title = overlay.querySelector('#msgTitle').value.trim();
-            const content = overlay.querySelector('#msgContent').value.trim();
-            const actionUrl = overlay.querySelector('#msgActionUrl').value.trim();
+            const type = modal.overlay.querySelector('#msgType').value;
+            const title = modal.overlay.querySelector('#msgTitle').value.trim();
+            const content = modal.overlay.querySelector('#msgContent').value.trim();
+            const actionUrl = modal.overlay.querySelector('#msgActionUrl').value.trim();
 
             if (!title) {
                 Toast.error('请输入通知标题');
                 return;
             }
 
-            this.handleSendNotification({
+            // 设置加载状态
+            sendBtn.disabled = true;
+            const originalText = sendBtn.innerHTML;
+            sendBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> 发送中...';
+
+            const success = await this.handleSendNotification({
                 user_id: userId,
                 receiver_username: receiverUsername,
                 title: title,
@@ -238,7 +244,13 @@ class NotificationsPage extends Component {
                 type: type,
                 action_url: actionUrl || null
             });
-            close();
+
+            if (success) {
+                modal.close();
+            } else {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalText;
+            }
         });
     }
 

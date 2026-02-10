@@ -187,10 +187,22 @@ async def upload_package(
 
     temp_dir = Path(tempfile.mkdtemp())
     try:
-        # 1. 保存临时文件
+        # 1. 保存临时文件（限制大小为 100MB）
+        MAX_MODULE_SIZE = 100 * 1024 * 1024  # 100MB
         temp_zip = temp_dir / file.filename
+        total_size = 0
         with open(temp_zip, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while True:
+                chunk = file.file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > MAX_MODULE_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"模块包大小超过限制（最大 {MAX_MODULE_SIZE // 1024 // 1024}MB）"
+                    )
+                buffer.write(chunk)
         
         # 2. 预检查 zip 内容
         with zipfile.ZipFile(temp_zip, 'r') as zf:

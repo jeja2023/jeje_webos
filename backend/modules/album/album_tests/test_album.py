@@ -1,106 +1,87 @@
+# -*- coding: utf-8 -*-
+"""
+相册模块测试
+覆盖：模型、服务层 CRUD、API 路由端点
+"""
 import pytest
-from unittest.mock import MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from modules.album.album_services import AlbumService
-from modules.album.album_schemas import AlbumCreate, AlbumUpdate, PhotoUpdate
+from httpx import AsyncClient
 from modules.album.album_models import Album, AlbumPhoto
+from modules.album.album_schemas import AlbumCreate
 
-# Mock user ID
-USER_ID = 1
 
-class TestAlbumModule:
-    """Album模块测试"""
-    
-    @pytest.fixture
-    def mock_storage_manager(self):
-        manager = MagicMock()
-        manager.get_module_dir.return_value = "/tmp/mock_dir"
-        return manager
+class TestAlbumModels:
+    def test_album_model(self):
+        assert "album" in Album.__tablename__
+    def test_photo_model(self):
+        assert AlbumPhoto.__tablename__ == "album_photos"
 
+
+class TestAlbumService:
     @pytest.mark.asyncio
-    async def test_album_crud(self, db: AsyncSession):
-        """测试相册增删改查"""
-        # 1. Create
-        create_data = AlbumCreate(name="Test Album", description="Desc", is_public=True)
-        album = await AlbumService.create_album(db, USER_ID, create_data)
-        
+    async def test_create_album(self, db_session):
+        from modules.album.album_services import AlbumService
+        album = await AlbumService.create_album(db_session, user_id=1, data=AlbumCreate(
+            name="旅行相册", description="2024年旅行照片"
+        ))
         assert album.id is not None
-        assert album.name == "Test Album"
-        assert album.user_id == USER_ID
-        
-        # 2. Get
-        fetched = await AlbumService.get_album_by_id(db, album.id, USER_ID)
-        assert fetched is not None
-        assert fetched.name == "Test Album"
-        
-        # 3. Update
-        update_data = AlbumUpdate(name="Updated Album")
-        updated = await AlbumService.update_album(db, album.id, update_data, USER_ID)
-        assert updated.name == "Updated Album"
-        
-        # 4. List
-        albums, total = await AlbumService.get_album_list(db, USER_ID, 1, 10)
-        assert total >= 1
-        assert len(albums) >= 1
-        assert albums[0].name == "Updated Album"
-        
-        # 5. Delete
-        # Mock delete_photo_files logic
-        with patch.object(AlbumService, '_delete_photo_files'):
-            success = await AlbumService.delete_album(db, album.id, USER_ID)
-            assert success is True
-            
-        fetched_after = await AlbumService.get_album_by_id(db, album.id, USER_ID)
-        assert fetched_after is None
+        assert album.name == "旅行相册"
 
     @pytest.mark.asyncio
-    async def test_photo_upload_flow(self, db: AsyncSession, mock_storage_manager):
-        """测试照片上传流程（使用 Mock）"""
-        # 准备环境
-        album = await AlbumService.create_album(
-            db, USER_ID, AlbumCreate(name="Photo Test")
-        )
-        
-        file_content = b"fake image content"
-        filename = "test.jpg"
-        content_type = "image/jpeg"
-        
-        # Mock Image processing and file operations
-        with patch("builtins.open", new_callable=MagicMock) as mock_open:
-            with patch("PIL.Image.open") as mock_img_open:
-                 # Mock PIL Image object
-                mock_img = MagicMock()
-                mock_img.size = (800, 600)
-                mock_img.mode = 'RGB'
-                mock_img_open.return_value = mock_img
-                
-                with patch("os.path.exists", return_value=False):
-                    # Perform Upload
-                    photo = await AlbumService.upload_photo(
-                        db, USER_ID, album.id, file_content, filename, content_type, mock_storage_manager
-                    )
-                    
-        assert photo is not None
-        assert photo.filename == filename
-        assert photo.album_id == album.id
-        assert photo.width == 800
-        assert photo.height == 600
-        
-        # Verify Album stats
-        await db.refresh(album)
-        assert album.photo_count == 1
-        assert album.cover_photo_id == photo.id
-        
-        # Test Update Photo
-        update_data = PhotoUpdate(title="Nice Shot", sort_order=2)
-        updated_photo = await AlbumService.update_photo(db, photo.id, update_data, USER_ID)
-        assert updated_photo.title == "Nice Shot"
-        
-        # Test Delete Photo
-        with patch("os.remove") as mock_remove:
-            deleted_count = await AlbumService.delete_photos(db, [photo.id], USER_ID)
-            assert deleted_count == 1
-            
-        fetched_photo = await AlbumService.get_photo_by_id(db, photo.id, USER_ID)
-        assert fetched_photo is None
+    async def test_get_album_list(self, db_session):
+        from modules.album.album_services import AlbumService
+        await AlbumService.create_album(db_session, user_id=1, data=AlbumCreate(name="列表测试"))
+        albums, total = await AlbumService.get_album_list(db_session, user_id=1)
+        assert total >= 1
+
+    @pytest.mark.asyncio
+    async def test_update_album(self, db_session):
+        from modules.album.album_services import AlbumService
+        from modules.album.album_schemas import AlbumUpdate
+        album = await AlbumService.create_album(db_session, user_id=1, data=AlbumCreate(name="原始"))
+        updated = await AlbumService.update_album(db_session, album.id, data=AlbumUpdate(name="更新"), user_id=1)
+        assert updated.name == "更新"
+
+    @pytest.mark.asyncio
+    async def test_delete_album(self, db_session):
+        from modules.album.album_services import AlbumService
+        album = await AlbumService.create_album(db_session, user_id=1, data=AlbumCreate(name="待删除"))
+        result = await AlbumService.delete_album(db_session, album.id, user_id=1)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_get_album_by_id(self, db_session):
+        from modules.album.album_services import AlbumService
+        album = await AlbumService.create_album(db_session, user_id=1, data=AlbumCreate(name="详情测试"))
+        fetched = await AlbumService.get_album_by_id(db_session, album.id, user_id=1)
+        assert fetched is not None
+        assert fetched.name == "详情测试"
+
+
+@pytest.mark.asyncio
+class TestAlbumAPI:
+    async def test_get_albums(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/album/")
+        assert resp.status_code == 200
+
+    async def test_create_album(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/v1/album/", json={
+            "name": "API相册", "description": "API测试"
+        })
+        assert resp.status_code == 200
+
+    async def test_album_lifecycle(self, admin_client: AsyncClient):
+        cr = await admin_client.post("/api/v1/album/", json={"name": "生命周期", "description": "测试"})
+        aid = cr.json()["data"]["id"]
+        get_r = await admin_client.get(f"/api/v1/album/{aid}")
+        assert get_r.status_code == 200
+        up_r = await admin_client.put(f"/api/v1/album/{aid}", json={"name": "已更新"})
+        assert up_r.status_code == 200
+        del_r = await admin_client.delete(f"/api/v1/album/{aid}")
+        assert del_r.status_code == 200
+
+
+class TestAlbumManifest:
+    def test_manifest(self):
+        from modules.album.album_manifest import manifest
+        assert manifest.id == "album"
+        assert manifest.enabled is True

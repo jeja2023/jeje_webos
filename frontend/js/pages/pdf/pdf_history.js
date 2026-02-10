@@ -26,7 +26,7 @@ const PdfHistory = {
                         </div>
                         <div class="pdf-history-actions">
                             ${item.filename ? `
-                                <button class="btn btn-sm btn-primary" onclick="window._pdfPage.downloadResult(decodeURIComponent('${encodeURIComponent(item.filename).replace(/'/g, '%27')}'))">
+                                <button class="btn btn-sm btn-primary" data-action="download-result" data-filename="${encodeURIComponent(item.filename)}">
                                     <i class="ri-download-2-line"></i> 下载
                                 </button>
                             ` : ''}
@@ -48,16 +48,17 @@ const PdfHistory = {
             case 'pdf2img': return 'ri-image-2-line';
             case 'pdf2word': return 'ri-file-word-line';
             case 'pdf2excel': return 'ri-file-excel-line';
+            case 'rotate': return 'ri-rotate-lock-line';
             case 'encrypt': return 'ri-lock-password-line';
             case 'decrypt': return 'ri-lock-unlock-line';
-            case 'rotate': return 'ri-rotate-lock-line';
-            case 'reorder': return 'ri-drag-move-line';
+            case 'sign': return 'ri-quill-pen-line';
+            case 'extract_text': return 'ri-text';
+            case 'word2pdf': return 'ri-file-word-2-line';
+            case 'excel2pdf': return 'ri-file-excel-2-line';
             case 'extract_pages': return 'ri-scissors-cut-line';
             case 'delete_pages': return 'ri-delete-bin-line';
             case 'reverse': return 'ri-arrow-left-right-line';
-            case 'add_page_numbers': return 'ri-sort-number-asc';
-            case 'sign': return 'ri-quill-pen-line';
-            case 'read': return 'ri-book-read-line';
+            case 'page_numbers': return 'ri-sort-number-asc';
             default: return 'ri-file-pdf-line';
         }
     }

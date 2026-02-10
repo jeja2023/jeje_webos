@@ -14,7 +14,7 @@ class DatasetBase(BaseModel):
 class DatasetCreate(DatasetBase):
     pass
 
-class DatasetUpdate(DatasetBase):
+class DatasetUpdate(BaseModel):
     name: Optional[str] = None
     source_type: Optional[str] = None
     description: Optional[str] = None
@@ -41,23 +41,23 @@ class ImportPreviewRequest(BaseModel):
     source: Optional[str] = "upload"
 
 class BatchImportFileRequest(BaseModel):
-    items: List[ImportFileRequest]
+    items: List[ImportFileRequest] = Field(..., max_length=50)
 
 class ImportDatabaseRequest(BaseModel):
-    name: str
-    connection_url: str
-    query: str
+    name: str = Field(..., min_length=1, max_length=200)
+    connection_url: str = Field(..., min_length=10, max_length=1000)
+    query: str = Field(..., min_length=1, max_length=10000)
     options: Optional[Dict[str, Any]] = None
     test_only: Optional[bool] = False  # 仅测试连接，不导入数据
 
 class DbTablesRequest(BaseModel):
-    connection_url: str
+    connection_url: str = Field(..., min_length=10, max_length=1000)
 
 class CompareRequest(BaseModel):
     source_id: int  # 数据集1 ID
     target_id: int  # 数据集2 ID
-    join_keys: List[str]  # 比对的主键
-    compare_columns: Optional[List[str]] = None  # 需要对比的字段，为空对比全部
+    join_keys: List[str] = Field(..., max_length=20)  # 比对的主键
+    compare_columns: Optional[List[str]] = Field(default=None, max_length=100)  # 需要对比的字段，为空对比全部
 
 # --- 数据清洗 ---
 class CleaningOperation(BaseModel):
@@ -68,7 +68,7 @@ class CleaningOperation(BaseModel):
 
 class CleaningRequest(BaseModel):
     dataset_id: int
-    operations: Optional[List[CleaningOperation]] = None  # 支持多步骤清洗
+    operations: Optional[List[CleaningOperation]] = Field(default=None, max_length=50)  # 支持多步骤清洗
     operation: Optional[str] = None  # 兼容旧版单一操作
     columns: Optional[List[str]] = None
     params: Optional[Dict[str, Any]] = None
@@ -91,9 +91,9 @@ class ModelingAggregateRequest(BaseModel):
 
 # SQL 建模请求
 class ModelingSqlRequest(BaseModel):
-    sql: str  # 用户自定义SQL语句
+    sql: str = Field(..., min_length=1, max_length=10000)  # 用户自定义SQL语句，限制长度防 DoS
     save_as: Optional[str] = None  # 可选：保存结果为新数据集
-    limit: Optional[int] = 1000    # 仅在预览模式（save_as为None）下生效
+    limit: Optional[int] = Field(default=1000, ge=1, le=100000)  # 仅在预览模式下生效
 
 # --- ETL 模型管理 ---
 class ModelBase(BaseModel):

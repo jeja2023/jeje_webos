@@ -53,6 +53,16 @@ const Config = {
         }
     },
 
+    info(...args) {
+        if (this.debug) {
+            console.info('[JeJe Info]', ...args);
+        }
+    },
+
+    warn(...args) {
+        console.warn('[JeJe Warn]', ...args);
+    },
+
     error(...args) {
         console.error('[JeJe Error]', ...args);
     }

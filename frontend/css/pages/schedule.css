@@ -895,3 +895,58 @@
     margin-right: 8px;
     color: var(--accent-color);
 }
+
+/* ========== 新建日程弹窗样式优化 ========== */
+#event-form .form-select {
+    width: 100%;
+    padding: 10px 12px;
+    padding-right: 36px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'%3E%3Cpath fill='none' d='M0 0h24v24H0z'/%3E%3Cpath d='M12 13.172l4.95-4.95 1.414 1.414L12 16 5.636 9.636 7.05 8.222z' fill='rgba(156, 163, 175, 1)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: all 0.2s;
+    height: 42px;
+}
+
+#event-form .form-select:hover {
+    border-color: var(--text-tertiary);
+}
+
+#event-form .form-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
+}
+
+#event-form .form-select option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+/* 统一表单输入框高度 */
+#event-form .form-input {
+    height: 42px;
+    padding: 10px 12px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+#event-form textarea.form-input {
+    height: auto;
+    min-height: 80px;
+}
+
+#event-form .form-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 59, 130, 246), 0.2);
+}

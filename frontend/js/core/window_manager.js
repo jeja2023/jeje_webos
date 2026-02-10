@@ -42,7 +42,7 @@ const WindowManager = {
 
             // 为了保证交互体验，如果组件不同，或者显式要求刷新，或者为了简化逻辑（暂时每次都刷新）
             // 实际上为了 SPA 导航体验，每次在同一个窗口打开不同路由，应该重新挂载
-            if (!isSameComponent || options.refresh !== false) {
+            if (!isSameComponent || options.refresh === true) {
                 // 销毁旧组件
                 if (win.component && typeof win.component.destroy === 'function') {
                     win.component.destroy();
@@ -121,13 +121,13 @@ const WindowManager = {
         // 带动画移除 DOM
         const element = win.element;
         element.classList.add('closing');
-        
+
         const removeElement = () => {
             if (element.parentNode) {
                 element.parentNode.removeChild(element);
             }
         };
-        
+
         element.addEventListener('animationend', removeElement, { once: true });
 
         // 如果动画失效则兜底处理

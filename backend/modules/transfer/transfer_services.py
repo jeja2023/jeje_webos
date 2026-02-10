@@ -9,7 +9,7 @@ import hashlib
 import aiofiles
 import logging
 from datetime import datetime, timedelta
-from utils.timezone import get_beijing_time
+from utils.timezone import get_beijing_time, to_beijing_time
 from typing import Optional, List, Tuple
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,9 +51,9 @@ class TransferService:
     
     @staticmethod
     def generate_session_code() -> str:
-        """生成6位数字传输码（优化：使用更高效的方法）"""
-        # 使用 random.randint 比 random.choices 更高效
-        return f"{random.randint(100000, 999999)}"
+        """生成 6 位数字传输码（密码学安全随机数）"""
+        import secrets
+        return str(secrets.randbelow(900000) + 100000)
     
     @staticmethod
     async def create_session(
@@ -159,7 +159,7 @@ class TransferService:
             return None
         
         # 检查是否过期
-        if session.expires_at < get_beijing_time():
+        if to_beijing_time(session.expires_at) < get_beijing_time():
             session.status = TransferStatus.EXPIRED
             await db.commit()
             return None
@@ -534,9 +534,9 @@ class HistoryService:
         # 计算耗时
         duration_ms = 0
         if session.connected_at and session.completed_at:
-            duration_ms = int((session.completed_at - session.connected_at).total_seconds() * 1000)
+            duration_ms = int((to_beijing_time(session.completed_at) - to_beijing_time(session.connected_at)).total_seconds() * 1000)
         elif session.connected_at:
-            duration_ms = int((get_beijing_time() - session.connected_at).total_seconds() * 1000)
+            duration_ms = int((get_beijing_time() - to_beijing_time(session.connected_at)).total_seconds() * 1000)
         
         # 获取用户昵称
         from models import User

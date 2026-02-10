@@ -12,6 +12,7 @@ try:
     import redis.asyncio as redis
     REDIS_AVAILABLE = True
 except ImportError:
+    redis = None  # type: ignore
     REDIS_AVAILABLE = False
     logging.warning("Redis 未安装，缓存功能将不可用。请运行: pip install redis")
 
@@ -19,8 +20,7 @@ from core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_settings = get_settings()
-_redis_client: Optional[redis.Redis] = None
+_redis_client: Optional[Any] = None  # redis.Redis 或 None
 
 
 async def init_cache():
@@ -32,13 +32,14 @@ async def init_cache():
         return False
     
     try:
+        settings = get_settings()
         # 处理空密码情况
-        redis_password = _settings.redis_password or None
+        redis_password = settings.redis_password or None
         
         _redis_client = redis.Redis(
-            host=_settings.redis_host,
-            port=_settings.redis_port,
-            db=_settings.redis_db,
+            host=settings.redis_host,
+            port=settings.redis_port,
+            db=settings.redis_db,
             password=redis_password,  # 支持密码认证
             decode_responses=True,
             socket_connect_timeout=5,
@@ -46,7 +47,7 @@ async def init_cache():
         )
         # 测试连接
         await _redis_client.ping()
-        logger.info(f"Redis 连接成功: {_settings.redis_host}:{_settings.redis_port}")
+        logger.info(f"Redis 连接成功: {settings.redis_host}:{settings.redis_port}")
         return True
     except Exception as e:
         error_msg = str(e)
@@ -69,12 +70,6 @@ async def close_cache():
         await _redis_client.close()
         _redis_client = None
         logger.info("Redis 连接已关闭")
-
-
-def _ensure_client():
-    """确保 Redis 客户端已初始化"""
-    if not _redis_client:
-        raise RuntimeError("Redis 未初始化，请先调用 init_cache()")
 
 
 class Cache:
@@ -147,11 +142,9 @@ class Cache:
             return False
         
         async def _do():
-            # 序列化值
-            if isinstance(value, (str, int, float, bool)):
-                serialized = str(value)
-            else:
-                serialized = json.dumps(value, ensure_ascii=False)
+            # 序列化值：统一使用 json.dumps，避免字符串被误解析为 bool/int
+            # 例如 value="true" 应该返回字符串，而不是布尔值 True
+            serialized = json.dumps(value, ensure_ascii=False)
             
             # 设置过期时间
             if expire is None:
@@ -169,7 +162,7 @@ class Cache:
     @staticmethod
     async def delete(key: str) -> bool:
         """
-        删除缓存
+        删除缓存（带重试机制，与 get/set 保持一致）
         
         Args:
             key: 缓存键
@@ -180,18 +173,17 @@ class Cache:
         if not _redis_client:
             return False
         
-        try:
-            _ensure_client()
+        async def _do():
             await _redis_client.delete(key)
             return True
-        except Exception as e:
-            logger.error(f"删除缓存失败 {key}: {e}")
-            return False
+        
+        result = await Cache._retry_operation(_do, key, False)
+        return result if result is not None else False
     
     @staticmethod
     async def exists(key: str) -> bool:
         """
-        检查键是否存在
+        检查键是否存在（带重试机制）
         
         Args:
             key: 缓存键
@@ -202,17 +194,16 @@ class Cache:
         if not _redis_client:
             return False
         
-        try:
-            _ensure_client()
+        async def _do():
             return bool(await _redis_client.exists(key))
-        except Exception as e:
-            logger.error(f"检查缓存键失败 {key}: {e}")
-            return False
+        
+        result = await Cache._retry_operation(_do, key, False)
+        return result if result is not None else False
     
     @staticmethod
     async def expire(key: str, seconds: int) -> bool:
         """
-        设置键的过期时间
+        设置键的过期时间（带重试机制）
         
         Args:
             key: 缓存键
@@ -224,12 +215,11 @@ class Cache:
         if not _redis_client:
             return False
         
-        try:
-            _ensure_client()
+        async def _do():
             return bool(await _redis_client.expire(key, seconds))
-        except Exception as e:
-            logger.error(f"设置过期时间失败 {key}: {e}")
-            return False
+        
+        result = await Cache._retry_operation(_do, key, False)
+        return result if result is not None else False
     
     @staticmethod
     async def clear_pattern(pattern: str) -> int:
@@ -246,11 +236,18 @@ class Cache:
             return 0
         
         try:
-            _ensure_client()
             count = 0
+            keys_batch = []
             async for key in _redis_client.scan_iter(match=pattern):
-                await _redis_client.delete(key)
-                count += 1
+                keys_batch.append(key)
+                # 批量删除，减少网络往返
+                if len(keys_batch) >= 100:
+                    await _redis_client.delete(*keys_batch)
+                    count += len(keys_batch)
+                    keys_batch = []
+            if keys_batch:
+                await _redis_client.delete(*keys_batch)
+                count += len(keys_batch)
             return count
         except Exception as e:
             logger.error(f"按模式删除缓存失败 {pattern}: {e}")
@@ -272,7 +269,6 @@ class Cache:
             return None
         
         try:
-            _ensure_client()
             return await _redis_client.incrby(key, amount)
         except Exception as e:
             logger.error(f"递增缓存失败 {key}: {e}")
@@ -294,7 +290,6 @@ class Cache:
             return None
         
         try:
-            _ensure_client()
             return await _redis_client.decrby(key, amount)
         except Exception as e:
             logger.error(f"递减缓存失败 {key}: {e}")

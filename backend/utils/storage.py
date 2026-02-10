@@ -317,6 +317,8 @@ class StorageManager:
     def _is_safe_path(self, path: Path) -> bool:
         """
         检查路径是否安全（防止路径遍历攻击）
+        使用 relative_to 替代 startswith，避免前缀匹配绕过
+        （如 /storage 和 /storage_evil 的 startswith 误判）
         
         Args:
             path: 要检查的路径
@@ -325,10 +327,13 @@ class StorageManager:
             是否安全
         """
         try:
-            # 解析为绝对路径
             resolved_path = path.resolve()
-            # 确保路径在 upload_dir 内
-            return str(resolved_path).startswith(str(self.upload_dir.resolve()))
+            resolved_root = self.upload_dir.resolve()
+            # 使用 relative_to 严格判断路径包含关系，比 startswith 更安全
+            resolved_path.relative_to(resolved_root)
+            return True
+        except ValueError:
+            return False
         except Exception as e:
             logger.debug(f"路径安全检查失败: {path}, 原因: {e}")
             return False

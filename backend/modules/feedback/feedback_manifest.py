@@ -9,8 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from .feedback_events import register_feedback_events
+
 async def on_enable():
-    pass  # logger.info("反馈模块已启用")
+    register_feedback_events()
+    # logger.info("反馈模块已启用")
 
 
 manifest = ModuleManifest(

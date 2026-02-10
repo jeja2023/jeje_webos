@@ -11,17 +11,76 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func, and_, update, delete
 
 from core.database import get_db
-from core.security import get_current_user, TokenData, require_admin, require_manager
+from core.security import get_current_user, TokenData, require_admin, require_manager, require_permission
 from models import User
-from schemas import UserAudit, UserListItem, UserUpdate, success, paginate
+from schemas import UserAudit, UserListItem, success, paginate
 from schemas.user import UserProfileUpdate, UserBatchAction
-from schemas import success as _success
 from models import Role, ModuleConfig
-from core.security import require_permission
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
+
+
+async def _cleanup_user_im_data(db: AsyncSession, user_id: int):
+    """
+    清理用户的 IM 关联数据（共享逻辑）
+    在删除用户前调用，防止 IntegrityError
+    """
+    try:
+        from modules.im.im_models import IMConversation, IMConversationMember, IMMessage, IMMessageRead, IMContact
+        
+        logger.info(f"正在清理用户 {user_id} 的 IM 数据")
+        
+        # 1. 更新群主归属
+        await db.execute(
+            update(IMConversation)
+            .where(IMConversation.owner_id == user_id)
+            .values(owner_id=None)
+        )
+        
+        # 2. 删除联系人记录 (双向)
+        await db.execute(
+            delete(IMContact)
+            .where(or_(IMContact.user_id == user_id, IMContact.contact_id == user_id))
+        )
+        
+        # 3. 删除消息已读记录
+        await db.execute(
+            delete(IMMessageRead)
+            .where(IMMessageRead.user_id == user_id)
+        )
+        
+        # 4. 处理用户发送的消息
+        user_msgs_result = await db.execute(select(IMMessage.id).where(IMMessage.sender_id == user_id))
+        user_msg_ids = user_msgs_result.scalars().all()
+        
+        if user_msg_ids:
+            await db.execute(
+                update(IMMessage)
+                .where(IMMessage.reply_to_id.in_(user_msg_ids))
+                .values(reply_to_id=None)
+            )
+        
+        await db.execute(
+            delete(IMMessage)
+            .where(IMMessage.sender_id == user_id)
+        )
+        
+        # 5. 删除会话成员记录
+        await db.execute(
+            delete(IMConversationMember)
+            .where(IMConversationMember.user_id == user_id)
+        )
+        
+        await db.flush()
+        
+    except ImportError:
+        # IM 模块未安装或未启用
+        pass
+    except Exception as e:
+        logger.error(f"清理用户 {user_id} 的 IM 数据时出错: {e}")
+        raise
 
 
 @router.put("/profile")
@@ -97,13 +156,15 @@ async def search_users(
     允许登录用户通过用户名或昵称搜索其他激活用户
     返回精简的公开信息
     """
+    # 转义 LIKE 通配符，防止搜索注入
+    safe_query = query.replace('%', r'\%').replace('_', r'\_')
     stmt = select(User).where(
         and_(
             User.is_active == True,
             or_(
-                User.username.like(f"%{query}%"),
-                User.nickname.like(f"%{query}%"),
-                User.phone.like(f"%{query}%")
+                User.username.like(f"%{safe_query}%"),
+                User.nickname.like(f"%{safe_query}%")
+                # 移除手机号搜索，防止隐私泄露
             )
         )
     ).limit(20)
@@ -167,12 +228,13 @@ async def list_users(
     if is_active is not None:
         query = query.where(User.is_active == is_active)
     
-    # 关键词搜索（用户名、手机号）
+    # 关键词搜索（用户名、昵称），转义 LIKE 通配符防注入
     if keyword:
+        safe_keyword = keyword.replace('%', r'\%').replace('_', r'\_')
         keyword_filter = or_(
-            User.username.like(f"%{keyword}%"),
-            User.phone.like(f"%{keyword}%"),
-            User.nickname.like(f"%{keyword}%")
+            User.username.like(f"%{safe_keyword}%"),
+            User.phone.like(f"%{safe_keyword}%"),
+            User.nickname.like(f"%{safe_keyword}%")
         )
         query = query.where(keyword_filter)
     
@@ -417,74 +479,12 @@ async def delete_user(
         raise HTTPException(status_code=400, detail="不能删除管理员账户")
     
     # 处理关联数据的删除 (IM模块)
-    # 由于IM模块表可能没有设置级联删除，如果不手动清理会报错 IntegrityError
     try:
-        # 尝试导入IM模型，如果模块不存在则跳过
-        from modules.im.im_models import IMConversation, IMConversationMember, IMMessage, IMMessageRead, IMContact
-        
-        logger.info(f"正在清理用户 {user_id} 的 IM 数据")
-        
-        # 1. 更新群主归属: 将该用户创建的群组owner置空
-        # 注意: 这里不删除群组，只移除群主身份
-        await db.execute(
-            update(IMConversation)
-            .where(IMConversation.owner_id == user_id)
-            .values(owner_id=None)
-        )
-        
-        # 2. 删除联系人记录 (双向)
-        await db.execute(
-            delete(IMContact)
-            .where(or_(IMContact.user_id == user_id, IMContact.contact_id == user_id))
-        )
-        
-        # 3. 删除消息已读记录
-        await db.execute(
-            delete(IMMessageRead)
-            .where(IMMessageRead.user_id == user_id)
-        )
-        
-        # 4. 处理用户发送的消息
-        # 4.1 先将所有回复该用户消息的记录 reply_to_id 置空，防止删除消息时报错
-        # MySQL 不支持 update table where field in (select from same_table)
-        # 所以先查询出该用户的所有消息ID
-        user_msgs_result = await db.execute(select(IMMessage.id).where(IMMessage.sender_id == user_id))
-        user_msg_ids = user_msgs_result.scalars().all()
-        
-        if user_msg_ids:
-            # 批量更新引用了这些消息的记录
-            await db.execute(
-                update(IMMessage)
-                .where(IMMessage.reply_to_id.in_(user_msg_ids))
-                .values(reply_to_id=None)
-            )
-        
-        # 4.2 删除用户发送的消息
-        await db.execute(
-            delete(IMMessage)
-            .where(IMMessage.sender_id == user_id)
-        )
-        
-        # 5. 删除会话成员记录 (这是最报 IntegrityError 的地方)
-        await db.execute(
-            delete(IMConversationMember)
-            .where(IMConversationMember.user_id == user_id)
-        )
-        
-        # 提交一次更改，确保IM数据清理完成
-        await db.flush()
-        
-    except ImportError:
-        # IM模块未安装或未启用
-        pass
+        await _cleanup_user_im_data(db, user_id)
     except Exception as e:
-        logger.error(f"清理用户 {user_id} 的 IM 数据时出错: {e}")
-        # 如果清理IM数据失败，记录日志，但继续尝试删除用户(可能会再次失败抛出异常)
-        # 或者可以选择抛出异常终止
-        raise HTTPException(status_code=500, detail=f"删除关联数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="删除关联数据失败，请联系管理员")
 
     await db.delete(user)
-    await db.flush()
     await db.commit()
     
     return success(message="用户已删除")
@@ -973,13 +973,19 @@ async def batch_action(
                 user.is_active = False
                 operated_ids.append(user.id)
             elif action == "delete":
+                # 清理 IM 关联数据，防止 IntegrityError
+                try:
+                    await _cleanup_user_im_data(db, user.id)
+                except Exception as im_err:
+                    logger.warning(f"批量删除：清理用户 {user.id} IM数据失败: {im_err}")
+                
                 await db.delete(user)
                 operated_ids.append(user.id)
         
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"批量操作失败，已回滚: {str(e)}")
+        raise HTTPException(status_code=500, detail="批量操作失败，已回滚")
     
     action_names = {
         "enable": "启用",

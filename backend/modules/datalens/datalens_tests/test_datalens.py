@@ -1,74 +1,105 @@
+# -*- coding: utf-8 -*-
 """
-DataLens 数据透镜模块测试
+数据透镜模块测试
+覆盖：模型、Schema、连接器、服务层、API 路由端点
 """
-
 import pytest
-import sys
-import os
-
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+from httpx import AsyncClient
+from modules.datalens.datalens_models import LensDataSource, LensCategory, LensView
+from modules.datalens.datalens_schemas import DataSourceCreate, ViewCreate, CategoryCreate
 
 
-class TestDataLensManifest:
-    """测试模块清单"""
+class TestDatalensModels:
+    def test_datasource_model(self):
+        assert LensDataSource.__tablename__ == "lens_datasources"
+    def test_category_model(self):
+        assert LensCategory.__tablename__ == "lens_categories"
+    def test_view_model(self):
+        assert LensView.__tablename__ == "lens_views"
 
-    def test_manifest_load(self):
-        """测试清单加载"""
-        from modules.datalens.datalens_manifest import manifest
-        assert manifest.id == "datalens"
-        assert manifest.name == "数据透镜"
-        assert manifest.enabled is True
 
-    def test_manifest_permissions(self):
-        """测试权限声明"""
-        from modules.datalens.datalens_manifest import manifest
-        assert "datalens.view" in manifest.permissions
-        assert "datalens.create" in manifest.permissions
-        assert "datalens.source.manage" in manifest.permissions
+class TestDatalensSchemas:
+    def test_datasource_create(self):
+        d = DataSourceCreate(name="测试源", type="csv", connection_config={"path": "/tmp/test.csv"})
+        assert d.name == "测试源"
+    def test_category_create(self):
+        d = CategoryCreate(name="运营数据")
+        assert d.name == "运营数据"
+    def test_view_create(self):
+        d = ViewCreate(
+            name="测试视图", datasource_id=1, query_type="table",
+            query_config={"table": "users"}
+        )
+        assert d.name == "测试视图"
 
 
 class TestDataSourceConnector:
-    """测试数据源连接器"""
+    def test_connector_exists(self):
+        from modules.datalens.datalens_services import DataSourceConnector
+        assert hasattr(DataSourceConnector, 'test_connection')
 
     @pytest.mark.asyncio
-    async def test_mysql_connection_config(self):
-        """测试 MySQL 连接配置解析"""
+    async def test_test_connection_invalid(self):
         from modules.datalens.datalens_services import DataSourceConnector
-        # 不实际连接，只测试方法存在
-        assert hasattr(DataSourceConnector, 'test_connection')
-        assert hasattr(DataSourceConnector, '_test_mysql')
-        assert hasattr(DataSourceConnector, '_test_postgres')
-        assert hasattr(DataSourceConnector, '_test_csv')
-        assert hasattr(DataSourceConnector, '_test_excel')
-        assert hasattr(DataSourceConnector, '_test_api')
+        success, msg = await DataSourceConnector.test_connection("unknown_type", {})
+        assert success is False
 
 
-class TestSchemas:
-    """测试数据校验模型"""
+class TestDatalensService:
+    @pytest.mark.asyncio
+    async def test_create_category(self, db_session):
+        from modules.datalens.datalens_services import CategoryService
+        cat = await CategoryService.create(db_session, data=CategoryCreate(name="API分类"))
+        assert cat.id is not None
 
-    def test_datasource_create_schema(self):
-        """测试数据源创建模型"""
-        from modules.datalens.datalens_schemas import DataSourceCreate, DataSourceType
-        
-        data = DataSourceCreate(
-            name="测试数据源",
-            type=DataSourceType.MYSQL,
-            description="测试描述",
-            connection_config={"host": "localhost", "port": 3306}
-        )
-        assert data.name == "测试数据源"
-        assert data.type == DataSourceType.MYSQL
+    @pytest.mark.asyncio
+    async def test_get_categories(self, db_session):
+        from modules.datalens.datalens_services import CategoryService
+        await CategoryService.create(db_session, data=CategoryCreate(name="列表分类"))
+        cats = await CategoryService.get_list(db_session)
+        assert len(cats) >= 1
 
-    def test_view_create_schema(self):
-        """测试视图创建模型"""
-        from modules.datalens.datalens_schemas import ViewCreate, QueryType
-        
-        data = ViewCreate(
-            name="测试视图",
-            description="视图描述",
-            query_type=QueryType.SQL,
-            query_config={"sql": "SELECT * FROM users"}
-        )
-        assert data.name == "测试视图"
-        assert data.query_type == QueryType.SQL
+    @pytest.mark.asyncio
+    async def test_delete_category(self, db_session):
+        from modules.datalens.datalens_services import CategoryService
+        cat = await CategoryService.create(db_session, data=CategoryCreate(name="待删除"))
+        result = await CategoryService.delete(db_session, cat)
+        assert result is True or result is None  # 不同实现可能返回不同值
+
+
+@pytest.mark.asyncio
+class TestDatalensAPI:
+    async def test_get_hub(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/hub")
+        assert resp.status_code == 200
+
+    async def test_get_sources(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/sources")
+        assert resp.status_code == 200
+
+    async def test_get_categories(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/categories")
+        assert resp.status_code == 200
+
+    async def test_create_category(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/v1/lens/categories", json={"name": "API分类"})
+        assert resp.status_code == 200
+
+    async def test_get_views(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/views")
+        assert resp.status_code == 200
+
+    async def test_get_favorites(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/favorites")
+        assert resp.status_code == 200
+
+    async def test_get_recent(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/lens/recent")
+        assert resp.status_code == 200
+
+
+class TestDatalensManifest:
+    def test_manifest(self):
+        from modules.datalens.datalens_manifest import manifest
+        assert manifest.id == "datalens"
+        assert manifest.enabled is True

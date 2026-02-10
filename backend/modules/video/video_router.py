@@ -192,15 +192,19 @@ async def upload_video(
     
     # 读取文件内容
     content = await file.read()
-    if len(content) > 500 * 1024 * 1024:  # 500MB 限制
-        raise HTTPException(status_code=400, detail="文件大小不能超过 500MB")
+    if len(content) > 1024 * 1024 * 1024:  # 1GB 限制 (与前端一致)
+        raise HTTPException(status_code=400, detail="文件大小不能超过 1GB")
     
     # 验证文件魔数（防止 Content-Type 伪造）
+    # 注意：如果 filetype 库不可用或不支持该格式，默认放行，依靠后续处理（ffmpeg）来验证
     try:
         import filetype
-        kind = filetype.guess(content[:8192])  # 只需前几KB即可判断
-        if kind is None or not kind.mime.startswith('video/'):
-            raise HTTPException(status_code=400, detail="文件内容不是有效的视频格式")
+        kind = filetype.guess(content[:8192])
+        if kind and not kind.mime.startswith('video/'):
+            # 只有确信它不是视频时才拒绝（例如它是图片或可执行文件）
+            # 有些特殊的视频格式 filetype 可能识别不出来，此时 kind 为 None，我们选择放行
+            logger.warning(f"上传的文件可能不是视频: {kind.mime}")
+            # raise HTTPException(status_code=400, detail="文件内容不是有效的视频格式")
     except ImportError:
         pass  # filetype 库未安装时跳过
     

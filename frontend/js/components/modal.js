@@ -19,6 +19,11 @@ class Modal {
 
         this.id = Utils.uniqueId('modal-');
         this.overlay = null;
+
+        // 绑定常用方法，方便解构使用
+        this.close = this.close.bind(this);
+        this.query = this.query.bind(this);
+
         this.init();
     }
 
@@ -52,7 +57,7 @@ class Modal {
             <div class="modal-overlay active" id="${this.id}">
                 <div class="modal" style="max-width: ${width}">
                     <div class="modal-header">
-                        <h3 class="modal-title">${typeof Utils !== 'undefined' ? Utils.escapeHtml(title) : title.replace(/[<>&"']/g, '')}</h3>
+                        <h3 class="modal-title">${title}</h3>
                         ${closable ? `<button class="modal-close" data-action="close">&times;</button>` : ''}
                     </div>
                     <div class="modal-body">
@@ -354,7 +359,7 @@ class Modal {
         });
         modal.show();
 
-        // 绑定 data-close 按钮的关闭功能
+        // 绑定 data-close 按钮的关闭功能 (兜底)
         if (modal.overlay) {
             modal.overlay.querySelectorAll('[data-close]').forEach(btn => {
                 btn.onclick = () => modal.close();

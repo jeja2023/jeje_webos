@@ -105,9 +105,6 @@ class SchedulePage extends Component {
                             <i class="ri-calendar-schedule-line"></i>
                             <span>日程管理</span>
                         </div>
-                        <div class="header-actions">
-                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('schedule', '日程管理') : ''}
-                        </div>
                     </div>
                     
                     <div class="sidebar-search">
@@ -163,6 +160,9 @@ class SchedulePage extends Component {
                         <button class="btn btn-primary btn-block" id="btn-add-event">
                             <i class="ri-add-line"></i> 新建日程
                         </button>
+                        <div style="display: flex; justify-content: center; margin-top: 12px;">
+                            ${window.ModuleHelp ? ModuleHelp.createHelpButton('schedule', '日程管理') : ''}
+                        </div>
                     </div>
                 </aside>
 

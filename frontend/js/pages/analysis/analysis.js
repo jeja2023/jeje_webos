@@ -502,6 +502,17 @@ class AnalysisPage extends Component {
             Toast.success('刷新完成');
         });
 
+        // 跳转到导入标签
+        this.delegate('click', '[data-action="goto-import"]', () => {
+            document.querySelector('[data-tab=import]')?.click();
+        });
+
+        // 图片预览（替代 inline onclick）
+        this.delegate('click', '.cell-image[data-open-url]', (e, el) => {
+            const url = el.dataset.openUrl;
+            if (url) window.open(url, '_blank');
+        });
+
         // 删除数据集
         this.delegate('click', '.btn-delete-dataset', async (e, el) => {
             if (!confirm('确定要删除这个数据集吗？')) return;
@@ -770,7 +781,7 @@ class AnalysisPage extends Component {
                         <button class="btn btn-outline-primary btn-sm" id="btn-refresh-datasets">
                             <i class="ri-refresh-line"></i> 刷新
                         </button>
-                        <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-tab=import]').click()">
+                        <button class="btn btn-primary btn-sm" data-action="goto-import">
                             <i class="ri-add-line"></i> 新建导入
                         </button>
                     </div>
@@ -976,7 +987,7 @@ class AnalysisPage extends Component {
                 if (isImageUrl) {
                     const escapedVal = Utils.escapeHtml(val);
                     const safeValForJs = encodeURIComponent(val);
-                    return `<td><img src="${escapedVal}" class="cell-image" style="max-width: 80px; max-height: 60px; border-radius: 4px; cursor: pointer;" onclick="window.open(decodeURIComponent('${safeValForJs.replace(/'/g, '%27')}'), '_blank')"></td>`;
+                    return `<td><img src="${escapedVal}" class="cell-image" style="max-width: 80px; max-height: 60px; border-radius: 4px; cursor: pointer;" data-open-url="${escapedVal}"></td>`;
                 }
             }
             const displayVal = val !== null && val !== undefined ? val : '';

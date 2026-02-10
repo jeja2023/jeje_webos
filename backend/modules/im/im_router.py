@@ -569,25 +569,8 @@ async def _load_conversation_members(db: AsyncSession, conversation):
 
 async def _load_message_user_info(db: AsyncSession, message):
     """加载消息的发送者信息"""
-    stmt = select(User).where(User.id == message.sender_id)
-    result = await db.execute(stmt)
-    sender = result.scalar_one_or_none()
-    if sender:
-        message.sender_username = sender.username
-        message.sender_nickname = sender.nickname
-        message.sender_avatar = sender.avatar
-    
-    # 解密内容
-    # 将消息对象从会话中移除，避免解密后的明文或错误信息被保存回数据库
-    db.expunge(message)
-    
-    from .im_services import get_encryption
-    encryption = get_encryption()
-    try:
-        message.content = encryption.decrypt(message.content)
-    except Exception as e:
-        logger.error(f"解密消息失败 {message.id}: {e}")
-        message.content = "[消息解密失败]"
+    service = get_service(db)
+    await service.load_message_details(message)
 
 
 async def _load_message_read_status(db: AsyncSession, message, user_id: int):

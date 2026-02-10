@@ -6,7 +6,6 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from sqlalchemy import select
 
 from core.config import get_settings, reload_settings
 from core.database import init_db, close_db, get_db_session
@@ -56,7 +55,7 @@ async def warm_cache():
             from models import Announcement
             announcements_result = await db.execute(
                 select(Announcement)
-                .where(Announcement.is_published == True)
+                .where(Announcement.is_published.is_(True))
                 .order_by(Announcement.created_at.desc())
                 .limit(10)
             )
@@ -85,6 +84,13 @@ async def lifespan(app: FastAPI):
     loader = get_module_loader()
     if loader:
         logger.info(f"📦 已加载 {len(loader.modules)} 个模块")
+    
+    # CORS 安全配置检查（仅在 lifespan 中输出一次，避免 reload 模式重复）
+    if current_settings.allow_origins == ["*"] and current_settings.auth_use_httponly_cookie:
+        logger.warning(
+            "⚠️ CORS allow_origins=['*'] 与 HttpOnly Cookie 认证不兼容，已自动禁用 allow_credentials。"
+            "请在 .env 中设置 ALLOW_ORIGINS 为具体前端域名列表以启用 Cookie 认证。"
+        )
 
     # 2. JWT 密钥安全检查与自动轮换
     try:
@@ -150,7 +156,7 @@ async def lifespan(app: FastAPI):
     try:
         admin_result = await init_admin_user()
         if admin_result.get("created"):
-            logger.warning(f"⚠️ 已创建默认管理员: {admin_result['username']} / {admin_result['password']}")
+            logger.warning(f"⚠️ 已创建默认管理员: {admin_result['username']}（密码请查看 .env 中的 ADMIN_PASSWORD 配置）")
             logger.warning("   请务必尽快登录修改密码！")
     except Exception as e:
         logger.error(f"❌ 初始化管理员失败: {e}")
@@ -219,12 +225,13 @@ async def lifespan(app: FastAPI):
         
         async def check_schedule_reminders():
             """任务：检查并推送日程提醒"""
+            from sqlalchemy import select as sa_select
             try:
                 async with get_db_session() as db:
                     reminders = await ReminderService.get_pending_reminders(db)
                     for reminder in reminders:
                         try:
-                            stmt = select(ScheduleEvent).where(ScheduleEvent.id == reminder.event_id)
+                            stmt = sa_select(ScheduleEvent).where(ScheduleEvent.id == reminder.event_id)
                             event = (await db.execute(stmt)).scalar_one_or_none()
                             
                             if event and not event.is_deleted:

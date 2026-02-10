@@ -81,19 +81,22 @@ app = FastAPI(
     description="基于微内核架构的个人平台系统",
     lifespan=lifespan,
     default_response_class=ORJSONResponse,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    docs_url="/api/docs" if settings.debug else None,
+    redoc_url="/api/redoc" if settings.debug else None,
+    openapi_url="/api/openapi.json" if settings.debug else None
 )
 
 # ==================== 中间件注册 ====================
 # 注意：中间件按"后进先出"顺序执行，最后注册的中间件最先接收请求
 
 # 1. 跨域与压缩 (最底层/通用)
+# 安全措施：当 allow_origins=["*"] 时禁用 allow_credentials，防止任意网站劫持用户会话
+_cors_credentials = settings.allow_origins != ["*"]
+# 注意：CORS 配置警告在 lifespan 中输出（避免 reload 模式下重复打印）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allow_origins, 
-    allow_credentials=True,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"]
 )
@@ -135,7 +138,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         raise exc
     
     # 处理客户端在流式响应中途中断连接导致的错误
-    if isinstance(exc, RuntimeError) and str(exc) == "No response returned.":
+    if isinstance(exc, RuntimeError) and "No response returned" in str(exc):
         path = request.url.path
         log_msg = f"[客户端断开] {request.method} {path} (GlobalExceptionHandler)"
         if path.startswith("/api/v1/ai/chat"):

@@ -355,10 +355,13 @@ class MarkdownEditPage extends Component {
 
     async loadData() {
         try {
+            // 收集所有数据后一次性 setState，避免多次 render 擦除编辑器
+            const newState = {};
+
             // 加载模板（忽略错误）
             try {
                 const templatesRes = await Api.get('/markdown/templates');
-                this.setState({ templates: templatesRes.data || [] });
+                newState.templates = templatesRes.data || [];
             } catch (e) {
                 console.warn('加载模板失败', e);
             }
@@ -366,7 +369,7 @@ class MarkdownEditPage extends Component {
             // 加载文件列表
             try {
                 const docsRes = await Api.get('/markdown/docs?size=50');
-                this.setState({ sidebarDocs: docsRes.data.items || [] });
+                newState.sidebarDocs = docsRes.data.items || [];
             } catch (e) {
                 console.warn('加载侧边栏文档失败', e);
             }
@@ -374,10 +377,12 @@ class MarkdownEditPage extends Component {
             // 如果有 docId，加载文档
             if (this.docId) {
                 const docRes = await Api.get(`/markdown/docs/${this.docId}`);
-                this.setState({ doc: docRes.data, loading: false });
-            } else {
-                this.setState({ loading: false });
+                newState.doc = docRes.data;
             }
+            newState.loading = false;
+
+            // 一次性更新状态，只触发一次 render
+            this.setState(newState);
         } catch (e) {
             Toast.error('加载数据失败');
             this.setState({ loading: false });
@@ -404,20 +409,20 @@ class MarkdownEditPage extends Component {
         const content = this.getEditorContent();
         const isPublic = this.container.querySelector('#doc-public')?.checked || false;
 
-        // 更新状态栏反馈 (直接操作 DOM 避免全量 render 导致编辑器闪烁)
+        // 直接操作 DOM 更新状态栏和保存按钮，避免 setState 触发全量 render 擦除编辑器
         const autosaveTag = this.container.querySelector('.autosave-tag');
         if (autosaveTag) {
             autosaveTag.innerHTML = '<i class="ri-loader-4-line spin"></i> 正在保存...';
             autosaveTag.classList.add('saving');
         }
 
-        // 仅在手动保存时触发全局 loading 状态
-        if (!silent) {
-            this.setState({ saving: true });
-        } else {
-            // 静默保存仅修改变量，不触发 render
-            this.state.saving = true;
+        // 更新保存按钮状态（直接 DOM 操作，不触发 render）
+        const btnSave = this.container.querySelector('#btn-save');
+        if (!silent && btnSave) {
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<i class="ri-loader-4-line spin"></i><span>保存中...</span>';
         }
+        this.state.saving = true;
 
         try {
             const data = { title, content, is_public: isPublic };
@@ -428,7 +433,15 @@ class MarkdownEditPage extends Component {
                 const res = await Api.post('/markdown/docs', data);
                 this.docId = res.data.id;
                 // 更新 URL
-                history.replaceState(null, '', `#/markdown/edit/${this.docId}`);
+                const fullUrl = `#/markdown/edit/${this.docId}`;
+                history.replaceState(null, '', fullUrl);
+                // 同步更新窗口管理器的 URL 状态，防止触发冗余路由跳转
+                if (window.WindowManager) {
+                    const activeWin = window.WindowManager.getActiveWindow();
+                    if (activeWin && activeWin.id.includes('markdown')) {
+                        activeWin.url = fullUrl;
+                    }
+                }
             }
 
             // 更新内存中的数据，防止后续 render 渲染旧数据
@@ -461,10 +474,11 @@ class MarkdownEditPage extends Component {
                 autosaveTag.style.color = 'var(--color-danger)';
             }
         } finally {
-            if (!silent) {
-                this.setState({ saving: false });
-            } else {
-                this.state.saving = false;
+            this.state.saving = false;
+            // 恢复保存按钮状态（直接 DOM 操作）
+            if (!silent && btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerHTML = '<i class="ri-save-line"></i><span>保存</span>';
             }
         }
     }
@@ -588,9 +602,8 @@ class MarkdownEditPage extends Component {
                     },
                     onTitleSync: (newTitle) => {
                         const titleInput = this.container.querySelector('#doc-title');
-                        // 逻辑：如果标题未被手动编辑过，或者当前标题与“未命名”相关，则持续同步
-                        const isDefault = !titleInput.value || titleInput.value === '未命名文档' || titleInput.value === '新建文档';
-                        if (titleInput && (isDefault || !this.state.titleManuallyEdited)) {
+                        // 逻辑：如果标题未被手动编辑过，则持续同步
+                        if (titleInput && !this.state.titleManuallyEdited) {
                             titleInput.value = newTitle;
                         }
                     }
@@ -794,6 +807,26 @@ class MarkdownEditPage extends Component {
                 !this.editor ||
                 !editorEl.contains(this.editor?.editor);
             if (needsReinit) {
+                // 在销毁旧编辑器前，先捕获当前编辑器内容，防止重建后丢失
+                if (this.editor && typeof this.editor.getMarkdown === 'function') {
+                    try {
+                        const currentContent = this.editor.getMarkdown();
+                        if (currentContent && currentContent.trim()) {
+                            if (this.state.doc) {
+                                this.state.doc.content = currentContent;
+                            } else {
+                                this.state.doc = { content: currentContent };
+                            }
+                        }
+                    } catch (e) {
+                        // 编辑器可能已失联，忽略错误
+                    }
+                }
+                // 同时保留标题输入框的值
+                const titleInput = this.container.querySelector('#doc-title');
+                if (titleInput && titleInput.value && this.state.doc) {
+                    this.state.doc.title = titleInput.value;
+                }
                 this.editorReady = false;
                 this.initEditor();
             }
@@ -914,12 +947,12 @@ class MarkdownEditPage extends Component {
             btnBack.onclick = () => Router.push('/markdown/list');
         }
 
-        // 标题输入
+        // 标题输入（直接修改 state 变量，不触发 setState/render，避免擦除编辑器）
         const titleInput = this.container.querySelector('#doc-title');
         if (titleInput && !titleInput._bindOnce) {
             titleInput._bindOnce = true;
             titleInput.oninput = () => {
-                this.setState({ titleManuallyEdited: true });
+                this.state.titleManuallyEdited = true;
                 this.triggerSmartSave();
             };
         }
@@ -931,11 +964,12 @@ class MarkdownEditPage extends Component {
             btnSave.onclick = () => this.handleSave();
         }
 
-        // 工具栏按钮
+        // 工具栏按钮（阻止 mousedown 默认行为，防止编辑器失焦导致选区丢失）
         const toolbarBtns = this.container.querySelectorAll('.toolbar-btn');
         toolbarBtns.forEach(btn => {
             if (btn._bindOnce) return;
             btn._bindOnce = true;
+            btn.onmousedown = (e) => e.preventDefault();
             btn.onclick = () => {
                 const action = btn.dataset.action;
                 if (action) {
@@ -1013,6 +1047,10 @@ class MarkdownEditPage extends Component {
         if (this.autoSaveTimer) {
             clearInterval(this.autoSaveTimer);
             this.autoSaveTimer = null;
+        }
+        if (this.smartSaveTimer) {
+            clearTimeout(this.smartSaveTimer);
+            this.smartSaveTimer = null;
         }
         if (this.editor && typeof this.editor.destroy === 'function') {
             try {

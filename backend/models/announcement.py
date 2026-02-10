@@ -9,6 +9,7 @@ from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean, Ind
 
 from core.database import Base
 from models.account import User
+from utils.timezone import get_beijing_time
 
 
 class Announcement(Base):
@@ -35,8 +36,8 @@ class Announcement(Base):
     views: Mapped[int] = mapped_column(Integer, default=0, comment="浏览次数")
     
     # 时间
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: get_beijing_time().replace(tzinfo=None), comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: get_beijing_time().replace(tzinfo=None), onupdate=lambda: get_beijing_time().replace(tzinfo=None), comment="更新时间")
     
     # 关联
     author: Mapped["User"] = relationship(User, foreign_keys="Announcement.author_id", lazy="selectin", viewonly=True)

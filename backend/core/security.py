@@ -14,15 +14,14 @@ from cachetools import TTLCache
 
 from .config import get_settings
 
-settings = get_settings()
-
-# 动态配置: JWT 过期时间(允许在运行时更新)
-_jwt_expire_minutes = settings.jwt_expire_minutes
+# 注意: 不再使用模块级 settings 变量缓存，避免 reload_settings() 后引用旧对象
+# 需要使用时通过 get_settings() 获取当前实例
 
 def set_jwt_expire_minutes(minutes: int):
-    """动态更新 JWT 过期时间"""
-    global _jwt_expire_minutes
-    _jwt_expire_minutes = minutes
+    """动态更新 JWT 过期时间（兼容接口，实际值从 settings 读取）"""
+    # 现在 create_token/create_token_pair 每次调用 get_settings() 获取最新值
+    # 此函数保留以兼容 system_settings 路由调用，不再需要手动同步
+    pass
 
 
 # 权限缓存配置
@@ -85,17 +84,27 @@ class TokenResponse(BaseModel):
     refresh_expires_in: Optional[int] = None
 
 
+def _prehash_password(password: str) -> bytes:
+    """
+    对密码进行 SHA-256 预哈希，解决 bcrypt 72 字节截断问题。
+    这确保任意长度的密码都能完整参与哈希计算。
+    """
+    import hashlib
+    # SHA-256 产生 64 字符的十六进制字符串（< 72 字节）
+    return hashlib.sha256(password.encode('utf-8')).hexdigest().encode('utf-8')
+
+
 def hash_password(password: str) -> str:
     """
     加密密码
-    bcrypt 限制密码长度不超过 72 字节
+    使用 SHA-256 预哈希 + bcrypt，避免 72 字节截断问题
     """
     # 确保密码是字符串
     if not isinstance(password, str):
         password = str(password)
     
-    # bcrypt 限制：密码不能超过 72 字节
-    password_bytes = password.encode('utf-8')[:72]
+    # 使用预哈希解决 bcrypt 72 字节限制
+    password_bytes = _prehash_password(password)
     
     # 直接使用 bcrypt 库（避免 passlib 兼容性问题）
     salt = bcrypt.gensalt()
@@ -109,14 +118,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not isinstance(plain_password, str):
         plain_password = str(plain_password)
     
-    # bcrypt 限制：密码不能超过 72 字节
-    password_bytes = plain_password.encode('utf-8')[:72]
+    # 使用与 hash_password 相同的预哈希
+    password_bytes = _prehash_password(plain_password)
     hashed_bytes = hashed_password.encode('utf-8')
     
     try:
         return bcrypt.checkpw(password_bytes, hashed_bytes)
     except Exception:
-        return False
+        # 兼容旧版直接 bcrypt（无预哈希）的密码
+        try:
+            old_password_bytes = plain_password.encode('utf-8')[:72]
+            return bcrypt.checkpw(old_password_bytes, hashed_bytes)
+        except Exception:
+            return False
 
 
 def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, token_type: str = "access") -> str:
@@ -137,15 +151,16 @@ def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, tok
             # 刷新令牌有效期：30天
             expire = datetime.now(timezone.utc) + timedelta(days=30)
         else:
-            # 访问令牌有效期：7天（或配置值）
-            expire = datetime.now(timezone.utc) + timedelta(minutes=_jwt_expire_minutes)
+            # 访问令牌有效期（或配置值）
+            expire = datetime.now(timezone.utc) + timedelta(minutes=get_settings().jwt_expire_minutes)
     
     to_encode.update({
         "exp": expire,
         "type": token_type  # 标记令牌类型
     })
     
-    return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    _s = get_settings()
+    return jwt.encode(to_encode, _s.jwt_secret, algorithm=_s.jwt_algorithm)
 
 
 def create_token_pair(data: TokenData) -> tuple[str, str]:
@@ -155,10 +170,10 @@ def create_token_pair(data: TokenData) -> tuple[str, str]:
     Returns:
         (access_token, refresh_token)
     """
-    # 访问令牌：较短有效期（默认7天，可配置）
+    # 访问令牌：较短有效期（可配置）
     access_token = create_token(
         data,
-        expires_delta=timedelta(minutes=_jwt_expire_minutes),
+        expires_delta=timedelta(minutes=get_settings().jwt_expire_minutes),
         token_type="access"
     )
     
@@ -181,22 +196,86 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[To
         token: 待解码的JWT
         expected_type: 期望的令牌类型("access"/"refresh"), 不匹配则返回None
     """
+    _s = get_settings()
+    
     def _decode(secret: str):
-        payload = jwt.decode(token, secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, secret, algorithms=[_s.jwt_algorithm])
         if expected_type and payload.get("type") != expected_type:
             raise JWTError("令牌类型不匹配")
         return TokenData(**payload)
     
     # 先尝试新密钥
     try:
-        return _decode(settings.jwt_secret)
+        return _decode(_s.jwt_secret)
     except JWTError:
-        if settings.jwt_secret_old:
+        if _s.jwt_secret_old:
             try:
-                return _decode(settings.jwt_secret_old)
+                return _decode(_s.jwt_secret_old)
             except JWTError:
                 return None
         return None
+
+
+async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = True) -> TokenData:
+    """
+    共享的权限同步逻辑：从数据库实时加载用户最新权限和角色
+    去重 get_current_user 和 get_optional_user 中的重复代码
+    
+    Args:
+        token_data: 已解码的 JWT 令牌数据
+        raise_on_error: 出错时是否抛出异常（get_current_user=True, get_optional_user=False）
+    """
+    # 检查缓存是否存在
+    cached_data = permission_cache.get(token_data.user_id)
+    if cached_data:
+        token_data.role = cached_data["role"]
+        token_data.permissions = cached_data["permissions"]
+        return token_data
+
+    try:
+        from core.database import async_session
+        from models import User, UserGroup
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            result = await db.execute(select(User).where(User.id == token_data.user_id))
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
+                all_perms = list(user.permissions or [])
+                if user.role_ids:
+                    role_result = await db.execute(
+                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
+                    )
+                    for (role_perms,) in role_result.all():
+                        if role_perms:
+                            all_perms.extend(role_perms)
+                
+                token_data.permissions = list(set(all_perms))
+                token_data.role = user.role
+
+                permission_cache[token_data.user_id] = {
+                    "role": user.role,
+                    "permissions": token_data.permissions
+                }
+            elif user and not user.is_active:
+                if raise_on_error:
+                    raise HTTPException(status_code=401, detail="账户已被禁用")
+    except ImportError:
+        import logging
+        logging.getLogger(__name__).warning("权限模块导入失败，使用 JWT 静态权限（功能受限）")
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"获取实时权限失败: {e}")
+        if raise_on_error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="权限服务暂时不可用，请稍后重试"
+            )
+    
+    return token_data
 
 
 async def get_current_user(
@@ -222,55 +301,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    # --- 实时权限同步逻辑 ---
-    # 检查缓存是否存在
-    cached_data = permission_cache.get(token_data.user_id)
-    if cached_data:
-        token_data.role = cached_data["role"]
-        token_data.permissions = cached_data["permissions"]
-        return token_data
-
-    # 为了避免循环导入，在函数内部导入相关模型和数据库方法
-    try:
-        from core.database import async_session
-        from models import User, UserGroup
-        from sqlalchemy import select
-
-        async with async_session() as db:
-            result = await db.execute(select(User).where(User.id == token_data.user_id))
-            user = result.scalar_one_or_none()
-            if user and user.is_active:
-                # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
-                all_perms = list(user.permissions or [])
-                if user.role_ids:
-                    # 只查 permissions 列，批量加载所有角色（避免 N+1）
-                    role_result = await db.execute(
-                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
-                    )
-                    for (role_perms,) in role_result.all():
-                        if role_perms:
-                            all_perms.extend(role_perms)
-                
-                # 更新 token_data 中的权限和角色(内存中更新, 不修改原始 JWT)
-                token_data.permissions = list(set(all_perms))
-                token_data.role = user.role
-
-                # 写入缓存
-                permission_cache[token_data.user_id] = {
-                    "role": user.role,
-                    "permissions": token_data.permissions
-                }
-
-            elif user and not user.is_active:
-                raise HTTPException(status_code=401, detail="账户已被禁用")
-    except ImportError:
-        # 如果导入失败（通常只会发生在复杂的循环引用场景），回退到 JWT 自带的静态权限
-        pass
-    except Exception as e:
-        # 其他数据库异常也回退，确保系统可用性，但打印日志
-        import logging
-        logging.getLogger(__name__).warning(f"获取实时权限失败，回退到令牌权限: {e}")
-    
+    # 使用共享的权限同步逻辑
+    await _sync_user_permissions(token_data, raise_on_error=True)
     return token_data
 
 
@@ -289,45 +321,8 @@ async def get_optional_user(
     if not token_data:
         return None
         
-    # 同步最新权限逻辑（复用 get_current_user 思路，但不抛出 401/403）
-    # 检查缓存
-    cached_data = permission_cache.get(token_data.user_id)
-    if cached_data:
-        token_data.role = cached_data["role"]
-        token_data.permissions = cached_data["permissions"]
-        return token_data
-
-    try:
-        from core.database import async_session
-        from models import User, UserGroup
-        from sqlalchemy import select
-        async with async_session() as db:
-            result = await db.execute(select(User).where(User.id == token_data.user_id))
-            user = result.scalar_one_or_none()
-            if user and user.is_active:
-                all_perms = list(user.permissions or [])
-                if user.role_ids:
-                    # 只查 permissions 列，避免加载完整 UserGroup 对象
-                    role_result = await db.execute(
-                        select(UserGroup.permissions).where(UserGroup.id.in_(user.role_ids))
-                    )
-                    for (role_perms,) in role_result.all():
-                        if role_perms:
-                            all_perms.extend(role_perms)
-                token_data.permissions = list(set(all_perms))
-                token_data.role = user.role
-                
-                # 写入缓存
-                permission_cache[token_data.user_id] = {
-                    "role": user.role,
-                    "permissions": token_data.permissions
-                }
-    except ImportError:
-        pass
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).debug(f"获取可选用户权限失败: {e}")
-        
+    # 同步最新权限（复用共享逻辑，不抛出异常）
+    await _sync_user_permissions(token_data, raise_on_error=False)
     return token_data
 
 
@@ -376,10 +371,10 @@ def require_permission(permission: str):
             if wildcard in user.permissions:
                 return user
         
-        # 权限不足
+        # 权限不足（不泄露具体权限名称）
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"缺少权限: {permission}"
+            detail="权限不足，无法执行此操作"
         )
     return permission_checker
 
@@ -426,19 +421,31 @@ import base64
 import hashlib
 from cryptography.fernet import Fernet
 
+_fernet_instance: Optional[Fernet] = None
+_fernet_secret: Optional[str] = None
+
 def _get_fernet() -> Fernet:
     """
-    根据 JWT_SECRET 生成 Fernet 实例
+    根据 JWT_SECRET 生成 Fernet 实例（带缓存，避免重复创建）
     确保相同的 JWT_SECRET 生成相同的加密密钥
     """
+    global _fernet_instance, _fernet_secret
+    current_secret = get_settings().jwt_secret
+    
+    # 缓存：仅在 secret 变化时重建
+    if _fernet_instance is not None and _fernet_secret == current_secret:
+        return _fernet_instance
+    
     # 1. 对 JWT_SECRET 进行哈希，得到 32 字节的摘要
-    secret_bytes = settings.jwt_secret.encode('utf-8')
+    secret_bytes = current_secret.encode('utf-8')
     key_hash = hashlib.sha256(secret_bytes).digest()
     
     # 2. 将哈希值进行 URL-safe Base64 编码，符合 Fernet 密钥要求
     fernet_key = base64.urlsafe_b64encode(key_hash)
     
-    return Fernet(fernet_key)
+    _fernet_instance = Fernet(fernet_key)
+    _fernet_secret = current_secret
+    return _fernet_instance
 
 def encrypt_data(data: str) -> str:
     """加密字符串数据"""

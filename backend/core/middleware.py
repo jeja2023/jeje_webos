@@ -7,7 +7,6 @@ import time
 import uuid
 import logging
 from typing import Callable, Optional
-from datetime import datetime
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,23 +18,40 @@ logger = logging.getLogger(__name__)
 
 
 # ==================== 敏感数据脱敏工具 ====================
-def mask_sensitive_data(data: any) -> any:
+def mask_sensitive_data(data, _depth: int = 0) -> object:
     """
     递归脱敏敏感数据
     支持 dict, list, str 类型
+    增加深度限制防止恶意嵌套导致栈溢出
     """
+    if _depth > 20:
+        return "[嵌套过深，已截断]"
     if isinstance(data, dict):
         new_data = {}
         for k, v in data.items():
             if isinstance(k, str) and any(s in k.lower() for s in ["password", "token", "secret", "credential", "auth"]):
                 new_data[k] = "******"
             else:
-                new_data[k] = mask_sensitive_data(v)
+                new_data[k] = mask_sensitive_data(v, _depth + 1)
         return new_data
     elif isinstance(data, list):
-        return [mask_sensitive_data(item) for item in data]
+        return [mask_sensitive_data(item, _depth + 1) for item in data]
     else:
         return data
+
+
+def _handle_no_response_error(request: Request, middleware_name: str = "") -> Response:
+    """
+    统一处理 'No response returned' 错误（客户端断开连接）
+    提取为公共方法，消除多个中间件中的重复代码
+    """
+    path = request.url.path
+    suffix = f" ({middleware_name})" if middleware_name else ""
+    if path.startswith("/api/v1/ai/chat"):
+        logger.debug(f"[客户端断开] {request.method} {path}{suffix}")
+    else:
+        logger.info(f"[客户端断开] {request.method} {path}{suffix}")
+    return Response(status_code=499)
 
 # 流式响应路径列表 - 这些路径使用 SSE/StreamingResponse，与 BaseHTTPMiddleware 不兼容
 # 需要在所有中间件中跳过，避免客户端断开时触发 "No response returned" 错误
@@ -127,8 +143,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(sp) for sp in STREAMING_PATHS):
             return await call_next(request)
         
-        # 生成请求ID
-        request_id = str(uuid.uuid4())[:8]
+        # 复用 RequestContextMiddleware 生成的请求ID，避免重复生成
+        request_id = getattr(request.state, 'request_id', None) or uuid.uuid4().hex[:16]
         
         # 记录请求开始时间
         start_time = time.time()
@@ -166,14 +182,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             return response
             
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
-                if path.startswith("/api/v1/ai/chat"):
-                    logger.debug(f"[客户端断开] {method} {path}")
-                else:
-                    logger.info(f"[客户端断开] {method} {path}")
-                return Response(status_code=499)
-            
+            if "No response returned" in str(e):
+                return _handle_no_response_error(request, "RequestLogging")
             logger.error(f"[运行时错误] {method} {path} | {str(e)}")
             raise
             
@@ -204,14 +214,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
-                path = request.url.path
-                if path.startswith("/api/v1/ai/chat"):
-                    logger.debug(f"[客户端断开] {request.method} {path} (SecurityHeadersMiddleware)")
-                else:
-                    logger.info(f"[客户端断开] {request.method} {path} (SecurityHeadersMiddleware)")
-                return Response(status_code=499)
+            if "No response returned" in str(e):
+                return _handle_no_response_error(request, "SecurityHeaders")
             logger.error(f"安全头中间件捕获运行时错误: {e}")
             raise
         except Exception as e:
@@ -221,18 +225,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # 添加安全响应头
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["X-XSS-Protection"] = "0"  # 已弃用，依赖 CSP 防护
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # Content-Security-Policy：按实际脚本/样式来源收紧；允许同源与常见内联（SPA 常用）
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.unpkg.com; "
-            "style-src 'self' 'unsafe-inline' *.unpkg.com; "
+            "script-src 'self' 'unsafe-inline' unpkg.com *.unpkg.com; "
+            "style-src 'self' 'unsafe-inline' unpkg.com *.unpkg.com; "
             "img-src 'self' data: blob: https:; "
             "font-src 'self' data:; "
             "connect-src 'self' ws: wss: "
-            "*.autonavi.com *.amap.com *.openstreetmap.org *.stadiamaps.com *.google.com *.tianditu.gov.cn *.arcgisonline.com unpkg.com *.unpkg.com; "
+            "*.autonavi.com *.amap.com *.openstreetmap.org *.stadiamaps.com *.tianditu.gov.cn *.arcgisonline.com unpkg.com *.unpkg.com; "
             "frame-ancestors 'none'; "
             "base-uri 'self'"
         )
@@ -261,8 +265,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         if any(request.url.path.startswith(sp) for sp in STREAMING_PATHS):
             return await call_next(request)
         
-        # 生成请求ID
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
+        # 生成请求ID（始终使用服务端生成，防止客户端伪造和日志注入）
+        request_id = uuid.uuid4().hex[:16]
         
         # 存储到 request.state
         request.state.request_id = request_id
@@ -272,8 +276,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                return Response(status_code=499)
+            if "No response returned" in str(e):
+                return _handle_no_response_error(request, "RequestContext")
             logger.error(f"请求上下文中间件捕获运行时错误: {e}")
             raise
         except Exception as e:
@@ -380,7 +384,13 @@ class RequestStats:
     
     def reset(self):
         """重置统计"""
-        self.__init__()
+        self.total_requests = 0
+        self.success_requests = 0
+        self.error_requests = 0
+        self.total_duration = 0.0
+        self.path_stats = {}
+        self.status_stats = {}
+        self.start_time = get_beijing_time()
 
 
 # 全局统计实例
@@ -415,8 +425,9 @@ class StatsMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             status_code = response.status_code
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                return Response(status_code=499)
+            if "No response returned" in str(e):
+                status_code = 499
+                return _handle_no_response_error(request, "Stats")
             logger.error(f"统计中间件捕获运行时错误: {e}")
             raise
         except Exception as e:
@@ -579,13 +590,22 @@ class AuditMiddleware(BaseHTTPMiddleware):
         client_ip = get_client_ip(request)
         module, action, description = self._parse_path(path, method)
         
-        # 尝试获取用户 ID（从 JWT 令牌）
+        # 尝试获取用户 ID（支持 Authorization Header 和 HttpOnly Cookie）
         user_id = None
         try:
-            from core.security import decode_token
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:]
+            from core.security import decode_token, COOKIE_ACCESS_TOKEN
+            token = None
+            # 优先从 Cookie 获取（HttpOnly 模式）
+            cookie_token = request.cookies.get(COOKIE_ACCESS_TOKEN)
+            if cookie_token:
+                token = cookie_token
+            else:
+                # 回退到 Authorization Header
+                auth_header = request.headers.get("Authorization", "")
+                if auth_header.startswith("Bearer "):
+                    token = auth_header[7:]
+            
+            if token:
                 token_data = decode_token(token)
                 if token_data:
                     user_id = token_data.user_id
@@ -596,13 +616,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RuntimeError as e:
-            if str(e) == "No response returned":
-                # 对于流式响应（如 AI chat），客户端断开连接是正常情况，不记录为错误
-                if path.startswith("/api/v1/ai/chat"):
-                    logger.debug(f"[客户端断开] {method} {path} (AuditMiddleware)")
-                else:
-                    logger.info(f"[客户端断开] {method} {path} (AuditMiddleware)")
-                return Response(status_code=499)
+            if "No response returned" in str(e):
+                return _handle_no_response_error(request, "Audit")
             logger.error(f"审计中间件捕获运行时错误: {e}")
             raise
         except Exception as e:

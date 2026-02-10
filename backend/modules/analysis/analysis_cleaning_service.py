@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .analysis_models import AnalysisDataset
 from .analysis_duckdb_service import duckdb_instance
+from utils.sql_safety import is_safe_table_name, escape_sql_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -158,15 +159,18 @@ class CleaningService:
         """
         dataset = await CleaningService.get_dataset(db, req.dataset_id)
         table_name = dataset.table_name
+        if not is_safe_table_name(table_name):
+            raise ValueError(f"数据集表名不合法: {table_name}")
+        safe_tn = escape_sql_identifier(table_name)
         
         # 将数据读入 DataFrame 进行清洗
         # 优化：如果是预览模式，只读取部分数据进行处理，极大提高响应速度
         if req.save_mode == "preview":
             # 读取前 1000 行用于预览
-            df = duckdb_instance.fetch_df(f"SELECT * FROM {table_name} LIMIT 1000")
+            df = duckdb_instance.fetch_df(f"SELECT * FROM {safe_tn} LIMIT 1000")
         else:
             # 完整模式，读取所有数据
-            df = duckdb_instance.fetch_df(f"SELECT * FROM {table_name}")
+            df = duckdb_instance.fetch_df(f"SELECT * FROM {safe_tn}")
         
         # 兼容单操作和多操作
         ops_list = []
@@ -289,7 +293,10 @@ class CleaningService:
         """
         dataset = await CleaningService.get_dataset(db, req.dataset_id)
         table_name = dataset.table_name
-        df = duckdb_instance.fetch_df(f"SELECT * FROM {table_name}")
+        if not is_safe_table_name(table_name):
+            raise ValueError(f"数据集表名不合法: {table_name}")
+        safe_tn = escape_sql_identifier(table_name)
+        df = duckdb_instance.fetch_df(f"SELECT * FROM {safe_tn}")
         
         # 兼容多操作
         ops_list = []

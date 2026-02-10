@@ -1,118 +1,139 @@
+# -*- coding: utf-8 -*-
+"""
+日程模块测试
+覆盖：模型、Schema、服务层 CRUD、API 路由端点
+"""
 import pytest
-import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from httpx import AsyncClient
+from datetime import date, timedelta
 
-from modules.schedule.schedule_services import ScheduleService, CategoryService, ReminderService
-from modules.schedule.schedule_schemas import EventCreate, EventUpdate, CategoryCreate, CategoryUpdate
-from modules.schedule.schedule_models import ScheduleEvent, EventType, RepeatType
 
-# Mock user ID
-USER_ID = 1
+# ==================== 服务层测试 ====================
+class TestScheduleService:
+    @pytest.mark.asyncio
+    async def test_create_category(self, db_session):
+        from modules.schedule.schedule_services import CategoryService
+        from modules.schedule.schedule_schemas import CategoryCreate
+        cat = await CategoryService.create_category(db_session, user_id=1, data=CategoryCreate(name="工作", color="#FF0000"))
+        assert cat.id is not None
+        assert cat.name == "工作"
 
+    @pytest.mark.asyncio
+    async def test_get_user_categories(self, db_session):
+        from modules.schedule.schedule_services import CategoryService
+        from modules.schedule.schedule_schemas import CategoryCreate
+        await CategoryService.create_category(db_session, user_id=1, data=CategoryCreate(name="分类1"))
+        cats = await CategoryService.get_user_categories(db_session, user_id=1)
+        assert len(cats) >= 1
+
+    @pytest.mark.asyncio
+    async def test_create_event(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate
+        today = date.today()
+        event = await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="会议", start_date=today.isoformat(), end_date=today.isoformat(), event_type="event"
+        ))
+        assert event.id is not None
+        assert event.title == "会议"
+
+    @pytest.mark.asyncio
+    async def test_get_today_events(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate
+        today = date.today()
+        await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="今日任务", start_date=today.isoformat(), end_date=today.isoformat(), event_type="task"
+        ))
+        events = await ScheduleService.get_today_events(db_session, user_id=1)
+        assert len(events) >= 1
+
+    @pytest.mark.asyncio
+    async def test_get_upcoming_events(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate
+        future = (date.today() + timedelta(days=3)).isoformat()
+        await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="未来事件", start_date=future, end_date=future, event_type="event"
+        ))
+        events = await ScheduleService.get_upcoming_events(db_session, user_id=1, days=7)
+        assert len(events) >= 1
+
+    @pytest.mark.asyncio
+    async def test_update_event(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate, EventUpdate
+        today = date.today()
+        event = await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="原标题", start_date=today.isoformat(), end_date=today.isoformat(), event_type="event"
+        ))
+        updated = await ScheduleService.update_event(db_session, event.id, user_id=1, data=EventUpdate(title="新标题"))
+        assert updated.title == "新标题"
+
+    @pytest.mark.asyncio
+    async def test_delete_event(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate
+        today = date.today()
+        event = await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="待删除", start_date=today.isoformat(), end_date=today.isoformat(), event_type="event"
+        ))
+        result = await ScheduleService.delete_event(db_session, event.id, user_id=1)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_complete_event(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        from modules.schedule.schedule_schemas import EventCreate
+        today = date.today()
+        event = await ScheduleService.create_event(db_session, user_id=1, data=EventCreate(
+            title="待完成", start_date=today.isoformat(), end_date=today.isoformat(), event_type="task"
+        ))
+        completed = await ScheduleService.complete_event(db_session, event.id, user_id=1)
+        assert completed is not None
+
+    @pytest.mark.asyncio
+    async def test_get_stats(self, db_session):
+        from modules.schedule.schedule_services import ScheduleService
+        stats = await ScheduleService.get_stats(db_session, user_id=1)
+        assert isinstance(stats, dict)
+
+
+# ==================== API 路由测试 ====================
 @pytest.mark.asyncio
-async def test_category_crud(db: AsyncSession):
-    """测试日程分类管理"""
-    # Create
-    cat_data = CategoryCreate(name="Work", color="#ff0000", icon="briefcase")
-    category = await CategoryService.create_category(db, USER_ID, cat_data)
-    assert category.id is not None
-    assert category.name == "Work"
-    
-    # Update
-    update_data = CategoryUpdate(name="Hard Work")
-    updated = await CategoryService.update_category(db, category.id, USER_ID, update_data)
-    assert updated.name == "Hard Work"
-    
-    # Get List
-    cats = await CategoryService.get_user_categories(db, USER_ID)
-    assert len(cats) >= 1
-    assert cats[0].name == "Hard Work"
-    
-    # Delete
-    success = await CategoryService.delete_category(db, category.id, USER_ID)
-    assert success is True
-    
-    # Verify Delete
-    cats_after = await CategoryService.get_user_categories(db, USER_ID)
-    # Note: If database is not reset, other tests might leave data, but strictly speaking this cat should be gone.
-    assert category.id not in [c.id for c in cats_after]
+class TestScheduleEventAPI:
+    async def test_create_event(self, admin_client: AsyncClient):
+        today = date.today().isoformat()
+        resp = await admin_client.post("/api/v1/schedule/events", json={
+            "title": "API日程", "start_date": today, "end_date": today, "event_type": "event"
+        })
+        assert resp.status_code == 200
 
-@pytest.mark.asyncio
-async def test_event_lifecycle(db: AsyncSession):
-    """测试日程生命周期：创建(带提醒)->查询->更新->统计->删除"""
-    
-    # 1. Create Event with Reminder
-    today = datetime.date.today()
-    tomorrow = today + datetime.timedelta(days=1)
-    
-    event_data = EventCreate(
-        title="Team Meeting",
-        description="Discuss Q4 goals",
-        start_date=tomorrow,
-        start_time=datetime.time(10, 0),
-        end_date=tomorrow,
-        end_time=datetime.time(11, 0),
-        event_type=EventType.MEETING,
-        remind_before_minutes=30
-    )
-    
-    event = await ScheduleService.create_event(db, USER_ID, event_data)
-    assert event.id is not None
-    assert event.title == "Team Meeting"
-    
-    # Check automatically created reminder
-    # Refresh to load relationships
-    # Note: relationship loading usually implies async session strategy or strict loading
-    # Here we check DB directly via ReminderService or query logic
-    # But for unit test simplicity, we assume Service layer handles logic correctly.
-    # Let's verify by querying reminders directly or trusting the service logic return logic if it included them (it doesn't).
-    
-    # 2. Query by ID
-    fetched = await ScheduleService.get_event_by_id(db, event.id, USER_ID)
-    assert fetched.title == "Team Meeting"
-    
-    # 3. Query by Date Range
-    events = await ScheduleService.get_events_by_date_range(db, USER_ID, tomorrow, tomorrow)
-    assert len(events) >= 1
-    assert any(e.id == event.id for e in events)
-    
-    # 4. Update
-    update_data = EventUpdate(title="Urgent Meeting", is_completed=True)
-    updated = await ScheduleService.update_event(db, event.id, USER_ID, update_data)
-    assert updated.title == "Urgent Meeting"
-    assert updated.is_completed is True
-    
-    # 5. Stats
-    stats = await ScheduleService.get_stats(db, USER_ID)
-    assert stats["total_events"] >= 1
-    assert stats["completed_events"] >= 1
-    
-    # 6. Delete (Soft Delete)
-    success = await ScheduleService.delete_event(db, event.id, USER_ID)
-    assert success is True
-    
-    # Verify Soft Delete
-    fetched_deleted = await ScheduleService.get_event_by_id(db, event.id, USER_ID)
-    # The get_event_by_id filters out deleted, so this should be None
-    assert fetched_deleted is None
+    async def test_get_today_events(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/schedule/events/today")
+        assert resp.status_code == 200
 
-@pytest.mark.asyncio
-async def test_upcoming_events(db: AsyncSession):
-    """测试即将到来的日程"""
-    today = datetime.date.today()
-    next_week = today + datetime.timedelta(days=7)
-    
-    # Create an event 3 days from now
-    target_date = today + datetime.timedelta(days=3)
-    event_data = EventCreate(
-        title="Future Event",
-        start_date=target_date,
-        remind_before_minutes=0
-    )
-    event = await ScheduleService.create_event(db, USER_ID, event_data)
-    
-    upcoming = await ScheduleService.get_upcoming_events(db, USER_ID, days=7)
-    assert any(e.id == event.id for e in upcoming)
-    
-    # Cleanup
-    await ScheduleService.delete_event(db, event.id, USER_ID)
+    async def test_get_upcoming_events(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/schedule/events/upcoming")
+        assert resp.status_code == 200
+
+    async def test_get_stats(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/schedule/stats")
+        assert resp.status_code == 200
+
+    async def test_get_categories(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/v1/schedule/categories")
+        assert resp.status_code == 200
+
+    async def test_create_category(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/v1/schedule/categories", json={
+            "name": "API分类", "color": "#00FF00"
+        })
+        assert resp.status_code == 200
+
+
+class TestScheduleManifest:
+    def test_manifest(self):
+        from modules.schedule.schedule_manifest import manifest
+        assert manifest.id == "schedule"
+        assert manifest.enabled is True

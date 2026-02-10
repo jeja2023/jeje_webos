@@ -67,24 +67,40 @@ const IMComponents = {
             const updateSelectedUI = () => {
                 if (!multiSelect) return;
                 selectedCount.textContent = selectedUsers.size;
-                selectedChips.innerHTML = Array.from(selectedUsers.values()).map(user => `
-                    <div class="im-user-chip" style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 16px; background: var(--color-primary-light); color: var(--color-primary); font-size: 12px;">
-                        <span>${this.escapeHtml(user.name)}</span>
-                        <i class="ri-close-circle-fill" style="cursor:pointer; font-size: 14px; opacity: 0.8;" data-id="${this.escapeHtml(String(user.id))}"></i>
-                    </div>
-                `).join('');
+                selectedChips.innerHTML = '';
+                const frag = document.createDocumentFragment();
+                Array.from(selectedUsers.values()).forEach(user => {
+                    const chip = document.createElement('div');
+                    chip.className = 'im-user-chip';
+                    chip.style.cssText = 'display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 16px; background: var(--color-primary-light); color: var(--color-primary); font-size: 12px;';
 
-                // 绑定删除事件
-                selectedChips.querySelectorAll('i').forEach(i => {
-                    i.onclick = (e) => {
-                        e.stopPropagation();
-                        const id = parseInt(i.dataset.id);
-                        selectedUsers.delete(id);
-                        updateSelectedUI();
-                        renderResults(lastResults);
-                    };
+                    const name = document.createElement('span');
+                    name.textContent = user.name;
+
+                    const remove = document.createElement('i');
+                    remove.className = 'ri-close-circle-fill im-chip-remove';
+                    remove.style.cssText = 'cursor:pointer; font-size: 14px; opacity: 0.8;';
+                    remove.dataset.id = String(user.id);
+
+                    chip.appendChild(name);
+                    chip.appendChild(remove);
+                    frag.appendChild(chip);
                 });
+                selectedChips.appendChild(frag);
             };
+
+            if (multiSelect && selectedChips && !selectedChips._chipBound) {
+                selectedChips._chipBound = true;
+                selectedChips.addEventListener('click', (e) => {
+                    const removeBtn = e.target.closest('.im-chip-remove');
+                    if (!removeBtn) return;
+                    e.stopPropagation();
+                    const id = parseInt(removeBtn.dataset.id);
+                    selectedUsers.delete(id);
+                    updateSelectedUI();
+                    renderResults(lastResults);
+                });
+            }
 
             const renderResults = (users) => {
                 lastResults = users;

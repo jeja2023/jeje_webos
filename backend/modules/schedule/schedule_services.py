@@ -9,6 +9,7 @@ from datetime import datetime, date, time, timedelta
 from utils.timezone import get_beijing_time
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
+from sqlalchemy.orm import selectinload
 from calendar import monthrange
 
 from .schedule_models import ScheduleEvent, ScheduleReminder, ScheduleCategory
@@ -59,7 +60,7 @@ class ScheduleService:
                 db.add(reminder)
         
         await db.commit()
-        await db.refresh(event)
+        await db.refresh(event, attribute_names=['reminders'])
         logger.info(f"用户 {user_id} 创建日程: {event.title}")
         return event
     
@@ -85,6 +86,7 @@ class ScheduleService:
         )
         if user_id:
             stmt = stmt.where(ScheduleEvent.user_id == user_id)
+        stmt = stmt.options(selectinload(ScheduleEvent.reminders))
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
     
@@ -109,7 +111,7 @@ class ScheduleService:
                     and_(ScheduleEvent.start_date <= start_date, ScheduleEvent.end_date >= end_date)
                 )
             )
-        ).order_by(ScheduleEvent.start_date, ScheduleEvent.start_time)
+        ).order_by(ScheduleEvent.start_date, ScheduleEvent.start_time).options(selectinload(ScheduleEvent.reminders))
         
         result = await db.execute(stmt)
         return list(result.scalars().all())
@@ -148,7 +150,7 @@ class ScheduleService:
                     ScheduleEvent.location.ilike(search_pattern)
                 )
             )
-        ).order_by(ScheduleEvent.start_date.desc()).limit(50)
+        ).order_by(ScheduleEvent.start_date.desc()).limit(50).options(selectinload(ScheduleEvent.reminders))
         
         result = await db.execute(stmt)
         return list(result.scalars().all())
@@ -165,7 +167,7 @@ class ScheduleService:
             setattr(event, key, value)
         
         await db.commit()
-        await db.refresh(event)
+        await db.refresh(event, attribute_names=['reminders'])
         return event
     
     @staticmethod
@@ -189,7 +191,7 @@ class ScheduleService:
         
         event.is_completed = True
         await db.commit()
-        await db.refresh(event)
+        await db.refresh(event, attribute_names=['reminders'])
         return event
     
     # ========== 统计 ==========

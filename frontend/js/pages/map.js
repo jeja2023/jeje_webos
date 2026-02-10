@@ -728,6 +728,20 @@ class MapPage extends Component {
         if (this.state._eventsBound) return;
         this.state._eventsBound = true;
 
+        // 测量清除按钮 & 标记操作（替代 inline onclick）
+        this.delegate('click', '[data-action="clear-ruler"]', () => {
+            this.clearRulerPoints();
+        });
+        // Marker popup 操作（Leaflet popup 渲染在 map pane 中，通过 document 级别监听）
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-marker-action]');
+            if (!btn) return;
+            const id = parseInt(btn.dataset.markerId);
+            if (!id) return;
+            if (btn.dataset.markerAction === 'edit') this.editMarker(id);
+            else if (btn.dataset.markerAction === 'delete') this.removeMarker(id);
+        });
+
         this.delegate('click', '#btnUploadGps', () => {
             const el = this.container.querySelector('#gpsFileInput');
             if (el) el.click();
@@ -952,7 +966,7 @@ class MapPage extends Component {
         const totalStr = total > 1000 ? `${(total / 1000).toFixed(2)} km` : `${total.toFixed(0)} m`;
         const hint = this.container.querySelector('#ruler-hint');
         if (hint) {
-            hint.innerHTML = `测量模式: 已添加 ${this.rulerPoints.length} 个点，总距离 <b style="color:#ef4444;">${totalStr}</b>　|　<span style="cursor:pointer;text-decoration:underline;" onclick="window._currentMap.clearRulerPoints()">清除重测</span>　|　再次点击按钮退出`;
+            hint.innerHTML = `测量模式: 已添加 ${this.rulerPoints.length} 个点，总距离 <b style="color:#ef4444;">${totalStr}</b>　|　<span style="cursor:pointer;text-decoration:underline;" data-action="clear-ruler">清除重测</span>　|　再次点击按钮退出`;
         }
     }
 
@@ -1702,10 +1716,10 @@ class MapPage extends Component {
                         <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:4px;">${Utils.escapeHtml(m.name)}</div>
                         <div style="font-size:12px; color:#666;">${Utils.escapeHtml(m.description || '无备注')}</div>
                         <div style="margin-top:8px; display:flex; gap:8px;">
-                            <button class="btn-xs btn-marker-edit" onclick="window._currentMap.editMarker(${m.id})" style="background:#dbeafe; color:#3b82f6; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
+                            <button class="btn-xs btn-marker-edit" data-marker-action="edit" data-marker-id="${m.id}" style="background:#dbeafe; color:#3b82f6; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
                                 <i class="ri-edit-line"></i> 编辑
                             </button>
-                            <button class="btn-xs btn-marker-delete" onclick="window._currentMap.removeMarker(${m.id})" style="background:#fee2e2; color:#ef4444; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
+                            <button class="btn-xs btn-marker-delete" data-marker-action="delete" data-marker-id="${m.id}" style="background:#fee2e2; color:#ef4444; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px;">
                                 <i class="ri-delete-bin-line"></i> 删除
                             </button>
                         </div>

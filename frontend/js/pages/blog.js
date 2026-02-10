@@ -148,7 +148,7 @@ class BlogListPage extends Component {
                         <button class="btn btn-ghost" id="toggleBatch">
                             ${batchMode ? '取消批量' : '<i class="ri-checkbox-multiple-line"></i> 批量操作'}
                         </button>
-                        <button class="btn btn-primary" onclick="Router.push('/blog/edit')">
+                        <button class="btn btn-primary" data-route="/blog/edit">
                             <i class="ri-add-line"></i> 发布文章
                         </button>
                     </div>
@@ -254,7 +254,7 @@ class BlogListPage extends Component {
                             <p class="empty-text">${keyword || categoryId || status ? '没有找到匹配的文章' : '还没有文章，快去发布一篇吧'}</p>
                             ${keyword || categoryId || status ?
                 '<button class="btn btn-secondary" data-action="clear-filters">清除筛选</button>' :
-                '<button class="btn btn-primary" onclick="Router.push(\'/blog/edit\')">发布第一篇</button>'
+                '<button class="btn btn-primary" data-route="/blog/edit">发布第一篇</button>'
             }
                         </div>
                     </div>
@@ -281,6 +281,8 @@ class BlogListPage extends Component {
     bindEvents() {
         if (this.container && !this.container._bindedBlogList) {
             this.container._bindedBlogList = true;
+
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
 
             // 分页
             this.delegate('click', '[data-page]', (e, target) => {
@@ -441,27 +443,44 @@ class BlogEditPage extends Component {
             return;
         }
 
-        this.setState({ saving: true });
+        // 直接修改状态并手动更新 DOM，避免 setState 触发 render 导致编辑器丢失焦点
+        this.state.saving = true;
+        const pageDesc = this.container.querySelector('.page-desc');
+        if (pageDesc) pageDesc.innerText = '正在保存文章...';
+        const saveBtn = this.container.querySelector('button[type="submit"]');
+        if (saveBtn) saveBtn.innerText = '保存中...';
 
         try {
+            const isPublished = data.status === 'published';
             if (this.postId) {
                 await BlogApi.updatePost(this.postId, data);
                 if (!silent) {
-                    Toast.success('更新成功');
+                    Toast.success(isPublished ? '更新成功' : '已保存为草稿');
                     Router.push(`/blog/view/${this.postId}`);
                 }
             } else {
                 const res = await BlogApi.createPost(data);
                 this.postId = res.data?.id;
                 if (!silent) {
-                    Toast.success('发布成功');
+                    Toast.success(isPublished ? '发布成功' : '已存为草稿');
                     Router.push(this.postId ? `/blog/view/${this.postId}` : '/blog/list');
                 }
             }
         } catch (error) {
             if (!silent) Toast.error(error.message);
         } finally {
-            this.setState({ saving: false });
+            this.state.saving = false;
+            const pageDesc = this.container.querySelector('.page-desc');
+            if (pageDesc) {
+                const isEdit = !!this.postId;
+                pageDesc.innerText = isEdit ? '自动保存已启用' : '撰写中...';
+            }
+            const saveBtn = this.container.querySelector('button[type="submit"]');
+            if (saveBtn) {
+                const isEdit = !!this.postId;
+                const isDraft = this.state.post?.status === 'draft';
+                saveBtn.innerHTML = isEdit ? (isDraft ? '<i class="ri-save-line"></i> 保存修改' : '<i class="ri-save-line"></i> 更新文章') : (isDraft ? '<i class="ri-save-line"></i> 保存草稿' : '<i class="ri-send-plane-fill"></i> 发布文章');
+            }
         }
     }
 
@@ -485,6 +504,9 @@ class BlogEditPage extends Component {
         const isEdit = !!this.postId;
         const wordCount = (post?.content || '').length;
 
+        const currentStatus = post?.status || 'draft';
+        const isDraft = currentStatus === 'draft';
+
         if (loading) {
             return '<div class="loading"></div>';
         }
@@ -497,7 +519,7 @@ class BlogEditPage extends Component {
                             <i class="ri-arrow-left-line"></i> 返回
                         </button>
                         <div>
-                            <h1 class="page-title" style="margin: 0;">${isEdit ? '编辑文章' : '发布文章'}</h1>
+                            <h1 class="page-title" style="margin: 0;">${isEdit ? (isDraft ? '编辑草稿' : '编辑文章') : (isDraft ? '新建草稿' : '撰写文章')}</h1>
                             <p class="page-desc" style="margin: 4px 0 0 0;">
                                 ${saving ? '保存中...' : (isEdit ? '自动保存已启用' : '填写完成后发布')}
                                 ${wordCount > 0 ? ` · ${wordCount} 字` : ''}
@@ -509,7 +531,7 @@ class BlogEditPage extends Component {
                             <button class="btn btn-ghost" id="btnPreview"><i class="ri-eye-line"></i> 预览</button>
                         ` : ''}
                         <button type="submit" form="postForm" class="btn btn-primary" ${saving ? 'disabled' : ''}>
-                            ${saving ? '保存中...' : (isEdit ? '<i class="ri-save-line"></i> 更新文章' : '<i class="ri-send-plane-fill"></i> 发布文章')}
+                            ${saving ? '保存中...' : (isEdit ? (isDraft ? '<i class="ri-save-line"></i> 保存修改' : '<i class="ri-save-line"></i> 更新文章') : (isDraft ? '<i class="ri-save-line"></i> 保存草稿' : '<i class="ri-send-plane-fill"></i> 发布文章'))}
                         </button>
                     </div>
                 </div>
@@ -545,9 +567,9 @@ class BlogEditPage extends Component {
                             
                             <div class="form-group">
                                 <label class="form-label">状态</label>
-                                <select name="status" class="form-input form-select">
-                                    <option value="draft" ${post?.status === 'draft' ? 'selected' : ''}>草稿</option>
-                                    <option value="published" ${post?.status === 'published' ? 'selected' : ''}>发布</option>
+                                <select name="status" class="form-input form-select" id="postStatusSelect">
+                                    <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>草稿</option>
+                                    <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>发布</option>
                                 </select>
                             </div>
                         </div>
@@ -590,6 +612,21 @@ class BlogEditPage extends Component {
         if (form && !form._bindedBlogEdit) {
             form._bindedBlogEdit = true;
             form.addEventListener('submit', (e) => this.handleSubmit(e));
+
+            // 监听状态变化，同步到 state 并更新按钮文字
+            const statusSelect = this.$('#postStatusSelect');
+            if (statusSelect) {
+                statusSelect.addEventListener('change', (e) => {
+                    const status = e.target.value;
+                    if (!this.state.post) {
+                        this.state.post = { status };
+                    } else {
+                        this.state.post.status = status;
+                    }
+                    this.update(); // 触发重新渲染以更新标题和按钮文字
+                });
+            }
+
             if (this.postId) {
                 this.startAutoSave();
             }
@@ -689,35 +726,31 @@ class BlogCategoryPage extends Component {
                     </div>
                 </form>
             `,
-            footer: `
-                <button class="btn btn-secondary" data-close>取消</button>
-                <button class="btn btn-primary" id="saveCategory">保存</button>
-            `
-        });
+            onConfirm: async () => {
+                const form = document.getElementById('categoryForm');
+                const name = form.name.value.trim();
+                const slug = form.slug.value.trim() || name.toLowerCase().replace(/\s+/g, '-');
+                const description = form.description.value.trim();
 
-        document.getElementById('saveCategory')?.addEventListener('click', async () => {
-            const form = document.getElementById('categoryForm');
-            const name = form.name.value.trim();
-            const slug = form.slug.value.trim() || name.toLowerCase().replace(/\s+/g, '-');
-            const description = form.description.value.trim();
-
-            if (!name) {
-                Toast.error('请输入分类名称');
-                return;
-            }
-
-            try {
-                if (category) {
-                    await BlogApi.updateCategory(category.id, { name, slug, description });
-                    Toast.success('更新成功');
-                } else {
-                    await BlogApi.createCategory({ name, slug, description });
-                    Toast.success('添加成功');
+                if (!name) {
+                    Toast.error('请输入分类名称');
+                    return false;
                 }
-                Modal.closeAll();
-                this.loadData();
-            } catch (error) {
-                Toast.error(error.message);
+
+                try {
+                    if (category) {
+                        await BlogApi.updateCategory(category.id, { name, slug, description });
+                        Toast.success('更新成功');
+                    } else {
+                        await BlogApi.createCategory({ name, slug, description });
+                        Toast.success('添加成功');
+                    }
+                    this.loadData();
+                    return true;
+                } catch (error) {
+                    Toast.error(error.message);
+                    return false;
+                }
             }
         });
     }
@@ -797,22 +830,18 @@ class BlogCategoryPage extends Component {
     }
 
     bindEvents() {
-        // 返回按钮
-        const backBtn = this.$('#btnBack');
-        if (backBtn && !backBtn._binded) {
-            backBtn._binded = true;
-            backBtn.addEventListener('click', () => Router.push('/blog/list'));
-        }
+        if (this.container && !this.container._bindedCategory) {
+            this.container._bindedCategory = true;
 
-        // 添加分类按钮
-        this.delegate('click', '#addCategory, #addCategoryEmpty', () => {
-            this.showAddModal();
-        });
+            // 返回按钮
+            this.delegate('click', '#btnBack', () => Router.push('/blog/list'));
 
-        // 编辑按钮
-        if (this.container && !this.container._bindedCategoryEdit) {
-            this.container._bindedCategoryEdit = true;
+            // 添加分类按钮
+            this.delegate('click', '#addCategory, #addCategoryEmpty', () => {
+                this.showAddModal();
+            });
 
+            // 编辑按钮
             this.delegate('click', '[data-action="edit-category"]', (e, target) => {
                 const id = target.dataset.id;
                 const category = this.state.categories.find(c => c.id == id);
@@ -958,7 +987,7 @@ class BlogViewPage extends Component {
                     <div class="empty-state" style="padding-top: 80px">
                         <div class="empty-icon"><i class="ri-search-line"></i></div>
                         <p class="empty-text">文章不存在或已删除</p>
-                        <button class="btn btn-primary" onclick="Router.push('/blog/list')">返回列表</button>
+                        <button class="btn btn-primary" data-route="/blog/list">返回列表</button>
                     </div>
                 </div>
             `;

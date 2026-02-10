@@ -175,10 +175,7 @@ class AlbumPage extends Component {
      */
     withToken(url) {
         if (!url) return url;
-        const token = Utils.getToken();
-        if (!token) return url;
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}token=${encodeURIComponent(token)}`;
+        return Utils.withToken(url);
     }
 
     /**

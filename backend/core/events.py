@@ -51,8 +51,7 @@ class EventBus:
         """发布事件（异常隔离：单个 handler 失败不影响其他 handler）"""
         # 记录历史
         self._history.append(event)
-        if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+        self._trim_history()
         
         logger.debug(f"发布事件: {event.name} 来自 {event.source}")
         
@@ -69,6 +68,11 @@ class EventBus:
             except Exception as e:
                 logger.error(f"事件处理错误 {event.name}: {e}", exc_info=True)
     
+    def _trim_history(self):
+        """裁剪历史记录，防止内存无限增长"""
+        if len(self._history) > self._max_history:
+            self._history = self._history[-self._max_history:]
+    
     def emit(self, name: str, source: str, data: Dict[str, Any] = None):
         """便捷发布方法（同步包装）"""
         event = Event(name=name, source=source, data=data or {})
@@ -79,10 +83,12 @@ class EventBus:
             else:
                 # 循环未运行（可能在关闭中），记录历史并记录日志
                 self._history.append(event)
+                self._trim_history()
                 logger.debug(f"EventBus.emit: 循环未运行，仅记录历史: {name}")
         except RuntimeError:
             # 完全没有运行中的循环（启动阶段），仅记录历史
             self._history.append(event)
+            self._trim_history()
             logger.debug(f"EventBus.emit: 没有运行中的循环，仅记录历史: {name}")
     
     def get_history(self, event_name: str = None, limit: int = 100) -> List[Event]:

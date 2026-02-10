@@ -213,9 +213,9 @@ class TopBarComponent extends Component {
                                 <div class="menu-user-name">${Utils.escapeHtml(user.nickname || user.username)}</div>
                                 <div class="menu-user-role">${user.role === 'admin' ? '系统管理员' : '普通用户'}</div>
                             </div>
-                            <div class="menu-item" onclick="Router.push('/profile')"><i class="ri-user-line"></i> 个人中心</div>
-                            <div class="menu-item" onclick="Router.push('/theme/editor')"><i class="ri-palette-line"></i> 系统主题</div>
-                            <div class="menu-item" onclick="Router.push('/help')"><i class="ri-question-line"></i> 帮助中心</div>
+                            <div class="menu-item" data-route="/profile"><i class="ri-user-line"></i> 个人中心</div>
+                            <div class="menu-item" data-route="/theme/editor"><i class="ri-palette-line"></i> 系统主题</div>
+                            <div class="menu-item" data-route="/help"><i class="ri-question-line"></i> 帮助中心</div>
                             <div class="menu-divider"></div>
                             <div class="menu-item danger" id="btnLogout"><i class="ri-logout-box-line"></i> 退出登录</div>
                         </div>
@@ -238,7 +238,7 @@ class TopBarComponent extends Component {
             else if (item.type === 'info' && item.sender_id === item.user_id) { iconClass = 'ri-notification-fill'; }
 
             return `
-                <div class="msg-item ${item.is_read ? '' : 'unread'}" data-id="${item.id}" onclick="Router.push('/notifications')">
+                <div class="msg-item ${item.is_read ? '' : 'unread'}" data-id="${item.id}" data-route="/notifications">
                     <div class="msg-icon" style="${iconStyle}">
                         <i class="${iconClass}"></i>
                     </div>
@@ -260,7 +260,7 @@ class TopBarComponent extends Component {
             `;
         } else if (tab === 'announcement') {
             return `
-                <div class="msg-item" onclick="Router.push('/announcement/view/${item.id}')">
+                <div class="msg-item" data-route="/announcement/view/${item.id}">
                     <div class="msg-icon"><i class="ri-megaphone-fill" style="color: var(--color-primary)"></i></div>
                     <div class="msg-body">
                         <div class="msg-title">${Utils.escapeHtml(item.title)}</div>
@@ -270,7 +270,7 @@ class TopBarComponent extends Component {
             `;
         } else if (tab === 'pending') {
             return `
-                <div class="msg-item" onclick="Router.push('/users/pending')">
+                <div class="msg-item" data-route="/users/pending">
                     <div class="msg-icon"><i class="ri-user-follow-line" style="color: var(--color-info)"></i></div>
                     <div class="msg-body">
                         <div class="msg-title">新用户注册: ${Utils.escapeHtml(item.username)}</div>
@@ -326,6 +326,14 @@ class TopBarComponent extends Component {
         this.unbindEvents();
 
         if (this.container) {
+            // 通用路由导航
+            this.container.addEventListener('click', (e) => {
+                const routeEl = e.target.closest('[data-route]');
+                if (routeEl) {
+                    Router.push(routeEl.dataset.route);
+                }
+            });
+
             // 品牌/Logo 点击
             const brandPill = this.container.querySelector('#brandPill');
             if (brandPill) {

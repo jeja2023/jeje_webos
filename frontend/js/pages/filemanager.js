@@ -83,9 +83,12 @@ class FileManagerPage extends Component {
     }
 
     async init() {
-        await this.loadFolderTree();
-        await this.loadDirectory();
-        await this.loadStats();
+        // 并行加载，提升初始化性能
+        await Promise.all([
+            this.loadFolderTree(),
+            this.loadDirectory(),
+            this.loadStats()
+        ]);
     }
 
     async loadDirectory(folderId = null, keyword = null) {
@@ -421,18 +424,16 @@ class FileManagerPage extends Component {
     renderFileIcon(file) {
         // 如果是图片，可以显示缩略图
         if (file.mime_type && file.mime_type.startsWith('image/')) {
-            const token = Store.get('token');
             const safeName = Utils.escapeHtml(file.name);
-            const safeUrl = Utils.escapeHtml(`${file.preview_url}?token=${token}`);
+            const previewUrl = Utils.withToken(file.preview_url);
+            const safeUrl = Utils.escapeHtml(previewUrl);
             // 处理图片加载失败的情况：替换为图标
             // 使用 _renderSafeIcon 替代简单的正则检查
             const saferIconData = this._renderSafeIcon(file.icon, '<i class="ri-image-line"></i>');
-            // 注意：这里需要确保 saferIconData 在 outerHTML 中是安全的
-            // saferIconData 已经是经过 _renderSafeIcon 过滤的 HTML 字符串 (例如 <i class="..."></i>)
-            // 在 JS 字符串中使用时，需要转义单引号和换行
-            const jsSafeIcon = saferIconData.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
+            // 将安全图标写入 data 属性，避免 inline JS
+            const iconPayload = encodeURIComponent(saferIconData);
 
-            return `<img class="fm-item-preview" src="${safeUrl}" alt="${safeName}" onerror="this.onerror=null; this.outerHTML='<div class=\\'fm-item-icon\\'>${jsSafeIcon}</div>'">`;
+            return `<img class="fm-item-preview" src="${safeUrl}" alt="${safeName}" data-fallback-icon="${iconPayload}">`;
         }
         return `<div class="fm-item-icon">${this._renderSafeIcon(file.icon, '<i class="ri-file-line"></i>')}</div>`;
     }
@@ -462,9 +463,27 @@ class FileManagerPage extends Component {
         return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
     }
 
+    _bindImageFallbacks() {
+        // 绑定图片加载失败的兜底图标（避免 inline JS）
+        const imgs = this.container?.querySelectorAll?.('.fm-item-preview[data-fallback-icon]') || [];
+        imgs.forEach(img => {
+            if (img._fallbackBound) return;
+            img._fallbackBound = true;
+            img.addEventListener('error', () => {
+                const payload = img.getAttribute('data-fallback-icon') || '';
+                const decoded = decodeURIComponent(payload);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'fm-item-icon';
+                wrapper.innerHTML = decoded;
+                img.replaceWith(wrapper);
+            });
+        });
+    }
+
     afterMount() {
         this.init();
         this.bindEvents();
+        this._bindImageFallbacks();
         // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
@@ -473,6 +492,7 @@ class FileManagerPage extends Component {
 
     afterUpdate() {
         this.bindEvents();
+        this._bindImageFallbacks();
         // 绑定帮助按钮事件
         if (window.ModuleHelp) {
             ModuleHelp.bindHelpButtons(this.container);
@@ -911,7 +931,10 @@ class FileManagerPage extends Component {
         const folderIds = [];
 
         for (const key of selectedItems) {
-            const [type, id] = key.split('-');
+            const dashIdx = key.indexOf('-');
+            if (dashIdx === -1) continue;
+            const type = key.substring(0, dashIdx);
+            const id = key.substring(dashIdx + 1);
             if (type === 'file') {
                 fileIds.push(parseInt(id));
             } else if (type === 'folder') {
@@ -994,7 +1017,9 @@ class FileManagerPage extends Component {
             return;
         }
 
-        const [type, id] = selectedItems[0].split('-');
+        const dashIdx = selectedItems[0].indexOf('-');
+        const type = selectedItems[0].substring(0, dashIdx);
+        const id = selectedItems[0].substring(dashIdx + 1);
         if (type === 'file') {
             this.downloadFile(id);
         } else if (type === 'folder') {
@@ -1003,7 +1028,7 @@ class FileManagerPage extends Component {
     }
 
     // 下载单个文件
-    downloadFile(id) {
+    async downloadFile(id) {
         // 如果未传入ID，尝试从选中项获取
         if (!id) {
             const { selectedItems } = this.state;
@@ -1014,15 +1039,20 @@ class FileManagerPage extends Component {
 
         if (!id) return;
 
-        const token = Utils.getToken();
-        const url = `${Config.apiBase}/filemanager/download/${id}?token=${token}`;
-
-        // 创建隐藏的 iframe 进行下载，避免弹出新窗口被拦截
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = url;
-        document.body.appendChild(iframe);
-        this.setTimeout(() => document.body.removeChild(iframe), 60000);
+        // 使用 fetch + Blob URL 下载，避免 token 暴露在 URL 中
+        try {
+            const blob = await Api.download(`/filemanager/download/${id}`);
+            const blobUrl = URL.createObjectURL(blob.blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = blob.filename || 'download';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            this.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        } catch (e) {
+            Toast.error('下载失败: ' + (e.message || '未知错误'));
+        }
     }
 
     // 下载文件夹（打包为ZIP）
@@ -1034,15 +1064,20 @@ class FileManagerPage extends Component {
 
         Toast.info(`正在打包 "${folderName}"，请稍候...`);
 
-        const token = Utils.getToken();
-        const url = `${Config.apiBase}/filemanager/folders/${id}/download?token=${token}`;
-
-        // 使用 iframe 下载
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = url;
-        document.body.appendChild(iframe);
-        this.setTimeout(() => document.body.removeChild(iframe), 120000);
+        // 使用 fetch + Blob URL 下载，避免 token 暴露在 URL 中
+        try {
+            const blob = await Api.download(`/filemanager/folders/${id}/download`);
+            const blobUrl = URL.createObjectURL(blob.blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = blob.filename || `${folderName}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            this.setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+        } catch (e) {
+            Toast.error('下载失败: ' + (e.message || '未知错误'));
+        }
     }
 
     // 上传文件夹（保持目录结构）
@@ -1116,8 +1151,7 @@ class FileManagerPage extends Component {
         const file = this.state.files.find(f => f.id == id);
         if (!file) return;
 
-        const token = Utils.getToken();
-        const url = `${Config.apiBase}/filemanager/preview/${id}?token=${token}`;
+        const url = Utils.withToken(`${Config.apiBase}/filemanager/preview/${id}`);
         const mime = file.mime_type || '';
 
         // 根据文件类型选择预览方式
@@ -1150,7 +1184,7 @@ class FileManagerPage extends Component {
                     <div style="font-size: 64px; margin-bottom: 20px;">🎵</div>
                     <div style="color: white; font-size: 18px; margin-bottom: 20px;">${Utils.escapeHtml(file.name)}</div>
                     <audio controls autoplay style="width: 100%;">
-                        <source src="${Utils.escapeHtml(url)}" type="${mime}">
+                        <source src="${Utils.escapeHtml(url)}" type="${Utils.escapeHtml(mime)}">
                         您的浏览器不支持音频播放
                     </audio>
                 </div>`,

@@ -103,11 +103,11 @@ class NotesListPage extends Component {
                             <span class="folder-icon"><i class="ri-clipboard-line"></i></span>
                             <span class="folder-name">所有笔记</span>
                         </div>
-                        <div class="folder-item" onclick="Router.push('/notes/starred')">
+                        <div class="folder-item" data-route="/notes/starred">
                             <span class="folder-icon"><i class="ri-star-line"></i></span>
                             <span class="folder-name">我的收藏</span>
                         </div>
-                        <div class="folder-item" onclick="Router.push('/notes/tags')">
+                        <div class="folder-item" data-route="/notes/tags">
                             <span class="folder-icon"><i class="ri-price-tag-3-line"></i></span>
                             <span class="folder-name">标签管理</span>
                         </div>
@@ -169,7 +169,7 @@ class NotesListPage extends Component {
                 notes.length > 0 ? notes.map(note => `
                             <div class="note-card" data-note="${Utils.escapeHtml(String(note.id))}">
                                 <div class="note-card-header">
-                                    <label class="note-checkbox" style="display: none; margin-right: 8px;" onclick="event.stopPropagation()">
+                                    <label class="note-checkbox" style="display: none; margin-right: 8px;">
                                         <input type="checkbox" class="note-select" data-id="${Utils.escapeHtml(String(note.id))}">
                                     </label>
                                     <h3 class="note-title">
@@ -205,7 +205,7 @@ class NotesListPage extends Component {
                                 <p class="empty-text">${keyword || selectedTagId ? '没有找到匹配的笔记' : '暂无笔记'}</p>
                                 ${keyword || selectedTagId ?
                     '<button class="btn btn-secondary" id="clearFilters">清除筛选</button>' :
-                    '<button class="btn btn-primary" onclick="Router.push(\'/notes/edit\')">创建第一条笔记</button>'
+                    '<button class="btn btn-primary" data-route="/notes/edit">创建第一条笔记</button>'
                 }
                             </div>
                         `}
@@ -366,6 +366,25 @@ class NotesListPage extends Component {
     bindEvents() {
         if (this.container && !this.container._bindNotesList) {
             this.container._bindNotesList = true;
+
+            // 通用路由导航（替代所有 onclick="Router.push(...)"）
+            this.delegate('click', '[data-route]', (e, el) => {
+                Router.push(el.dataset.route);
+            });
+
+            // 标签选择器 hover 效果
+            this.delegate('mouseover', '[data-hover-opacity]', (e, el) => {
+                el.style.opacity = '1';
+            });
+            this.delegate('mouseout', '[data-hover-opacity]', (e, el) => {
+                const restore = el.dataset.hoverOpacity;
+                if (restore) el.style.opacity = restore;
+            });
+
+            // 复选框阻止冒泡
+            this.delegate('click', '.note-checkbox', (e) => {
+                e.stopPropagation();
+            });
 
             // 新建笔记
             this.delegate('click', '#newNote', () => {
@@ -637,6 +656,9 @@ class NotesEditPage extends Component {
         const form = this.$('#noteForm');
         if (!form) return; // 组件已卸载或表单不存在时不提交
 
+        // 获取选中的标签
+        const selectedTags = Array.from(form.querySelectorAll('input[name="tags"]:checked')).map(cb => parseInt(cb.value));
+
         // 获取表单数据
         const data = {
             title: form.title.value.trim() || '无标题笔记',
@@ -648,28 +670,46 @@ class NotesEditPage extends Component {
 
         // 同步数据到 state，关键修复：防止 saving 状态变更触发 re-render 时清空输入框
         this.state.note = { ...this.state.note, ...data };
-        this.setState({ saving: true });
+        // 直接修改状态并手动更新 DOM，避免 setState 触发 render 导致编辑器丢失焦点
+        this.state.saving = true;
+        const pageDesc = this.container.querySelector('.page-desc');
+        if (pageDesc) pageDesc.innerText = '正在同步云端...';
+        const saveBtn = this.container.querySelector('#saveNote');
+        if (saveBtn) saveBtn.innerText = '保存中...';
 
         try {
             if (this.noteId) {
                 await NotesApi.updateNote(this.noteId, data);
                 if (!options.silent) {
                     Toast.success('已保存');
+                    Router.replace('/notes/list');
                 }
             } else {
                 const res = await NotesApi.createNote(data);
                 this.noteId = res.data.id;
-                // 更新 URL 中的 ID，但不触发路由刷新
-                history.replaceState(null, '', `#/notes/edit/${this.noteId}`);
-
                 if (!options.silent) {
-                    Toast.success('已创建并保存');
+                    Toast.success('已发布并保存');
+                    Router.replace('/notes/list');
+                } else {
+                    // 仅当静默保存(如自动保存)时才仅替换 URL
+                    const fullUrl = `#/notes/edit/${this.noteId}`;
+                    history.replaceState(null, '', fullUrl);
+                    if (window.WindowManager) {
+                        const activeWin = window.WindowManager.getActiveWindow();
+                        if (activeWin && activeWin.id.includes('notes')) {
+                            activeWin.url = fullUrl;
+                        }
+                    }
                 }
             }
         } catch (error) {
             Toast.error(error.message);
         } finally {
-            this.setState({ saving: false });
+            this.state.saving = false;
+            const pageDesc = this.container.querySelector('.page-desc');
+            if (pageDesc) pageDesc.innerText = '已自动保存';
+            const saveBtn = this.container.querySelector('#saveNote');
+            if (saveBtn) saveBtn.innerHTML = '<i class="ri-save-line"></i> 立即保存';
         }
     }
 
@@ -760,8 +800,7 @@ class NotesEditPage extends Component {
                                                ${isSelected ? `background: ${Utils.escapeHtml(tag.color)}; color: var(--color-text-inverse);` : 'background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border);'}
                                                ${isSelected ? '' : 'opacity: 0.7;'}
                                                ${isSelected ? '' : '&:hover { opacity: 1; }'}" 
-                                               onmouseover="this.style.opacity='1'" 
-                                               onmouseout="${isSelected ? '' : "this.style.opacity='0.7'"}">
+                                               data-hover-opacity="${isSelected ? '' : '0.7'}">
                                             <input type="checkbox" name="tags" value="${Utils.escapeHtml(String(tag.id))}" ${isSelected ? 'checked' : ''} 
                                                    style="display: none;">
                                             <span style="width: 12px; height: 12px; border-radius: 50%; background: ${Utils.escapeHtml(tag.color)}; flex-shrink: 0;"></span>
@@ -797,43 +836,40 @@ class NotesEditPage extends Component {
     }
 
     bindEvents() {
-        // 返回按钮
-        const backBtn = this.$('#btnBackToList');
-        if (backBtn && !backBtn._bindedBack) {
-            backBtn._bindedBack = true;
-            backBtn.addEventListener('click', () => {
+        if (this.container && !this.container._bindedNotesEdit) {
+            this.container._bindedNotesEdit = true;
+
+            // 返回按钮 - 使用委托
+            this.delegate('click', '#btnBackToList', () => {
                 // 如果有修改，先保存再返回
                 if (this.noteId) {
                     this.handleSubmit(null, { silent: true }).then(() => {
-                        Router.push('/notes/list');
+                        Router.replace('/notes/list');
                     });
                 } else {
-                    Router.push('/notes/list');
+                    Router.replace('/notes/list');
                 }
             });
-        }
 
-        // 预览按钮
-        const viewBtn = this.$('#viewNote');
-        if (viewBtn && !viewBtn._bindedView) {
-            viewBtn._bindedView = true;
-            viewBtn.addEventListener('click', () => {
+            // 预览按钮 - 使用委托
+            this.delegate('click', '#viewNote', () => {
                 // 先保存再预览
                 this.handleSubmit(null, { silent: true }).then(() => {
                     Router.push(`/notes/view/${this.noteId}`);
                 });
             });
-        }
 
-        // 保存按钮
-        const saveBtn = this.$('#saveNote');
-        if (saveBtn && !saveBtn._bindedNotesEdit) {
-            saveBtn._bindedNotesEdit = true;
-            saveBtn.addEventListener('click', () => this.handleSubmit(null, { silent: false }));
+            // 保存按钮 - 使用直接绑定（因为它在同一个 render 路径下，或者也在 delegate 中）
+            // 为了安全，也改用委托
+            this.delegate('click', '#saveNote', () => this.handleSubmit(null, { silent: false }));
+
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
+
             this.startAutoSave();
         }
 
-        // 快捷键支持
+        // 快捷键支持（每次 mount/update 都检查，但保持单例绑定）
         if (!this.container._bindedKeyboard) {
             this.container._bindedKeyboard = true;
             document.addEventListener('keydown', this._keyboardHandler = (e) => {
@@ -932,10 +968,10 @@ class NotesStarredPage extends Component {
                         </div>
                     </div>
                     <div class="page-nav-tabs">
-                        <button class="btn btn-secondary" onclick="Router.push('/notes/list')">
+                        <button class="btn btn-secondary" data-route="/notes/list">
                             📋 所有笔记
                         </button>
-                        <button class="btn btn-secondary" onclick="Router.push('/notes/tags')">
+                        <button class="btn btn-secondary" data-route="/notes/tags">
                             🏷️ 标签管理
                         </button>
                     </div>
@@ -964,7 +1000,7 @@ class NotesStarredPage extends Component {
                         <div class="empty-state" style="grid-column: 1/-1">
                             <div class="empty-icon">⭐</div>
                             <p class="empty-text">暂无收藏</p>
-                            <button class="btn btn-primary" onclick="Router.push('/notes/list')">浏览笔记</button>
+                            <button class="btn btn-primary" data-route="/notes/list">浏览笔记</button>
                         </div>
                     `}
                 </div>
@@ -1112,10 +1148,10 @@ class NotesTagsPage extends Component {
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn btn-secondary" onclick="Router.push('/notes/list')">
+                        <button class="btn btn-secondary" data-route="/notes/list">
                             <i class="ri-clipboard-line"></i> 所有笔记
                         </button>
-                        <button class="btn btn-secondary" onclick="Router.push('/notes/starred')">
+                        <button class="btn btn-secondary" data-route="/notes/starred">
                             <i class="ri-star-line"></i> 我的收藏
                         </button>
                         <button class="btn btn-primary" id="newTag"><i class="ri-add-line"></i> 新建标签</button>
@@ -1366,7 +1402,7 @@ class NotesViewPage extends Component {
                     <div class="empty-state" style="padding-top:80px">
                         <div class="empty-icon"><i class="ri-search-line"></i></div>
                         <p class="empty-text">笔记不存在或已删除</p>
-                        <button class="btn btn-primary" onclick="Router.push('/notes/list')">返回列表</button>
+                        <button class="btn btn-primary" data-route="/notes/list">返回列表</button>
                     </div>
                 </div>
             `;
@@ -1447,25 +1483,26 @@ class NotesViewPage extends Component {
     }
 
     bindEvents() {
-        // 返回按钮
-        const backBtn = this.$('#backNote');
-        if (backBtn && !backBtn._bindedBack) {
-            backBtn._bindedBack = true;
-            backBtn.addEventListener('click', () => Router.push('/notes/list'));
+        if (this.container && !this.container._bindedNotesView) {
+            this.container._bindedNotesView = true;
+
+            // 返回按钮 - 使用委托
+            this.delegate('click', '#backNote', () => Router.replace('/notes/list'));
+
+            // 编辑按钮 - 使用委托
+            this.delegate('click', '#editNote', () => Router.push(`/notes/edit/${this.noteId}`));
+
+            this.delegate('click', '[data-route]', (e, el) => Router.push(el.dataset.route));
+            this.delegate('click', '[data-action="go-back"]', () => Router.back());
         }
 
-        // 编辑按钮
-        const editBtn = this.$('#editNote');
-        if (editBtn && !editBtn._bindedEdit) {
-            editBtn._bindedEdit = true;
-            editBtn.addEventListener('click', () => Router.push(`/notes/edit/${this.noteId}`));
-        }
+        // 收藏按钮 - 注意这里由于是 afterUpdate 触发的，且使用了 !this.container._binded，
+        // 如果按钮是后来渲染出来的，我们需要统一使用委托。
+        if (this.container && !this.container._bindedNotesViewActions) {
+            this.container._bindedNotesViewActions = true;
 
-        // 收藏按钮
-        const starBtn = this.$('#toggleStar');
-        if (starBtn && !starBtn._bindedStar) {
-            starBtn._bindedStar = true;
-            starBtn.addEventListener('click', async () => {
+            // 收藏按钮
+            this.delegate('click', '#toggleStar', async () => {
                 try {
                     await NotesApi.toggleStar(this.noteId);
                     await this.loadData();
@@ -1474,13 +1511,9 @@ class NotesViewPage extends Component {
                     Toast.error(error.message);
                 }
             });
-        }
 
-        // 置顶按钮
-        const pinBtn = this.$('#togglePin');
-        if (pinBtn && !pinBtn._bindedPin) {
-            pinBtn._bindedPin = true;
-            pinBtn.addEventListener('click', async () => {
+            // 置顶按钮
+            this.delegate('click', '#togglePin', async () => {
                 try {
                     await NotesApi.togglePin(this.noteId);
                     await this.loadData();
@@ -1489,30 +1522,18 @@ class NotesViewPage extends Component {
                     Toast.error(error.message);
                 }
             });
+
+            // 复制按钮
+            this.delegate('click', '#copyNote', () => this.copyContent());
+
+            // 导出按钮
+            this.delegate('click', '#exportNote', () => this.exportAsMarkdown());
+
+            // 删除按钮
+            this.delegate('click', '#deleteNote', () => this.deleteNote());
         }
 
-        // 复制按钮
-        const copyBtn = this.$('#copyNote');
-        if (copyBtn && !copyBtn._bindedCopy) {
-            copyBtn._bindedCopy = true;
-            copyBtn.addEventListener('click', () => this.copyContent());
-        }
-
-        // 导出按钮
-        const exportBtn = this.$('#exportNote');
-        if (exportBtn && !exportBtn._bindedExport) {
-            exportBtn._bindedExport = true;
-            exportBtn.addEventListener('click', () => this.exportAsMarkdown());
-        }
-
-        // 删除按钮
-        const deleteBtn = this.$('#deleteNote');
-        if (deleteBtn && !deleteBtn._bindedDelete) {
-            deleteBtn._bindedDelete = true;
-            deleteBtn.addEventListener('click', () => this.deleteNote());
-        }
-
-        // 快捷键支持
+        // 快捷键支持（保持现状，因为它是绑在 document 上的）
         if (!this.container._bindedKeyboard) {
             this.container._bindedKeyboard = true;
             document.addEventListener('keydown', this._keyboardHandler = (e) => {

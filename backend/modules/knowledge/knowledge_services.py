@@ -282,20 +282,37 @@ class KnowledgeService:
                 except Exception as e:
                     logger.warning(f"节点 {node_id} 视觉索引建立失败: {e}")
 
+            # 检查是否已取消
+            await db.refresh(node)
+            if node.status == "cancelled":
+                logger.info(f"节点 {node_id} 解析任务被用户中止")
+                return
+
             if extracted_text:
                 node.content = extracted_text
                 
+                # 再次检查取消状态
+                await db.refresh(node)
+                if node.status == "cancelled":
+                    return
+
                 # 建立语义向量索引
                 await KnowledgeService._index_node_content(node)
                 
                 # 提取知识图谱
                 try:
                     from .knowledge_graph_service import KnowledgeGraphService
+                    # 这里也可以传递取消信号给 GraphService，暂时先简单处理
                     await KnowledgeGraphService.extract_and_save(db, node.base_id, node.id, node.content)
                 except Exception as e:
                     logger.warning(f"节点 {node_id} 知识图谱提取跳过: {e}")
             else:
                 node.content = "（无文本内容或解析失败）"
+
+            # 最后一次检查
+            await db.refresh(node)
+            if node.status == "cancelled":
+                return
 
             node.status = "published"
             await db.commit()
@@ -308,6 +325,22 @@ class KnowledgeService:
             node.status = "error"
             node.content = f"解析失败: {str(e)}"
             await db.commit()
+
+    @staticmethod
+    async def cancel_processing(db: AsyncSession, node_id: int, user_id: int):
+        """中止文件解析任务"""
+        node = await db.get(KnowledgeNode, node_id)
+        if not node or node.created_by != user_id:
+            return None
+            
+        if node.status == "processing":
+            node.status = "cancelled"
+            node.content = "（已中止解析）"
+            await db.commit()
+            await db.refresh(node)
+            logger.info(f"用户 {user_id} 中止了节点 {node_id} 的解析任务")
+        
+        return node
 
 
     @staticmethod

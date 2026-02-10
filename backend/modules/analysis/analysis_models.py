@@ -5,7 +5,7 @@ Analysis 模块数据模型
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Integer, Text, DateTime, JSON
+from sqlalchemy import String, Integer, Text, DateTime, JSON, Index
 
 from core.database import Base
 from utils.timezone import get_beijing_time
@@ -24,6 +24,9 @@ class AnalysisDataset(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     __table_args__ = (
+        Index('idx_dataset_table_name', 'table_name'),
+        Index('idx_dataset_source_type', 'source_type'),
+        Index('idx_dataset_updated_at', 'updated_at'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '数据分析集管理表', 'extend_existing': True},
     )
 
@@ -86,6 +89,7 @@ class AnalysisSmartTableData(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     __table_args__ = (
+        Index('idx_smart_table_data_table_id', 'table_id'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '智能表格数据表', 'extend_existing': True},
     )
 
@@ -105,5 +109,7 @@ class AnalysisChart(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_beijing_time, onupdate=get_beijing_time, comment="更新时间")
     
     __table_args__ = (
+        Index('idx_chart_dataset_id', 'dataset_id'),
+        Index('idx_chart_updated_at', 'updated_at'),
         {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8mb4', 'comment': '分析图表保存表', 'extend_existing': True},
     )

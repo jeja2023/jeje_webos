@@ -163,7 +163,7 @@ class MarkdownWysiwygEditor {
         const clipboardData = e.clipboardData || window.clipboardData;
         if (!clipboardData) return;
 
-        // 优先处理 items
+        // 1. 优先处理图片上传
         const items = clipboardData.items;
         if (items) {
             for (const item of items) {
@@ -172,22 +172,87 @@ class MarkdownWysiwygEditor {
                     const file = item.getAsFile();
                     if (file) {
                         await this.uploadAndInsertImage(file);
-                        return; // 找到一个就处理一个，通常剪贴板就是一个图片
+                        return;
                     }
                 }
             }
         }
 
-        // 兼容处理 files (某些情况下 items 为空但 files 有内容)
-        const files = clipboardData.files;
-        if (files && files.length > 0) {
-            for (const file of files) {
-                if (file.type.indexOf('image') !== -1) {
-                    e.preventDefault();
-                    await this.uploadAndInsertImage(file);
-                }
-            }
+        // 2. 处理文本粘贴 (关键修复：支持 Markdown 源码粘贴并即时渲染)
+        const text = clipboardData.getData('text/plain');
+        if (text) {
+            e.preventDefault();
+            this.insertMarkdownAtCursor(text);
         }
+    }
+
+    /**
+     * 在光标处插入 Markdown 文本并重绘样式
+     */
+    insertMarkdownAtCursor(text) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        let line = this.getLineElement(range.startContainer);
+
+        // 如果光标不在 md-line 内（比如编辑器为空或在间隙），则创建一个新行
+        if (!line) {
+            line = document.createElement('div');
+            line.className = 'md-line';
+            line.innerHTML = '<br>';
+            this.editor.appendChild(line);
+            const newRange = document.createRange();
+            newRange.setStart(line, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+
+        const lines = text.split(/\r?\n/);
+        const currentRaw = (line.getAttribute('data-raw') || line.innerText || '').replace(/\s+$/, '');
+        const offset = this.getCaretOffsetInLine(line);
+
+        if (lines.length === 1) {
+            // 单行粘贴：直接插入到当前光标位置
+            const newRaw = currentRaw.substring(0, offset) + text + currentRaw.substring(offset);
+            line.innerText = newRaw;
+            this.processLine(line);
+            this.setCaretOffsetInLine(line, offset + text.length);
+        } else {
+            // 多行粘贴：拆分当前行，中间插入新行
+            const headRaw = currentRaw.substring(0, offset);
+            const tailRaw = currentRaw.substring(offset);
+
+            // 修改当前行 (第一部分)
+            line.innerText = headRaw + lines[0];
+            this.processLine(line);
+
+            let lastLine = line;
+            // 插入中间行
+            for (let i = 1; i < lines.length - 1; i++) {
+                const newLine = document.createElement('div');
+                newLine.className = 'md-line';
+                newLine.innerText = lines[i];
+                lastLine.after(newLine);
+                this.processLine(newLine);
+                lastLine = newLine;
+            }
+
+            // 插入最后一行（合并尾部剩余内容）
+            const finalLine = document.createElement('div');
+            finalLine.className = 'md-line';
+            finalLine.innerText = lines[lines.length - 1] + tailRaw;
+            lastLine.after(finalLine);
+            this.processLine(finalLine);
+
+            // 光标定位到最后一行粘贴内容的末尾
+            this.setCaretOffsetInLine(finalLine, lines[lines.length - 1].length);
+        }
+
+        this.updateCodeBlocks();
+        if (this.options.onChange) this.options.onChange(this.getMarkdown());
+        this.updateActiveLine();
+        this.debouncedSaveHistory();
     }
 
     async handleDrop(e) {
@@ -218,11 +283,9 @@ class MarkdownWysiwygEditor {
                     imageUrl = apiBase + (imageUrl.startsWith('/') ? '' : '/') + imageUrl;
                 }
 
-                // ！！！核心：对于私有存储，必须附加 Token 才能通过浏览器 <img> 标签加载
-                const token = localStorage.getItem(window.Config?.storageKeys?.token || 'token');
-                if (token) {
-                    const separator = imageUrl.includes('?') ? '&' : '?';
-                    imageUrl += `${separator}token=${token}`;
+                // 对于私有存储，必须附加 Token 才能通过浏览器 <img> 标签加载
+                if (Utils.getToken()) {
+                    imageUrl = Utils.withToken(imageUrl);
                 }
 
                 this.insertImage(imageUrl, file.name);
@@ -253,19 +316,14 @@ class MarkdownWysiwygEditor {
         if (!selection.rangeCount) return;
         const range = selection.getRangeAt(0);
         const line = this.getLineElement(range.startContainer);
-        if (line) {
+        if (line && line.isConnected) {
             const offset = this.getCaretOffsetInLine(line);
             this.processLine(line);
             this.updateCodeBlocks(); // 重新计算全局代码块状态
             this.setCaretOffsetInLine(line, offset);
 
             // 智能标题同步：寻找文档中的第一个一级标题
-            if (this.options.onTitleSync && !this.isComposing) {
-                const firstH1 = this.findFirstHeading(1);
-                if (firstH1) {
-                    this.options.onTitleSync(firstH1);
-                }
-            }
+            this.checkTitleSync();
         }
         if (this.options.onChange) this.options.onChange(this.getMarkdown());
         this.updateActiveLine();
@@ -501,8 +559,8 @@ class MarkdownWysiwygEditor {
             // 如果遇到非空行且不是标题，Typora 通常只看开头几个非空行
             if (text.length > 0 && !text.startsWith('#')) {
                 // 如果前几行就有了实质内容但没标题，通常就不找了，或者只找前3行
-                // 这里我们稍微宽容点，找前5行
-                if (lines.indexOf(line) > 5) break;
+                // 这里我们稍微宽容点，找前20行
+                if (lines.indexOf(line) > 20) break;
             }
         }
         return null;
@@ -529,6 +587,7 @@ class MarkdownWysiwygEditor {
         this.processLine(line);
         this.setCaretOffsetInLine(line, level > 0 ? level + 1 : 0);
         if (this.options.onChange) this.options.onChange(this.getMarkdown());
+        this.checkTitleSync();
     }
 
     toggleFormat(type) {
@@ -712,45 +771,11 @@ class MarkdownWysiwygEditor {
         if (this.options.onChange) this.options.onChange(this.getMarkdown());
     }
 
-    insertTable() {
-        // 先用简单的 prompt 代替，后续可以在 UI 上做网格选择
-        const rows = parseInt(prompt('请输入行数:', '3') || '0');
-        const cols = parseInt(prompt('请输入列数:', '3') || '0');
 
-        if (rows <= 0 || cols <= 0) return;
-
-        let tableMarkdown = '\n';
-        // 表头
-        tableMarkdown += '| ' + Array(cols).fill('单元格').join(' | ') + ' |\n';
-        // 分隔行
-        tableMarkdown += '| ' + Array(cols).fill('---').join(' | ') + ' |\n';
-        // 数据行
-        for (let i = 0; i < rows - 1; i++) {
-            tableMarkdown += '| ' + Array(cols).fill(' ').join(' | ') + ' |\n';
-        }
-        tableMarkdown += '\n';
-
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
-
-        const textNode = document.createTextNode(tableMarkdown);
-        range.deleteContents();
-        range.insertNode(textNode);
-
-        // 处理受影响的所有行
-        let current = this.getLineElement(textNode);
-        if (current) {
-            // 表格通常跨多行，简单的 processLine 可能不够，需要触发整体重绘或分行处理
-            // 在我们的架构中，getMarkdown 会重新解析，这里我们手动触发一次全量同步或至少通知变更
-            this.handleInput();
-        }
-
-        if (this.options.onChange) this.options.onChange(this.getMarkdown());
-    }
 
     insertHr() {
         const selection = window.getSelection();
+        if (!selection.rangeCount) return;
         const line = this.getLineElement(selection.getRangeAt(0).startContainer);
         if (!line) return;
 
@@ -760,11 +785,26 @@ class MarkdownWysiwygEditor {
         line.after(hrLine);
         this.processLine(hrLine);
 
+        // 在分割线后创建一个新空行，方便用户继续输入
+        const newLine = document.createElement('div');
+        newLine.className = 'md-line';
+        newLine.innerHTML = '<br>';
+        hrLine.after(newLine);
+
+        // 将光标移到新行
+        const range = document.createRange();
+        range.setStart(newLine, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        this.updateActiveLine();
+
         if (this.options.onChange) this.options.onChange(this.getMarkdown());
     }
 
     insertTable() {
         const selection = window.getSelection();
+        if (!selection.rangeCount) return;
         const line = this.getLineElement(selection.getRangeAt(0).startContainer);
         if (!line) return;
 
@@ -783,6 +823,14 @@ class MarkdownWysiwygEditor {
             this.processLine(l);
             lastLine = l;
         });
+
+        // 将光标移到表格最后一行末尾
+        const range = document.createRange();
+        range.selectNodeContents(lastLine);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        this.updateActiveLine();
 
         if (this.options.onChange) this.options.onChange(this.getMarkdown());
     }
@@ -863,7 +911,7 @@ class MarkdownWysiwygEditor {
                     if (!safeUrl) return '';
                     const escapedAlt = this.escapeAttr(alt);
                     const escapedUrl = this.escapeAttr(safeUrl);
-                    return `<img src="${escapedUrl}" alt="${escapedAlt}" title="${escapedAlt}">`;
+                    return `<img src="${escapedUrl}" alt="${escapedAlt}" title="${escapedAlt}" loading="eager">`;
                 });
                 html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
                     const safeUrl = /^\s*(javascript|vbscript|data):/i.test(url) ? '' : url;
@@ -926,7 +974,7 @@ class MarkdownWysiwygEditor {
                     const displayUrl = this.escapeHtml(url);
                     const attrAlt = this.escapeAttr(alt);
                     const attrUrl = this.escapeAttr(safeUrl);
-                    return `<span class="md-image"><span class="md-syntax">![</span>${displayAlt}<span class="md-syntax">](</span><span class="md-url">${displayUrl}</span><span class="md-syntax">)</span><img src="${attrUrl}" alt="${attrAlt}"></span>`;
+                    return `<span class="md-image"><span class="md-syntax">![</span>${displayAlt}<span class="md-syntax">](</span><span class="md-url">${displayUrl}</span><span class="md-syntax">)</span><img src="${attrUrl}" alt="${attrAlt}" loading="eager"></span>`;
                 });
                 html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, url) => {
                     const escapedText = this.escapeHtml(text);
@@ -949,31 +997,19 @@ class MarkdownWysiwygEditor {
         if (!selection.rangeCount) return 0;
         const range = selection.getRangeAt(0);
 
-        // 创建一个迭代器来计算偏移量，不受 display: none 影响
-        let offset = 0;
-        const startNode = range.startContainer;
-        const startOffset = range.startOffset;
+        // 确保选区在当前行内
+        if (!line.contains(range.startContainer)) return 0;
 
-        const traverse = (node) => {
-            if (node === startNode) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    offset += startOffset;
-                }
-                return true;
-            }
-
-            if (node.nodeType === Node.TEXT_NODE) {
-                offset += node.length;
-            } else {
-                for (let child of node.childNodes) {
-                    if (traverse(child)) return true;
-                }
-            }
-            return false;
-        };
-
-        traverse(line);
-        return offset;
+        try {
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(line);
+            preCaretRange.setEnd(range.startContainer, range.startOffset);
+            return preCaretRange.toString().length;
+        } catch (e) {
+            // 边缘情况处理：如果 range 异常，回退到 0
+            console.warn('getCaretOffsetInLine failed:', e);
+            return 0;
+        }
     }
 
     setCaretOffsetInLine(line, offset) {
@@ -989,6 +1025,7 @@ class MarkdownWysiwygEditor {
                     range.setStart(node, offset - currentOffset);
                     range.collapse(true);
                     found = true;
+                    return;
                 }
                 currentOffset += node.length;
             } else {
@@ -1002,8 +1039,13 @@ class MarkdownWysiwygEditor {
             range.selectNodeContents(line);
             range.collapse(false);
         }
-        selection.removeAllRanges();
-        selection.addRange(range);
+
+        try {
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } catch (e) {
+            console.warn('setCaretOffsetInLine failed:', e);
+        }
     }
 
     getLineElement(node) {
@@ -1104,10 +1146,24 @@ class MarkdownWysiwygEditor {
             range.selectNodeContents(this.editor);
             range.collapse(false);
             const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
+            try {
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch (e) {
+                console.warn('restoreHistory selection failed:', e);
+            }
 
             if (this.options.onChange) this.options.onChange(this.getMarkdown());
+            this.checkTitleSync();
+        }
+    }
+
+    checkTitleSync() {
+        if (this.options.onTitleSync && !this.isComposing) {
+            const firstH1 = this.findFirstHeading(1);
+            if (firstH1) {
+                this.options.onTitleSync(firstH1);
+            }
         }
     }
 }

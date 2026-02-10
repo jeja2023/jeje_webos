@@ -261,6 +261,8 @@ class ModuleLoader:
                     spec.loader.exec_module(module)
                     return module
             except Exception as e:
+                # 清理 sys.modules 中的残留部分初始化模块，避免后续 import 拿到损坏对象
+                sys.modules.pop(module_name, None)
                 logger.error(f"路径加载模块失败 {module_name} ({file_path}): {e}")
                 return None
         return None
@@ -353,12 +355,13 @@ class ModuleLoader:
                     in_degree[mid] += 1
                     dependents[dep].append(mid)
         
-        # 拓扑排序
+        # 拓扑排序（使用 deque 提升 popleft 性能 O(1) vs list.pop(0) O(n)）
+        from collections import deque
         sorted_ids = []
-        queue = [mid for mid in in_degree if in_degree[mid] == 0]
+        queue = deque(mid for mid in in_degree if in_degree[mid] == 0)
         
         while queue:
-            mid = queue.pop(0)
+            mid = queue.popleft()
             sorted_ids.append(mid)
             
             for dependent in dependents[mid]:
@@ -445,6 +448,9 @@ class ModuleLoader:
             
             # 注册路由到FastAPI
             prefix = manifest.router_prefix or f"/api/v1/{module_id}"
+            if not self.app:
+                logger.error(f"无法注册模块 {module_id} 路由: FastAPI app 未初始化")
+                return False
             self.app.include_router(
                 manifest.router,
                 prefix=prefix,
@@ -590,17 +596,18 @@ class ModuleLoader:
             self._save_states()
     
     async def unload_module(self, module_id: str) -> bool:
-        """卸载模块"""
+        """卸载模块（从内存中移除，不执行 on_uninstall 永久性钩子）"""
         if module_id not in self.modules:
             return False
         
         loaded = self.modules[module_id]
         manifest = loaded.manifest
         
-        # 调用卸载钩子
-        await self._call_lifecycle_hook(
-            module_id, manifest.on_uninstall, "on_uninstall"
-        )
+        # 调用禁用钩子（非永久性卸载钩子，防止 uninstall_module 重复调用 on_uninstall）
+        if manifest.on_disable:
+            await self._call_lifecycle_hook(
+                module_id, manifest.on_disable, "on_disable"
+            )
         
         # 发布卸载事件
         event_bus.emit(Events.MODULE_UNLOADED, "kernel", {"module_id": module_id})

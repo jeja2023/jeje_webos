@@ -212,7 +212,7 @@
                             if (newWorker) {
                                 newWorker.addEventListener('statechange', () => {
                                     if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                                        console.log('新版本已就绪，刷新页面可获取最新内容');
+                                        // 新版本已就绪
                                     }
                                 });
                             }

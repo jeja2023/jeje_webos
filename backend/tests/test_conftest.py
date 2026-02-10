@@ -323,7 +323,7 @@ def mock_rate_limiter(monkeypatch):
     from core.rate_limit import rate_limiter
     
     # 定义永远通过的 check 函数
-    def mock_check(request):
+    def mock_check(request, override_key=None):
         return True, {"remaining": 1000, "limit": 1000, "reset": 0}
         
     monkeypatch.setattr(rate_limiter, "check", mock_check)

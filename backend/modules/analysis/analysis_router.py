@@ -4,9 +4,11 @@ Analysis 模块API路由
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, Form
 from fastapi.responses import StreamingResponse, FileResponse
+import os
 import uuid
 import json
 import logging
+import asyncio
 import pandas as pd
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,18 +84,18 @@ def validate_name(name: str, max_length: int = 100, min_length: int = 1) -> tupl
     return True, ""
 
 
-def format_error_message(error: Exception, default_message: str = "操作失败") -> str:
+def format_error_message(exc: Exception, default_message: str = "操作失败") -> str:
     """
     将技术性错误转换为用户友好的错误信息
     
     Args:
-        error: 异常对象
+        exc: 异常对象
         default_message: 默认错误信息
     
     Returns:
         用户友好的错误信息
     """
-    error_str = str(error)
+    error_str = str(exc)
     
     # 常见错误信息映射
     error_mappings = {
@@ -146,7 +148,8 @@ def format_dataframe_for_json(df: pd.DataFrame) -> list[dict]:
     Returns:
         字典列表
     """
-    return df.replace([np.inf, -np.inf], np.nan).astype(object).where(pd.notnull(df), None).to_dict(orient='records')
+    replaced = df.replace([np.inf, -np.inf], np.nan)
+    return replaced.astype(object).where(pd.notnull(replaced), None).to_dict(orient='records')
 
 @router.get("/datasets")
 async def list_datasets(
@@ -175,31 +178,55 @@ async def upload_analysis_file(
     from utils.storage import get_storage_manager
     storage = get_storage_manager()
     
-    # 验证后缀
-    ext = os.path.splitext(file.filename)[1].lower()
+    # 验证后缀（使用安全的文件名，防止路径遍历）
+    import re as _re
+    safe_filename = os.path.basename(file.filename or "unknown")
+    # 移除危险字符，只保留安全字符
+    safe_filename = _re.sub(r'[^\w\-.]', '_', safe_filename)
+    ext = os.path.splitext(safe_filename)[1].lower()
     if ext not in ['.csv', '.xlsx', '.xls']:
         return error("只支持 .csv, .xlsx, .xls 格式的文件")
 
     # 获取私有上传目录
     uploads_dir = storage.get_module_dir("analysis", "uploads", user.user_id)
     
-    # 保存文件
-    save_path = uploads_dir / file.filename
+    # 保存文件（使用安全文件名，防止路径遍历）
+    save_path = uploads_dir / safe_filename
     # 处理同名覆盖问题
     counter = 1
     while save_path.exists():
-        name, extension = os.path.splitext(file.filename)
+        name, extension = os.path.splitext(safe_filename)
         save_path = uploads_dir / f"{name}_{counter}{extension}"
         counter += 1
-        
-    content = await file.read()
-    with open(save_path, "wb") as f:
-        f.write(content)
+    
+    # 流式写入文件（防止大文件内存 DoS）
+    max_upload_size = 200 * 1024 * 1024  # 200MB
+    total_size = 0
+    size_exceeded = False
+    try:
+        with open(save_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB 块
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > max_upload_size:
+                    size_exceeded = True
+                    break
+                f.write(chunk)
+        # 文件已关闭后再清理（避免 Windows 上文件占用导致删除失败）
+        if size_exceeded:
+            os.unlink(save_path)
+            return error(f"文件大小超过限制（最大 {max_upload_size // 1024 // 1024}MB）")
+    except Exception as e:
+        if save_path.exists():
+            os.unlink(save_path)
+        raise
 
     return success({
         "name": save_path.name,
         "path": str(save_path.relative_to(storage.root_dir)),
-        "size": len(content)
+        "size": total_size
     }, "上传成功")
 
 @router.get("/files", response_model=dict, summary="获取分析模块文件列表")
@@ -309,10 +336,13 @@ async def import_database(
 ):
     """从外部数据库导入（支持测试连接模式）"""
     try:
+        # 安全验证：防止 SSRF
+        ImportService._validate_connection_url(req.connection_url)
+        
         # 测试连接模式
         if req.test_only:
             from sqlalchemy import create_engine, text
-            engine = create_engine(req.connection_url, pool_pre_ping=True)
+            engine = create_engine(req.connection_url, pool_pre_ping=True, connect_args={"connect_timeout": 10})
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             engine.dispose()
@@ -338,9 +368,11 @@ async def get_db_tables(
 ):
     """获取数据库中的所有表名"""
     try:
-        from sqlalchemy import create_engine, inspect
+        # 安全验证：防止 SSRF
+        ImportService._validate_connection_url(req.connection_url)
         
-        engine = create_engine(req.connection_url, pool_pre_ping=True)
+        from sqlalchemy import create_engine, inspect
+        engine = create_engine(req.connection_url, pool_pre_ping=True, connect_args={"connect_timeout": 10})
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         engine.dispose()
@@ -352,8 +384,8 @@ async def get_db_tables(
 @router.get("/datasets/{dataset_id}/data")
 async def get_dataset_data(
     dataset_id: int,
-    page: int = 1,
-    size: int = 50,
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=1000),
     sort: Optional[str] = None, # 格式: field1:asc,field2:desc
     search: Optional[str] = None, # 搜索关键词
     sorts: Optional[str] = None,  # JSON 格式的多字段排序 [{field, order}]
@@ -372,6 +404,12 @@ async def get_dataset_data(
 
     table_name = dataset.table_name
     
+    # 转义表名，防止 SQL 注入
+    from utils.sql_safety import is_safe_table_name as _is_safe_tn, escape_sql_identifier as _esc_id
+    if not _is_safe_tn(table_name):
+        return error(f"数据集表名不合法: {table_name}")
+    _safe_tn = _esc_id(table_name)
+    
     # 1.5. 检查表是否存在（在查询前检查）
     try:
         if not duckdb_instance.table_exists(table_name):
@@ -380,7 +418,7 @@ async def get_dataset_data(
         logger.error(f"检查表存在性失败: {e}")
         return error(f"无法访问数据集: {str(e)}")
     
-    # 2. 构造排序 SQL
+    # 2. 构造排序 SQL（严格验证排序方向，防止 SQL 注入）
     order_by = ""
     # 优先使用 sorts 参数（多字段排序数组）
     if sorts:
@@ -389,7 +427,10 @@ async def get_dataset_data(
             sort_parts = []
             for s in sorts_list:
                 field = s.get('field', '')
-                order = s.get('order', 'asc')
+                order = s.get('order', 'asc').lower().strip()
+                # 严格白名单：排序方向只允许 asc/desc
+                if order not in ('asc', 'desc'):
+                    order = 'asc'
                 if field and field.replace('_', '').isalnum():
                     sort_parts.append(f'"{field}" {order}')
             if sort_parts:
@@ -401,6 +442,10 @@ async def get_dataset_data(
         sort_parts = []
         for part in sort.split(','):
             field, order = part.split(':') if ':' in part else (part, 'asc')
+            # 严格白名单：排序方向只允许 asc/desc
+            order = order.lower().strip()
+            if order not in ('asc', 'desc'):
+                order = 'asc'
             if field.replace('_', '').isalnum():
                 sort_parts.append(f'"{field}" {order}')
         if sort_parts:
@@ -440,24 +485,28 @@ async def get_dataset_data(
                         logger.warning(f"筛选条件值不是有效数字: field={field}, value={value}, op={op}")
                         continue
                 elif op == 'like':
-                    where_conditions.append(f'CAST("{field}" AS VARCHAR) ILIKE \'%{value_escaped}%\'')
+                    # 转义 LIKE 特殊字符（先反斜杠，再通配符）
+                    like_escaped = value_escaped.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+                    where_conditions.append(f'CAST("{field}" AS VARCHAR) ILIKE \'%{like_escaped}%\'')
                 elif op == 'notlike':
-                    where_conditions.append(f'CAST("{field}" AS VARCHAR) NOT ILIKE \'%{value_escaped}%\'')
+                    like_escaped = value_escaped.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+                    where_conditions.append(f'CAST("{field}" AS VARCHAR) NOT ILIKE \'%{like_escaped}%\'')
                 elif op == 'isnull':
                     where_conditions.append(f'"{field}" IS NULL')
                 elif op == 'notnull':
                     where_conditions.append(f'"{field}" IS NOT NULL')
         except Exception as e:
-            pass  # 解析失败时忽略筛选条件
+            logger.warning(f"筛选条件解析失败（已忽略）: {e}")
 
     # 4. 添加搜索条件
     if search and search.strip():
         try:
-            cols_df = duckdb_instance.fetch_df(f"DESCRIBE {table_name}")
+            cols_df = duckdb_instance.fetch_df(f"DESCRIBE {_safe_tn}")
             cols = cols_df['column_name'].tolist()
             # 转义单引号防止 SQL 注入
             search_escaped = search.replace("'", "''")
-            # 转义百分号和下划线（LIKE 通配符）
+            # 转义 LIKE 特殊字符（先转义反斜杠，再转义通配符）
+            search_escaped = search_escaped.replace('\\', '\\\\')
             search_escaped = search_escaped.replace('%', '\\%').replace('_', '\\_')
             # 验证列名只包含字母、数字、下划线（防止注入）
             safe_cols = [col for col in cols if col.replace('_', '').replace(' ', '').isalnum() or col.replace(' ', '').replace('_', '').replace('-', '').isalnum()]
@@ -475,7 +524,7 @@ async def get_dataset_data(
 
     # 6. 获取过滤后的总数
     try:
-        count_sql = f"SELECT COUNT(*) as cnt FROM {table_name} {where_clause}"
+        count_sql = f"SELECT COUNT(*) as cnt FROM {_safe_tn} {where_clause}"
         count_df = duckdb_instance.fetch_df(count_sql)
         filtered_total = int(count_df['cnt'].iloc[0])
     except Exception as e:
@@ -484,7 +533,7 @@ async def get_dataset_data(
     
     # 7. 分页查询（添加超时保护）
     offset = (page - 1) * size
-    sql = f"SELECT * FROM {table_name} {where_clause} {order_by} LIMIT {size} OFFSET {offset}"
+    sql = f"SELECT * FROM {_safe_tn} {where_clause} {order_by} LIMIT {size} OFFSET {offset}"
     
     import time
     query_start_time = time.time()
@@ -499,11 +548,10 @@ async def get_dataset_data(
         # 如果数据集很大（超过10万行），使用超时保护
         if dataset.row_count and dataset.row_count > 100000:
             try:
-                # 在后台线程执行查询，设置超时
-                loop = asyncio.get_event_loop()
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = loop.run_in_executor(executor, duckdb_instance.fetch_df, sql)
-                    df = await asyncio.wait_for(future, timeout=query_timeout)
+                # 在后台线程执行查询，设置超时（使用默认线程池避免每次创建新的 Executor）
+                loop = asyncio.get_running_loop()
+                future = loop.run_in_executor(None, duckdb_instance.fetch_df, sql)
+                df = await asyncio.wait_for(future, timeout=query_timeout)
             except asyncio.TimeoutError:
                 query_elapsed = time.time() - query_start_time
                 logger.warning(f"查询超时（{query_timeout}秒），数据集: {dataset.name}, 表: {table_name}, 耗时: {query_elapsed:.2f}秒")

@@ -455,7 +455,7 @@ const Spotlight = {
             this.handleAction(item.action);
         } else if (item.path) {
             if (item.type === 'file') {
-                window.open(`${Config.apiBase}/storage/download/${item.id}?token=${Store.get('token')}`);
+                window.open(Utils.withToken(`${Config.apiBase}/storage/download/${item.id}`));
             } else {
                 Router.push(item.path);
             }
