@@ -225,23 +225,28 @@ class LoginPage extends Component {
                                 ${isLogin ? '立即注册' : '去登录'}
                             </a>
                         </div>
+                    </div>
+                </div>
+
+                ${(Store.get('systemSettings')?.icp_number || Store.get('systemSettings')?.psb_number) ? `
+                    <div class="login-site-footer">
                         ${Store.get('systemSettings')?.icp_number ? `
-                            <div class="icp-info" style="margin-top: 12px; opacity: 0.8; font-size: 12px;">
-                                <a href="${Store.get('systemSettings')?.icp_link || 'https://beian.miit.gov.cn/'}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                            <div class="icp-info">
+                                <a href="${Store.get('systemSettings')?.icp_link || 'https://beian.miit.gov.cn/'}" target="_blank" rel="noopener noreferrer">
                                     ${Utils.escapeHtml(Store.get('systemSettings').icp_number)}
                                 </a>
                             </div>
                         ` : ''}
                         ${Store.get('systemSettings')?.psb_number ? `
-                            <div class="psb-info" style="margin-top: 4px; opacity: 0.8; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                                <img src="https://www.beian.gov.cn/img/ghs.png" style="width: 14px; height: 14px;" alt="公安备案图标">
-                                <a href="${Store.get('systemSettings')?.psb_link || 'javascript:void(0)'}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                            <div class="psb-info">
+                                <img src="https://www.beian.gov.cn/img/ghs.png" alt="公安备案图标">
+                                <a href="${Store.get('systemSettings')?.psb_link || 'javascript:void(0)'}" target="_blank" rel="noopener noreferrer">
                                     ${Utils.escapeHtml(Store.get('systemSettings').psb_number)}
                                 </a>
                             </div>
                         ` : ''}
                     </div>
-                </div>
+                ` : ''}
             </div>
         `;
     }
