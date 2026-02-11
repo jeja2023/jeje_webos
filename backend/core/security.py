@@ -118,16 +118,24 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not isinstance(plain_password, str):
         plain_password = str(plain_password)
     
+    # 校验哈希格式（防止无效哈希导致 bcrypt崩溃）
+    if not hashed_password or not hashed_password.startswith("$"):
+        return False
+
     # 使用与 hash_password 相同的预哈希
     password_bytes = _prehash_password(plain_password)
-    hashed_bytes = hashed_password.encode('utf-8')
     
     try:
+        hashed_bytes = hashed_password.encode('utf-8')
         return bcrypt.checkpw(password_bytes, hashed_bytes)
     except Exception:
         # 兼容旧版直接 bcrypt（无预哈希）的密码
         try:
             old_password_bytes = plain_password.encode('utf-8')[:72]
+            # 再次检查哈希格式
+            if not hashed_password or not hashed_password.startswith("$"):
+                return False
+            hashed_bytes = hashed_password.encode('utf-8')
             return bcrypt.checkpw(old_password_bytes, hashed_bytes)
         except Exception:
             return False
