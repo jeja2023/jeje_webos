@@ -48,7 +48,7 @@ const Api = {
             const isJson = contentType.includes('application/json');
 
             // 先检查401状态，即使不是JSON也要处理
-            if (response.status === 401) {
+            if (response.status === 401 && !options.skip401Handler) {
                 const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
                 const canRefresh = Config.useHttpOnlyCookie || refreshToken;
 
@@ -124,7 +124,11 @@ const Api = {
                 // 清除认证并跳转登录（只执行一次）
                 if (Store.get('isLoggedIn')) {
                     Store.clearAuth();
-                    Router.push('/login');
+                    if (typeof AuthModal !== 'undefined') {
+                        AuthModal.show();
+                    } else {
+                        Router.push('/login');
+                    }
                 }
 
                 throw new Error(errorMessage);
