@@ -113,6 +113,9 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.error(f"❌ 自动生成 JWT 密钥失败: {e}")
                 logger.error("   请检查配置文件权限或手动设置 JWT_SECRET")
+    except FileNotFoundError:
+        # Docker 环境中配置通过环境变量注入，不存在 .env 文件，密钥轮换不适用
+        logger.debug("JWT 密钥轮换跳过: Docker 环境中无 .env 文件（密钥已通过环境变量配置）")
     except Exception as e:
         logger.warning(f"⚠️  JWT 密钥自动生成检查失败: {e}")
     
