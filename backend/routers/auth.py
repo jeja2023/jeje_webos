@@ -27,7 +27,6 @@ from core.security import (
     COOKIE_ACCESS_TOKEN,
     COOKIE_REFRESH_TOKEN,
     resolve_permissions,
-    compress_permissions,
 )
 from core.events import event_bus, Events
 from core.config import get_settings
@@ -163,17 +162,18 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     user.last_login = get_beijing_time()
     await db.commit()
     
-    # 获取全量权限（直接权限 + 角色权限）
+    # 获取全量权限（直接权限 + 角色权限）用于响应体返回给前端
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)
     
     # 生成令牌对（访问令牌 + 刷新令牌）
-    # 使用压缩权限列表减少 JWT 体积，防止 Set-Cookie 头超过代理缓冲区限制
-    # 后端每次请求时会通过 _sync_user_permissions 从数据库实时加载完整权限
+    # JWT 中仅存储核心身份信息（user_id, username, role），不存储权限列表
+    # 后端每次请求时通过 _sync_user_permissions 从数据库实时加载权限（带 TTL 缓存）
+    # 这样 Token 大小恒定，不受模块数量和权限数量影响
     token_data = TokenData(
         user_id=user.id,
         username=user.username,
         role=user.role,
-        permissions=compress_permissions(permissions)
+        permissions=[]  # 权限由服务端实时加载，不存入 JWT
     )
     access_token, refresh_token = create_token_pair(token_data)
     
@@ -341,14 +341,14 @@ async def refresh_token(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="用户不存在或已被禁用")
     
-    # 获取实时权限
+    # 获取实时权限（用于响应体返回给前端）
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)
-    # JWT 使用压缩权限列表，减少 token 体积
+    # JWT 中不存储权限，服务端实时加载
     new_token_data = TokenData(
         user_id=user.id,
         username=user.username,
         role=user.role,
-        permissions=compress_permissions(permissions)
+        permissions=[]  # 权限由服务端实时加载
     )
     new_access_token, new_refresh_token = create_token_pair(new_token_data)
 
