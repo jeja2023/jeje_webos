@@ -622,13 +622,14 @@ class UserListPage extends Component {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">新密码 <span style="color:var(--color-bg-danger);">*</span></label>
-                    <input type="password" name="newPassword" class="form-input" placeholder="至少${minLength}位" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">确认密码 <span style="color:var(--color-error);">*</span></label>
-                    <input type="password" name="confirmPassword" class="form-input" placeholder="再次输入新密码" required>
+                    <label class="form-label">新密码 <span style="color:var(--color-error);">*</span></label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" name="newPassword" class="form-input" placeholder="请输入或生成新密码" required autocomplete="off">
+                        <button type="button" class="btn btn-secondary" id="generatePwdBtn" title="生成随机密码">
+                            <i class="ri-refresh-line"></i> 生成
+                        </button>
+                    </div>
+                    <small class="form-hint">已自动生成强密码，可直接复制发送给用户。</small>
                 </div>
                 
                 <div style="padding:10px;background:rgba(255,193,7,0.1);border-radius:8px;color:var(--color-warning);font-size:13px;">
@@ -649,21 +650,41 @@ class UserListPage extends Component {
 
         const form = overlay.querySelector('#resetPasswordForm');
         const submitBtn = overlay.querySelector('#submitResetPwdBtn');
+        const generateBtn = overlay.querySelector('#generatePwdBtn');
+        const passwordInput = form.querySelector('[name="newPassword"]');
+
+        const generatePassword = () => {
+            // 去除易混淆字符 (l, 1, I, O, 0)
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&';
+            let pwd = '';
+            for (let i = 0; i < 12; i++) {
+                pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return pwd;
+        };
+
+        if (generateBtn && passwordInput) {
+            generateBtn.addEventListener('click', () => {
+                const pwd = generatePassword();
+                passwordInput.value = pwd;
+                passwordInput.select();
+                try {
+                    navigator.clipboard.writeText(pwd);
+                    Toast.success('密码已生成并复制');
+                } catch (e) { }
+            });
+            // 默认自动生成一个
+            generateBtn.click();
+        }
 
         if (submitBtn && form) {
             submitBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
 
-                const newPassword = form.querySelector('[name="newPassword"]')?.value;
-                const confirmPassword = form.querySelector('[name="confirmPassword"]')?.value;
+                const newPassword = passwordInput.value.trim();
 
                 if (!newPassword || newPassword.length < minLength) {
                     Toast.error(`新密码至少${minLength}个字符`);
-                    return;
-                }
-
-                if (newPassword !== confirmPassword) {
-                    Toast.error('两次输入的密码不一致');
                     return;
                 }
 
