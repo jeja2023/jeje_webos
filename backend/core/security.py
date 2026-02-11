@@ -127,18 +127,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     
     try:
         hashed_bytes = hashed_password.encode('utf-8')
-        return bcrypt.checkpw(password_bytes, hashed_bytes)
+        # 尝试新版验证（带预哈希）
+        if bcrypt.checkpw(password_bytes, hashed_bytes):
+            return True
     except Exception:
-        # 兼容旧版直接 bcrypt（无预哈希）的密码
-        try:
-            old_password_bytes = plain_password.encode('utf-8')[:72]
-            # 再次检查哈希格式
-            if not hashed_password or not hashed_password.startswith("$"):
-                return False
-            hashed_bytes = hashed_password.encode('utf-8')
-            return bcrypt.checkpw(old_password_bytes, hashed_bytes)
-        except Exception:
+        pass
+
+    # 如果新版验证失败（不匹配或异常），尝试旧版验证
+    # 兼容旧版直接 bcrypt（无预哈希）的密码
+    try:
+        old_password_bytes = plain_password.encode('utf-8')[:72]
+        # 再次检查哈希格式
+        if not hashed_password or not hashed_password.startswith("$"):
             return False
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(old_password_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 
 def create_token(data: TokenData, expires_delta: Optional[timedelta] = None, token_type: str = "access") -> str:
