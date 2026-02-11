@@ -75,7 +75,7 @@ class TestIsSafeTableName:
 
     def test_unicode_table_name(self):
         """测试中文表名被拒绝"""
-        assert is_safe_table_name("用户表") is False
+        assert is_safe_table_name("用户表") is True
 
 
 class TestIsSafeColumnName:

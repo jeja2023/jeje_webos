@@ -55,16 +55,15 @@ class TestBackupExecutor:
         mock_manager_instance = MagicMock()
         mock_get_manager.return_value = mock_manager_instance
         # 模拟成功备份
-        mock_manager_instance.backup_database.return_value = (True, "/backup/db.sql", 1024)
-        mock_manager_instance.backup_files.return_value = (True, "/backup/files.tar.gz", 2048)
+        mock_manager_instance.backup_full.return_value = (True, "/backup/full.zip", 3072)
         
         # 2. 执行函数
         execute_backup_task_sync(123, BackupType.FULL.value)
         
         # 3. 断言
-        mock_manager_instance.backup_database.assert_called()
+        mock_manager_instance.backup_full.assert_called()
         assert mock_backup.status == BackupStatus.SUCCESS.value
-        assert "/backup/db.sql" in mock_backup.file_path
+        assert "/backup/full.zip" in mock_backup.file_path
         
         mock_db_session.commit.assert_called()
 

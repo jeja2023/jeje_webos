@@ -47,8 +47,11 @@ class TestModelingService:
         with patch.object(ModelingService, 'get_dataset', return_value=mock_dataset):
             # 模拟 fetch_df 返回值
             with patch("modules.analysis.analysis_modeling_service.duckdb_instance.fetch_df") as mock_fetch:
-                df = pd.DataFrame({"a": [1, 2, np.nan], "b": [3, 4, 5]})
-                mock_fetch.return_value = df
+                # 第一次返回总行数，第二次返回数据
+                df_cnt = pd.DataFrame({"cnt": [3]})
+                df_data = pd.DataFrame({"a": [1, 2, np.nan], "b": [3, 4, 5]})
+                
+                mock_fetch.side_effect = [df_cnt, df_data]
                 
                 res = await ModelingService.get_summary(mock_db, 1)
                 
