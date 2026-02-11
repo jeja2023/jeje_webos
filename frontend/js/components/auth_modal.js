@@ -1,6 +1,7 @@
 /**
  * 登录过期弹窗组件
  * 当 Token 失效且无法刷新时，原地弹出登录框，避免跳转导致的数据丢失
+ * 复用 modal.css 的样式结构
  */
 
 const AuthModal = {
@@ -10,18 +11,19 @@ const AuthModal = {
     init() {
         if (this.modal) return;
 
-        // 创建 DOM 结构
-        const div = document.createElement('div');
-        div.className = 'modal auth-modal';
-        div.id = 'auth-modal';
-        div.style.zIndex = '9999'; // 确保在最上层
-        div.innerHTML = `
-            <div class="modal-content" style="max-width: 360px;">
+        // 创建 DOM 结构 (遵循 modal.css: .modal-overlay > .modal)
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay auth-modal-overlay';
+        overlay.id = 'auth-modal-overlay';
+        overlay.style.zIndex = '999999'; // 确保在最上层
+
+        overlay.innerHTML = `
+            <div class="modal auth-modal-box" style="width: 400px; max-width: 90%;">
                 <div class="modal-header">
-                    <h3>登录会话已过期</h3>
+                    <h3 class="modal-title">登录会话已过期</h3>
                 </div>
                 <div class="modal-body">
-                    <p style="margin-bottom: 20px; color: var(--text-secondary);">为了保护您的数据安全，请重新验证身份。</p>
+                    <p style="margin-bottom: 20px; color: var(--color-text-secondary);">为了导致您的数据安全，请重新验证身份。</p>
                     <form id="auth-modal-form" onsubmit="return false;">
                         <div class="form-group">
                             <label>账号</label>
@@ -31,8 +33,8 @@ const AuthModal = {
                             <label>密码</label>
                             <input type="password" name="password" class="form-control" placeholder="请输入密码" required autocomplete="current-password">
                         </div>
-                        <div id="auth-modal-error" style="color: var(--danger); font-size: 14px; margin-bottom: 10px; display: none;"></div>
-                        <div class="form-actions" style="justify-content: flex-end; margin-top: 20px;">
+                        <div id="auth-modal-error" style="color: var(--color-error, #ff4d4f); font-size: 14px; margin-bottom: 10px; display: none;"></div>
+                        <div class="modal-footer" style="padding-top: 20px; border-top: none;">
                             <button type="button" class="btn btn-secondary" onclick="AuthModal.cancel()">放弃并退出</button>
                             <button type="submit" class="btn btn-primary" id="auth-modal-submit">重新登录</button>
                         </div>
@@ -40,15 +42,18 @@ const AuthModal = {
                 </div>
             </div>
         `;
-        document.body.appendChild(div);
-        this.modal = div;
+        document.body.appendChild(overlay);
+        this.modal = overlay;
 
         // 绑定事件
-        const form = div.querySelector('#auth-modal-form');
+        const form = overlay.querySelector('#auth-modal-form');
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.login();
         });
+
+        // 点击遮罩层虽然不能关闭（强制登录），但可以防止误触
+        // 这里不做点击遮罩关闭的处理
     },
 
     show() {
@@ -62,7 +67,8 @@ const AuthModal = {
             if (usernameInput) usernameInput.value = user.username;
         }
 
-        this.modal.classList.add('open');
+        // 添加 active 类以显示 (modal.css)
+        this.modal.classList.add('active');
         this.isShown = true;
 
         // 聚焦密码框
@@ -81,7 +87,7 @@ const AuthModal = {
 
     hide() {
         if (this.modal) {
-            this.modal.classList.remove('open');
+            this.modal.classList.remove('active');
             // 清空密码
             const pwdInput = this.modal.querySelector('input[name="password"]');
             if (pwdInput) pwdInput.value = '';
@@ -116,7 +122,7 @@ const AuthModal = {
                 skip401Handler: true // 关键：防止递归触发 AuthModal
             });
 
-            if (res && res.code === 200 && res.data) {
+            if (res && res.data && (res.data.access_token || Config.useHttpOnlyCookie)) {
                 const { access_token, user, refresh_token } = res.data;
                 // 更新 Store 和 LocalStorage
                 Store.setAuth(access_token, user, refresh_token);
@@ -125,17 +131,15 @@ const AuthModal = {
 
                 // 关闭弹窗
                 this.hide();
+
+                // 此时页面停留在原地，数据保留。
+                // 用户可能会再次点击保存按钮，这次带有新 Token，应该会成功。
             } else {
                 throw new Error(res.message || '登录失败');
             }
         } catch (e) {
             errorDiv.textContent = e.message || '登录失败，请检查账号密码';
             errorDiv.style.display = 'block';
-
-            // 如果是 Api.post 抛出的 Error 对象（非 200 响应）
-            // 在 skip401Handler=true 时，Api.post 仍然会抛出 Error 吗？
-            // 看 api.js: if (!response.ok) ... throw err;
-            // 是的，Api 在非 200 时会抛出 Error。
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = '重新登录';
