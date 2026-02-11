@@ -138,8 +138,13 @@ async def lifespan(app: FastAPI):
     try:
         if loader:
             await loader.run_install_hooks()
+            
+        # 5. 注册事件处理器
+        from core.event_handlers import register_event_handlers
+        register_event_handlers()
+        
     except Exception as e:
-        logger.error(f"❌ 模块钩子执行失败: {e}")
+        logger.error(f"❌ 启动过程执行失败: {e}", exc_info=True)
     
     # 5. 初始化缓存
     if not await init_cache():

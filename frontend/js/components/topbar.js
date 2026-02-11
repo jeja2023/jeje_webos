@@ -38,6 +38,11 @@ class TopBarComponent extends Component {
             })
         );
         this._storeUnsubscribes.push(
+            Store.subscribe('pendingCount', (count) => {
+                this.setState({ pendingCount: count || 0 });
+            })
+        );
+        this._storeUnsubscribes.push(
             Store.subscribe('appName', (name) => this.setState({ appName: name }))
         );
         this._storeUnsubscribes.push(
@@ -64,6 +69,8 @@ class TopBarComponent extends Component {
                 const res = await UserApi.getPendingUsers().catch(() => ({ data: [] }));
                 const count = Array.isArray(res.data) ? res.data.length : 0;
                 this.setState({ pendingCount: count });
+                // 同步到 Store，供其他组件使用
+                Store.set('pendingCount', count);
             } catch (e) {
                 // 忽略异常
             }

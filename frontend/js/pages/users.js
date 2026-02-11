@@ -267,7 +267,12 @@ class UserListPage extends Component {
                 Toast.warning(`跳过 ${skipped.length} 个用户（无权限或为管理员）`);
             }
             this.setState({ selectedUsers: [] });
-            this.loadData();
+            await this.loadData();
+
+            // 刷新待审核计数
+            const pendingRes = await UserApi.getPendingUsers().catch(() => ({ data: [] }));
+            const count = Array.isArray(pendingRes.data) ? pendingRes.data.length : 0;
+            Store.set('pendingCount', count);
         } catch (error) {
             Toast.error(`批量${actionName}失败：${error.message}`);
         }
@@ -299,7 +304,12 @@ class UserListPage extends Component {
                 reason: reason || null
             });
             Toast.success(`用户审核${action}成功`);
-            this.loadData();
+            await this.loadData();
+
+            // 刷新待审核计数
+            const pendingRes = await UserApi.getPendingUsers().catch(() => ({ data: [] }));
+            const count = Array.isArray(pendingRes.data) ? pendingRes.data.length : 0;
+            Store.set('pendingCount', count);
         } catch (error) {
             Toast.error(error.message);
         } finally {
@@ -1514,6 +1524,8 @@ class PendingUsersPage extends Component {
                 await UserApi.batchAction([userId], actionType, reason);
                 Toast.success(`用户审核${action}成功`);
                 await this.loadData();
+                // 通知 topbar 刷新待审核徽标
+                Store.set('pendingCount', this.state.users.length);
             } catch (error) {
                 Toast.error(error.message);
             }
@@ -1547,7 +1559,9 @@ class PendingUsersPage extends Component {
                 Toast.warning(`跳过 ${skipped.length} 个用户`);
             }
             this.setState({ selectedUsers: [] });
-            this.loadData();
+            await this.loadData();
+            // 通知 topbar 刷新待审核徽标
+            Store.set('pendingCount', this.state.users.length);
         } catch (error) {
             Toast.error(`操作失败：${error.message}`);
         }

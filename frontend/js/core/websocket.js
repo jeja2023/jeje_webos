@@ -316,6 +316,17 @@ const WebSocketClient = {
                 Store.set('unreadMessages', currentCount + 1);
                 Store.set('unreadNotifications', currentCount + 1);
             }
+
+            // 如果是待审核用户相关的通知，刷新 pendingCount
+            if (data.category === 'user_pending' && window.UserApi) {
+                try {
+                    const pendingRes = await UserApi.getPendingUsers();
+                    const pendingCount = Array.isArray(pendingRes.data) ? pendingRes.data.length : 0;
+                    Store.set('pendingCount', pendingCount);
+                } catch (e) {
+                    console.error('刷新待审核数量失败', e);
+                }
+            }
         } catch (e) {
             // 如果获取失败，使用乐观更新
             const currentCount = Store.get('unreadMessages') || 0;
