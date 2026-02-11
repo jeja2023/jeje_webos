@@ -276,7 +276,7 @@ python scripts/create_module.py todo_list 待办事项
 
 ## 🧪 运行测试
 
-项目包含完整的自动化测试套件（840+ 测试用例）。
+项目包含完整的自动化测试套件（872 个测试用例）。
 
 ```bash
 cd backend
