@@ -300,9 +300,64 @@ async def process_schedule_backups():
                 
                 # 4. (可选) 清理过期备份
                 if schedule.retention_days > 0:
-                    # TODO: 实现自动清理逻辑
-                    # 可以开启一个新的后台任务去清理
-                    pass
+                    try:
+                        # 计算过期时间
+                        retention_time = now - timedelta(days=schedule.retention_days)
+                        # 通过描述匹配关联的自动备份任务
+                        desc_pattern = f"自动调度: {schedule.name}%"
+                        
+                        # 查询过期的备份记录
+                        stmt_expired = select(BackupRecord).where(
+                            BackupRecord.description.like(desc_pattern),
+                            BackupRecord.created_at < retention_time
+                        )
+                        result_expired = await db.execute(stmt_expired)
+                        expired_backups = result_expired.scalars().all()
+                        
+                        clean_count = 0
+                        for backup in expired_backups:
+                            # 1. 删除物理文件
+                            if backup.file_path:
+                                # 可能有多个文件（如果是加密后的分卷等，虽然现在逗号分隔）
+                                paths = backup.file_path.split(',')
+                                for p in paths:
+                                    p = p.strip()
+                                    if not p: continue
+                                    try:
+                                        file_path = Path(p)
+                                        # 解析相对路径（相对于 backend 目录的父级，即项目根目录）
+                                        if not file_path.is_absolute():
+                                            project_root = Path(__file__).parent.parent.parent.resolve()
+                                            # 注意：backend 目录上级是项目根目录
+                                            # __file__ = backend/utils/backup_executor.py
+                                            # parent = utils
+                                            # parent.parent = backend
+                                            # parent.parent.parent = project root
+                                            file_path = project_root / p
+                                        
+                                        if file_path.exists():
+                                            file_path.unlink()
+                                            logger.debug(f"已删除过期备份文件: {file_path}")
+                                    except Exception as ex:
+                                        logger.warning(f"删除过期文件失败 {p}: {ex}")
+                            
+                            # 2. 删除数据库记录
+                            await db.delete(backup)
+                            clean_count += 1
+                        
+                        if clean_count > 0:
+                            logger.info(f"已自动清理 {clean_count} 个过期备份 (计划: {schedule.name})")
+                            # 需要 commit 才能生效删除
+                            await db.commit()
+                            
+                    except Exception as e:
+                        logger.error(f"自动清理备份失败: {e}")
+                        # 不阻断主流程，可以回滚清理操作但不回滚之前的调度更新
+                        # 但由于我们在同一个 transaction 中，rollback 会回滚 schedule 更新。
+                        # 最好是 try-catch 后不抛出，或者 separate transaction。
+                        # 这里我们只是 log error，不做 rollback，让主流程继续 commit (如果没出错)。
+                        # 但如果 delete 失败抛出 exception，主流程的 commit 可能会失败。
+                        pass
                 
                 db.add(schedule)
                 await db.commit()

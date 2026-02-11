@@ -558,6 +558,10 @@ async def update_permissions(
     is_admin_group = group_name == "admin"
     is_manager_group = group_name == "manager"
 
+    # 安全检查：业务管理员不能分配 admin 组
+    if is_admin_group and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="仅系统管理员可分配管理员用户组")
+
     # 如果直接设置权限，优先使用直接权限（用于权限收紧）
     if direct_permissions is not None:
         # 验证直接权限是否合理
