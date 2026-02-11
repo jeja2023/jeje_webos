@@ -248,6 +248,50 @@ async def resolve_permissions(db: "AsyncSession", permissions: Optional[list[str
     return list(set(all_perms))
 
 
+def compress_permissions(permissions: list[str]) -> list[str]:
+    """
+    压缩权限列表，移除通配符已覆盖的细粒度权限
+    
+    用于减少 JWT token 体积，防止 Set-Cookie 头超过 nginx 代理缓冲区限制。
+    例如：["notes.*", "notes.read", "notes.create", "blog.*", "blog.read"]
+    压缩为：["notes.*", "blog.*"]
+    
+    注意：仅用于 JWT token 内的权限存储，前端 UI 展示仍使用完整权限列表。
+    后端每次请求时会通过 _sync_user_permissions 从数据库实时加载完整权限。
+    """
+    if not permissions:
+        return []
+    
+    # 全局通配符，直接返回
+    if "*" in permissions:
+        return ["*"]
+    
+    # 收集所有通配符覆盖的模块（如 "notes.*" → "notes"）
+    wildcard_modules = set()
+    for p in permissions:
+        if p.endswith(".*"):
+            wildcard_modules.add(p[:-2])
+    
+    # 过滤掉被通配符覆盖的细粒度权限
+    compressed = []
+    seen = set()
+    for p in permissions:
+        # 跳过重复
+        if p in seen:
+            continue
+        seen.add(p)
+        
+        # 如果是细粒度权限（如 "notes.read"），检查是否被通配符覆盖
+        if "." in p and not p.endswith(".*"):
+            module = p.split(".")[0]
+            if module in wildcard_modules:
+                continue  # 已被 module.* 覆盖，跳过
+        
+        compressed.append(p)
+    
+    return compressed
+
+
 async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = True) -> TokenData:
     """
     共享的权限同步逻辑：从数据库实时加载用户最新权限和角色

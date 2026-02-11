@@ -86,7 +86,7 @@ JWT_SECRET=change_this_secret_key_in_production_min_32_chars
 
 # JWT 令牌有效期（分钟）
 # 默认 10080 = 7 天
-JWT_EXPIRE_MINUTES=10080
+JWT_EXPIRE_MINUTES=1040
 
 # JWT 签名算法
 JWT_ALGORITHM=HS256

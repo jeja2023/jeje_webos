@@ -27,6 +27,7 @@ from core.security import (
     COOKIE_ACCESS_TOKEN,
     COOKIE_REFRESH_TOKEN,
     resolve_permissions,
+    compress_permissions,
 )
 from core.events import event_bus, Events
 from core.config import get_settings
@@ -166,11 +167,13 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)
     
     # 生成令牌对（访问令牌 + 刷新令牌）
+    # 使用压缩权限列表减少 JWT 体积，防止 Set-Cookie 头超过代理缓冲区限制
+    # 后端每次请求时会通过 _sync_user_permissions 从数据库实时加载完整权限
     token_data = TokenData(
         user_id=user.id,
         username=user.username,
         role=user.role,
-        permissions=permissions
+        permissions=compress_permissions(permissions)
     )
     access_token, refresh_token = create_token_pair(token_data)
     
@@ -340,11 +343,12 @@ async def refresh_token(
     
     # 获取实时权限
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)
+    # JWT 使用压缩权限列表，减少 token 体积
     new_token_data = TokenData(
         user_id=user.id,
         username=user.username,
         role=user.role,
-        permissions=permissions
+        permissions=compress_permissions(permissions)
     )
     new_access_token, new_refresh_token = create_token_pair(new_token_data)
 
