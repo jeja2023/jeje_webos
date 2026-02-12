@@ -4,12 +4,13 @@
 """
 
 import os
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, get_optional_user, TokenData
+from core.errors import NotFoundException, PermissionException, AuthException, BusinessException, ErrorCode
 from schemas.response import success, error
 from utils.storage import get_storage_manager
 
@@ -102,7 +103,7 @@ async def get_album_detail(
     """获取相册详情（包含照片列表）"""
     album = await AlbumService.get_album_by_id(db, album_id, user.user_id, include_photos=True)
     if not album:
-        raise HTTPException(status_code=404, detail="相册不存在")
+        raise NotFoundException("相册")
     
     # 构建响应
     album_data = AlbumResponse.model_validate(album).model_dump()
@@ -145,7 +146,7 @@ async def update_album(
     """更新相册信息"""
     album = await AlbumService.update_album(db, album_id, data, user.user_id)
     if not album:
-        raise HTTPException(status_code=404, detail="相册不存在")
+        raise NotFoundException("相册")
     
     await db.commit()
     return success(data=AlbumResponse.model_validate(album).model_dump(), message="更新成功")
@@ -160,7 +161,7 @@ async def delete_album(
     """删除相册（同时删除所有照片）"""
     deleted = await AlbumService.delete_album(db, album_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="相册不存在")
+        raise NotFoundException("相册")
     
     await db.commit()
     return success(message="相册已删除")
@@ -178,19 +179,19 @@ async def upload_photo(
     """上传照片到指定相册"""
     # 验证文件类型（Content-Type + 魔数双重验证）
     if not file.content_type or not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="只能上传图片文件")
+        raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "只能上传图片文件")
     
     # 读取文件内容
     content = await file.read()
     if len(content) > 20 * 1024 * 1024:  # 20MB 限制
-        raise HTTPException(status_code=400, detail="文件大小不能超过 20MB")
+        raise BusinessException(ErrorCode.FILE_TOO_LARGE, "文件大小不能超过 20MB")
     
     # 验证文件魔数（防止 Content-Type 伪造）
     try:
         import filetype
         kind = filetype.guess(content)
         if kind is None or not kind.mime.startswith('image/'):
-            raise HTTPException(status_code=400, detail="文件内容不是有效的图片格式")
+            raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "文件内容不是有效的图片格式")
     except ImportError:
         pass  # filetype 库未安装时跳过
     
@@ -201,7 +202,7 @@ async def upload_photo(
             storage_manager
         )
         if not photo:
-            raise HTTPException(status_code=404, detail="相册不存在")
+            raise NotFoundException("相册")
         
         await db.commit()
         
@@ -216,7 +217,7 @@ async def upload_photo(
             "file_size": photo.file_size
         }, message="照片上传成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.get("/{album_id}/photos", summary="获取相册照片列表")
@@ -229,7 +230,7 @@ async def get_album_photos(
     # 验证相册归属
     album = await AlbumService.get_album_by_id(db, album_id, user.user_id)
     if not album:
-        raise HTTPException(status_code=404, detail="相册不存在")
+        raise NotFoundException("相册")
     
     photos = await AlbumService.get_photos_by_album(db, album_id, user.user_id)
     
@@ -265,7 +266,7 @@ async def get_photo_file(
     # 获取照片
     photo = await AlbumService.get_photo_by_id(db, photo_id)
     if not photo:
-        raise HTTPException(status_code=404, detail="照片不存在")
+        raise NotFoundException("照片")
     
     # 验证访问权限：已登录用户验证归属，或相册公开
     if user:
@@ -274,15 +275,15 @@ async def get_photo_file(
             # 检查相册是否公开
             album = await AlbumService.get_album_by_id(db, photo.album_id)
             if not album or not album.is_public:
-                raise HTTPException(status_code=403, detail="无权访问此照片")
+                raise PermissionException("无权访问此照片")
     else:
         # 未登录用户：仅允许访问公开相册的照片
         album = await AlbumService.get_album_by_id(db, photo.album_id)
         if not album or not album.is_public:
-            raise HTTPException(status_code=401, detail="请先登录")
+            raise AuthException(ErrorCode.UNAUTHORIZED, "请先登录")
     
     if not os.path.exists(photo.storage_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 路径安全验证：确保文件在 storage 目录下
     from core.config import get_settings
@@ -290,7 +291,7 @@ async def get_photo_file(
     resolved = os.path.realpath(photo.storage_path)
     storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
-        raise HTTPException(status_code=403, detail="文件路径非法")
+        raise PermissionException("文件路径非法")
     
     return FileResponse(
         resolved,
@@ -309,7 +310,7 @@ async def get_photo_thumbnail(
     # 获取照片
     photo = await AlbumService.get_photo_by_id(db, photo_id)
     if not photo:
-        raise HTTPException(status_code=404, detail="照片不存在")
+        raise NotFoundException("照片")
     
     # 验证访问权限：已登录用户验证归属，或相册公开
     if user:
@@ -318,18 +319,18 @@ async def get_photo_thumbnail(
             # 检查相册是否公开
             album = await AlbumService.get_album_by_id(db, photo.album_id)
             if not album or not album.is_public:
-                raise HTTPException(status_code=403, detail="无权访问此照片")
+                raise PermissionException("无权访问此照片")
     else:
         # 未登录用户：仅允许访问公开相册的照片
         album = await AlbumService.get_album_by_id(db, photo.album_id)
         if not album or not album.is_public:
-            raise HTTPException(status_code=401, detail="请先登录")
+            raise AuthException(ErrorCode.UNAUTHORIZED, "请先登录")
     
     # 优先返回缩略图，没有则返回原图
     file_path = photo.thumbnail_path if photo.thumbnail_path and os.path.exists(photo.thumbnail_path) else photo.storage_path
     
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 路径安全验证：确保文件在 storage 目录下
     from core.config import get_settings
@@ -337,7 +338,7 @@ async def get_photo_thumbnail(
     resolved = os.path.realpath(file_path)
     storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
-        raise HTTPException(status_code=403, detail="文件路径非法")
+        raise PermissionException("文件路径非法")
     
     return FileResponse(
         resolved,
@@ -355,7 +356,7 @@ async def update_photo(
     """更新照片标题、描述等信息"""
     photo = await AlbumService.update_photo(db, photo_id, data, user.user_id)
     if not photo:
-        raise HTTPException(status_code=404, detail="照片不存在")
+        raise NotFoundException("照片")
     
     await db.commit()
     return success(message="更新成功")
@@ -370,7 +371,7 @@ async def delete_photo(
     """删除指定照片"""
     count = await AlbumService.delete_photos(db, [photo_id], user.user_id)
     if count == 0:
-        raise HTTPException(status_code=404, detail="照片不存在")
+        raise NotFoundException("照片")
     
     await db.commit()
     return success(message="照片已删除")
@@ -388,7 +389,7 @@ async def batch_delete_photos(
     """批量删除指定的一组照片"""
     photo_ids = data.get("ids", [])
     if not photo_ids:
-        raise HTTPException(status_code=400, detail="未提供照片ID列表")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "未提供照片ID列表")
     
     count = await AlbumService.delete_photos(db, photo_ids, user.user_id)
     await db.commit()
@@ -414,7 +415,7 @@ async def reorder_photos(
     # 验证相册
     album = await AlbumService.get_album_by_id(db, album_id, user.user_id)
     if not album:
-        raise HTTPException(status_code=404, detail="相册不存在")
+        raise NotFoundException("相册")
         
     await AlbumService.reorder_photos(db, album_id, photo_ids, user.user_id)
     await db.commit()
@@ -431,11 +432,11 @@ async def batch_download_photos(
     """批量打包下载照片"""
     photo_ids = data.get("ids", [])
     if not photo_ids:
-        raise HTTPException(status_code=400, detail="未提供照片ID列表")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "未提供照片ID列表")
     
     photos = await AlbumService.get_photos_by_ids(db, photo_ids, user.user_id)
     if not photos:
-        raise HTTPException(status_code=404, detail="未找到有效照片")
+        raise NotFoundException("照片")
         
     files_to_zip = []
     for photo in photos:
@@ -443,7 +444,7 @@ async def batch_download_photos(
             files_to_zip.append((photo.storage_path, photo.filename))
             
     if not files_to_zip:
-        raise HTTPException(status_code=404, detail="照片文件不存在")
+        raise NotFoundException("照片文件")
         
     zip_stream = create_zip_stream(files_to_zip)
     

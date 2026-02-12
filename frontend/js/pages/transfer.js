@@ -45,14 +45,14 @@ class TransferPage extends Component {
             if (res.code === 0 || res.max_file_size) {
                 this.setState({ config: res.data || res });
             }
-        } catch (e) { console.error('加载配置失败:', e); }
+        } catch (e) { (typeof Config !== 'undefined' && Config.error) && Config.error('加载配置失败:', e); }
     }
 
     async loadStats() {
         try {
             const res = await Api.get('/transfer/history/stats');
             if (res.code === 0) this.setState({ stats: res.data });
-        } catch (e) { console.error('加载统计失败:', e); }
+        } catch (e) { (typeof Config !== 'undefined' && Config.error) && Config.error('加载统计失败:', e); }
     }
 
     async loadHistory() {
@@ -64,7 +64,7 @@ class TransferPage extends Component {
             if (res.code === 0) {
                 this.setState({ history: res.data.items, historyTotal: res.data.total });
             }
-        } catch (e) { console.error('加载历史失败:', e); }
+        } catch (e) { (typeof Config !== 'undefined' && Config.error) && Config.error('加载历史失败:', e); }
     }
 
     // 使用全局 WebSocketClient
@@ -362,7 +362,7 @@ class TransferPage extends Component {
                 Toast.error(res.message || '连接失败');
             }
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error(e.message || '传输码无效或已过期');
         } finally {
             this.setState({ isJoining: false });
@@ -567,3 +567,7 @@ class TransferPage extends Component {
         super.destroy();
     }
 }
+
+
+// 将 TransferPage 导出到全局作用域以支持动态加载
+window.TransferPage = TransferPage;

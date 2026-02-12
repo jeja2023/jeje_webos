@@ -6,13 +6,13 @@ PDF 工具模块 API 路由
 import logging
 import os
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, HTTPException, Response, UploadFile, File
+from fastapi import APIRouter, Depends, Query, Response, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, require_permission, TokenData
-from core.errors import NotFoundException, success_response, ErrorCode, error_response
+from core.errors import NotFoundException, PermissionException, BusinessException, success_response, ErrorCode, error_response
 from core.pagination import create_page_response
 from utils.storage import get_storage_manager
 from pathlib import Path
@@ -121,7 +121,7 @@ async def upload_pdf(
     ext = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
     allowed_exts = {'pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'csv'}
     if ext not in allowed_exts:
-        raise HTTPException(status_code=400, detail=f"不支持的文件类型，仅支持: {', '.join(allowed_exts)}")
+        raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, f"不支持的文件类型，仅支持: {', '.join(allowed_exts)}")
     
     storage, base_dir, uploads_dir, outputs_dir = _get_pdf_storage_paths(user.user_id)
     
@@ -165,7 +165,7 @@ async def delete_pdf_file(
     # 安全过滤文件名
     safe_name = os.path.basename(filename).replace('..', '_')
     if not safe_name:
-        raise HTTPException(status_code=400, detail="无效的文件名")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的文件名")
     
     target_dir = uploads_dir if category == "uploads" else outputs_dir
     file_path = target_dir / safe_name
@@ -174,10 +174,10 @@ async def delete_pdf_file(
     try:
         file_path.resolve().relative_to(target_dir.resolve())
     except ValueError:
-        raise HTTPException(status_code=403, detail="非法路径访问")
+        raise PermissionException("非法路径访问")
     
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     file_path.unlink()
     logger.info(f"用户 {user.user_id} 删除文件: {filename}")
@@ -243,12 +243,64 @@ async def render_page(
         elif path:
              file_path, _ = await PdfService.get_file_path_by_storage(user.user_id, path)
         else:
-             raise HTTPException(status_code=400, detail="必须提供 file_id 或 path")
+             raise BusinessException(ErrorCode.VALIDATION_ERROR, "必须提供 file_id 或 path")
              
         img_data = await PdfService.render_page(file_path, page, zoom)
         return Response(content=img_data, media_type="image/png")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
+
+
+@router.get("/preview", summary="预览文件")
+async def preview_file(
+    path: str = Query(..., description="文件路径"),
+    user: TokenData = Depends(get_current_user)
+):
+    """预览 PDF 模块中的文件 (如图片)"""
+    storage = get_storage_manager()
+    
+    # 安全检查 path
+    if '..' in path:
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "非法路径")
+        
+    # 尝试在 uploads 和 outputs 中查找
+    upload_dir = storage.get_module_dir("pdf", "uploads", user.user_id)
+    output_dir = storage.get_module_dir("pdf", "outputs", user.user_id)
+    
+    file_path = None
+    # 简单匹配：看 path 是相对哪个目录的，或者直接尝试拼接
+    # 这里假设 path 是相对于 storage root 的（因为前端通常拿到的是这个）
+    try:
+        abs_path = (storage.root_dir / path).resolve()
+        
+        # 验证是否在允许的目录内
+        upload_rel = abs_path.is_relative_to(upload_dir)
+        output_rel = abs_path.is_relative_to(output_dir)
+        
+        if not (upload_rel or output_rel):
+            # 也可以尝试直接在 upload/output 下找文件名
+            name = os.path.basename(path)
+            if (upload_dir / name).exists():
+                abs_path = (upload_dir / name).resolve()
+            elif (output_dir / name).exists():
+                abs_path = (output_dir / name).resolve()
+            else:
+                 raise PermissionException("无权访问该文件")
+        
+        if not abs_path.exists() or not abs_path.is_file():
+             raise NotFoundException("文件")
+             
+        file_path = abs_path
+    except Exception:
+        raise PermissionException("非法路径")
+
+    # 确定 Content-Type
+    import mimetypes
+    media_type, _ = mimetypes.guess_type(file_path)
+    if not media_type:
+        media_type = "application/octet-stream"
+        
+    return FileResponse(file_path, media_type=media_type)
 
 
 @router.post("/merge", response_model=dict, summary="合并 PDF")
@@ -352,7 +404,7 @@ async def download_result(
     # 安全过滤文件名，防止路径穿越
     safe_filename = os.path.basename(filename).replace('..', '_')
     if not safe_filename:
-        raise HTTPException(status_code=400, detail="无效的文件名")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的文件名")
     
     # 获取正确的模块目录 (输出目录和上传目录)
     output_dir = storage.get_module_dir("pdf", "outputs", user.user_id)
@@ -371,7 +423,7 @@ async def download_result(
             break
     
     if not file_path:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 路径遍历检查
     try:
@@ -379,9 +431,9 @@ async def download_result(
         storage_root = storage.root_dir.resolve()
         # 只要在 storage 根目录下即视为安全（因为已通过 user_id 筛选了目录）
         if not str(file_path).startswith(str(storage_root)):
-            raise HTTPException(status_code=403, detail="非法路径访问")
+            raise PermissionException("非法路径访问")
     except Exception:
-        raise HTTPException(status_code=403, detail="非法路径访问")
+        raise PermissionException("非法路径访问")
 
     # 强制下载处理
     from urllib.parse import quote

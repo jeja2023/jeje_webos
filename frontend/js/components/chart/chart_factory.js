@@ -224,7 +224,7 @@ class ChartFactory {
                 option = this._getSankeyOption(data, config, options);
                 break;
             default:
-                console.warn('未知图表类型:', type);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('未知图表类型:', type);
         }
 
         return option;

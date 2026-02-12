@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # 应用信息
     app_name: str = "JeJe WebOS"
-    app_version: str = "2.5.29"
+    app_version: str = "2.5.32"
     debug: bool = False
     
     # 备案信息 (ICP/公安备案)

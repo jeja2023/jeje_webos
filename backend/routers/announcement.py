@@ -5,12 +5,13 @@
 
 from typing import Optional, List, Tuple
 from utils.timezone import get_beijing_time, to_beijing_naive
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.orm import selectinload
 
 from core.database import get_db
+from core.errors import NotFoundException, BusinessException, ErrorCode
 from core.security import get_current_user, require_admin, TokenData
 from models.announcement import Announcement
 from schemas.announcement import (
@@ -149,7 +150,7 @@ async def get_announcement(
     )
     announcement = result.scalar_one_or_none()
     if not announcement:
-        raise HTTPException(status_code=404, detail="公告不存在")
+        raise NotFoundException("公告")
     return success(_enrich_announcement(announcement, AnnouncementInfo))
 
 
@@ -189,7 +190,7 @@ async def update_announcement(
     )
     announcement = result.scalar_one_or_none()
     if not announcement:
-        raise HTTPException(status_code=404, detail="公告不存在")
+        raise NotFoundException("公告")
     
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -214,7 +215,7 @@ async def delete_announcement(
     )
     announcement = result.scalar_one_or_none()
     if not announcement:
-        raise HTTPException(status_code=404, detail="公告不存在")
+        raise NotFoundException("公告")
     
     await db.delete(announcement)
     await db.flush()
@@ -272,7 +273,7 @@ async def batch_operation(
         return success({"affected": result.rowcount})
     
     else:
-        raise HTTPException(status_code=400, detail="不支持的操作类型")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不支持的操作类型")
 
 
 

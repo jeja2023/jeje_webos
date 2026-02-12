@@ -8,6 +8,48 @@ const Api = {
     _refreshPromise: null,
 
     /**
+     * 尝试刷新 Token（内部方法，供 request/upload 复用）
+     * @returns {Promise<boolean>} 是否刷新成功
+     */
+    async _tryRefreshToken() {
+        if (this._refreshPromise) {
+            return this._refreshPromise;
+        }
+        const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
+        const canRefresh = Config.useHttpOnlyCookie || refreshToken;
+        if (!canRefresh) return false;
+
+        Config.log('检测到401，尝试刷新令牌...');
+        this._refreshPromise = (async () => {
+            try {
+                const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
+                });
+                if (refreshRes.ok) {
+                    const refreshData = await refreshRes.json();
+                    if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
+                        if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
+                            localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
+                            if (refreshData.data.refresh_token) {
+                                localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
+                            }
+                        }
+                        Config.log('令牌刷新成功');
+                        return true;
+                    }
+                }
+                return false;
+            } finally {
+                this._refreshPromise = null;
+            }
+        })();
+        return this._refreshPromise;
+    },
+
+    /**
      * 基础请求方法
      */
     async request(url, options = {}) {
@@ -49,55 +91,14 @@ const Api = {
 
             // 先检查401状态，即使不是JSON也要处理
             if (response.status === 401 && !options.skip401Handler) {
-                const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
-                const canRefresh = Config.useHttpOnlyCookie || refreshToken;
-
-                // HttpOnly Cookie 模式下 Cookie 会随请求发送；否则需要 body 中的 refresh_token
-                if (canRefresh && !options._isRetry) {
+                if (!options._isRetry) {
                     try {
-                        if (this._refreshPromise) {
-                            Config.log('等待已有的令牌刷新完成...');
-                            await this._refreshPromise;
+                        const refreshOk = await this._tryRefreshToken();
+                        if (refreshOk) {
+                            Config.log('令牌刷新成功，准备重试请求');
                             return this.request(url, { ...options, _isRetry: true });
                         }
-
-                        Config.log('检测到401，尝试刷新令牌...');
-                        // 将整个刷新+存储过程作为一个 Promise，避免竞态条件
-                        this._refreshPromise = (async () => {
-                            const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
-                                method: 'POST',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
-                            });
-
-                            if (refreshRes.ok) {
-                                const refreshData = await refreshRes.json();
-                                if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
-                                    if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
-                                        localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
-                                        if (refreshData.data.refresh_token) {
-                                            localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
-                                        }
-                                    }
-                                    Config.log('令牌刷新成功');
-                                    return true;
-                                }
-                            }
-                            return false;
-                        })();
-
-                        try {
-                            const refreshOk = await this._refreshPromise;
-                            if (refreshOk) {
-                                Config.log('令牌刷新成功，准备重试请求');
-                                return this.request(url, { ...options, _isRetry: true });
-                            }
-                        } finally {
-                            this._refreshPromise = null;
-                        }
                     } catch (e) {
-                        this._refreshPromise = null;
                         Config.error('刷新令牌失败:', e);
                     }
                 }
@@ -363,56 +364,16 @@ const Api = {
             });
         }
 
-        // 处理 401：复用 _refreshPromise 防止并发上传时重复刷新（与 request 方法一致）
+        // 处理 401：复用 _tryRefreshToken 与 request 一致，防止并发时重复刷新
         if (response.status === 401 && !options._isRetry) {
-            const refreshToken = Config.useHttpOnlyCookie ? null : localStorage.getItem(Config.storageKeys.refreshToken);
-            const canRefresh = Config.useHttpOnlyCookie || refreshToken;
-            if (canRefresh) {
-                try {
-                    // 复用已有的刷新 Promise（防止并发上传同时触发多次刷新）
-                    if (this._refreshPromise) {
-                        Config.log('上传: 等待已有的令牌刷新完成...');
-                        await this._refreshPromise;
-                        return this.upload(url, fileOrFormData, fieldName, { ...options, _isRetry: true });
-                    }
-
-                    Config.log('上传: 检测到401，尝试刷新令牌...');
-                    this._refreshPromise = (async () => {
-                        const refreshRes = await fetch(`${Config.apiBase}/auth/refresh`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: Config.useHttpOnlyCookie ? '{}' : JSON.stringify({ refresh_token: refreshToken })
-                        });
-                        if (refreshRes.ok) {
-                            const refreshData = await refreshRes.json();
-                            if (refreshData.code === 200 && refreshData.data && (refreshData.data.access_token || Config.useHttpOnlyCookie)) {
-                                if (!Config.useHttpOnlyCookie && refreshData.data.access_token) {
-                                    localStorage.setItem(Config.storageKeys.token, refreshData.data.access_token);
-                                    if (refreshData.data.refresh_token) {
-                                        localStorage.setItem(Config.storageKeys.refreshToken, refreshData.data.refresh_token);
-                                    }
-                                }
-                                return true;
-                            }
-                        }
-                        return false;
-                    })();
-
-                    try {
-                        const refreshOk = await this._refreshPromise;
-                        if (refreshOk) {
-                            return this.upload(url, fileOrFormData, fieldName, { ...options, _isRetry: true });
-                        }
-                    } finally {
-                        this._refreshPromise = null;
-                    }
-                } catch (e) {
-                    this._refreshPromise = null;
-                    Config.error('上传时刷新令牌失败:', e);
+            try {
+                const refreshOk = await this._tryRefreshToken();
+                if (refreshOk) {
+                    return this.upload(url, fileOrFormData, fieldName, { ...options, _isRetry: true });
                 }
+            } catch (e) {
+                Config.error('上传时刷新令牌失败:', e);
             }
-            // 刷新失败，清除认证并跳转登录
             if (Store.get('isLoggedIn')) {
                 Store.clearAuth();
                 Router.push('/login');

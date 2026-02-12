@@ -3,12 +3,13 @@
 Markdown 编辑器 API 路由
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
+from core.errors import NotFoundException
 from schemas.response import success, error
 
 from .markdown_schemas import (
@@ -189,7 +190,7 @@ async def export_doc(
     content, filename, media_type = await MarkdownService.export_doc(db, doc_id, user.user_id, format)
     
     if content is None:
-        raise HTTPException(status_code=404, detail="文档不存在或无权限访问")
+        raise NotFoundException("文档")
         
     from fastapi.responses import Response
     from urllib.parse import quote

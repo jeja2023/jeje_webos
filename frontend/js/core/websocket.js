@@ -324,7 +324,7 @@ const WebSocketClient = {
                     const pendingCount = Array.isArray(pendingRes.data) ? pendingRes.data.length : 0;
                     Store.set('pendingCount', pendingCount);
                 } catch (e) {
-                    console.error('刷新待审核数量失败', e);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error('刷新待审核数量失败', e);
                 }
             }
         } catch (e) {

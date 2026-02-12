@@ -66,7 +66,7 @@ const OfficeViewer = {
             const messages = result.messages;
 
             if (messages.length > 0) {
-                console.warn('Word 转换警告:', messages);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('Word 转换警告:', messages);
             }
 
             this._showViewerModal({
@@ -80,7 +80,7 @@ const OfficeViewer = {
             });
 
         } catch (error) {
-            console.error('Word 预览失败:', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('Word 预览失败:', error);
             Toast.error('文档预览失败: ' + error.message);
         }
     },
@@ -120,7 +120,7 @@ const OfficeViewer = {
             });
 
         } catch (error) {
-            console.error('Excel 预览失败:', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('Excel 预览失败:', error);
             Toast.error('表格预览失败: ' + error.message);
         }
     },

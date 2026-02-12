@@ -57,13 +57,18 @@ const PdfDocuments = {
 
         if (['doc', 'docx'].includes(ext)) {
             iconClass = 'ri-file-word-2-fill style="color: #2b579a;"';
-            cardAction = 'tip-word';
-        } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+            cardAction = 'open-office';
+        } else if (['xls', 'xlsx'].includes(ext)) {
             iconClass = 'ri-file-excel-2-fill style="color: #217346;"';
-            cardAction = 'tip-excel';
+            cardAction = 'open-office';
+        } else if (['csv'].includes(ext)) {
+            iconClass = 'ri-file-excel-2-fill style="color: #217346;"';
+            // CSV 暂时按 Excel 处理
+            cardAction = 'open-office';
         } else if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
             iconClass = 'ri-image-2-fill style="color: #bfa15f;"';
-            cardAction = 'tip-image';
+            // 允许直接预览图片，而非提示转换
+            cardAction = 'open-image';
         }
 
         return `

@@ -567,9 +567,6 @@ async def get_dataset_data(
         # 转换为列表，处理 NaN/Inf 为 JSON 兼容的 null
         records = format_dataframe_for_json(df)
         
-        total_elapsed = time.time() - query_start_time
-        logger.info(f"查询数据集数据成功: {dataset.name}, 返回 {len(records)} 条, 查询耗时: {query_elapsed:.2f}秒, 总耗时: {total_elapsed:.2f}秒")
-        
         return success({
             "items": records,
             "total": dataset.row_count,

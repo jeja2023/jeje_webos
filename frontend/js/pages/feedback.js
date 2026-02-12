@@ -791,3 +791,16 @@ class FeedbackDetailPage extends Component {
 }
 
 
+
+
+// 将 FeedbackListPage 导出到全局作用域以支持动态加载
+window.FeedbackListPage = FeedbackListPage;
+
+// 将 FeedbackCreatePage 导出到全局作用域以支持动态加载
+window.FeedbackCreatePage = FeedbackCreatePage;
+
+// 将 FeedbackAdminPage 导出到全局作用域以支持动态加载
+window.FeedbackAdminPage = FeedbackAdminPage;
+
+// 将 FeedbackDetailPage 导出到全局作用域以支持动态加载
+window.FeedbackDetailPage = FeedbackDetailPage;

@@ -70,7 +70,7 @@ const DataLensViewerMixin = {
             }
             this.setState({ openTabs: [...openTabs] });
         } catch (e) {
-            console.error('加载视图数据失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载视图数据失败:', e);
             openTabs[tabIndex].loading = false;
             openTabs[tabIndex].error = e.message;
             this.setState({ openTabs: [...openTabs] });
@@ -130,7 +130,7 @@ const DataLensViewerMixin = {
 
             Toast.success('数据导出成功');
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error('导出出错: ' + (e.message || '未知错误'));
         } finally {
             if (btn) {
@@ -218,18 +218,6 @@ const DataLensViewerMixin = {
     `;
             }
 
-            // 检查 ECharts 是否已加载
-            if (!window.echarts) {
-                return `
-    <div class="lens-chart-container">
-        <div class="lens-chart-loading">
-            <p>图表库未加载</p>
-            <small>请确认 ECharts 已正确引入</small>
-        </div>
-                    </div>
-    `;
-            }
-
             const chartConfig = tab.chart_config;
             if (!chartConfig) {
                 return `
@@ -243,24 +231,27 @@ const DataLensViewerMixin = {
             }
 
             // 初始化图表需要等到 DOM 挂载后通过 setTimeout 调用 _initChart
+            // 即使 ECharts 未加载，也先返回容器，在 _initChart 中处理加载
             setTimeout(() => this._initChart(tab), 100);
 
             return `
     <div class="lens-chart-container" id="lens-chart-${tab.id}">
-        <div class="lens-chart-loading">图表初始化中...</div>
+        <div class="lens-chart-loading">${window.echarts ? '图表初始化中...' : '正在加载图表组件...'}</div>
                 </div>
     `;
         } catch (e) {
-            console.error('渲染图表视图失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('渲染图表视图失败:', e);
             return `<div class="lens-error"> 图表视图渲染失败: ${Utils.escapeHtml(e.message || '未知错误')}</div> `;
         }
     },
 
-    _initChart(tab) {
+    async _initChart(tab) {
         const container = document.getElementById(`lens-chart-${tab.id}`);
         if (!container) return;
 
         try {
+            await ResourceLoader.loadEcharts();
+
             const chartConfig = tab.chart_config;
             const data = tab.data.data;
 
@@ -367,7 +358,7 @@ const DataLensViewerMixin = {
             tab._chartResizeCleanup = resizeHandler;
 
         } catch (e) {
-            console.error('渲染图表失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('渲染图表失败:', e);
             container.innerHTML = `<div class="lens-error"> 图表渲染失败: ${Utils.escapeHtml(e.message)}</div> `;
         }
     },
@@ -431,7 +422,7 @@ const DataLensViewerMixin = {
                 </div>
             `;
         } catch (e) {
-            console.error('渲染数据表格失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('渲染数据表格失败:', e);
             return `<div class="lens-error">渲染表格失败: ${Utils.escapeHtml(e.message || '未知错误')}</div>`;
         }
     },
@@ -548,7 +539,7 @@ const DataLensViewerMixin = {
 
             return Utils.escapeHtml(strValue);
         } catch (e) {
-            console.error('格式化单元格失败:', e, { value, field });
+            (typeof Config !== 'undefined' && Config.error) && Config.error('格式化单元格失败:', e, { value, field });
             return '<span class="lens-cell-error">-</span>';
         }
     },

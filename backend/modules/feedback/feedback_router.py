@@ -4,11 +4,12 @@ RESTful风格
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission, require_admin
+from core.errors import NotFoundException, PermissionException
 from core.events import event_bus, Events
 from schemas import success, paginate
 
@@ -101,12 +102,12 @@ async def get_feedback(
     feedback = await service.get_feedback(feedback_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="反馈不存在")
+        raise NotFoundException("反馈")
     
     # 权限检查：普通用户只能查看自己的
     is_admin = current_user.role == "admin" or current_user.role == "super_admin"
     if not is_admin and feedback.user_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="无权查看此反馈")
+        raise PermissionException("无权查看此反馈")
     
     return success(_enrich_feedback(feedback, FeedbackInfo))
 
@@ -143,7 +144,7 @@ async def update_feedback(
     feedback = await service.update_feedback(feedback_id, data, current_user.user_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="反馈不存在或无权修改")
+        raise NotFoundException("反馈")
     
     return success(_enrich_feedback(feedback, FeedbackInfo), "更新成功")
 
@@ -164,7 +165,7 @@ async def delete_feedback(
     success_flag = await service.delete_feedback(feedback_id, user_id)
     
     if not success_flag:
-        raise HTTPException(status_code=404, detail="反馈不存在或无权删除")
+        raise NotFoundException("反馈")
     
     return success(None, "删除成功")
 
@@ -211,7 +212,7 @@ async def reply_feedback(
     feedback = await service.reply_feedback(feedback_id, data, current_user.user_id)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="反馈不存在")
+        raise NotFoundException("反馈")
     
     # 发布事件
     event_bus.emit(
@@ -235,7 +236,7 @@ async def admin_update_feedback(
     feedback = await service.admin_update_feedback(feedback_id, data)
     
     if not feedback:
-        raise HTTPException(status_code=404, detail="反馈不存在")
+        raise NotFoundException("反馈")
     
     return success(_enrich_feedback(feedback, FeedbackInfo), "更新成功")
 

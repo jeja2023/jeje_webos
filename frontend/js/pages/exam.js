@@ -141,7 +141,7 @@ class ExamPage extends Component {
             }
         } catch (e) {
             // 静默失败，不影响正常使用
-            console.warn('检查进行中考试失败:', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('检查进行中考试失败:', e);
         }
     }
 
@@ -2379,3 +2379,7 @@ class ExamPage extends Component {
         }
     }
 }
+
+
+// 将 ExamPage 导出到全局作用域以支持动态加载
+window.ExamPage = ExamPage;

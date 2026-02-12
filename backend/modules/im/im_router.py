@@ -4,13 +4,13 @@
 
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from core.database import get_db
 from core.security import get_current_user, require_permission, TokenData
-from core.errors import NotFoundException, success_response
+from core.errors import NotFoundException, BusinessException, success_response, ErrorCode
 from core.pagination import create_page_response
 from utils.storage import get_storage_manager
 
@@ -265,7 +265,7 @@ async def upload_message_file(
             total_size += len(chunk)
             content_chunks.append(chunk)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
     
     content = b''.join(content_chunks)
     actual_size = len(content)
@@ -278,9 +278,9 @@ async def upload_message_file(
     if actual_size > max_size:
         max_size_mb = max_size / 1024 / 1024
         actual_size_mb = actual_size / 1024 / 1024
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size_mb:.1f}MB）"
+        raise BusinessException(
+            ErrorCode.FILE_TOO_LARGE,
+            f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size_mb:.1f}MB）"
         )
     
     # 保存文件
@@ -296,7 +296,7 @@ async def upload_message_file(
         with open(full_path, 'wb') as f:
             f.write(content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"保存文件失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"保存文件失败: {str(e)}")
     
     # 获取文件MIME类型
     file_mime = None
@@ -415,7 +415,7 @@ async def recall_message(
     try:
         success = await service.recall_message(message_id, user.user_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
     
     if success:
         # 获取消息的会话ID用于广播

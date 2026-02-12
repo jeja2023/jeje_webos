@@ -13,6 +13,7 @@ from sqlalchemy import select, desc, func, and_, or_
 
 from core.database import get_db
 from core.security import require_permission, require_manager, TokenData
+from core.errors import BusinessException, ErrorCode
 from schemas import paginate, success
 from models import SystemLog, User
 
@@ -146,7 +147,7 @@ async def export_logs(
         from openpyxl.styles import Font, PatternFill, Alignment
     except ImportError:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail="导出功能需要 openpyxl 库支持")
+        raise BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "导出功能需要 openpyxl 库支持")
 
     where_clause = await _build_query_conditions(level, module, action, start_time, end_time, keyword, user_id, username)
 

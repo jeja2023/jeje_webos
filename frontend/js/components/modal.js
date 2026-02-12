@@ -199,7 +199,7 @@ class Modal {
                     confirmBtn.innerText = originalText;
                 }
             } catch (e) {
-                console.error('[Modal Error]', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('[Modal Error]', e);
                 const msg = e.message || e.toString();
                 if (typeof Toast !== 'undefined') {
                     Toast.error(msg);

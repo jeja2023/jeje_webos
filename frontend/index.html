@@ -32,9 +32,7 @@
 
     <!-- ========== 第三方库 ========== -->
     <link rel="stylesheet" href="/static/libs/remixicon/remixicon.css">
-    <link rel="stylesheet" href="/static/libs/leaflet/leaflet.css">
-    <script src="/static/libs/leaflet/leaflet.js" defer></script>
-    <script src="/static/libs/echarts/echarts.min.js" defer></script>
+
 
     <!-- ========== 核心样式（首屏必需） ========== -->
     <link rel="stylesheet" href="/static/css/core/variables.css">
@@ -61,8 +59,7 @@
     <link rel="stylesheet" href="/static/css/components/topbar.css">
     <link rel="stylesheet" href="/static/css/components/start_menu.css">
     <link rel="stylesheet" href="/static/css/components/module_help.css">
-    <link rel="stylesheet" href="/static/css/components/office_viewer.css">
-    <link rel="stylesheet" href="/static/css/components/pdf_viewer.css">
+
 
     <!-- ========== 页面样式 - 首屏必需 ========== -->
     <link rel="stylesheet" href="/static/css/pages/layout.css">
@@ -135,7 +132,8 @@
     <script src="/static/js/pages/help.js" defer></script>
     <script src="/static/js/pages/messages.js" defer></script>
 
-    <!-- ========== 页面脚本 - 系统管理（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 系统管理（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/system.js" defer></script>
     <script src="/static/js/pages/users.js" defer></script>
     <script src="/static/js/pages/roles.js" defer></script>
@@ -146,16 +144,20 @@
     <script src="/static/js/pages/feedback.js" defer></script>
     <script src="/static/js/pages/market.js" defer></script>
     <script src="/static/js/pages/theme_editor.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 文件与内容（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 文件与内容（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/filemanager.js" defer></script>
     <script src="/static/js/pages/transfer.js" defer></script>
     <script src="/static/js/pages/blog.js" defer></script>
     <script src="/static/js/pages/notes.js" defer></script>
     <script src="/static/js/pages/knowledge.js" defer></script>
     <script src="/static/js/pages/vault.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 媒体工具（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 媒体工具（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/album.js" defer></script>
     <script src="/static/js/pages/video.js" defer></script>
     <script src="/static/js/pages/ocr.js" defer></script>
@@ -168,19 +170,25 @@
     <script src="/static/js/pages/pdf/pdf.js" defer></script>
     <script src="/static/js/pages/markdown/markdown_wysiwyg.js" defer></script>
     <script src="/static/js/pages/markdown/markdown.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 学习与办公（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 学习与办公（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/exam.js" defer></script>
     <script src="/static/js/pages/course.js" defer></script>
     <script src="/static/js/pages/schedule.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 通讯与AI（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 通讯与AI（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/im/im_components.js" defer></script>
     <script src="/static/js/pages/im/im.js" defer></script>
     <script src="/static/js/pages/ai.js" defer></script>
     <script src="/static/js/pages/map.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 数据分析（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 数据分析（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/analysis/analysis.js" defer></script>
     <script src="/static/js/pages/analysis/analysis_import.js" defer></script>
     <script src="/static/js/pages/analysis/analysis_cleaning.js" defer></script>
@@ -190,12 +198,15 @@
     <script src="/static/js/pages/analysis/analysis_compare.js" defer></script>
     <script src="/static/js/pages/analysis/analysis_bi.js" defer></script>
     <script src="/static/js/pages/analysis/analysis_smart_table.js" defer></script>
+    -->
 
-    <!-- ========== 页面脚本 - 数据透镜（defer 延迟加载） ========== -->
+    <!-- ========== 页面脚本 - 数据透镜（由 ResourceLoader 动态加载） ========== -->
+    <!--
     <script src="/static/js/pages/datalens/datalens.js" defer></script>
     <script src="/static/js/pages/datalens/datalens_hub.js" defer></script>
     <script src="/static/js/pages/datalens/datalens_viewer.js" defer></script>
     <script src="/static/js/pages/datalens/datalens_editor.js" defer></script>
+    -->
 
     <!-- ========== 应用入口（必须在所有页面脚本之后） ========== -->
     <script src="/static/js/pages/app.js" defer></script>

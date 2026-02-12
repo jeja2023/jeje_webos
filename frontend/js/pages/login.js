@@ -123,7 +123,7 @@ class LoginPage extends Component {
                         }
                     } catch (e) {
                         // 同步失败时静默处理
-                        console.warn('[Login] 同步 dock_pinned_apps 失败:', e);
+                        (typeof Config !== 'undefined' && Config.warn) && Config.warn('[Login] 同步 dock_pinned_apps 失败:', e);
                     }
                 }
 
@@ -276,3 +276,7 @@ class LoginPage extends Component {
     }
 }
 
+
+
+// 将 LoginPage 导出到全局作用域以支持动态加载
+window.LoginPage = LoginPage;

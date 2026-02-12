@@ -20,6 +20,7 @@
     align-items: flex-start;
     padding: 20px;
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    position: relative;
 }
 
 .pdf-viewer-page-image {
@@ -27,18 +28,32 @@
     height: auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     border-radius: 4px;
+    margin-bottom: 60px; /* 为悬浮工具栏留出空间 */
 }
 
-/* 工具栏 */
+/* 工具栏 - 悬浮样式 */
 .pdf-viewer-toolbar {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 20px;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    background: rgba(40, 40, 40, 0.85); /* 深色背景 */
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+.pdf-viewer-toolbar:hover {
+    background: rgba(40, 40, 40, 0.95);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
 .pdf-viewer-toolbar .btn-icon {

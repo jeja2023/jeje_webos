@@ -1759,3 +1759,10 @@ class PendingUsersPage extends Component {
     }
 }
 
+
+
+// 将 UserListPage 导出到全局作用域以支持动态加载
+window.UserListPage = UserListPage;
+
+// 将 PendingUsersPage 导出到全局作用域以支持动态加载
+window.PendingUsersPage = PendingUsersPage;

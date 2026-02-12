@@ -3,13 +3,14 @@
 """
 import json
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func, update as sql_update
 from sqlalchemy.orm.attributes import flag_modified
 
 from core.database import get_db
 from core.security import require_permission, require_admin, require_manager, TokenData
+from core.errors import NotFoundException, BusinessException, ErrorCode
 from models import UserGroup, User
 from schemas import UserGroupCreate, UserGroupUpdate, UserGroupInfo, success
 
@@ -63,7 +64,7 @@ async def create_role(
     # 重名检查
     exist = await db.execute(select(UserGroup).where(UserGroup.name == data.name))
     if exist.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="角色名称已存在")
+        raise BusinessException(ErrorCode.RESOURCE_EXISTS, "角色名称已存在")
     
     # admin 和 manager 用户组自动拥有所有权限
     permissions = data.permissions
@@ -87,7 +88,7 @@ async def update_role(
     result = await db.execute(select(UserGroup).where(UserGroup.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
-        raise HTTPException(status_code=404, detail="角色不存在")
+        raise NotFoundException("角色")
     
     # admin 和 manager 用户组始终拥有所有权限，不允许修改
     if role.name in ("admin", "manager"):
@@ -117,7 +118,7 @@ async def list_role_users(
     result = await db.execute(select(UserGroup).where(UserGroup.id == role_id))
     group = result.scalar_one_or_none()
     if not group:
-        raise HTTPException(status_code=404, detail="用户组不存在")
+        raise NotFoundException("用户组")
 
     # 使用数据库层面过滤 JSON 字段
     users_res = await db.execute(
@@ -149,11 +150,11 @@ async def delete_role(
     result = await db.execute(select(UserGroup).where(UserGroup.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
-        raise HTTPException(status_code=404, detail="角色不存在")
+        raise NotFoundException("角色")
     
     # 禁止删除系统内置组
     if role.name in ("admin", "manager", "user", "guest"):
-        raise HTTPException(status_code=400, detail="不能删除系统内置用户组")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能删除系统内置用户组")
     
     # 清理关联用户的 role_ids（移除该组 ID）
     users_res = await db.execute(

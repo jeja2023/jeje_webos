@@ -75,7 +75,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '创建会话失败');
             }
         } catch (error) {
-            console.error('创建会话失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('创建会话失败', error);
             Toast.error('创建失败');
         }
     }
@@ -102,7 +102,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '建群失败');
             }
         } catch (error) {
-            console.error('建群失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('建群失败', error);
             Toast.error('建群失败');
         }
     }
@@ -425,7 +425,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '更新失败');
             }
         } catch (error) {
-            console.error('更新会话失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('更新会话失败', error);
             Toast.error('更新失败');
         }
     }
@@ -444,7 +444,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '添加失败');
             }
         } catch (error) {
-            console.error('添加成员失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('添加成员失败', error);
             Toast.error('添加失败');
         }
     }
@@ -462,7 +462,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '移除失败');
             }
         } catch (error) {
-            console.error('移除成员失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('移除成员失败', error);
             Toast.error('移除失败');
         }
     }
@@ -488,7 +488,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '操作失败');
             }
         } catch (error) {
-            console.error('退出/删除会话失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('退出/删除会话失败', error);
             Toast.error('操作失败');
         }
     }
@@ -496,7 +496,7 @@ class IMPage extends Component {
     setupWebSocketListeners() {
         // 监听WebSocket消息
         if (typeof WebSocketClient === 'undefined') {
-            console.warn('WebSocketClient 不可用，IM功能可能受限');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('WebSocketClient 不可用，IM功能可能受限');
             this.setState({ connectionStatus: 'disconnected' });
             return;
         }
@@ -596,11 +596,11 @@ class IMPage extends Component {
                     this.selectConversation(items[0].id);
                 }
             } else {
-                console.warn('[IM] API 返回错误:', res);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('[IM] API 返回错误:', res);
                 this.setState({ loading: false });
             }
         } catch (error) {
-            console.error('[IM] 加载会话列表失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[IM] 加载会话列表失败', error);
             Toast.error('加载会话列表失败: ' + (error.message || '未知错误'));
             this.setState({ loading: false });
         }
@@ -620,11 +620,11 @@ class IMPage extends Component {
                 // 标记消息已读
                 this.markConversationRead(conversationId);
             } else {
-                console.error('[IM] 获取会话详情失败:', res);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('[IM] 获取会话详情失败:', res);
                 Toast.error(res.message || '获取会话详情失败');
             }
         } catch (error) {
-            console.error('加载会话失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载会话失败', error);
             Toast.error('加载会话失败');
         }
     }
@@ -665,7 +665,7 @@ class IMPage extends Component {
                 }
             }
         } catch (error) {
-            console.error('加载消息失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载消息失败', error);
             this.setState({ loadingMore: false });
         }
     }
@@ -732,7 +732,7 @@ class IMPage extends Component {
                 }
             }
         } catch (error) {
-            console.error('发送消息失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('发送消息失败', error);
             Toast.error('发送消息失败');
             // 发送失败，恢复输入框内容
             if (input) {
@@ -800,7 +800,7 @@ class IMPage extends Component {
                 Toast.error(res.message || '撤回失败');
             }
         } catch (error) {
-            console.error('撤回消息失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('撤回消息失败', error);
             Toast.error('撤回失败');
         }
     }
@@ -839,7 +839,7 @@ class IMPage extends Component {
             }
         } catch (error) {
             toastId.close();
-            console.error('上传文件失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('上传文件失败', error);
             Toast.error('上传失败');
         }
     }
@@ -1054,7 +1054,7 @@ class IMPage extends Component {
                 this.updateOnlineStatusDom();
             }
         } catch (error) {
-            console.error('获取在线用户失败', error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('获取在线用户失败', error);
         }
     }
 
@@ -1505,3 +1505,7 @@ class IMPage extends Component {
     }
 }
 
+
+
+// 将 IMPage 导出到全局作用域以支持动态加载
+window.IMPage = IMPage;

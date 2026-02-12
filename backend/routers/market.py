@@ -9,13 +9,13 @@ import zipfile
 import tempfile
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.exceptions import HTTPException as StarletteHTTPException
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 
 from core.database import get_db
 from core.security import TokenData, require_admin, get_current_user
+from core.errors import NotFoundException, PermissionException, BusinessException, AppException, ErrorCode
 from core.loader import get_module_loader, CORE_MODULES
 from core.config import get_settings
 from models import UserModule
@@ -122,17 +122,17 @@ async def install_module(
     """安装模块（标记为已安装并运行初始化钩子）"""
     loader = get_module_loader()
     if not loader:
-        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+        raise BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "模块加载器未初始化")
         
     try:
         success_flag = await loader.install_module(module_id)
         if success_flag:
             return success(None, f"模块 {module_id} 安装成功")
         else:
-            raise HTTPException(status_code=400, detail="安装失败，可能模块已安装或不存在")
+            raise BusinessException(ErrorCode.OPERATION_FAILED, "安装失败，可能模块已安装或不存在")
     except Exception as e:
         logger.error(f"安装模块失败 {module_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"安装异常: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"安装异常: {str(e)}")
 
 @router.post("/uninstall/{module_id}")
 async def uninstall_module(
@@ -142,17 +142,17 @@ async def uninstall_module(
     """卸载模块（从状态列表中移除，但不删除代码）"""
     loader = get_module_loader()
     if not loader:
-        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+        raise BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "模块加载器未初始化")
         
     try:
         success_flag = await loader.uninstall_module(module_id)
         if success_flag:
             return success(None, f"模块 {module_id} 卸载成功")
         else:
-            raise HTTPException(status_code=400, detail="卸载未成功")
+            raise BusinessException(ErrorCode.OPERATION_FAILED, "卸载未成功")
     except Exception as e:
         logger.error(f"卸载模块失败 {module_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"卸载异常: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"卸载异常: {str(e)}")
 
 @router.post("/upload")
 async def upload_package(
@@ -172,7 +172,7 @@ async def upload_package(
         force: 是否强制覆盖已存在的模块（默认 False）
     """
     if not file.filename.endswith(('.jwapp', '.zip')):
-        raise HTTPException(status_code=400, detail="无效的文件格式，仅支持 .jwapp 或 .zip")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的文件格式，仅支持 .jwapp 或 .zip")
     
     # 获取最新配置（支持测试环境动态切换）
     current_settings = get_settings()
@@ -198,9 +198,9 @@ async def upload_package(
                     break
                 total_size += len(chunk)
                 if total_size > MAX_MODULE_SIZE:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"模块包大小超过限制（最大 {MAX_MODULE_SIZE // 1024 // 1024}MB）"
+                    raise BusinessException(
+                        ErrorCode.FILE_TOO_LARGE,
+                        f"模块包大小超过限制（最大 {MAX_MODULE_SIZE // 1024 // 1024}MB）"
                     )
                 buffer.write(chunk)
         
@@ -211,7 +211,7 @@ async def upload_package(
             # 安全检查：防止路径遍历
             for name in namelist:
                 if ".." in name or name.startswith("/") or name.startswith("\\"):
-                    raise HTTPException(status_code=400, detail=f"离线包包含非法路径元素: {name}")
+                    raise BusinessException(ErrorCode.VALIDATION_ERROR, f"离线包包含非法路径元素: {name}")
             
             # 找到根目录（通常是模块ID）
             root_dirs = set()
@@ -222,7 +222,7 @@ async def upload_package(
                     root_dirs.add(parts[0])
             
             if len(root_dirs) != 1:
-                raise HTTPException(status_code=400, detail="离线包结构不规范：必须包含且仅包含一个根目录（模块ID）")
+                raise BusinessException(ErrorCode.VALIDATION_ERROR, "离线包结构不规范：必须包含且仅包含一个根目录（模块ID）")
             
             module_id = list(root_dirs)[0]
             
@@ -232,8 +232,8 @@ async def upload_package(
                 # 尝试检查没有父目录的情况（虽然规范是带父目录）
                 if f"{module_id}_manifest.py" in namelist:
                     # 这说明 zip 直接把文件打包在根了，不支持这种，必须带一层文件夹
-                    raise HTTPException(status_code=400, detail=f"离线包结构不规范：应为 {module_id}/ 文件夹结构")
-                raise HTTPException(status_code=400, detail=f"离线包缺少清单文件: {manifest_file}")
+                    raise BusinessException(ErrorCode.VALIDATION_ERROR, f"离线包结构不规范：应为 {module_id}/ 文件夹结构")
+                raise BusinessException(ErrorCode.VALIDATION_ERROR, f"离线包缺少清单文件: {manifest_file}")
 
             # 3. 解压到临时目录后再移动
             extract_path = temp_dir / "extract"
@@ -252,10 +252,10 @@ async def upload_package(
                 existing_version = existing_manifest.version if existing_manifest else "未知"
                 
                 # 返回 409 Conflict，让前端弹窗确认
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "message": f"模块 \"{existing_name}\" 已存在，是否覆盖？",
+                raise BusinessException(
+                    ErrorCode.RESOURCE_CONFLICT,
+                    f"模块 \"{existing_name}\" 已存在，是否覆盖？",
+                    data={
                         "module_id": module_id,
                         "module_name": existing_name,
                         "existing_version": existing_version
@@ -291,13 +291,12 @@ async def upload_package(
         }, msg)
 
     except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="压缩包损坏")
-    except StarletteHTTPException:
-        # 让 HTTPException（如 409 冲突）正确传递
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "压缩包损坏")
+    except AppException:
         raise
     except Exception as e:
         logger.error(f"离线包上传失败: {e}")
-        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"上传失败: {str(e)}")
     finally:
         # 清理临时文件
         if temp_dir.exists():
@@ -318,12 +317,12 @@ async def user_install_module(
     """
     loader = get_module_loader()
     if not loader:
-        raise HTTPException(status_code=500, detail="模块加载器未初始化")
+        raise BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "模块加载器未初始化")
     
     # 检查系统是否已启用该模块
     state = loader.get_module_state(module_id)
     if not state or not state.enabled:
-        raise HTTPException(status_code=400, detail="该模块未被系统启用，无法安装")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "该模块未被系统启用，无法安装")
     
     # 检查用户组权限
     user_perms = current_user.permissions or []
@@ -331,7 +330,7 @@ async def user_install_module(
         p == module_id or p.startswith(module_id + ".") for p in user_perms
     )
     if not has_perm:
-        raise HTTPException(status_code=403, detail="您没有权限安装此模块")
+        raise PermissionException("您没有权限安装此模块")
     
     user_id = current_user.user_id
     
@@ -412,7 +411,7 @@ async def user_toggle_module(
     user_module = result.scalar_one_or_none()
     
     if not user_module or not user_module.installed:
-        raise HTTPException(status_code=400, detail="请先安装该模块")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "请先安装该模块")
     
     user_module.enabled = enabled
     user_module.updated_at = get_beijing_time()

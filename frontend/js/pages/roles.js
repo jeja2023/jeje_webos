@@ -47,7 +47,7 @@ class RolesPage extends Component {
 
             this.setState({ roles: rolesRes.data || [], loading: false });
         } catch (e) {
-            console.error('loadData error:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('loadData error:', e);
             Toast.error('加载用户组失败: ' + (e.message || '未知错误'));
             this.setState({ loading: false });
         }
@@ -357,3 +357,7 @@ class RolesPage extends Component {
         }
     }
 }
+
+
+// 将 RolesPage 导出到全局作用域以支持动态加载
+window.RolesPage = RolesPage;

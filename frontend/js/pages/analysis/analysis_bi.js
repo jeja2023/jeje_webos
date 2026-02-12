@@ -313,6 +313,9 @@ class AnalysisBIPage extends Component {
     }
 
     async renderWidgetChart(widget) {
+        // 动态加载 ECharts
+        await ResourceLoader.loadEcharts();
+
         const container = document.getElementById(`widget-chart-${widget.id}`);
         if (!container) return;
 

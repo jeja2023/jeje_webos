@@ -4,12 +4,13 @@
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 
 from core.database import get_db
 from core.security import get_current_user, get_optional_user, TokenData, require_admin, require_manager, decode_token
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from core.config import get_settings, reload_settings
 from core.loader import get_module_loader, CORE_MODULES
 from core.rate_limit import get_rate_limiter
@@ -263,10 +264,10 @@ async def module_health(
     """模块健康检查（简单探测对应表是否可访问）"""
     loader = get_module_loader()
     if not loader:
-        raise HTTPException(status_code=404, detail="模块未加载")
+        raise NotFoundException("模块")
     manifest = next((m for m in loader.get_loaded_modules() if m.id == module_id), None)
     if not manifest:
-        raise HTTPException(status_code=404, detail="模块不存在")
+        raise NotFoundException("模块")
 
     status = "unknown"
     detail = ""
@@ -333,7 +334,7 @@ async def toggle_module(
                 if not loader.load_module(module_id):
                     # 如果加载失败，需要回滚状态
                     loader.set_module_enabled(module_id, False)
-                    raise HTTPException(status_code=500, detail="加载模块代码失败")
+                    raise BusinessException(ErrorCode.INTERNAL_ERROR, "加载模块代码失败")
             
             # 3. 更新已加载的 manifest 状态
             loaded = loader.modules.get(module_id)
@@ -536,7 +537,7 @@ async def rotate_jwt_secret(
     """
     # 检查是否为系统管理员
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
+        raise PermissionException("仅系统管理员可执行此操作")
     
     try:
         rotator = get_jwt_rotator()
@@ -547,7 +548,7 @@ async def rotate_jwt_secret(
         
         return success(result, "密钥轮换成功")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"密钥轮换失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"密钥轮换失败: {str(e)}")
 
 
 @router.post("/jwt/cleanup")
@@ -561,14 +562,14 @@ async def cleanup_old_jwt_secret(
     """
     # 检查是否为系统管理员
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
+        raise PermissionException("仅系统管理员可执行此操作")
     
     try:
         rotator = get_jwt_rotator()
         result = rotator.cleanup_old_secret()
         return success(result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"清理失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"清理失败: {str(e)}")
 @router.post("/modules")
 async def create_new_module(
     data: dict,
@@ -589,13 +590,13 @@ async def create_new_module(
     author = data.get("author", "JeJe WebOS")
     
     if not module_id or not name:
-        raise HTTPException(status_code=400, detail="模块ID和名称不能为空")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "模块ID和名称不能为空")
     
     # 导入脚本函数
     try:
         from scripts.create_module import create_module
     except ImportError:
-        raise HTTPException(status_code=500, detail="无法加载创建脚本")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "无法加载创建脚本")
     
     try:
         # 运行创建函数
@@ -603,9 +604,9 @@ async def create_new_module(
         if result:
             return success(None, "模块创建成功，请重启后端服务以生效")
         else:
-            raise HTTPException(status_code=500, detail="模块创建失败，请查看服务器日志")
+            raise BusinessException(ErrorCode.INTERNAL_ERROR, "模块创建失败，请查看服务器日志")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"创建异常: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"创建异常: {str(e)}")
 
 
 @router.delete("/modules/{module_id}")
@@ -628,22 +629,22 @@ async def delete_existing_module(
         - 已安装且启用的模块不可删除（必须先禁用并卸载）
     """
     if module_id in ["system", "user", "auth", "boot"]:
-        raise HTTPException(status_code=400, detail="核心模块不可删除")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "核心模块不可删除")
     
     # 安全检查：已安装的模块不能删除（无论启用还是禁用）
     loader = get_module_loader()
     if loader:
         state = loader.get_module_state(module_id)
         if state:
-            raise HTTPException(
-                status_code=400, 
-                detail="该模块已安装，请先在「应用市场」中卸载后再删除"
+            raise BusinessException(
+                ErrorCode.INVALID_OPERATION,
+                "该模块已安装，请先在「应用市场」中卸载后再删除"
             )
         
     try:
         from scripts.delete_module import delete_module_steps
     except ImportError:
-        raise HTTPException(status_code=500, detail="无法加载删除脚本")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "无法加载删除脚本")
     
     try:
         # 运行删除函数
@@ -659,9 +660,9 @@ async def delete_existing_module(
                 msg += " (关联数据表已清理)"
             return success(None, msg)
         else:
-            raise HTTPException(status_code=500, detail="模块删除失败，请查看服务器日志")
+            raise BusinessException(ErrorCode.INTERNAL_ERROR, "模块删除失败，请查看服务器日志")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除异常: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"删除异常: {str(e)}")
 
 
 @router.get("/rate-limit/stats")
@@ -711,7 +712,7 @@ async def unblock_ip(
         
         return success({"ip": ip}, "已解除封禁")
     else:
-        raise HTTPException(status_code=404, detail="该IP未被封禁或封禁已过期")
+        raise BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "该IP未被封禁或封禁已过期")
 
 
 @router.post("/rate-limit/unblock-all")

@@ -7,13 +7,14 @@
 import logging
 import os
 import uuid
-from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
+from core.errors import NotFoundException, BusinessException, ErrorCode
 from schemas.response import success, error
 from utils.storage import get_storage_manager
 
@@ -449,17 +450,17 @@ async def stream_chapter_video(
     # 获取章节
     chapter = await ChapterService.get_chapter_by_id(db, chapter_id)
     if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
+        raise NotFoundException("章节")
     
     if not chapter.video_url:
-        raise HTTPException(status_code=404, detail="该章节没有视频")
+        raise BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "该章节没有视频")
     
     # 获取视频文件路径
     storage = get_storage_manager()
     video_path = storage.get_file_path(chapter.video_url)
     
     if not video_path or not video_path.exists():
-        raise HTTPException(status_code=404, detail="视频文件不存在")
+        raise NotFoundException("视频文件")
     
     # 确定视频类型
     ext = video_path.suffix.lower()

@@ -25,7 +25,7 @@ const App = {
                 const setRes = await SystemApi.getSettings();
                 Store.setSystemSettings(setRes.data);
             } catch (err) {
-                console.warn('获取系统设置失败', err);
+                if (typeof Config !== 'undefined' && Config.warn) Config.warn('获取系统设置失败', err);
             }
 
             if (res.data.app_name) {
@@ -47,7 +47,7 @@ const App = {
                 WebSocketClient.connect();
                 this.updateUnreadCount();
             } catch (e) {
-                console.error('WebSocket 连接失败', e);
+                if (typeof Config !== 'undefined' && Config.error) Config.error('WebSocket 连接失败', e);
             }
         }
 
@@ -89,23 +89,13 @@ const App = {
     async loadModuleAssets() {
         const modules = Store.get('modules') || [];
 
-        // 仅预加载业务模块的 CSS（减少首屏 JS 体积）
-        modules.forEach(m => {
-            if (m.assets && m.assets.css && Array.isArray(m.assets.css)) {
-                m.assets.css.forEach(url => {
-                    if (!document.querySelector(`link[href="${url}"]`)) {
-                        const link = document.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href = url;
-                        document.head.appendChild(link);
-                    }
-                });
-            }
-            // 注意：JS 不再在此处同步加载
-            // 由 ResourceLoader.loadModuleByPath() 在路由导航时按需加载
-        });
+        // 注册动态模块资源配置到 ResourceLoader
+        // 由 Router 在导航时按需加载
+        if (typeof ResourceLoader !== 'undefined') {
+            ResourceLoader.registerDynamicModules(modules);
+        }
 
-        Config.log('业务模块 CSS 预加载完成');
+        Config.log('业务模块资源配置已注册');
     },
 
     async updateUnreadCount() {
@@ -170,7 +160,7 @@ const App = {
                 let PageClass = typeof PageClassName === 'string' ? window[PageClassName] : PageClassName;
 
                 if (!PageClass) {
-                    console.error(`页面组件未定义: ${PageClassName}`);
+                    if (typeof Config !== 'undefined' && Config.error) Config.error(`页面组件未定义: ${PageClassName}`);
                     Toast.error('加载页面组件失败，请尝试刷新页面');
                     return;
                 }
@@ -210,7 +200,7 @@ const App = {
             if (typeof Toast !== 'undefined') {
                 Toast.warning(`页面不存在: ${path.replace(/[<>&"']/g, '')}`);
             } else {
-                console.warn(`Page Not Found: ${path}`);
+                if (typeof Config !== 'undefined' && Config.warn) Config.warn(`Page Not Found: ${path}`);
             }
         };
 
@@ -241,25 +231,25 @@ const App = {
                     Router.replace('/album/list');
                 }
             },
-            '/album/list': { auth: true, handler: wrap(AlbumPage, '相册') },
+            '/album/list': { auth: true, handler: wrap('AlbumPage', '相册') },
             // ========== NotebookLM水印清除模块路由 ==========
-            '/lm_cleaner': { auth: true, handler: wrap(LmCleanerPage, 'LM 水印清除') },
-            '/lm_cleaner/list': { auth: true, handler: wrap(LmCleanerPage, '历史记录') },
+            '/lm_cleaner': { auth: true, handler: wrap('LmCleanerPage', 'LM 水印清除') },
+            '/lm_cleaner/list': { auth: true, handler: wrap('LmCleanerPage', '历史记录') },
 
         });
 
         // 注册业务路由
         Router.registerAll({
-            '/blog/list': { auth: true, handler: wrap(BlogListPage, '博客列表') },
-            '/blog/edit': { auth: true, handler: wrap(BlogEditPage, '新建文章') },
-            '/blog/edit/:id': { auth: true, handler: wrap(BlogEditPage, '编辑文章') },
-            '/blog/view/:id': { auth: true, handler: wrap(BlogViewPage, '查看文章') },
-            '/blog/category': { auth: true, handler: wrap(BlogCategoryPage, '分类管理') },
+            '/blog/list': { auth: true, handler: wrap('BlogListPage', '博客列表') },
+            '/blog/edit': { auth: true, handler: wrap('BlogEditPage', '新建文章') },
+            '/blog/edit/:id': { auth: true, handler: wrap('BlogEditPage', '编辑文章') },
+            '/blog/view/:id': { auth: true, handler: wrap('BlogViewPage', '查看文章') },
+            '/blog/category': { auth: true, handler: wrap('BlogCategoryPage', '分类管理') },
 
-            '/notes/list': { auth: true, handler: wrap(NotesListPage, '笔记') },
-            '/notes/list/:id': { auth: true, handler: wrap(NotesListPage, '笔记文件夹') },
-            '/notes/starred': { auth: true, handler: wrap(NotesStarredPage, '我的收藏') },
-            '/notes/tags': { auth: true, handler: wrap(NotesTagsPage, '标签管理') },
+            '/notes/list': { auth: true, handler: wrap('NotesListPage', '笔记') },
+            '/notes/list/:id': { auth: true, handler: wrap('NotesListPage', '笔记文件夹') },
+            '/notes/starred': { auth: true, handler: wrap('NotesStarredPage', '我的收藏') },
+            '/notes/tags': { auth: true, handler: wrap('NotesTagsPage', '标签管理') },
             '/notes/edit': {
                 auth: true,
                 handler: () => {
@@ -268,108 +258,108 @@ const App = {
                     const folderId = urlParams.get('folder');
                     // 特殊处理无ID的新笔记得以支持多开？或者用路径 '/notes/edit' 单例
                     // 暂时维持路径单例
-                    WindowManager.open(NotesEditPage, [null, folderId], {
+                    WindowManager.open(window.NotesEditPage, [null, folderId], {
                         title: '新建笔记',
                         id: '/notes/edit' + (folderId ? `?folder=${folderId}` : '')
                     });
                 }
             },
-            '/notes/edit/:id': { auth: true, handler: wrap(NotesEditPage, '编辑笔记') },
-            '/notes/view/:id': { auth: true, handler: wrap(NotesViewPage, '查看笔记') },
+            '/notes/edit/:id': { auth: true, handler: wrap('NotesEditPage', '编辑笔记') },
+            '/notes/view/:id': { auth: true, handler: wrap('NotesViewPage', '查看笔记') },
 
-            '/feedback/my': { auth: true, handler: wrap(FeedbackListPage, '我的反馈') },
-            '/feedback/create': { auth: true, handler: wrap(FeedbackCreatePage, '提交反馈') },
-            '/feedback/list': { auth: true, handler: wrap(FeedbackAdminPage, '反馈管理') },
-            '/feedback/view/:id': { auth: true, handler: wrap(FeedbackDetailPage, '反馈详情') },
+            '/feedback/my': { auth: true, handler: wrap('FeedbackListPage', '我的反馈') },
+            '/feedback/create': { auth: true, handler: wrap('FeedbackCreatePage', '提交反馈') },
+            '/feedback/list': { auth: true, handler: wrap('FeedbackAdminPage', '反馈管理') },
+            '/feedback/view/:id': { auth: true, handler: wrap('FeedbackDetailPage', '反馈详情') },
 
-            '/users/list': { auth: true, handler: wrap(UserListPage, '用户管理') },
-            '/users/pending': { auth: true, handler: wrap(PendingUsersPage, '待审核用户') },
+            '/users/list': { auth: true, handler: wrap('UserListPage', '用户管理') },
+            '/users/pending': { auth: true, handler: wrap('PendingUsersPage', '待审核用户') },
 
-            '/notifications': { auth: true, handler: wrap(NotificationsPage, '通知中心') },
+            '/notifications': { auth: true, handler: wrap('NotificationsPage', '通知中心') },
 
-            '/system/settings': { auth: true, handler: wrap(SystemSettingsPage, '系统设置') },
-            '/system/audit': { auth: true, handler: wrap(AuditLogsPage, '系统日志') },
-            '/system/monitor': { auth: true, handler: wrap(MonitorPage, '系统监控') },
+            '/system/settings': { auth: true, handler: wrap('SystemSettingsPage', '系统设置') },
+            '/system/audit': { auth: true, handler: wrap('AuditLogsPage', '系统日志') },
+            '/system/monitor': { auth: true, handler: wrap('MonitorPage', '系统监控') },
 
-            '/profile': { auth: true, handler: wrap(ProfilePage, '个人中心') },
-            '/profile/password': { auth: true, handler: wrap(ChangePasswordPage, '修改密码') },
-            '/help': { auth: true, handler: wrap(HelpPage, '帮助中心') },
-            '/theme/editor': { auth: true, handler: wrap(ThemeEditorPage, '主题编辑器') },
+            '/profile': { auth: true, handler: wrap('ProfilePage', '个人中心') },
+            '/profile/password': { auth: true, handler: wrap('ChangePasswordPage', '修改密码') },
+            '/help': { auth: true, handler: wrap('HelpPage', '帮助中心') },
+            '/theme/editor': { auth: true, handler: wrap('ThemeEditorPage', '主题编辑器') },
 
-            '/system/backup': { auth: true, handler: wrap(BackupPage, '数据备份') },
-            '/system/roles': { auth: true, handler: wrap(RolesPage, '权限管理') },
+            '/system/backup': { auth: true, handler: wrap('BackupPage', '数据备份') },
+            '/system/roles': { auth: true, handler: wrap('RolesPage', '权限管理') },
 
-            '/announcement/list': { auth: true, handler: wrap(AnnouncementListPage, '公告管理') },
-            '/announcement/edit': { auth: true, handler: wrap(AnnouncementEditPage, '发布公告') },
-            '/announcement/edit/:id': { auth: true, handler: wrap(AnnouncementEditPage, '编辑公告') },
-            '/announcement/view/:id': { auth: true, handler: wrap(AnnouncementViewPage, '查看公告') },
+            '/announcement/list': { auth: true, handler: wrap('AnnouncementListPage', '公告管理') },
+            '/announcement/edit': { auth: true, handler: wrap('AnnouncementEditPage', '发布公告') },
+            '/announcement/edit/:id': { auth: true, handler: wrap('AnnouncementEditPage', '编辑公告') },
+            '/announcement/view/:id': { auth: true, handler: wrap('AnnouncementViewPage', '查看公告') },
 
-            '/filemanager': { auth: true, handler: wrap(FileManagerPage, '文件管理') },
-            '/transfer': { auth: true, handler: wrap(TransferPage, '快传') },
+            '/filemanager': { auth: true, handler: wrap('FileManagerPage', '文件管理') },
+            '/transfer': { auth: true, handler: wrap('TransferPage', '快传') },
 
-            '/knowledge': { auth: true, handler: wrap(KnowledgeListPage, '知识库') },
-            '/knowledge/list': { auth: true, handler: wrap(KnowledgeListPage, '知识库') },
-            '/knowledge/view/:id': { auth: true, handler: wrap(KnowledgeViewPage, '知识库详情') },
+            '/knowledge': { auth: true, handler: wrap('KnowledgeListPage', '知识库') },
+            '/knowledge/list': { auth: true, handler: wrap('KnowledgeListPage', '知识库') },
+            '/knowledge/view/:id': { auth: true, handler: wrap('KnowledgeViewPage', '知识库详情') },
 
-            '/apps': { auth: true, handler: wrap(AppCenterMarketPage, '应用中心') },
-            '/analysis': { auth: true, handler: wrap(AnalysisPage, '数据分析') },
-            '/ai': { auth: true, handler: wrap(AIPage, 'AI助手') },
-            '/ai/chat': { auth: true, handler: wrap(AIPage, '聊天对话') },
-            '/map': { auth: true, handler: wrap(MapPage, '智能地图') },
+            '/apps': { auth: true, handler: wrap('AppCenterMarketPage', '应用中心') },
+            '/analysis': { auth: true, handler: wrap('AnalysisPage', '数据分析') },
+            '/ai': { auth: true, handler: wrap('AIPage', 'AI助手') },
+            '/ai/chat': { auth: true, handler: wrap('AIPage', '聊天对话') },
+            '/map': { auth: true, handler: wrap('MapPage', '智能地图') },
 
             // 即时通讯
-            '/im': { auth: true, handler: wrap(IMPage, '即时通讯') },
-            '/im/messages': { auth: true, handler: wrap(IMPage, '即时通讯') },
-            '/im/contacts': { auth: true, handler: wrap(IMPage, '联系人') },
+            '/im': { auth: true, handler: wrap('IMPage', '即时通讯') },
+            '/im/messages': { auth: true, handler: wrap('IMPage', '即时通讯') },
+            '/im/contacts': { auth: true, handler: wrap('IMPage', '联系人') },
 
             // DataLens 数据透镜
-            '/lens': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
-            '/lens/view/:id': { auth: true, handler: wrap(DataLensPage, '数据透镜') },
+            '/lens': { auth: true, handler: wrap('DataLensPage', '数据透镜') },
+            '/lens/view/:id': { auth: true, handler: wrap('DataLensPage', '数据透镜') },
 
 
 
             // 相册（主路由在上方 registerAll 中定义，重定向到 /album/list）
 
             // 视频
-            '/video': { auth: true, handler: wrap(VideoPage, '我的视频') },
+            '/video': { auth: true, handler: wrap('VideoPage', '我的视频') },
 
             // 考试
-            '/exam': { auth: true, handler: wrap(ExamPage, '在线考试') },
-            '/exam/questions': { auth: true, handler: wrap(ExamPage, '题库管理') },
-            '/exam/papers': { auth: true, handler: wrap(ExamPage, '试卷管理') },
+            '/exam': { auth: true, handler: wrap('ExamPage', '在线考试') },
+            '/exam/questions': { auth: true, handler: wrap('ExamPage', '题库管理') },
+            '/exam/papers': { auth: true, handler: wrap('ExamPage', '试卷管理') },
 
             // 图文识别
-            '/ocr': { auth: true, handler: wrap(OCRPage, '图文识别') },
-            '/ocr/recognize': { auth: true, handler: wrap(OCRPage, '识别图片') },
+            '/ocr': { auth: true, handler: wrap('OCRPage', '图文识别') },
+            '/ocr/recognize': { auth: true, handler: wrap('OCRPage', '识别图片') },
 
             // 课程学习
-            '/course': { auth: true, handler: wrap(CoursePage, '课程学习') },
-            '/course/list': { auth: true, handler: wrap(CoursePage, '课程中心') },
-            '/course/learning': { auth: true, handler: wrap(CoursePage, '我的学习') },
-            '/course/manage': { auth: true, handler: wrap(CoursePage, '课程管理') },
+            '/course': { auth: true, handler: wrap('CoursePage', '课程学习') },
+            '/course/list': { auth: true, handler: wrap('CoursePage', '课程中心') },
+            '/course/learning': { auth: true, handler: wrap('CoursePage', '我的学习') },
+            '/course/manage': { auth: true, handler: wrap('CoursePage', '课程管理') },
 
             // 日程管理
-            '/schedule': { auth: true, handler: wrap(SchedulePage, '日程管理') },
-            '/schedule/calendar': { auth: true, handler: wrap(SchedulePage, '日历视图') },
-            '/schedule/list': { auth: true, handler: wrap(SchedulePage, '我的日程') },
-            '/schedule/reminders': { auth: true, handler: wrap(SchedulePage, '提醒中心') },
+            '/schedule': { auth: true, handler: wrap('SchedulePage', '日程管理') },
+            '/schedule/calendar': { auth: true, handler: wrap('SchedulePage', '日历视图') },
+            '/schedule/list': { auth: true, handler: wrap('SchedulePage', '我的日程') },
+            '/schedule/reminders': { auth: true, handler: wrap('SchedulePage', '提醒中心') },
 
             // 密码保险箱
-            '/vault': { auth: true, handler: wrap(VaultPage, '密码箱') },
-            '/vault/list': { auth: true, handler: wrap(VaultPage, '我的密码') },
-            '/vault/categories': { auth: true, handler: wrap(VaultPage, '分类管理') },
+            '/vault': { auth: true, handler: wrap('VaultPage', '密码箱') },
+            '/vault/list': { auth: true, handler: wrap('VaultPage', '我的密码') },
+            '/vault/categories': { auth: true, handler: wrap('VaultPage', '分类管理') },
 
             // PDF 工具
-            '/pdf': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
-            '/pdf/list': { auth: true, handler: wrap(PdfPage, 'PDF 工具') },
-            '/pdf/reader': { auth: true, handler: wrap(PdfPage, 'PDF 阅读器') },
+            '/pdf': { auth: true, handler: wrap('PdfPage', 'PDF 工具') },
+            '/pdf/list': { auth: true, handler: wrap('PdfPage', 'PDF 工具') },
+            '/pdf/reader': { auth: true, handler: wrap('PdfPage', 'PDF 阅读器') },
 
             // Markdown 编辑器
-            '/markdown': { auth: true, handler: wrap(MarkdownListPage, 'Markdown') },
-            '/markdown/list': { auth: true, handler: wrap(MarkdownListPage, '文档列表') },
-            '/markdown/edit': { auth: true, handler: wrap(MarkdownEditPage, '新建文档') },
-            '/markdown/edit/:id': { auth: true, handler: wrap(MarkdownEditPage, '编辑文档') },
-            '/markdown/view/:id': { auth: true, handler: wrap(MarkdownViewPage, '查看文档') },
+            '/markdown': { auth: true, handler: wrap('MarkdownListPage', 'Markdown') },
+            '/markdown/list': { auth: true, handler: wrap('MarkdownListPage', '文档列表') },
+            '/markdown/edit': { auth: true, handler: wrap('MarkdownEditPage', '新建文档') },
+            '/markdown/edit/:id': { auth: true, handler: wrap('MarkdownEditPage', '编辑文档') },
+            '/markdown/view/:id': { auth: true, handler: wrap('MarkdownViewPage', '查看文档') },
         });
 
     },
@@ -434,7 +424,7 @@ const App = {
 // 启动应用
 document.addEventListener('DOMContentLoaded', () => {
     App.init().catch(err => {
-        console.error('应用初始化失败:', err);
+        if (typeof Config !== 'undefined' && Config.error) Config.error('应用初始化失败:', err);
     });
 });
 

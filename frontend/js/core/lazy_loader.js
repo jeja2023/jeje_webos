@@ -39,7 +39,7 @@ const LazyLoader = {
 
         // 检查浏览器支持
         if (!('IntersectionObserver' in window)) {
-            console.warn('[LazyLoader] 浏览器不支持 IntersectionObserver，将立即加载所有图片');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('[LazyLoader] 浏览器不支持 IntersectionObserver，将立即加载所有图片');
             this.loadAllImages();
             return;
         }
@@ -117,7 +117,7 @@ const LazyLoader = {
         };
 
         tempImg.onerror = () => {
-            console.warn('[LazyLoader] 图片加载失败:', src);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('[LazyLoader] 图片加载失败:', src);
             if (this.config.errorPlaceholder) {
                 img.src = this.config.errorPlaceholder;
             }
@@ -150,7 +150,7 @@ const LazyLoader = {
         };
 
         tempImg.onerror = () => {
-            console.warn('[LazyLoader] 背景图片加载失败:', src);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('[LazyLoader] 背景图片加载失败:', src);
             if (this.config.errorPlaceholder) {
                 element.style.backgroundImage = `url('${this.config.errorPlaceholder}')`;
             }

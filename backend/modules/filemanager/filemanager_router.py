@@ -6,12 +6,13 @@ RESTful 风格，提供完整的文件管理功能
 from typing import Optional, List
 import os
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, decode_token, require_permission
+from core.errors import AuthException, NotFoundException, PermissionException, BusinessException, AppException, ErrorCode
 from schemas import success
 
 from .filemanager_schemas import (
@@ -64,11 +65,11 @@ def get_user_from_token(request = None, token: Optional[str] = Query(None)) -> T
             jwt_token = request.cookies.get(COOKIE_ACCESS_TOKEN)
     
     if not jwt_token:
-        raise HTTPException(status_code=401, detail="未认证")
+        raise AuthException(ErrorCode.UNAUTHORIZED, "未认证")
     
     token_data = decode_token(jwt_token)
     if not token_data:
-        raise HTTPException(status_code=401, detail="无效的令牌")
+        raise AuthException(ErrorCode.TOKEN_INVALID, "无效的令牌")
     
     return token_data
 
@@ -88,10 +89,10 @@ async def browse_directory(
         contents = await service.browse_directory(folder_id, keyword)
         return success(contents.model_dump())
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
     except Exception as e:
         logger.error(f"浏览目录失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="浏览失败，请稍后重试")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "浏览失败，请稍后重试")
 
 
 @router.get("/search")
@@ -163,7 +164,7 @@ async def create_folder(
             updated_at=folder.updated_at
         ).model_dump(), "创建成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/folders/{folder_id}")
@@ -178,7 +179,7 @@ async def update_folder(
     try:
         folder = await service.update_folder(folder_id, data)
         if not folder:
-            raise HTTPException(status_code=404, detail="文件夹不存在")
+            raise NotFoundException("文件夹")
         return success(FolderInfo(
             id=folder.id,
             name=folder.name,
@@ -188,7 +189,7 @@ async def update_folder(
             updated_at=folder.updated_at
         ).model_dump(), "更新成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/folders/{folder_id}/move")
@@ -203,10 +204,10 @@ async def move_folder(
     try:
         folder = await service.move_folder(folder_id, data.target_parent_id)
         if not folder:
-            raise HTTPException(status_code=404, detail="文件夹不存在")
+            raise NotFoundException("文件夹")
         return success({"id": folder.id, "path": folder.path}, "移动成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.delete("/folders/{folder_id}")
@@ -218,7 +219,7 @@ async def delete_folder(
     """删除文件夹（级联删除所有内容）"""
     service = get_service(db, user)
     if not await service.delete_folder(folder_id):
-        raise HTTPException(status_code=404, detail="文件夹不存在")
+        raise NotFoundException("文件夹")
     return success(message="删除成功")
 
 
@@ -247,9 +248,9 @@ async def _process_single_file(
             try:
                 content_length = int(content_length_str)
                 if content_length > max_size:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                    raise BusinessException(
+                        ErrorCode.FILE_TOO_LARGE,
+                        f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
                     )
             except (ValueError, TypeError):
                 pass
@@ -275,9 +276,9 @@ async def _process_single_file(
                     total_size += len(chunk)
                     
                     if total_size > max_size:
-                        raise HTTPException(
-                            status_code=413,
-                            detail=f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                        raise BusinessException(
+                            ErrorCode.FILE_TOO_LARGE,
+                            f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
                         )
                     
                     tmp_f.write(chunk)
@@ -285,18 +286,18 @@ async def _process_single_file(
                     if content_length and total_size > content_length:
                         logger.warning(f"文件 {file.filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
                         break
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"读取文件 {file.filename} 时发生错误: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+            raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
         
         # 3. 从临时文件读取内容用于上传
         with open(temp_file_path, 'rb') as tmp_f:
             content = tmp_f.read()
         actual_size = len(content)
     
-    except HTTPException:
+    except AppException:
         raise
     finally:
         # 清理临时文件
@@ -374,9 +375,9 @@ async def _process_single_file_with_name(
             try:
                 content_length = int(content_length_str)
                 if content_length > max_size:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                    raise BusinessException(
+                        ErrorCode.FILE_TOO_LARGE,
+                        f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
                     )
             except (ValueError, TypeError):
                 pass
@@ -395,9 +396,9 @@ async def _process_single_file_with_name(
             total_size += len(chunk)
             
             if total_size > max_size:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                raise BusinessException(
+                    ErrorCode.FILE_TOO_LARGE,
+                    f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
                 )
             
             content_chunks.append(chunk)
@@ -406,11 +407,11 @@ async def _process_single_file_with_name(
                 logger.warning(f"文件 {filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
                 break
     
-    except HTTPException:
+    except AppException:
         raise
     except Exception as e:
         logger.error(f"读取文件 {filename} 时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"读取文件失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
     
     # 3. 合并所有块
     content = b''.join(content_chunks)
@@ -418,9 +419,9 @@ async def _process_single_file_with_name(
     
     # 4. 最终验证
     if actual_size > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail=f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size / 1024 / 1024:.1f}MB）"
+        raise BusinessException(
+            ErrorCode.FILE_TOO_LARGE,
+            f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size / 1024 / 1024:.1f}MB）"
         )
     
     # 5. 上传文件（使用指定的文件名）
@@ -492,7 +493,7 @@ async def upload_file(
     logger = logging.getLogger(__name__)
     
     if not files:
-        raise HTTPException(status_code=400, detail="请至少选择一个文件")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "请至少选择一个文件")
     
     service = get_service(db, user)
     storage = get_storage_manager()
@@ -512,7 +513,7 @@ async def upload_file(
                 success_count += 1
             else:
                 fail_count += 1
-        except HTTPException as e:
+        except AppException as e:
             # HTTP 异常（如文件过大）直接返回
             results.append({
                 "success": False,
@@ -564,10 +565,10 @@ async def upload_folder(
     - folder_id: 目标父文件夹 ID
     """
     if not files or not relative_paths:
-        raise HTTPException(status_code=400, detail="请选择文件夹上传")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "请选择文件夹上传")
     
     if len(files) != len(relative_paths):
-        raise HTTPException(status_code=400, detail="文件数量与路径数量不匹配")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "文件数量与路径数量不匹配")
     
     service = get_service(db, user)
     storage = get_storage_manager()
@@ -669,7 +670,7 @@ async def upload_folder(
                 success_count += 1
             else:
                 fail_count += 1
-        except HTTPException as e:
+        except AppException as e:
             results.append({
                 "success": False,
                 "filename": file.filename or "unknown",
@@ -730,7 +731,7 @@ async def download_folder(
     # 获取文件夹信息
     folder = await service.get_folder(folder_id)
     if not folder:
-        raise HTTPException(status_code=404, detail="文件夹不存在")
+        raise NotFoundException("文件夹")
     
     folder_name = folder.name
     
@@ -773,12 +774,12 @@ async def download_folder(
     all_files = await collect_files(folder_id)
     
     if not all_files:
-        raise HTTPException(status_code=400, detail="文件夹为空，无法下载")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "文件夹为空，无法下载")
         
     # 检查总大小，防止过大 (限制为 2GB)
     total_size = sum(f["path"].stat().st_size for f in all_files)
     if total_size > 2 * 1024 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="文件夹内容过大 (>2GB)，暂不支持打包下载")
+        raise BusinessException(ErrorCode.FILE_TOO_LARGE, "文件夹内容过大 (>2GB)，暂不支持打包下载")
     
     # 创建临时文件
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
@@ -816,7 +817,7 @@ async def download_folder(
         if os.path.exists(temp_path):
             os.remove(temp_path)
         logger.error(f"打包下载失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"打包下载失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"打包下载失败: {str(e)}")
 
 
 @router.get("/files/{file_id}")
@@ -829,7 +830,7 @@ async def get_file_info(
     service = get_service(db, user)
     file = await service.get_file(file_id)
     if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     return success(service._file_to_info(file).model_dump())
 
@@ -845,7 +846,7 @@ async def update_file(
     service = get_service(db, user)
     file = await service.update_file(file_id, data)
     if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     return success(service._file_to_info(file).model_dump(), "更新成功")
 
 
@@ -861,10 +862,10 @@ async def move_file(
     try:
         file = await service.move_file(file_id, data.target_folder_id)
         if not file:
-            raise HTTPException(status_code=404, detail="文件不存在")
+            raise NotFoundException("文件")
         return success({"id": file.id}, "移动成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/files/{file_id}/star")
@@ -877,7 +878,7 @@ async def toggle_star(
     service = get_service(db, user)
     file = await service.toggle_star(file_id)
     if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     return success({"is_starred": file.is_starred}, "收藏" if file.is_starred else "取消收藏")
 
 
@@ -890,7 +891,7 @@ async def delete_file(
     """删除文件"""
     service = get_service(db, user)
     if not await service.delete_file(file_id):
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     return success(message="删除成功")
 
 
@@ -907,7 +908,7 @@ async def batch_delete(
     文件夹会级联删除其下的所有内容
     """
     if not data.file_ids and not data.folder_ids:
-        raise HTTPException(status_code=400, detail="请至少选择一个文件或文件夹")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "请至少选择一个文件或文件夹")
     
     service = get_service(db, user)
     result = await service.batch_delete(
@@ -940,11 +941,11 @@ async def download_file(
     file = await service.get_file(file_id)
     
     if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     file_path = storage.get_file_path(file.storage_path)
     if not file_path or not file_path.exists():
-        raise HTTPException(status_code=404, detail="物理文件已丢失")
+        raise NotFoundException("文件")
     
     # 处理文件名编码
     encoded_filename = encode_filename_for_header(file.name)

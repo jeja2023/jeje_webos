@@ -1528,3 +1528,7 @@ class AIPage extends Component {
         Toast.success('对话已导出为 Markdown 文件');
     }
 }
+
+
+// 将 AIPage 导出到全局作用域以支持动态加载
+window.AIPage = AIPage;

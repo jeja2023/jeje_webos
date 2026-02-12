@@ -5,7 +5,9 @@ WebSocket 路由
 
 import json
 import logging
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+
+from core.errors import AuthException, ErrorCode
 
 from utils.timezone import get_beijing_time
 
@@ -21,12 +23,12 @@ def get_user_from_token(token: str) -> TokenData:
     try:
         token_data = decode_token(token)
         if not token_data:
-            raise HTTPException(status_code=401, detail="无效的 token")
+            raise AuthException(ErrorCode.TOKEN_INVALID, "无效的 token")
         return token_data
-    except HTTPException:
+    except AuthException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="无效的 token")
+    except Exception:
+        raise AuthException(ErrorCode.TOKEN_INVALID, "无效的 token")
 
 
 @router.websocket("/ws")

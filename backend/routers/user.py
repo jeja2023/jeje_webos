@@ -6,12 +6,18 @@
 import logging
 from typing import Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func, and_, update, delete
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_admin, require_manager, require_permission
+from core.errors import (
+    NotFoundException,
+    PermissionException,
+    BusinessException,
+    ErrorCode,
+)
 from models import User
 from schemas import UserAudit, UserListItem, success, paginate
 from schemas.user import UserProfileUpdate, UserBatchAction
@@ -97,7 +103,7 @@ async def update_profile(
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 使用 Pydantic Schema 获取已设置的字段
     update_data = data.model_dump(exclude_unset=True)
@@ -115,7 +121,7 @@ async def update_profile(
                 select(User).where(User.phone == update_data["phone"], User.id != user.id)
             )
             if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
+                raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "该手机号已被其他用户使用")
         user.phone = update_data["phone"] or None
 
     if "settings" in update_data and update_data["settings"]:
@@ -213,7 +219,7 @@ async def list_users(
     elif current_user.role == "admin":
         query = select(User)
     else:
-        raise HTTPException(status_code=403, detail="仅管理员可访问")
+        raise PermissionException("仅管理员可访问")
     
     # 角色筛选
     if role:
@@ -296,7 +302,7 @@ async def list_pending_users(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可访问")
+        raise PermissionException("仅管理员可访问")
     result = await db.execute(
         select(User)
         .where(User.is_active == False)
@@ -336,12 +342,12 @@ async def audit_user(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+        raise PermissionException("仅管理员可执行此操作")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 更新状态
     user.is_active = data.is_active
@@ -374,24 +380,24 @@ async def toggle_user_status(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+        raise PermissionException("仅管理员可执行此操作")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 不能禁用自己
     if user.id == current_user.user_id:
-        raise HTTPException(status_code=400, detail="不能禁用自己的账户")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能禁用自己的账户")
     
     # 业务管理员不能操作其他管理员
     if current_user.role == "manager" and user.role in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="业务管理员不能操作其他管理员账户")
+        raise PermissionException("业务管理员不能操作其他管理员账户")
     
     # 系统管理员也不能禁用其他系统管理员（保护机制）
     if user.role == "admin" and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="不能禁用系统管理员账户")
+        raise PermissionException("不能禁用系统管理员账户")
     
     user.is_active = is_active
     await db.commit()
@@ -426,16 +432,16 @@ async def update_role(
     - 如果从 admin/manager 降级，建议通过权限接口重新分配权限
     """
     if role not in ("admin", "manager", "user", "guest"):
-        raise HTTPException(status_code=400, detail="角色无效")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "角色无效")
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
 
     # 禁止修改自己为 guest
     if user.id == current_user.user_id and role == "guest":
-        raise HTTPException(status_code=400, detail="不能将自身降级为访客")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能将自身降级为访客")
 
     user.role = role
     # 设置 admin/manager 时，赋予所有权限
@@ -463,26 +469,26 @@ async def delete_user(
     """
     # 检查是否为系统管理员
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
+        raise PermissionException("仅系统管理员可执行此操作")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 不能删除自己
     if user.id == current_user.user_id:
-        raise HTTPException(status_code=400, detail="不能删除自己的账户")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能删除自己的账户")
     
     # 不能删除系统管理员和业务管理员
     if user.role in ("admin", "manager"):
-        raise HTTPException(status_code=400, detail="不能删除管理员账户")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能删除管理员账户")
     
     # 处理关联数据的删除 (IM模块)
     try:
         await _cleanup_user_im_data(db, user_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="删除关联数据失败，请联系管理员")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "删除关联数据失败，请联系管理员")
 
     await db.delete(user)
     await db.commit()
@@ -519,16 +525,16 @@ async def update_permissions(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+        raise PermissionException("仅管理员可执行此操作")
     
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 业务管理员不能操作其他管理员
     if current_user.role == "manager" and user.role in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="业务管理员不能操作其他管理员账户")
+        raise PermissionException("业务管理员不能操作其他管理员账户")
 
     module_access = payload.get("module_access") or []
     role_ids = payload.get("role_ids") or []
@@ -539,11 +545,11 @@ async def update_permissions(
     try:
         role_ids = [int(rid) for rid in role_ids if rid is not None]
     except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="用户组ID格式错误")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "用户组ID格式错误")
 
     # 仅允许选择一个用户组（或不选）
     if len(role_ids) > 1:
-        raise HTTPException(status_code=400, detail="用户组只能选择一个")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "用户组只能选择一个")
 
     # 拉取用户组（角色模板）
     groups = []
@@ -551,7 +557,7 @@ async def update_permissions(
         res = await db.execute(select(Role).where(Role.id.in_(role_ids)))
         groups = res.scalars().all()
         if not groups:
-            raise HTTPException(status_code=404, detail="选中的用户组不存在")
+            raise NotFoundException("用户组")
 
     group = groups[0] if groups else None
     group_name = group.name.lower() if group else None
@@ -560,7 +566,7 @@ async def update_permissions(
 
     # 安全检查：业务管理员不能分配 admin 组
     if is_admin_group and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可分配管理员用户组")
+        raise PermissionException("仅系统管理员可分配管理员用户组")
 
     # 如果直接设置权限，优先使用直接权限（用于权限收紧）
     if direct_permissions is not None:
@@ -604,9 +610,9 @@ async def update_permissions(
                                 invalid_perms.append(perm)
                 
                 if invalid_perms:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"直接权限超出用户组权限范围: {', '.join(invalid_perms)}"
+                    raise BusinessException(
+                        ErrorCode.VALIDATION_ERROR,
+                        f"直接权限超出用户组权限范围: {', '.join(invalid_perms)}"
                     )
         
         # 使用直接权限
@@ -614,7 +620,7 @@ async def update_permissions(
     else:
         # 使用用户组权限模板
         if not group:
-            raise HTTPException(status_code=400, detail="请选择用户组或提供直接权限")
+            raise BusinessException(ErrorCode.VALIDATION_ERROR, "请选择用户组或提供直接权限")
 
         # 汇总用户组的权限上限
         allowed_perms = set(group.permissions)
@@ -638,7 +644,7 @@ async def update_permissions(
         if module_access and not wildcard:
             invalid = [m for m in module_access if m not in allowed_modules]
             if invalid:
-                raise HTTPException(status_code=400, detail=f"超出用户组权限的模块: {', '.join(invalid)}")
+                raise BusinessException(ErrorCode.VALIDATION_ERROR, f"超出用户组权限的模块: {', '.join(invalid)}")
 
         # 校验细粒度权限（如 notes.update），仅允许用户组选定范围
         selected_specific = allowed_specific.copy()
@@ -647,7 +653,7 @@ async def update_permissions(
             # 对于 wildcard，可以允许在已声明的 specific 范围内收紧
             invalid_specific = specific_perms - (allowed_specific if allowed_specific else specific_perms if wildcard else set())
             if not wildcard and invalid_specific:
-                raise HTTPException(status_code=400, detail=f"超出用户组权限的功能点: {', '.join(invalid_specific)}")
+                raise BusinessException(ErrorCode.VALIDATION_ERROR, f"超出用户组权限的功能点: {', '.join(invalid_specific)}")
             selected_specific = specific_perms
 
         # 选中的模块（默认勾选全部允许的模块，便于快速分配）
@@ -734,17 +740,17 @@ async def update_user(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+        raise PermissionException("仅管理员可执行此操作")
     
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 业务管理员不能操作其他管理员
     if current_user.role == "manager" and user.role in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="业务管理员不能操作其他管理员账户")
+        raise PermissionException("业务管理员不能操作其他管理员账户")
     
     # data 是 Pydantic 模型，直接访问属性
     # 注意：如果客户端发送了未定义的字段，Pydantic 默认会忽略，但如果是旧版本的 Pydantic 或者模型定义没更新，可能会有问题
@@ -763,7 +769,7 @@ async def update_user(
                 select(User).where(User.phone == phone, User.id != user.id)
             )
             if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="该手机号已被其他用户使用")
+                raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "该手机号已被其他用户使用")
         user.phone = phone
     
     if "avatar" in update_data:
@@ -815,27 +821,27 @@ async def create_user(
     
     # 参数验证
     if not username or len(username) < 3:
-        raise HTTPException(status_code=400, detail="用户名至少3个字符")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "用户名至少3个字符")
     
     if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]{2,19}$', username):
-        raise HTTPException(status_code=400, detail="用户名只能包含字母、数字和下划线，且以字母开头")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "用户名只能包含字母、数字和下划线，且以字母开头")
     
     if not password or len(password) < min_len:
-        raise HTTPException(status_code=400, detail=f"密码至少{min_len}个字符")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, f"密码至少{min_len}个字符")
     
     if role not in ("admin", "manager", "user", "guest"):
-        raise HTTPException(status_code=400, detail="无效的角色")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的角色")
     
     # 检查用户名是否已存在
     existing = await db.execute(select(User).where(User.username == username))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="用户名已存在")
+        raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "用户名已存在")
     
     # 检查手机号是否已存在
     if phone:
         existing_phone = await db.execute(select(User).where(User.phone == phone))
         if existing_phone.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="手机号已被使用")
+            raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "手机号已被使用")
     
     # 创建用户
     user = User(
@@ -882,13 +888,13 @@ async def reset_password(
     min_len = settings.password_min_length or 6
 
     if not password or len(password) < min_len:
-        raise HTTPException(status_code=400, detail=f"密码至少{min_len}个字符")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, f"密码至少{min_len}个字符")
     
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 不能重置超级管理员的密码（除非是自己）
     if user.role == "admin" and user.id != current_user.user_id:
@@ -897,7 +903,7 @@ async def reset_password(
             select(func.count()).select_from(User).where(User.role == "admin")
         )
         if admin_count.scalar() <= 1:
-            raise HTTPException(status_code=400, detail="不能重置唯一系统管理员的密码")
+            raise BusinessException(ErrorCode.INVALID_OPERATION, "不能重置唯一系统管理员的密码")
     
     user.password_hash = hash_password(password)
     await db.commit()
@@ -924,7 +930,7 @@ async def batch_action(
     """
     # 检查是否为管理员
     if current_user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可执行此操作")
+        raise PermissionException("仅管理员可执行此操作")
     
     user_ids = data.user_ids
     action = data.action
@@ -933,14 +939,14 @@ async def batch_action(
     # 验证操作类型
     valid_actions = ["enable", "disable", "delete", "audit_pass", "audit_reject"]
     if action not in valid_actions:
-        raise HTTPException(status_code=400, detail=f"无效的操作类型，仅支持：{', '.join(valid_actions)}")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, f"无效的操作类型，仅支持：{', '.join(valid_actions)}")
     
     # 查询目标用户
     result = await db.execute(select(User).where(User.id.in_(user_ids)))
     users = result.scalars().all()
     
     if not users:
-        raise HTTPException(status_code=404, detail="未找到指定用户")
+        raise NotFoundException("用户")
     
     # 过滤掉不能操作的用户（事务保护：全部成功或全部回滚）
     operated_ids = []
@@ -989,7 +995,7 @@ async def batch_action(
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="批量操作失败，已回滚")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "批量操作失败，已回滚")
     
     action_names = {
         "enable": "启用",

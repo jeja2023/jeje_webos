@@ -4,11 +4,12 @@ RESTful风格
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission
+from core.errors import NotFoundException, PermissionException, ErrorCode
 from core.events import event_bus, Events
 from schemas import success, paginate
 
@@ -55,7 +56,7 @@ async def update_category(
     service = BlogService(db)
     category = await service.update_category(category_id, data)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
     return success(CategoryInfo.model_validate(category).model_dump())
 
 
@@ -68,7 +69,7 @@ async def delete_category(
     """删除分类"""
     service = BlogService(db)
     if not await service.delete_category(category_id):
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
     return success(message="删除成功")
 
 
@@ -189,7 +190,7 @@ async def get_post(
     post = await service.get_post(post_id)
     
     if not post:
-        raise HTTPException(status_code=404, detail="文章不存在")
+        raise NotFoundException("文章")
     
     # 增加浏览量
     await service.increment_views(post_id)
@@ -214,7 +215,7 @@ async def get_post_by_slug(
     post = await service.get_post_by_slug(slug)
     
     if not post:
-        raise HTTPException(status_code=404, detail="文章不存在")
+        raise NotFoundException("文章")
     
     await service.increment_views(post.id)
     
@@ -256,10 +257,10 @@ async def update_post(
     # 检查权限（非管理员只能编辑自己的文章）
     post = await service.get_post(post_id)
     if not post:
-        raise HTTPException(status_code=404, detail="文章不存在")
+        raise NotFoundException("文章")
     
     if user.role != "admin" and post.author_id != user.user_id:
-        raise HTTPException(status_code=403, detail="无权编辑此文章")
+        raise PermissionException("无权编辑此文章")
     
     updated_post = await service.update_post(post_id, data)
     
@@ -282,10 +283,10 @@ async def delete_post(
     
     post = await service.get_post(post_id)
     if not post:
-        raise HTTPException(status_code=404, detail="文章不存在")
+        raise NotFoundException("文章")
     
     if user.role != "admin" and post.author_id != user.user_id:
-        raise HTTPException(status_code=403, detail="无权删除此文章")
+        raise PermissionException("无权删除此文章")
     
     await service.delete_post(post_id)
     

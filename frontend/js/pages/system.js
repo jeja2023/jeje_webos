@@ -257,7 +257,7 @@ class SystemSettingsPage extends Component {
 
         const form = document.getElementById('systemSettingsForm');
         if (!form) {
-            console.error('表单未找到');
+            (typeof Config !== 'undefined' && Config.error) && Config.error('表单未找到');
             return;
         }
 
@@ -288,7 +288,7 @@ class SystemSettingsPage extends Component {
             Store.setTheme(payload.theme_mode);
             this.loadData();
         } catch (err) {
-            console.error('保存失败:', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('保存失败:', err);
             Toast.error(err.message || '保存失败');
         } finally {
             this.setState({ saving: false });
@@ -618,3 +618,10 @@ class AuditLogsPage extends Component {
         }
     }
 }
+
+
+// 将 SystemSettingsPage 导出到全局作用域以支持动态加载
+window.SystemSettingsPage = SystemSettingsPage;
+
+// 将 AuditLogsPage 导出到全局作用域以支持动态加载
+window.AuditLogsPage = AuditLogsPage;

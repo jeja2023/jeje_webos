@@ -5,9 +5,10 @@
 """
 
 from typing import Optional
-from fastapi import HTTPException, Query, Request
+from fastapi import Query, Request
 from core.config import get_settings
 from core.security import TokenData, decode_token, COOKIE_ACCESS_TOKEN
+from core.errors import AuthException, PermissionException, ErrorCode
 
 
 def get_user_from_token(
@@ -24,11 +25,11 @@ def get_user_from_token(
     if not jwt_token:
         jwt_token = token
     if not jwt_token:
-        raise HTTPException(status_code=401, detail="未认证")
+        raise AuthException(ErrorCode.UNAUTHORIZED, "未认证")
     
     token_data = decode_token(jwt_token)
     if not token_data:
-        raise HTTPException(status_code=401, detail="无效的令牌")
+        raise AuthException(ErrorCode.TOKEN_INVALID, "无效的令牌")
     
     return token_data
 
@@ -44,6 +45,6 @@ def get_admin_from_token(
     token_data = get_user_from_token(request, token)
     
     if token_data.role != "admin":
-        raise HTTPException(status_code=403, detail="仅系统管理员可执行此操作")
+        raise PermissionException("仅系统管理员可执行此操作")
     
     return token_data

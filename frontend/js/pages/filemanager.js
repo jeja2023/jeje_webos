@@ -77,7 +77,7 @@ class FileManagerPage extends Component {
 
             return body.innerHTML;
         } catch (e) {
-            console.warn('Icon parse error:', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('Icon parse error:', e);
             return defaultIcon;
         }
     }
@@ -112,7 +112,7 @@ class FileManagerPage extends Component {
                 this.setState({ loading: false });
             }
         } catch (err) {
-            console.error(err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(err);
             Toast.error('加载目录失败');
             this.setState({ loading: false });
         }
@@ -125,7 +125,7 @@ class FileManagerPage extends Component {
                 this.setState({ folderTree: res.data || [] });
             }
         } catch (err) {
-            console.error('加载文件夹树失败', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载文件夹树失败', err);
         }
     }
 
@@ -139,7 +139,7 @@ class FileManagerPage extends Component {
                 this.setState({ stats });
             }
         } catch (err) {
-            console.error('加载统计失败', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载统计失败', err);
         }
     }
 
@@ -796,7 +796,7 @@ class FileManagerPage extends Component {
             }
         } catch (err) {
             this.setState({ uploading: false });
-            console.error('上传异常:', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('上传异常:', err);
             Toast.error(`上传异常: ${err.message || '网络错误'}`);
         }
     }
@@ -990,7 +990,7 @@ class FileManagerPage extends Component {
                 Toast.error(res.message || '删除失败');
             }
         } catch (err) {
-            console.error('批量删除失败:', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('批量删除失败:', err);
             Toast.error(`删除失败: ${err.message || '网络错误'}`);
         }
     }
@@ -1142,7 +1142,7 @@ class FileManagerPage extends Component {
             }
         } catch (err) {
             this.setState({ uploading: false });
-            console.error('文件夹上传异常:', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('文件夹上传异常:', err);
             Toast.error(`上传异常: ${err.message || '网络错误'}`);
         }
     }
@@ -1558,3 +1558,7 @@ class FileManagerPage extends Component {
         super.destroy();
     }
 }
+
+
+// 将 FileManagerPage 导出到全局作用域以支持动态加载
+window.FileManagerPage = FileManagerPage;

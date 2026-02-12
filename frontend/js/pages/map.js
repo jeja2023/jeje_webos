@@ -281,12 +281,15 @@ class MapPage extends Component {
                 </div>
             `;
         } catch (e) {
-            console.error('地图渲染错误', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('地图渲染错误', e);
             return `<div style="padding:20px;color:red;">地图渲染错误: ${Utils.escapeHtml(e.message)}</div>`;
         }
     }
 
     async afterMount() {
+        // 动态加载 Leaflet 库
+        await ResourceLoader.loadLeaflet();
+
         this.bindEvents();
         window._currentMap = this;
 
@@ -584,20 +587,20 @@ class MapPage extends Component {
         if (this._mapInitializing) return;
 
         if (typeof L === 'undefined') {
-            console.error('Leaflet (L) 未定义，请检查资源加载');
+            (typeof Config !== 'undefined' && Config.error) && Config.error('Leaflet (L) 未定义，请检查资源加载');
             return;
         }
 
         const container = this.container ? this.container.querySelector('.map-canvas') : null;
         if (!container) {
-            console.warn('地图容器 .map-canvas 未找到');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('地图容器 .map-canvas 未找到');
             return;
         }
 
         // 检测容器高度，若为 0 则延迟重试
         if (container.clientHeight === 0) {
             if ((this._initRetryCount || 0) > 10) {
-                console.error('地图容器高度持续为 0，停止重试');
+                (typeof Config !== 'undefined' && Config.error) && Config.error('地图容器高度持续为 0，停止重试');
                 return;
             }
             this._initRetryCount = (this._initRetryCount || 0) + 1;
@@ -676,7 +679,7 @@ class MapPage extends Component {
                 this.restoreDatasets();
             }
         } catch (e) {
-            console.error('创建地图实例失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('创建地图实例失败:', e);
         } finally {
             this._mapInitializing = false;
         }
@@ -1284,7 +1287,7 @@ class MapPage extends Component {
                     datasets.push(newDs);
                     loadedCount++;
                 }
-            } catch (e) { console.error(`加载 ${file.id} 失败`, e); }
+            } catch (e) { (typeof Config !== 'undefined' && Config.error) && Config.error(`加载 ${file.id} 失败`, e); }
         }
 
         if (loadedCount > 0) {
@@ -1375,7 +1378,7 @@ class MapPage extends Component {
             try {
                 await Api.post(`/map/gps/update_style?trail_id=${id}&color=${encodeURIComponent(color)}`);
             } catch (e) {
-                console.error('样式持久化失败', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('样式持久化失败', e);
             }
         }
     }
@@ -1403,7 +1406,7 @@ class MapPage extends Component {
                 Toast.success('轨迹已从库中删除');
                 this.fetchTrailFiles(); // 刷新列表
             } catch (e) {
-                console.error('删除后端记录失败', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('删除后端记录失败', e);
             }
         }
     }
@@ -1755,7 +1758,7 @@ class MapPage extends Component {
                 // 如果需要恢复 API 调用，请取消注释，并确保已登录
                 // await Api.post('/map/config/save', payload);
             } catch (e) {
-                console.warn('同步地图配置失败:', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('同步地图配置失败:', e);
             }
         }, 3000);
     }
@@ -1848,3 +1851,7 @@ class MapPage extends Component {
 // 绑定全局引用以便 Popup 中的 inline 事件调用
 window._currentMap = null;
 window._JeJeMap = MapPage; // Expose class if needed
+
+
+// 将 MapPage 导出到全局作用域以支持动态加载
+window.MapPage = MapPage;

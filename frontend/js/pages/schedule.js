@@ -748,7 +748,7 @@ class SchedulePage extends Component {
                 Toast.info('未找到匹配的日程');
             }
         } catch (e) {
-            console.error('搜索失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('搜索失败', e);
             Toast.error('搜索失败');
         }
     }
@@ -995,3 +995,7 @@ class SchedulePage extends Component {
         super.destroy();
     }
 }
+
+
+// 将 SchedulePage 导出到全局作用域以支持动态加载
+window.SchedulePage = SchedulePage;

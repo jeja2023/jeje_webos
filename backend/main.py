@@ -15,10 +15,12 @@ import logging
 import traceback
 import warnings
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, ORJSONResponse
 from fastapi.exceptions import HTTPException as StarletteHTTPException
+
+from core.errors import NotFoundException
 from sqlalchemy.exc import SAWarning
 
 # ==================== 核心模块导入 ====================
@@ -198,7 +200,7 @@ async def favicon():
     logo_path = os.path.join(FRONTEND_PATH, "images/logo.ico")
     if os.path.exists(logo_path):
         return FileResponse(logo_path)
-    raise HTTPException(status_code=404)
+    raise NotFoundException("资源")
 
 @app.get("/manifest.json", include_in_schema=False)
 async def manifest():
@@ -206,7 +208,7 @@ async def manifest():
     path = os.path.join(FRONTEND_PATH, "manifest.json")
     if os.path.exists(path):
         return FileResponse(path, media_type="application/json")
-    raise HTTPException(status_code=404)
+    raise NotFoundException("资源")
 
 @app.get("/sw.js", include_in_schema=False)
 async def service_worker():
@@ -215,7 +217,7 @@ async def service_worker():
     if os.path.exists(path):
         # 从根目录提供 Service Worker 时，作用域自动为根路径
         return FileResponse(path, media_type="application/javascript")
-    raise HTTPException(status_code=404)
+    raise NotFoundException("资源")
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -256,12 +258,12 @@ async def spa_history_fallback(full_path: str):
     # 忽略明显的后端或静态资源路径
     ignore_prefixes = ("api/", "static/", "health", "favicon.ico", "robots.txt")
     if full_path.startswith(ignore_prefixes):
-        raise HTTPException(status_code=404, detail="资源不存在")
+        raise NotFoundException("资源")
     
     index_path_local = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path_local):
         return FileResponse(index_path_local)
-    raise HTTPException(status_code=404, detail="资源不存在")
+    raise NotFoundException("资源")
 
 app.add_api_route(
     "/{full_path:path}",

@@ -7,13 +7,14 @@ import os
 import logging
 from typing import Optional
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from io import BytesIO
 
 from core.database import get_db
 from core.security import get_current_user, require_permission, TokenData
+from core.errors import NotFoundException, PermissionException, AuthException, BusinessException, ErrorCode
 
 from .transfer_schemas import (
     SessionCreate, SessionJoin, SessionResponse, SessionStatus,
@@ -57,9 +58,9 @@ async def create_session(
     """
     # 检查文件大小
     if data.file_size > ServiceConfig.MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"文件大小超过限制，最大支持 {ServiceConfig.MAX_FILE_SIZE // (1024*1024)}MB"
+        raise BusinessException(
+            ErrorCode.FILE_TOO_LARGE,
+            f"文件大小超过限制，最大支持 {ServiceConfig.MAX_FILE_SIZE // (1024*1024)}MB"
         )
     
     try:
@@ -79,12 +80,12 @@ async def create_session(
         }
     except ValueError as e:
         logger.warning(f"创建会话参数错误: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
     except Exception as e:
         import traceback
         error_msg = f"创建会话失败: {str(e)}\n{traceback.format_exc()}"
         logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=f"创建会话失败: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"创建会话失败: {str(e)}")
 
 
 @router.post("/session/join", summary="加入传输会话")
@@ -104,7 +105,7 @@ async def join_session(
         )
         
         if not session:
-            raise HTTPException(status_code=404, detail="会话不存在或已过期")
+            raise NotFoundException("会话")
         
         response_data = {
             "code": 0,
@@ -141,10 +142,10 @@ async def join_session(
             
         return response_data
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
     except Exception as e:
         logger.error(f"加入会话失败: {e}")
-        raise HTTPException(status_code=500, detail="加入会话失败")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "加入会话失败")
 
 
 @router.get("/session/{session_code}", summary="获取会话状态")
@@ -157,7 +158,7 @@ async def get_session_status(
     session = await TransferService.get_session(db, session_code, current_user.user_id)
     
     if not session:
-        raise HTTPException(status_code=404, detail="会话不存在或无权访问")
+        raise NotFoundException("会话")
     
     # 计算进度
     progress = 0.0
@@ -239,7 +240,7 @@ async def cancel_session(
     success = await TransferService.cancel_session(db, session_code, current_user.user_id)
     
     if not success:
-        raise HTTPException(status_code=404, detail="会话不存在或无法取消")
+        raise NotFoundException("会话")
     
     return {
         "code": 0,
@@ -266,16 +267,16 @@ async def upload_chunk(
     # 验证会话权限
     session = await TransferService.get_session(db, session_code, current_user.user_id)
     if not session:
-        raise HTTPException(status_code=404, detail="会话不存在或无权访问")
+        raise NotFoundException("会话")
     
     if session.sender_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="只有发送方可以上传分块")
+        raise PermissionException("只有发送方可以上传分块")
     
     # 读取分块数据（限制单个分块大小，防止内存耗尽）
     MAX_CHUNK_SIZE = 10 * 1024 * 1024  # 10MB 单块上限
     chunk_data = await chunk.read(MAX_CHUNK_SIZE + 1)
     if len(chunk_data) > MAX_CHUNK_SIZE:
-        raise HTTPException(status_code=413, detail=f"分块大小超过限制（最大 {MAX_CHUNK_SIZE // 1024 // 1024}MB）")
+        raise BusinessException(ErrorCode.FILE_TOO_LARGE, f"分块大小超过限制（最大 {MAX_CHUNK_SIZE // 1024 // 1024}MB）")
     
     # 保存分块
     success, message = await ChunkService.save_chunk(
@@ -283,7 +284,7 @@ async def upload_chunk(
     )
     
     if not success:
-        raise HTTPException(status_code=400, detail=message)
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, message)
     
     # 获取更新后的会话状态
     session = await TransferService.get_session(db, session_code)
@@ -319,16 +320,16 @@ async def download_chunk(
     # 验证会话权限
     session = await TransferService.get_session(db, session_code, current_user.user_id)
     if not session:
-        raise HTTPException(status_code=404, detail="会话不存在或无权访问")
+        raise NotFoundException("会话")
     
     if session.receiver_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="只有接收方可以下载分块")
+        raise PermissionException("只有接收方可以下载分块")
     
     # 获取分块数据
     chunk_data = await ChunkService.get_chunk(db, session_code, chunk_index)
     
     if chunk_data is None:
-        raise HTTPException(status_code=404, detail="分块不存在")
+        raise NotFoundException("分块")
     
     # 返回分块数据
     return StreamingResponse(
@@ -363,27 +364,27 @@ async def download_file(
     except HTTPException as e:
         raise e
     except Exception:
-        raise HTTPException(status_code=401, detail="无效的认证凭据")
+        raise AuthException(ErrorCode.TOKEN_INVALID, "无效的认证凭据")
         
     session = await TransferService.get_session(db, session_code, user_id)
     if not session:
-        raise HTTPException(status_code=404, detail="会话不存在或无权访问")
+        raise NotFoundException("会话")
     
     if session.status != TransferStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="传输尚未完成")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "传输尚未完成")
     
     if session.receiver_id != user_id:
-        raise HTTPException(status_code=403, detail="只有接收方可以下载文件")
+        raise PermissionException("只有接收方可以下载文件")
     
     if not session.temp_file_path or not os.path.exists(session.temp_file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 路径安全验证：确保文件路径在允许的临时目录内
     from modules.transfer.transfer_services import TransferConfig
     temp_dir = TransferConfig.get_temp_dir()
     resolved_path = Path(session.temp_file_path).resolve()
     if not str(resolved_path).startswith(str(temp_dir.resolve())):
-        raise HTTPException(status_code=403, detail="文件路径非法")
+        raise PermissionException("文件路径非法")
     
     # URL 编码文件名以支持中文
     from urllib.parse import quote
@@ -493,7 +494,7 @@ async def delete_history(
     history = result.scalar_one_or_none()
     
     if not history:
-        raise HTTPException(status_code=404, detail="记录不存在或无权删除")
+        raise NotFoundException("记录")
     
     await db.delete(history)
     await db.flush()
@@ -514,7 +515,7 @@ async def cleanup_expired(
 ):
     """清理过期的会话和历史记录（需要管理员权限）"""
     if current_user.role not in ["admin", "manager"]:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionException("需要管理员权限")
     
     # 清理过期会话
     session_count = await TransferService.cleanup_expired_sessions(db)

@@ -12,41 +12,9 @@ const ResourceLoader = {
     pendingCSS: {},
     pendingJS: {},
 
-    // 模块资源映射表（路由路径 -> 资源列表）
-    moduleResourceMap: {
-        // 系统管理模块
-        '/system': {
-            css: ['/static/css/pages/system.css'],
-            js: ['/static/js/pages/system.js']
-        },
-        '/users': {
-            css: ['/static/css/pages/users.css'],
-            js: ['/static/js/pages/users.js']
-        },
-        '/roles': {
-            css: ['/static/css/pages/roles.css'],
-            js: ['/static/js/pages/roles.js']
-        },
-        '/backup': {
-            css: ['/static/css/pages/backup.css'],
-            js: ['/static/js/pages/backup.js']
-        },
-        '/monitor': {
-            css: ['/static/css/pages/monitor.css'],
-            js: ['/static/js/pages/monitor.js']
-        },
-        '/import-export': {
-            css: ['/static/css/pages/import-export.css'],
-            js: ['/static/js/pages/import-export.js']
-        },
-        '/announcement': {
-            css: ['/static/css/pages/announcement.css'],
-            js: ['/static/js/pages/announcement.js']
-        },
-        '/feedback': {
-            css: ['/static/css/pages/feedback.css'],
-            js: ['/static/js/pages/feedback.js']
-        },
+    // 约定：路由 /path 默认对应 /static/css/pages/{path}.css 与 /static/js/pages/{path}.js
+    // 仅需为不符合约定的路由配置覆盖项（多文件、子目录、不同命名等）
+    moduleResourceMapOverrides: {
         '/theme': {
             css: ['/static/css/pages/theme_editor.css'],
             js: ['/static/js/pages/theme_editor.js']
@@ -59,55 +27,22 @@ const ResourceLoader = {
             css: ['/static/css/pages/messages.css'],
             js: ['/static/js/pages/messages.js']
         },
-
-        // 文件与内容模块
         '/filemanager': {
-            css: ['/static/css/pages/filemanager.css'],
+            css: [
+                '/static/css/pages/filemanager.css',
+                '/static/css/components/office_viewer.css',
+                '/static/css/components/pdf_viewer.css'
+            ],
             js: ['/static/js/pages/filemanager.js']
-        },
-        '/transfer': {
-            css: ['/static/css/pages/transfer.css'],
-            js: ['/static/js/pages/transfer.js']
-        },
-        '/blog': {
-            css: ['/static/css/pages/blog.css'],
-            js: ['/static/js/pages/blog.js']
-        },
-        '/notes': {
-            css: ['/static/css/pages/notes.css'],
-            js: ['/static/js/pages/notes.js']
-        },
-        '/knowledge': {
-            css: ['/static/css/pages/knowledge.css'],
-            js: ['/static/js/pages/knowledge.js']
-        },
-        '/vault': {
-            css: ['/static/css/pages/vault.css'],
-            js: ['/static/js/pages/vault.js']
-        },
-
-        // 媒体工具模块
-        '/album': {
-            css: ['/static/css/pages/album.css'],
-            js: ['/static/js/pages/album.js']
-        },
-        '/video': {
-            css: ['/static/css/pages/video.css'],
-            js: ['/static/js/pages/video.js']
-        },
-        '/ocr': {
-            css: ['/static/css/pages/ocr.css'],
-            js: ['/static/js/pages/ocr.js']
-        },
-        '/lm_cleaner': {
-            css: ['/static/css/pages/lm_cleaner.css'],
-            js: ['/static/js/pages/lm_cleaner.js']
         },
         '/pdf': {
             css: [
-                '/static/css/pages/pdf/pdf.css'
+                '/static/css/pages/pdf/pdf.css',
+                '/static/css/components/pdf_viewer.css',
+                '/static/css/components/office_viewer.css'
             ],
             js: [
+                '/static/js/components/office_viewer.js',
                 '/static/js/pages/pdf/pdf_utils.js',
                 '/static/js/pages/pdf/pdf_reader.js',
                 '/static/js/pages/pdf/pdf_toolbox.js',
@@ -126,22 +61,6 @@ const ResourceLoader = {
                 '/static/js/pages/markdown/markdown.js'
             ]
         },
-
-        // 学习与办公模块
-        '/exam': {
-            css: ['/static/css/pages/exam.css'],
-            js: ['/static/js/pages/exam.js']
-        },
-        '/course': {
-            css: ['/static/css/pages/course.css'],
-            js: ['/static/js/pages/course.js']
-        },
-        '/schedule': {
-            css: ['/static/css/pages/schedule.css'],
-            js: ['/static/js/pages/schedule.js']
-        },
-
-        // 通讯与AI模块
         '/im': {
             css: ['/static/css/pages/im/im.css'],
             js: [
@@ -149,16 +68,6 @@ const ResourceLoader = {
                 '/static/js/pages/im/im.js'
             ]
         },
-        '/ai': {
-            css: ['/static/css/pages/ai.css'],
-            js: ['/static/js/pages/ai.js']
-        },
-        '/map': {
-            css: ['/static/css/pages/map.css'],
-            js: ['/static/js/pages/map.js']
-        },
-
-        // 数据分析模块
         '/analysis': {
             css: [
                 '/static/css/pages/analysis/analysis.css',
@@ -183,8 +92,6 @@ const ResourceLoader = {
                 '/static/js/pages/analysis/analysis_smart_table.js'
             ]
         },
-
-        // 数据透镜模块
         '/lens': {
             css: [
                 '/static/css/pages/datalens/datalens.css',
@@ -199,6 +106,22 @@ const ResourceLoader = {
                 '/static/js/pages/datalens/datalens_editor.js'
             ]
         }
+    },
+
+    // 动态注册的模块资源（来自应用市场等，由 registerDynamicModules 写入）
+    moduleResourceMapDynamic: {},
+
+    /**
+     * 根据路由获取资源列表：优先覆盖表，再动态表，否则按约定生成（/path -> pages/path.js + pages/path.css）
+     */
+    getResourcesForPath(basePath) {
+        if (this.moduleResourceMapOverrides[basePath]) return this.moduleResourceMapOverrides[basePath];
+        if (this.moduleResourceMapDynamic[basePath]) return this.moduleResourceMapDynamic[basePath];
+        const pathKey = basePath.replace(/^\//, '') || 'index';
+        return {
+            css: [`/static/css/pages/${pathKey}.css`],
+            js: [`/static/js/pages/${pathKey}.js`]
+        };
     },
 
     /**
@@ -246,7 +169,7 @@ const ResourceLoader = {
 
             link.onerror = () => {
                 delete this.pendingCSS[url];
-                console.warn(`CSS 加载失败: ${url}`);
+                if (typeof Config !== 'undefined' && Config.warn) Config.warn(`CSS 加载失败: ${url}`);
                 resolve(); // 不阻塞后续加载
             };
 
@@ -291,7 +214,7 @@ const ResourceLoader = {
 
             script.onerror = () => {
                 delete this.pendingJS[url];
-                console.error(`JS 加载失败: ${url}`);
+                if (typeof Config !== 'undefined' && Config.error) Config.error(`JS 加载失败: ${url}`);
                 reject(new Error(`加载失败: ${url}`));
             };
 
@@ -299,6 +222,27 @@ const ResourceLoader = {
         });
 
         return this.pendingJS[url];
+    },
+
+    /**
+     * 加载 ECharts 库
+     * @returns {Promise}
+     */
+    async loadEcharts() {
+        if (typeof echarts !== 'undefined') return Promise.resolve();
+        this.log('正在动态加载 ECharts...');
+        return this.loadJS('/static/libs/echarts/echarts.min.js');
+    },
+
+    /**
+     * 加载 Leaflet 库
+     * @returns {Promise}
+     */
+    async loadLeaflet() {
+        if (typeof L !== 'undefined') return Promise.resolve();
+        this.log('正在动态加载 Leaflet...');
+        await this.loadCSS('/static/libs/leaflet/leaflet.css');
+        return this.loadJS('/static/libs/leaflet/leaflet.js');
     },
 
     /**
@@ -330,9 +274,9 @@ const ResourceLoader = {
         // 提取基础路径（如 /users/list -> /users）
         const basePath = '/' + (path.split('/')[1] || '');
 
-        const resources = this.moduleResourceMap[basePath];
-        if (!resources) {
-            return; // 没有配置懒加载资源
+        const resources = this.getResourcesForPath(basePath);
+        if (!resources || (!resources.css?.length && !resources.js?.length)) {
+            return;
         }
 
         const startTime = Date.now();
@@ -387,5 +331,35 @@ const ResourceLoader = {
         });
 
         this.log(`资源加载器初始化完成，已缓存 CSS: ${this.loadedCSS.size}, JS: ${this.loadedJS.size}`);
+    },
+
+    /**
+     * 注册动态模块资源
+     * @param {Array} modules - Store.get('modules')
+     */
+    registerDynamicModules(modules) {
+        if (!modules || !Array.isArray(modules)) return;
+
+        modules.forEach(m => {
+            if (!m.id) return;
+            // 假设模块ID对应路由前缀 (如 'myapp' -> '/myapp')
+            const path = '/' + m.id;
+
+            const base = this.moduleResourceMapDynamic[path] || this.getResourcesForPath(path) || { css: [], js: [] };
+            const existing = { css: [...(base.css || [])], js: [...(base.js || [])] };
+            if (m.assets) {
+                if (m.assets.css && Array.isArray(m.assets.css)) {
+                    const newCss = m.assets.css.filter(c => !existing.css.includes(c));
+                    existing.css = [...existing.css, ...newCss];
+                }
+                if (m.assets.js && Array.isArray(m.assets.js)) {
+                    const newJs = m.assets.js.filter(j => !existing.js.includes(j));
+                    existing.js = [...existing.js, ...newJs];
+                }
+                this.moduleResourceMapDynamic[path] = existing;
+            }
+        });
+
+        this.log(`动态模块资源注册完成: ${modules.length} 个模块`);
     }
 };

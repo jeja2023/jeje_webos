@@ -151,7 +151,7 @@ const Store = {
         
         // 监听器上限保护
         if (this.listeners.length >= this.MAX_LISTENERS) {
-            console.warn(`[Store] 监听器数量已达上限 (${this.MAX_LISTENERS})，请检查是否有未取消的订阅`);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn(`[Store] 监听器数量已达上限 (${this.MAX_LISTENERS})，请检查是否有未取消的订阅`);
             // 移除最早的非通配符监听器
             const idx = this.listeners.findIndex(l => l.key !== '*');
             if (idx !== -1) {

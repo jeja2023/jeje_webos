@@ -244,7 +244,7 @@ const AnalysisChartMixin = {
         this.state.chartType = values.chartType;
 
         // 初始化图表容器
-        const result = this._initChartContainer('chart-container', 'chartInstance');
+        const result = await this._initChartContainer('chart-container', 'chartInstance');
         if (!result) return;
         const { instance } = result;
 
@@ -331,7 +331,10 @@ const AnalysisChartMixin = {
      * @param {string} instanceKey - 实例键名 ('chartInstance' 或 'viewerChartInstance')
      * @returns {Object|null} - {container, instance} 或 null
      */
-    _initChartContainer(containerId, instanceKey = 'chartInstance') {
+    async _initChartContainer(containerId, instanceKey = 'chartInstance') {
+        // 动态加载组件
+        await ResourceLoader.loadEcharts();
+
         // 销毁旧实例
         const oldInstance = this[instanceKey];
         if (oldInstance) {
@@ -381,7 +384,7 @@ const AnalysisChartMixin = {
             ChartConfigUI.updateFieldOptions(optionsHtml);
 
         } catch (e) {
-            console.error('获取字段失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('获取字段失败', e);
         }
     },
 
@@ -728,7 +731,7 @@ const AnalysisChartMixin = {
         }
 
         // 使用统一的容器初始化方法
-        const result = this._initChartContainer(containerId, 'viewerChartInstance');
+        const result = await this._initChartContainer(containerId, 'viewerChartInstance');
         if (!result) return;
 
         const { instance: chartInstance } = result;

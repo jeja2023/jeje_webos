@@ -1557,3 +1557,19 @@ class NotesViewPage extends Component {
     }
 }
 
+
+
+// 将 NotesListPage 导出到全局作用域以支持动态加载
+window.NotesListPage = NotesListPage;
+
+// 将 NotesEditPage 导出到全局作用域以支持动态加载
+window.NotesEditPage = NotesEditPage;
+
+// 将 NotesStarredPage 导出到全局作用域以支持动态加载
+window.NotesStarredPage = NotesStarredPage;
+
+// 将 NotesTagsPage 导出到全局作用域以支持动态加载
+window.NotesTagsPage = NotesTagsPage;
+
+// 将 NotesViewPage 导出到全局作用域以支持动态加载
+window.NotesViewPage = NotesViewPage;

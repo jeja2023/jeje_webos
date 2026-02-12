@@ -795,3 +795,7 @@ class BackupPage extends Component {
 }
 
 
+
+
+// 将 BackupPage 导出到全局作用域以支持动态加载
+window.BackupPage = BackupPage;

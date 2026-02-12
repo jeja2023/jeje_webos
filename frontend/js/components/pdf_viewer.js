@@ -61,7 +61,7 @@ const PdfViewer = {
                 throw new Error(res.message || '获取文档信息失败');
             }
         } catch (e) {
-            console.error('PDF 预览失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('PDF 预览失败:', e);
             Toast.error('文档预览失败: ' + e.message);
         }
     },
@@ -156,10 +156,7 @@ const PdfViewer = {
                     <button class="btn btn-icon" data-action="zoom-out" title="缩小">
                         <i class="ri-zoom-out-line"></i>
                     </button>
-                    <div class="pdf-viewer-divider"></div>
-                    <button class="btn btn-icon" data-action="close" title="关闭">
-                        <i class="ri-close-line"></i>
-                    </button>
+
                 </div>
             </div>
         `;
@@ -191,15 +188,7 @@ const PdfViewer = {
      * 刷新页面显示
      */
     _refreshPage() {
-        const container = document.querySelector('.pdf-viewer-standalone');
-        if (container) {
-            container.innerHTML = this._renderContent().replace('<div class="pdf-viewer-standalone">', '').replace('</div>\n        ', '');
-            // 重新获取容器并更新
-            const wrapper = document.querySelector('.pdf-viewer-standalone');
-            if (wrapper) {
-                wrapper.innerHTML = this._renderContent().match(/<div class="pdf-viewer-standalone">([\s\S]*)<\/div>\s*$/)[1];
-            }
-        }
+
 
         // 更简单的方式：直接更新图片和控件
         const { fileId, filePath, currentPage, totalPages, zoom, source } = this._state;

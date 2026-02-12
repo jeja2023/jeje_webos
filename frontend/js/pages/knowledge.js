@@ -237,7 +237,7 @@ class KnowledgeViewPage extends Component {
                 loading: false
             });
         } catch (e) {
-            console.error('[Knowledge] 加载失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[Knowledge] 加载失败:', e);
             Toast.error(e.message || '加载失败');
             this.setState({ loading: false });
             // 如果是 404 或者无权访问，延迟后返回
@@ -677,7 +677,7 @@ class KnowledgeViewPage extends Component {
                 Toast.success('文档解析完成');
             }
         } catch (e) {
-            console.error('轮询检查错误', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('轮询检查错误', e);
         }
     }
 
@@ -946,9 +946,7 @@ class KnowledgeViewPage extends Component {
         if (!container || !this.state.graphData) return;
 
         // 动态加载 ECharts
-        if (typeof echarts === 'undefined') {
-            await Utils.loadScript('https://lib.baomitu.com/echarts/5.4.3/echarts.min.js');
-        }
+        await ResourceLoader.loadEcharts();
 
         const chart = echarts.init(container);
         const data = this.state.graphData;
@@ -1023,3 +1021,10 @@ class KnowledgeViewPage extends Component {
         });
     }
 }
+
+
+// 将 KnowledgeListPage 导出到全局作用域以支持动态加载
+window.KnowledgeListPage = KnowledgeListPage;
+
+// 将 KnowledgeViewPage 导出到全局作用域以支持动态加载
+window.KnowledgeViewPage = KnowledgeViewPage;

@@ -12,12 +12,13 @@ from typing import Optional, List
 from pathlib import Path
 import httpx
 from mimetypes import guess_type
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Body
+from fastapi import APIRouter, Depends, UploadFile, File, Query, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, require_permission, TokenData
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from schemas import success, error
 
 from .datalens_schemas import (
@@ -90,12 +91,12 @@ async def get_datasource(
     """获取数据源详情"""
     source = await DataSourceService.get_by_id(db, source_id)
     if not source:
-        raise HTTPException(status_code=404, detail="数据源不存在")
+        raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该数据源")
+        raise PermissionException("无权访问该数据源")
 
     return success(data={
         "id": source.id,
@@ -136,12 +137,12 @@ async def update_datasource(
     """更新数据源"""
     source = await DataSourceService.get_by_id(db, source_id)
     if not source:
-        raise HTTPException(status_code=404, detail="数据源不存在")
+        raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权修改该数据源")
+        raise PermissionException("无权修改该数据源")
 
     await DataSourceService.update(db, source, data)
     logger.info(f"用户 {user.username} 更新了数据源: {source.name}")
@@ -157,12 +158,12 @@ async def delete_datasource(
     """删除数据源"""
     source = await DataSourceService.get_by_id(db, source_id)
     if not source:
-        raise HTTPException(status_code=404, detail="数据源不存在")
+        raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权删除该数据源")
+        raise PermissionException("无权删除该数据源")
 
     await DataSourceService.delete(db, source)
     logger.info(f"用户 {user.username} 删除了数据源: {source.name}")
@@ -199,12 +200,12 @@ async def get_source_tables(
     """获取数据源的表列表"""
     source = await DataSourceService.get_by_id(db, source_id)
     if not source:
-        raise HTTPException(status_code=404, detail="数据源不存在")
+        raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该数据源")
+        raise PermissionException("无权访问该数据源")
 
     tables = await DataSourceService.get_tables(source)
     return success(data=tables)
@@ -220,18 +221,18 @@ async def get_source_columns(
     """获取数据源指定表的字段列表"""
     source = await DataSourceService.get_by_id(db, source_id)
     if not source:
-        raise HTTPException(status_code=404, detail="数据源不存在")
+        raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and source.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该数据源")
+        raise PermissionException("无权访问该数据源")
 
     try:
         columns = await DataSourceService.get_columns(source, table_name)
         return success(data=columns)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"获取字段列表失败: {str(e)}")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, f"获取字段列表失败: {str(e)}")
 
 
 # ==================== 分类管理 ====================
@@ -268,7 +269,7 @@ async def update_category(
     """更新分类"""
     category = await CategoryService.get_by_id(db, category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
 
     await CategoryService.update(db, category, data)
     logger.info(f"用户 {user.username} 更新了分类: {category.name}")
@@ -284,7 +285,7 @@ async def delete_category(
     """删除分类"""
     category = await CategoryService.get_by_id(db, category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
 
     await CategoryService.delete(db, category)
     logger.info(f"用户 {user.username} 删除了分类: {category.name}")
@@ -315,17 +316,17 @@ async def get_view(
     """获取视图详情"""
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该视图")
+        raise PermissionException("无权访问该视图")
 
     # 检查视图级权限
     if view.required_permission and view.required_permission not in user.permissions:
         if user.role != "admin":
-            raise HTTPException(status_code=403, detail=f"缺少权限: {view.required_permission}")
+            raise PermissionException(f"缺少权限: {view.required_permission}")
 
     return success(data={
         "id": view.id,
@@ -370,12 +371,12 @@ async def update_view(
     """更新视图"""
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权修改该视图")
+        raise PermissionException("无权修改该视图")
 
     await ViewService.update(db, view, data)
     logger.info(f"用户 {user.username} 更新了视图: {view.name}")
@@ -391,12 +392,12 @@ async def delete_view(
     """删除视图"""
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权删除该视图")
+        raise PermissionException("无权删除该视图")
 
     await ViewService.delete(db, view)
     logger.info(f"用户 {user.username} 删除了视图: {view.name}")
@@ -416,16 +417,16 @@ async def get_view_data(
     """
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该视图")
+        raise PermissionException("无权访问该视图")
 
     if view.required_permission and view.required_permission not in user.permissions:
         if user.role != "admin":
-            raise HTTPException(status_code=403, detail=f"缺少权限: {view.required_permission}")
+            raise PermissionException(f"缺少权限: {view.required_permission}")
 
     try:
         # 增加访问次数
@@ -466,16 +467,16 @@ async def export_view_data(
 
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该视图")
+        raise PermissionException("无权访问该视图")
 
     if view.required_permission and view.required_permission not in user.permissions:
         if user.role != "admin":
-            raise HTTPException(status_code=403, detail=f"缺少权限: {view.required_permission}")
+            raise PermissionException(f"缺少权限: {view.required_permission}")
 
     try:
         generator = await ViewService.stream_export_csv(db, view)
@@ -493,7 +494,7 @@ async def export_view_data(
         return StreamingResponse(generator, headers=headers)
     except Exception as e:
         logger.error(f"导出视图数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise BusinessException(ErrorCode.EXPORT_FAILED, f"导出失败: {str(e)}")
 
 
 @router.get("/views/{view_id}/preview")
@@ -508,12 +509,12 @@ async def preview_view_data(
     """
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
     if not is_admin and not view.is_public and view.created_by != user.user_id:
-        raise HTTPException(status_code=403, detail="无权访问该视图")
+        raise PermissionException("无权访问该视图")
 
     try:
         request = ViewDataRequest(page=1, page_size=10)
@@ -548,7 +549,7 @@ async def execute_preview(
     # 获取数据源
     datasource = await DataSourceService.get_by_id(db, data.datasource_id)
     if not datasource:
-         raise HTTPException(status_code=404, detail="数据源不存在")
+         raise NotFoundException("数据源")
 
     # 权限检查
     is_admin = user.role == "admin" or "datalens.admin" in user.permissions
@@ -603,7 +604,7 @@ async def add_favorite(
     # 检查视图是否存在
     view = await ViewService.get_by_id(db, view_id)
     if not view:
-        raise HTTPException(status_code=404, detail="视图不存在")
+        raise NotFoundException("视图")
 
     try:
         await FavoriteService.add(db, user.user_id, view_id)
@@ -659,7 +660,7 @@ async def upload_file(
     content = await file.read()
     is_valid, error_msg = storage_manager.validate_file(file.filename, len(content), content)
     if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, error_msg)
 
     # 生成存储路径 (存储于 modules/datalens/uploads/user_{id}/)
     relative_path, full_path = storage_manager.generate_filename(
@@ -676,7 +677,7 @@ async def upload_file(
             await f.write(content)
     except Exception as e:
         logger.error(f"保存 DataLens 文件失败: {e}")
-        raise HTTPException(status_code=500, detail="文件保存失败")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "文件保存失败")
 
     logger.info(f"用户 {user.username} 上传了 DataLens 文件: {file.filename} -> {relative_path}")
     return success(data={
@@ -708,10 +709,10 @@ async def get_lens_image(
                         media_type=content_type
                     )
                 else:
-                    raise HTTPException(status_code=404, detail="远程图片无法访问")
+                    raise NotFoundException("远程图片")
         except Exception as e:
             logger.error(f"代理远程图片失败: {e}")
-            raise HTTPException(status_code=500, detail=f"获取远程图片失败: {str(e)}")
+            raise BusinessException(ErrorCode.INTERNAL_ERROR, f"获取远程图片失败: {str(e)}")
 
     # 2. 处理本地路径
     storage_manager = get_storage_manager()
@@ -725,25 +726,25 @@ async def get_lens_image(
             file_path = potential_path.resolve()
         except (ValueError, OSError) as e:
             logger.debug(f"解析路径失败: {e}")
-            raise HTTPException(status_code=400, detail="无效的路径格式")
+            raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的路径格式")
     else:
         # 默认作为 storage 下的相对路径处理
         file_path = storage_manager.get_file_path(path)
         if not file_path:
-             raise HTTPException(status_code=404, detail="图片路径不存在或非法访问")
+             raise NotFoundException("图片")
 
     # 路径安全深度校验 (防跨站提权)
     if not storage_manager._is_safe_path(file_path):
         logger.warning(f"用户 {user.username} 尝试访问越权路径: {file_path}")
-        raise HTTPException(status_code=403, detail="禁止访问此目录下的文件")
+        raise PermissionException("禁止访问此目录下的文件")
 
     # 安全检查：只允许特定的扩展名
     allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"}
     if file_path.suffix.lower() not in allowed_exts:
-        raise HTTPException(status_code=400, detail="不支持的图片类型")
+        raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "不支持的图片类型")
 
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="图片文件不存在")
+        raise NotFoundException("图片文件")
 
     # 获取 MIME 类型
     mime_type, _ = guess_type(str(file_path))

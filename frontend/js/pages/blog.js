@@ -1134,3 +1134,16 @@ class BlogViewPage extends Component {
 }
 
 
+
+
+// 将 BlogListPage 导出到全局作用域以支持动态加载
+window.BlogListPage = BlogListPage;
+
+// 将 BlogEditPage 导出到全局作用域以支持动态加载
+window.BlogEditPage = BlogEditPage;
+
+// 将 BlogCategoryPage 导出到全局作用域以支持动态加载
+window.BlogCategoryPage = BlogCategoryPage;
+
+// 将 BlogViewPage 导出到全局作用域以支持动态加载
+window.BlogViewPage = BlogViewPage;

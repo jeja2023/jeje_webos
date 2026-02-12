@@ -74,3 +74,7 @@ class ThemeEditorPage extends Component {
     }
 
 }
+
+
+// 将 ThemeEditorPage 导出到全局作用域以支持动态加载
+window.ThemeEditorPage = ThemeEditorPage;

@@ -11,12 +11,18 @@
 import logging
 from typing import Optional
 from utils.timezone import get_beijing_time
-from fastapi import APIRouter, Body, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from core.database import get_db
+from core.errors import (
+    AuthException,
+    BusinessException,
+    NotFoundException,
+    ErrorCode,
+)
 from core.security import (
     hash_password,
     verify_password,
@@ -56,12 +62,12 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     # 检查用户名是否存在
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="用户名已存在")
+        raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "用户名已存在")
     
     # 检查手机号是否存在（手机号唯一）
     result = await db.execute(select(User).where(User.phone == data.phone))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="该手机号已被注册")
+        raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "该手机号已被注册")
     
     # 获取 guest 用户组（用于默认分配）
     guest_group_id = None
@@ -115,7 +121,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         lock_key = f"auth:lock:{user.id}"
         if await Cache.get(lock_key):
             logger.warning(f"登录被拒: 账户已锁定 - IP: {client_ip}, user_id: {user.id}")
-            raise HTTPException(status_code=429, detail="账户已被临时锁定，请稍后重试")
+            raise BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, "账户已被临时锁定，请稍后重试")
     
     # 登录失败：统一返回“用户名或密码错误”，不区分用户是否存在，防止用户名枚举（安全最佳实践）
     if not user or not verify_password(data.password, user.password_hash):
@@ -137,7 +143,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         )
         db.add(fail_log)
         await db.commit()
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise AuthException(ErrorCode.LOGIN_FAILED, "用户名或密码错误")
     
     # 登录成功，清除失败计数
     if user:
@@ -156,7 +162,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         db.add(fail_log)
         await db.commit()
         logger.warning(f"登录被阻止 - IP: {client_ip}, 用户ID: {user.id}, 原因: 账户未激活")
-        raise HTTPException(status_code=403, detail="账户尚未激活，请等待管理员审核")
+        raise AuthException(ErrorCode.ACCOUNT_DISABLED, "账户尚未激活，请等待管理员审核")
     
     # 更新最后登录时间
     user.last_login = get_beijing_time()
@@ -237,7 +243,7 @@ async def get_me(
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     # 获取全量权限（直接权限 + 角色权限），与登录时保持一致
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)
@@ -273,7 +279,7 @@ async def change_password(
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundException("用户")
     
     if not verify_password(data.old_password, user.password_hash):
         # 记录密码修改失败日志
@@ -288,7 +294,7 @@ async def change_password(
         db.add(fail_log)
         await db.commit()
         logger.warning(f"密码修改失败 - IP: {client_ip}, 用户ID: {current_user.user_id}, 原因: 原密码错误")
-        raise HTTPException(status_code=400, detail="原密码错误")
+        raise AuthException(ErrorCode.PASSWORD_INCORRECT, "原密码错误")
     
     user.password_hash = hash_password(data.new_password)
     
@@ -330,16 +336,16 @@ async def refresh_token(
     if not refresh_token_str and settings.auth_use_httponly_cookie:
         refresh_token_str = request.cookies.get(COOKIE_REFRESH_TOKEN)
     if not refresh_token_str:
-        raise HTTPException(status_code=401, detail="无效的刷新令牌")
+        raise AuthException(ErrorCode.REFRESH_TOKEN_INVALID, "无效的刷新令牌")
 
     token_data = decode_token(refresh_token_str, expected_type="refresh")
     if not token_data:
-        raise HTTPException(status_code=401, detail="无效的刷新令牌")
+        raise AuthException(ErrorCode.REFRESH_TOKEN_INVALID, "无效的刷新令牌")
 
     result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="用户不存在或已被禁用")
+        raise AuthException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在或已被禁用")
     
     # 获取实时权限（用于响应体返回给前端）
     permissions = await resolve_permissions(db, user.permissions, user.role_ids)

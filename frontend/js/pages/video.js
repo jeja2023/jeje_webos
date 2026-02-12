@@ -49,7 +49,7 @@ class VideoPage extends Component {
             videoPlayer._errorBound = true;
             videoPlayer.addEventListener('error', (e) => {
                 const error = videoPlayer.error;
-                console.error('视频播放错误:', error);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('视频播放错误:', error);
                 let msg = '视频播放出错';
                 if (error) {
                     switch (error.code) {
@@ -279,7 +279,7 @@ class VideoPage extends Component {
                 this.setState({ collections: [] });
             }
         } catch (e) {
-            console.error('加载视频集异常:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载视频集异常:', e);
             Toast.error('加载视频集失败: ' + (e.message || '未知错误'));
         } finally {
             this.setState({ loading: false });
@@ -392,7 +392,7 @@ class VideoPage extends Component {
                 uploadedCount++;
                 return true;
             } catch (err) {
-                console.error('上传失败:', file.name, err);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('上传失败:', file.name, err);
                 return false;
             }
         };
@@ -595,7 +595,7 @@ class VideoPage extends Component {
                 </div>
             `;
         } catch (e) {
-            console.error('渲染错误:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('渲染错误:', e);
             return `<div class="alert alert-danger m-4">页面渲染错误: ${Utils.escapeHtml(e.message)}</div>`;
         }
     }
@@ -827,7 +827,7 @@ class VideoPage extends Component {
                     try {
                         await this.loadCollections();
                     } catch (e) {
-                        console.error('刷新列表失败:', e);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('刷新列表失败:', e);
                     }
                 } else {
                     throw new Error(res.message || '创建失败');
@@ -925,3 +925,7 @@ class VideoPage extends Component {
         }).show();
     }
 }
+
+
+// 将 VideoPage 导出到全局作用域以支持动态加载
+window.VideoPage = VideoPage;

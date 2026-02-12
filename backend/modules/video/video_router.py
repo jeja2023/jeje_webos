@@ -8,12 +8,13 @@ import mimetypes
 import logging
 
 logger = logging.getLogger(__name__)
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Header
+from fastapi import APIRouter, Depends, UploadFile, File, Query, Header
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, get_optional_user, TokenData
+from core.errors import NotFoundException, PermissionException, AuthException, BusinessException, ErrorCode
 from schemas.response import success, error
 from utils.storage import get_storage_manager
 
@@ -112,7 +113,7 @@ async def get_collection_detail(
     """获取视频集详情（包含视频列表）"""
     collection = await VideoService.get_collection_by_id(db, collection_id, user.user_id, include_videos=True)
     if not collection:
-        raise HTTPException(status_code=404, detail="视频集不存在")
+        raise NotFoundException("视频集")
     
     # 构建响应
     collection_data = CollectionResponse.model_validate(collection).model_dump()
@@ -155,7 +156,7 @@ async def update_collection(
     """更新视频集信息"""
     collection = await VideoService.update_collection(db, collection_id, data, user.user_id)
     if not collection:
-        raise HTTPException(status_code=404, detail="视频集不存在")
+        raise NotFoundException("视频集")
     
     await db.commit()
     return success(data=CollectionResponse.model_validate(collection).model_dump(), message="更新成功")
@@ -170,7 +171,7 @@ async def delete_collection(
     """删除视频集（同时删除所有视频）"""
     deleted = await VideoService.delete_collection(db, collection_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="视频集不存在")
+        raise NotFoundException("视频集")
     
     await db.commit()
     return success(message="视频集已删除")
@@ -188,12 +189,12 @@ async def upload_video(
     """上传视频到指定视频集"""
     # 验证文件类型（Content-Type + 魔数双重验证）
     if not file.content_type or not file.content_type.startswith('video/'):
-        raise HTTPException(status_code=400, detail="只能上传视频文件")
+        raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "只能上传视频文件")
     
     # 读取文件内容
     content = await file.read()
     if len(content) > 1024 * 1024 * 1024:  # 1GB 限制 (与前端一致)
-        raise HTTPException(status_code=400, detail="文件大小不能超过 1GB")
+        raise BusinessException(ErrorCode.FILE_TOO_LARGE, "文件大小不能超过 1GB")
     
     # 验证文件魔数（防止 Content-Type 伪造）
     # 注意：如果 filetype 库不可用或不支持该格式，默认放行，依靠后续处理（ffmpeg）来验证
@@ -215,7 +216,7 @@ async def upload_video(
             storage_manager
         )
         if not video:
-            raise HTTPException(status_code=404, detail="视频集不存在")
+            raise NotFoundException("视频集")
         
         await db.commit()
         
@@ -232,7 +233,7 @@ async def upload_video(
             "file_size": video.file_size
         }, message="视频上传成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.get("/{collection_id}/videos", summary="获取视频集视频列表")
@@ -245,7 +246,7 @@ async def get_collection_videos(
     # 验证视频集归属
     collection = await VideoService.get_collection_by_id(db, collection_id, user.user_id)
     if not collection:
-        raise HTTPException(status_code=404, detail="视频集不存在")
+        raise NotFoundException("视频集")
     
     videos = await VideoService.get_videos_by_collection(db, collection_id, user.user_id)
     
@@ -284,7 +285,7 @@ async def get_video_file(
     # 获取视频
     video = await VideoService.get_video_by_id(db, video_id)
     if not video:
-        raise HTTPException(status_code=404, detail="视频不存在")
+        raise NotFoundException("视频")
     
     # 验证访问权限：已登录用户验证归属，或视频集公开
     if user:
@@ -293,16 +294,16 @@ async def get_video_file(
             # 检查视频集是否公开
             collection = await VideoService.get_collection_by_id(db, video.collection_id)
             if not collection or not collection.is_public:
-                raise HTTPException(status_code=403, detail="无权访问此视频")
+                raise PermissionException("无权访问此视频")
     else:
         # 未登录用户：仅允许访问公开视频集的视频
         collection = await VideoService.get_collection_by_id(db, video.collection_id)
         if not collection or not collection.is_public:
-            raise HTTPException(status_code=401, detail="请先登录")
+            raise AuthException(ErrorCode.UNAUTHORIZED, "请先登录")
     
     if not os.path.exists(video.storage_path):
         logger.error(f"视频文件未找到: {video.storage_path} (ID: {video_id})")
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 路径安全验证：确保文件在 storage 目录下
     from core.config import get_settings
@@ -310,7 +311,7 @@ async def get_video_file(
     resolved = os.path.realpath(video.storage_path)
     storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
-        raise HTTPException(status_code=403, detail="文件路径非法")
+        raise PermissionException("文件路径非法")
     
     logger.debug(f"正在读取视频: {video.filename}, 大小: {video.file_size}, 路径: {resolved}")
     
@@ -334,7 +335,7 @@ async def get_video_thumbnail(
     # 获取视频
     video = await VideoService.get_video_by_id(db, video_id)
     if not video:
-        raise HTTPException(status_code=404, detail="视频不存在")
+        raise NotFoundException("视频")
     
     # 验证访问权限：已登录用户验证归属，或视频集公开
     if user:
@@ -343,12 +344,12 @@ async def get_video_thumbnail(
             # 检查视频集是否公开
             collection = await VideoService.get_collection_by_id(db, video.collection_id)
             if not collection or not collection.is_public:
-                raise HTTPException(status_code=403, detail="无权访问此视频")
+                raise PermissionException("无权访问此视频")
     else:
         # 未登录用户：仅允许访问公开视频集的视频
         collection = await VideoService.get_collection_by_id(db, video.collection_id)
         if not collection or not collection.is_public:
-            raise HTTPException(status_code=401, detail="请先登录")
+            raise AuthException(ErrorCode.UNAUTHORIZED, "请先登录")
     
     # 返回缩略图
     if video.thumbnail_path and os.path.exists(video.thumbnail_path):
@@ -358,7 +359,7 @@ async def get_video_thumbnail(
         resolved = os.path.realpath(video.thumbnail_path)
         storage_root = os.path.realpath(_settings.upload_dir)
         if not resolved.startswith(storage_root):
-            raise HTTPException(status_code=403, detail="文件路径非法")
+            raise PermissionException("文件路径非法")
         
         return FileResponse(
             resolved,
@@ -366,7 +367,7 @@ async def get_video_thumbnail(
         )
     
     # 如果没有缩略图，返回404
-    raise HTTPException(status_code=404, detail="缩略图不存在")
+    raise NotFoundException("缩略图")
 
 
 @router.put("/videos/{video_id}", summary="更新视频信息")
@@ -379,7 +380,7 @@ async def update_video(
     """更新视频标题、描述等信息"""
     video = await VideoService.update_video(db, video_id, data, user.user_id)
     if not video:
-        raise HTTPException(status_code=404, detail="视频不存在")
+        raise NotFoundException("视频")
     
     await db.commit()
     return success(message="更新成功")
@@ -395,7 +396,7 @@ async def delete_video(
     logger.info(f"正在删除单个视频: id={video_id}, user_id={user.user_id}")
     count = await VideoService.delete_videos(db, [video_id], user.user_id)
     if count == 0:
-        raise HTTPException(status_code=404, detail="视频不存在")
+        raise NotFoundException("视频")
     
     await db.commit()
     return success(message="视频已删除")
@@ -410,7 +411,7 @@ async def batch_delete_videos(
     """批量删除指定的一组视频"""
     video_ids = data.get("ids", [])
     if not video_ids:
-        raise HTTPException(status_code=400, detail="未提供视频ID列表")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "未提供视频ID列表")
     
     count = await VideoService.delete_videos(db, video_ids, user.user_id)
     await db.commit()

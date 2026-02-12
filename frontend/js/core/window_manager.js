@@ -113,7 +113,7 @@ const WindowManager = {
             try {
                 win.component.destroy();
             } catch (e) {
-                console.error(`[WindowManager] 组件销毁失败 (${id}):`, e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error(`[WindowManager] 组件销毁失败 (${id}):`, e);
             }
         }
         win.component = null;

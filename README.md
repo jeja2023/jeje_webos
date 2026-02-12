@@ -74,11 +74,14 @@
   - JWT 自动轮换（每 25-35 天）
   - 速率限制（基于 Redis 滑动窗口）
   - 健康检查（`/health/live` 和 `/health/ready`）
+- **统一错误响应**：业务异常统一使用 `core.errors` 的 AppException 体系（NotFoundException、PermissionException、BusinessException 等），API 统一返回 `{ code, message, data }`，便于前端统一处理。
 
 ### 前端 (Vanilla JS / CSS3)
 - **无构建工具**：采用原生 ES Modules，修改即生效
 - **组件化**：自研轻量级 Component 基类，状态响应式更新
 - **样式架构**：核心样式、组件样式与模块样式分层解耦，支持基于 CSS 变量的动态换肤
+- **统一日志**：业务与组件使用 `Config.log` / `Config.warn` / `Config.error` 输出日志，便于通过 `Config.debug` 控制及后续接入监控
+- **资源加载约定**：路由 `/path` 默认对应 `pages/path.js` + `pages/path.css`，仅特殊路由在 loader 覆盖表中配置，新增约定页面无需改 loader
 
 ---
 
@@ -302,7 +305,7 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.29 |
+| | `APP_VERSION` | 系统版本 | 2.5.32 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

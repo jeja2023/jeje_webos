@@ -110,7 +110,7 @@ const ShortcutManager = {
                         }
                     }
                 } catch (err) {
-                    console.error('[ShortcutManager] 同步到后端失败:', err);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error('[ShortcutManager] 同步到后端失败:', err);
                     // 即使后端同步失败，也保持本地更新，避免用户体验问题
                 }
             }
@@ -119,7 +119,7 @@ const ShortcutManager = {
             return true;
 
         } catch (e) {
-            console.error('[ShortcutManager] 固定快捷方式失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[ShortcutManager] 固定快捷方式失败:', e);
             Toast.error('操作失败: ' + (e.message || '未知错误'));
             return false;
         }
@@ -186,7 +186,7 @@ const ShortcutManager = {
                         }
                     }
                 } catch (err) {
-                    console.error('[ShortcutManager] 同步到后端失败:', err);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error('[ShortcutManager] 同步到后端失败:', err);
                     // 即使后端同步失败，也保持本地更新，避免用户体验问题
                 }
             }
@@ -195,7 +195,7 @@ const ShortcutManager = {
             return true;
 
         } catch (e) {
-            console.error('[ShortcutManager] 取消固定快捷方式失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[ShortcutManager] 取消固定快捷方式失败:', e);
             Toast.error('操作失败: ' + (e.message || '未知错误'));
             return false;
         }
@@ -276,7 +276,7 @@ const ShortcutManager = {
             return cleanedCount;
 
         } catch (e) {
-            console.error('[ShortcutManager] 清理无效快捷方式失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[ShortcutManager] 清理无效快捷方式失败:', e);
             return 0;
         }
     }

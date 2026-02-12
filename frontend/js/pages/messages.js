@@ -437,3 +437,7 @@ class NotificationsPage extends Component {
 }
 
 
+
+
+// 将 NotificationsPage 导出到全局作用域以支持动态加载
+window.NotificationsPage = NotificationsPage;

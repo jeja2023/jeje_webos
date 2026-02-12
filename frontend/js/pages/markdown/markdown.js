@@ -54,7 +54,7 @@ class MarkdownListPage extends Component {
             const res = await Api.get('/markdown/statistics');
             this.setState({ stats: res.data });
         } catch (e) {
-            console.warn('加载统计信息失败', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('加载统计信息失败', e);
         }
     }
 
@@ -363,7 +363,7 @@ class MarkdownEditPage extends Component {
                 const templatesRes = await Api.get('/markdown/templates');
                 newState.templates = templatesRes.data || [];
             } catch (e) {
-                console.warn('加载模板失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('加载模板失败', e);
             }
 
             // 加载文件列表
@@ -371,7 +371,7 @@ class MarkdownEditPage extends Component {
                 const docsRes = await Api.get('/markdown/docs?size=50');
                 newState.sidebarDocs = docsRes.data.items || [];
             } catch (e) {
-                console.warn('加载侧边栏文档失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('加载侧边栏文档失败', e);
             }
 
             // 如果有 docId，加载文档
@@ -613,7 +613,7 @@ class MarkdownEditPage extends Component {
                 this.startAutoSave();
                 this.updateWordCount();
             } catch (e) {
-                console.error('编辑器初始化失败:', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('编辑器初始化失败:', e);
                 this.initFallbackEditor(editorEl, initialContent);
             }
         }
@@ -1016,7 +1016,7 @@ class MarkdownEditPage extends Component {
                         URL.revokeObjectURL(url);
                         Toast.success('下载开始');
                     } catch (error) {
-                        console.error('导出失败:', error);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('导出失败:', error);
                         Toast.error('导出失败: ' + error.message);
                     }
                 }
@@ -1056,7 +1056,7 @@ class MarkdownEditPage extends Component {
             try {
                 this.editor.destroy();
             } catch (e) {
-                console.warn('销毁编辑器失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('销毁编辑器失败', e);
             }
             this.editor = null;
         }
@@ -1091,7 +1091,7 @@ class MarkdownViewPage extends Component {
                 const docsRes = await Api.get('/markdown/docs?size=50');
                 sidebarDocs = docsRes.data.items || [];
             } catch (e) {
-                console.warn('加载侧边栏文档失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('加载侧边栏文档失败', e);
             }
 
             this.setState({
@@ -1294,7 +1294,7 @@ class MarkdownViewPage extends Component {
                     readOnly: true
                 });
             } catch (e) {
-                console.error('阅读器渲染失败:', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('阅读器渲染失败:', e);
                 viewerEl.innerText = this.state.doc.content;
             }
         } else {
@@ -1388,7 +1388,7 @@ class MarkdownViewPage extends Component {
                         URL.revokeObjectURL(url);
                         Toast.success('下载开始');
                     } catch (error) {
-                        console.error('导出失败:', error);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('导出失败:', error);
                         Toast.error('导出失败: ' + error.message);
                     }
                 }
@@ -1396,3 +1396,13 @@ class MarkdownViewPage extends Component {
         }
     }
 }
+
+
+// 将 MarkdownListPage 导出到全局作用域以支持动态加载
+window.MarkdownListPage = MarkdownListPage;
+
+// 将 MarkdownEditPage 导出到全局作用域以支持动态加载
+window.MarkdownEditPage = MarkdownEditPage;
+
+// 将 MarkdownViewPage 导出到全局作用域以支持动态加载
+window.MarkdownViewPage = MarkdownViewPage;

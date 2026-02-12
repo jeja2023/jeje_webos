@@ -71,7 +71,7 @@ class DataLensPage extends Component {
                 this._openViewTab(res.data);
             }
         } catch (e) {
-            console.error('打开视图失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('打开视图失败:', e);
             this.setState({ loading: false });
             Toast.error('视图加载失败: ' + e.message);
         }

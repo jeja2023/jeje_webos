@@ -25,13 +25,13 @@ class ChartHelper {
             : container;
 
         if (!containerEl) {
-            console.warn('ChartHelper: 容器不存在', container);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: 容器不存在', container);
             return null;
         }
 
         // 检查 ECharts 是否已加载
         if (!window.echarts) {
-            console.error('ChartHelper: ECharts 未加载');
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: ECharts 未加载');
             return null;
         }
 
@@ -67,13 +67,13 @@ class ChartHelper {
                 : echarts.init(containerEl, theme);
 
             if (!instance) {
-                console.error('ChartHelper: 图表初始化失败');
+                (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 图表初始化失败');
                 return null;
             }
 
             return { container: containerEl, instance };
         } catch (e) {
-            console.error('ChartHelper: 图表初始化异常', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 图表初始化异常', e);
             return null;
         }
     }
@@ -87,7 +87,7 @@ class ChartHelper {
             try {
                 chartInstance.dispose();
             } catch (e) {
-                console.warn('ChartHelper: 销毁图表实例失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: 销毁图表实例失败', e);
             }
         }
     }
@@ -112,7 +112,7 @@ class ChartHelper {
             try {
                 instance.setOption(option, true);
             } catch (e) {
-                console.error('ChartHelper: 设置图表配置失败', e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 设置图表配置失败', e);
                 this.disposeChart(instance);
                 return null;
             }
@@ -123,7 +123,7 @@ class ChartHelper {
             try {
                 instance.resize();
             } catch (e) {
-                console.warn('ChartHelper: resize 失败', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: resize 失败', e);
             }
         }, 100);
 
@@ -143,7 +143,7 @@ class ChartHelper {
                     try {
                         instance.resize();
                     } catch (e) {
-                        console.warn('ChartHelper: resize 失败', e);
+                        (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: resize 失败', e);
                     }
                 }
             });
@@ -346,7 +346,7 @@ class ChartHelper {
      */
     static exportChartImage(chartInstance, options = {}) {
         if (!chartInstance || typeof chartInstance.getDataURL !== 'function') {
-            console.warn('ChartHelper: 图表实例无效或不支持导出');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: 图表实例无效或不支持导出');
             return null;
         }
 
@@ -363,7 +363,7 @@ class ChartHelper {
                 backgroundColor
             });
         } catch (e) {
-            console.error('ChartHelper: 导出图表失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 导出图表失败', e);
             return null;
         }
     }
@@ -375,7 +375,7 @@ class ChartHelper {
      */
     static exportChartSVG(chartInstance) {
         if (!chartInstance) {
-            console.warn('ChartHelper: 图表实例无效');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('ChartHelper: 图表实例无效');
             return null;
         }
 
@@ -393,7 +393,7 @@ class ChartHelper {
 
             return svgDataURL;
         } catch (e) {
-            console.error('ChartHelper: 导出 SVG 失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 导出 SVG 失败', e);
             return null;
         }
     }
@@ -438,7 +438,7 @@ class ChartHelper {
             link.click();
             Toast.success('图片已生成并开始下载');
         } catch (e) {
-            console.error('ChartHelper: 下载图表失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 下载图表失败', e);
             Toast.error('下载失败: ' + e.message);
         }
     }
@@ -505,7 +505,7 @@ class ChartHelper {
 
             Toast.success('数据已导出');
         } catch (e) {
-            console.error('ChartHelper: 导出数据失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('ChartHelper: 导出数据失败', e);
             Toast.error('导出失败: ' + e.message);
         }
     }

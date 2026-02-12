@@ -4,11 +4,12 @@
 """
 
 from utils.timezone import get_beijing_time
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from schemas.response import success, error
 
 from .exam_schemas import (
@@ -63,7 +64,7 @@ async def update_bank(
     """更新题库"""
     bank = await ExamService.update_bank(db, bank_id, data, user.user_id)
     if not bank:
-        raise HTTPException(status_code=404, detail="题库不存在")
+        raise NotFoundException("题库")
     await db.commit()
     return success(data=QuestionBankResponse.model_validate(bank).model_dump(), message="更新成功")
 
@@ -77,7 +78,7 @@ async def delete_bank(
     """删除题库"""
     deleted = await ExamService.delete_bank(db, bank_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="题库不存在")
+        raise NotFoundException("题库")
     await db.commit()
     return success(message="题库已删除")
 
@@ -130,7 +131,7 @@ async def get_question_detail(
     """获取题目详情"""
     question = await ExamService.get_question_by_id(db, question_id, user.user_id)
     if not question:
-        raise HTTPException(status_code=404, detail="题目不存在")
+        raise NotFoundException("题目")
     return success(data=QuestionResponse.model_validate(question).model_dump())
 
 
@@ -144,7 +145,7 @@ async def update_question(
     """更新题目"""
     question = await ExamService.update_question(db, question_id, data, user.user_id)
     if not question:
-        raise HTTPException(status_code=404, detail="题目不存在")
+        raise NotFoundException("题目")
     await db.commit()
     return success(data=QuestionResponse.model_validate(question).model_dump(), message="更新成功")
 
@@ -158,7 +159,7 @@ async def delete_question(
     """删除题目"""
     deleted = await ExamService.delete_question(db, question_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="题目不存在")
+        raise NotFoundException("题目")
     await db.commit()
     return success(message="题目已删除")
 
@@ -208,7 +209,7 @@ async def get_paper_detail(
     """获取试卷详情（含题目）"""
     paper = await ExamService.get_paper_by_id(db, paper_id, user.user_id)
     if not paper:
-        raise HTTPException(status_code=404, detail="试卷不存在")
+        raise NotFoundException("试卷")
     
     # 获取题目
     questions = await ExamService.get_paper_questions(db, paper_id)
@@ -236,7 +237,7 @@ async def update_paper(
     """更新试卷"""
     paper = await ExamService.update_paper(db, paper_id, data, user.user_id)
     if not paper:
-        raise HTTPException(status_code=404, detail="试卷不存在")
+        raise NotFoundException("试卷")
     await db.commit()
     return success(data=PaperResponse.model_validate(paper).model_dump(), message="更新成功")
 
@@ -250,7 +251,7 @@ async def delete_paper(
     """删除试卷"""
     deleted = await ExamService.delete_paper(db, paper_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="试卷不存在")
+        raise NotFoundException("试卷")
     await db.commit()
     return success(message="试卷已删除")
 
@@ -278,7 +279,7 @@ async def remove_paper_question(
     """移除试卷题目"""
     removed = await ExamService.remove_paper_question(db, paper_id, question_id, user.user_id)
     if not removed:
-        raise HTTPException(status_code=404, detail="题目不存在")
+        raise NotFoundException("题目")
     await db.commit()
     return success(message="题目已移除")
 
@@ -336,11 +337,11 @@ async def start_exam(
     try:
         record = await ExamService.start_exam(db, user.user_id, data.paper_id)
         if not record:
-            raise HTTPException(status_code=404, detail="试卷不存在")
+            raise NotFoundException("试卷")
         await db.commit()
         return success(data={"record_id": record.id}, message="考试开始")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.get("/take/{record_id}", summary="获取考试试卷")
@@ -352,14 +353,14 @@ async def get_exam_paper(
     """获取考试中的试卷内容（不含答案）"""
     record = await ExamService.get_record_by_id(db, record_id, user.user_id, include_answers=True)
     if not record:
-        raise HTTPException(status_code=404, detail="考试记录不存在")
+        raise NotFoundException("考试记录")
     
     if record.status not in ["pending", "in_progress"]:
-        raise HTTPException(status_code=400, detail="考试已结束")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "考试已结束")
     
     paper = await ExamService.get_paper_by_id(db, record.paper_id)
     if not paper:
-        raise HTTPException(status_code=404, detail="试卷不存在")
+        raise NotFoundException("试卷")
     
     # 获取题目
     questions = await ExamService.get_paper_questions(db, record.paper_id)
@@ -413,7 +414,7 @@ async def save_answer(
     """保存单题答案"""
     answer = await ExamService.save_answer(db, record_id, user.user_id, data.question_id, data.answer)
     if not answer:
-        raise HTTPException(status_code=400, detail="保存失败")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, "保存失败")
     await db.commit()
     return success(message="已保存")
 
@@ -428,7 +429,7 @@ async def submit_exam(
     """提交试卷"""
     record = await ExamService.submit_exam(db, record_id, user.user_id, data.answers)
     if not record:
-        raise HTTPException(status_code=400, detail="提交失败")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, "提交失败")
     await db.commit()
     
     return success(data={
@@ -480,7 +481,7 @@ async def get_record_detail(
     """获取考试记录详情（含答题情况）"""
     record = await ExamService.get_record_by_id(db, record_id, user.user_id, include_answers=True)
     if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
+        raise NotFoundException("记录")
     
     paper = await ExamService.get_paper_by_id(db, record.paper_id)
     
@@ -552,11 +553,11 @@ async def get_grading_detail(
     """获取待阅卷记录详情"""
     record = await ExamService.get_record_by_id(db, record_id, include_answers=True)
     if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
+        raise NotFoundException("记录")
     
     paper = await ExamService.get_paper_by_id(db, record.paper_id)
     if not paper or paper.user_id != user.user_id:
-        raise HTTPException(status_code=403, detail="无权限阅卷")
+        raise PermissionException("无权限阅卷")
     
     # 获取题目详情
     questions = await ExamService.get_paper_questions(db, record.paper_id)
@@ -598,7 +599,7 @@ async def submit_grading(
         db, record_id, user.user_id, data.grades, data.review_comment
     )
     if not record:
-        raise HTTPException(status_code=400, detail="阅卷失败")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, "阅卷失败")
     await db.commit()
     
     return success(data={
@@ -619,7 +620,7 @@ async def smart_create_paper(
     """根据规则自动从题库抽取题目组卷"""
     paper = await ExamService.smart_create_paper(db, user.user_id, data)
     if not paper:
-        raise HTTPException(status_code=400, detail="组卷失败")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, "组卷失败")
     await db.commit()
     return success(data=PaperResponse.model_validate(paper).model_dump(), message="智能组卷成功")
 
@@ -672,7 +673,7 @@ async def delete_wrong_question(
     """从错题本中移除指定题目"""
     deleted = await ExamService.delete_wrong_question(db, wrong_id, user.user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="错题记录不存在")
+        raise NotFoundException("错题记录")
     await db.commit()
     return success(message="已从错题本移除")
 
@@ -700,7 +701,7 @@ async def get_paper_ranking(
     """获取试卷的成绩排名榜"""
     ranking = await ExamService.get_paper_ranking(db, paper_id, limit)
     if not ranking:
-        raise HTTPException(status_code=404, detail="试卷不存在")
+        raise NotFoundException("试卷")
     return success(data=ranking)
 
 
@@ -716,7 +717,7 @@ async def submit_exam_v2(
     """提交试卷并自动记录错题"""
     record = await ExamService.submit_exam_with_wrong_record(db, record_id, user.user_id, data.answers)
     if not record:
-        raise HTTPException(status_code=400, detail="提交失败")
+        raise BusinessException(ErrorCode.OPERATION_FAILED, "提交失败")
     await db.commit()
     
     return success(data={

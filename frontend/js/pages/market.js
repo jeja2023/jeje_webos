@@ -212,7 +212,7 @@ class AppCenterMarketPage extends Component {
                 // 即使失败也保持本地更新，避免 UI 闪烁
             }
         } else {
-            console.warn('[Market] 用户未登录，无法同步到后端');
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('[Market] 用户未登录，无法同步到后端');
         }
     }
 
@@ -948,7 +948,7 @@ class AppCenterMarketPage extends Component {
             this.loadMarketData();
         } catch (err) {
             loading.close();
-            console.error('[Market] 上传失败:', err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[Market] 上传失败:', err);
             Toast.error(err.message || '离线包上传失败');
         }
     }
@@ -1187,3 +1187,7 @@ class AppCenterMarketPage extends Component {
         }
     }
 }
+
+
+// 将 AppCenterMarketPage 导出到全局作用域以支持动态加载
+window.AppCenterMarketPage = AppCenterMarketPage;

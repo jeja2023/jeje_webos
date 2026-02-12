@@ -116,7 +116,7 @@ const PdfUtils = {
                 });
             }
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error('获取文件列表失败');
         }
     },

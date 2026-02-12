@@ -542,3 +542,7 @@ class HelpPage extends Component {
     // 模块帮助内容已移除，各模块应在自己的页面中显示帮助内容
 }
 
+
+
+// 将 HelpPage 导出到全局作用域以支持动态加载
+window.HelpPage = HelpPage;

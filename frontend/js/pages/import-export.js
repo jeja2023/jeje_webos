@@ -161,3 +161,7 @@ class DataReportPage extends Component {
 const ImportExportPage = DataReportPage;
 
 
+
+
+// 将 DataReportPage 导出到全局作用域以支持动态加载
+window.DataReportPage = DataReportPage;

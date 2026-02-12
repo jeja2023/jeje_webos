@@ -4,11 +4,12 @@ RESTful风格，所有接口都需要认证且限定用户
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission
+from core.errors import NotFoundException, BusinessException, ErrorCode
 from schemas import success, paginate
 
 from .notes_schemas import (
@@ -61,7 +62,7 @@ async def get_folder(
     service = get_service(db, user)
     folder = await service.get_folder(folder_id)
     if not folder:
-        raise HTTPException(status_code=404, detail="文件夹不存在")
+        raise NotFoundException("文件夹")
     return success(FolderInfo.model_validate(folder).model_dump())
 
 
@@ -77,7 +78,7 @@ async def create_folder(
         folder = await service.create_folder(data)
         return success(FolderInfo.model_validate(folder).model_dump(), "创建成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/folders/{folder_id}")
@@ -92,10 +93,10 @@ async def update_folder(
     try:
         folder = await service.update_folder(folder_id, data)
         if not folder:
-            raise HTTPException(status_code=404, detail="文件夹不存在")
+            raise NotFoundException("文件夹")
         return success(FolderInfo.model_validate(folder).model_dump(), "更新成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.delete("/folders/{folder_id}")
@@ -107,7 +108,7 @@ async def delete_folder(
     """删除文件夹（级联删除）"""
     service = get_service(db, user)
     if not await service.delete_folder(folder_id):
-        raise HTTPException(status_code=404, detail="文件夹不存在")
+        raise NotFoundException("文件夹")
     return success(message="删除成功")
 
 
@@ -179,7 +180,7 @@ async def get_note(
     service = get_service(db, user)
     note = await service.get_note(note_id)
     if not note:
-        raise HTTPException(status_code=404, detail="笔记不存在")
+        raise NotFoundException("笔记")
     
     note_dict = NoteInfo.model_validate(note).model_dump()
     note_dict["tags"] = [TagInfo.model_validate(t).model_dump() for t in note.tags]
@@ -199,7 +200,7 @@ async def create_note(
         note = await service.create_note(data)
         return success({"id": note.id}, "创建成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/notes/{note_id}")
@@ -214,10 +215,10 @@ async def update_note(
     try:
         note = await service.update_note(note_id, data)
         if not note:
-            raise HTTPException(status_code=404, detail="笔记不存在")
+            raise NotFoundException("笔记")
         return success({"id": note.id}, "更新成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/notes/{note_id}/move")
@@ -232,10 +233,10 @@ async def move_note(
     try:
         note = await service.move_note(note_id, data.folder_id)
         if not note:
-            raise HTTPException(status_code=404, detail="笔记不存在")
+            raise NotFoundException("笔记")
         return success({"id": note.id}, "移动成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/notes/{note_id}/star")
@@ -248,7 +249,7 @@ async def toggle_star(
     service = get_service(db, user)
     note = await service.get_note(note_id)
     if not note:
-        raise HTTPException(status_code=404, detail="笔记不存在")
+        raise NotFoundException("笔记")
     
     from .notes_schemas import NoteUpdate
     updated = await service.update_note(note_id, NoteUpdate(is_starred=not note.is_starred))
@@ -265,7 +266,7 @@ async def toggle_pin(
     service = get_service(db, user)
     note = await service.get_note(note_id)
     if not note:
-        raise HTTPException(status_code=404, detail="笔记不存在")
+        raise NotFoundException("笔记")
     
     from .notes_schemas import NoteUpdate
     updated = await service.update_note(note_id, NoteUpdate(is_pinned=not note.is_pinned))
@@ -281,7 +282,7 @@ async def delete_note(
     """删除笔记"""
     service = get_service(db, user)
     if not await service.delete_note(note_id):
-        raise HTTPException(status_code=404, detail="笔记不存在")
+        raise NotFoundException("笔记")
     return success(message="删除成功")
 
 
@@ -321,7 +322,7 @@ async def update_tag(
     service = get_service(db, user)
     tag = await service.update_tag(tag_id, data)
     if not tag:
-        raise HTTPException(status_code=404, detail="标签不存在")
+        raise NotFoundException("标签")
     return success(TagInfo.model_validate(tag).model_dump(), "更新成功")
 
 
@@ -334,7 +335,7 @@ async def delete_tag(
     """删除标签"""
     service = get_service(db, user)
     if not await service.delete_tag(tag_id):
-        raise HTTPException(status_code=404, detail="标签不存在")
+        raise NotFoundException("标签")
     return success(message="删除成功")
 
 

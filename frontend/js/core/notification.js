@@ -37,7 +37,7 @@ const SystemNotification = {
             // this.refreshUnreadCount(); 
 
         } catch (e) {
-            console.warn('保存通知失败', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('保存通知失败', e);
             // 失败时降级显示 Toast
             const toastType = type === 'error' ? 'error' : 'info';
             Toast[toastType](title + (content ? `: ${content}` : ''));

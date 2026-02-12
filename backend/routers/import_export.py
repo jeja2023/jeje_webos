@@ -5,13 +5,14 @@
 
 from utils.timezone import get_beijing_time
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Query
 from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from core.database import get_db
 from core.security import require_admin, TokenData, decode_token
+from core.errors import BusinessException, ErrorCode
 from models.account import User
 from models.notification import Notification
 from models.storage import FileRecord
@@ -39,7 +40,7 @@ async def export_users(
     # 验证 token（支持 HttpOnly Cookie 或 query token）
     current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
-        raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的格式，支持: csv, json, xlsx")
     
     # 查询所有用户
     result = await db.execute(select(User))
@@ -102,7 +103,7 @@ async def export_notifications(
     # 验证 token（支持 HttpOnly Cookie 或 query token）
     current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
-        raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的格式，支持: csv, json, xlsx")
     
     # 构建查询
     query = select(Notification)
@@ -171,7 +172,7 @@ async def export_files(
     # 验证 token（支持 HttpOnly Cookie 或 query token）
     current_user = get_user_from_token(request, token)
     if format not in ("csv", "json", "xlsx", "excel"):
-        raise HTTPException(status_code=400, detail="不支持的格式，支持: csv, json, xlsx")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的格式，支持: csv, json, xlsx")
     
     # 查询所有文件记录
     result = await db.execute(select(FileRecord))
@@ -264,7 +265,7 @@ async def import_users(
     elif filename.endswith((".xlsx", ".xls")):
         data = importer.import_from_excel(content)
     else:
-        raise HTTPException(status_code=400, detail="不支持的文件格式，支持: csv, json, xlsx")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的文件格式，支持: csv, json, xlsx")
     
     # 验证数据（支持中英文字段名）
     field_mapping = {
@@ -297,7 +298,7 @@ async def import_users(
     required_fields = ["username", "phone"]  # 用户名和手机号必填
     is_valid, error_msg = importer.validate_data(data, required_fields)
     if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, error_msg)
     
     # 查询用户组（用于自动分配）
     from models import Role as UserGroup

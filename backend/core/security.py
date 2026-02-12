@@ -9,6 +9,8 @@ import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from .errors import AuthException, PermissionException, AppException, ErrorCode
 from pydantic import BaseModel
 from cachetools import TTLCache
 
@@ -327,7 +329,7 @@ async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = T
                 }
             elif user and not user.is_active:
                 if raise_on_error:
-                    raise HTTPException(status_code=401, detail="账户已被禁用")
+                    raise AuthException(ErrorCode.ACCOUNT_DISABLED, "账户已被禁用")
     except ImportError:
         import logging
         logging.getLogger(__name__).warning("权限模块导入失败，使用 JWT 静态权限（功能受限）")
@@ -337,10 +339,7 @@ async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = T
         import logging
         logging.getLogger(__name__).error(f"获取实时权限失败: {e}")
         if raise_on_error:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="权限服务暂时不可用，请稍后重试"
-            )
+            raise AppException(ErrorCode.SERVICE_UNAVAILABLE, "权限服务暂时不可用，请稍后重试")
     
     return token_data
 
@@ -354,19 +353,11 @@ async def get_current_user(
     jwt_token = _get_jwt_token_from_request(request, token, credentials)
 
     if not jwt_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证凭证",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        raise AuthException(ErrorCode.UNAUTHORIZED, "无效的认证凭证")
 
     token_data = decode_token(jwt_token)
     if token_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的认证凭据",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        raise AuthException(ErrorCode.TOKEN_INVALID, "无效的认证凭据")
     
     # 使用共享的权限同步逻辑
     await _sync_user_permissions(token_data, raise_on_error=True)
@@ -439,10 +430,7 @@ def require_permission(permission: str):
                 return user
         
         # 权限不足（不泄露具体权限名称）
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足，无法执行此操作"
-        )
+        raise PermissionException("权限不足，无法执行此操作")
     return permission_checker
 
 
@@ -456,10 +444,7 @@ def require_admin():
     """
     async def admin_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="仅系统管理员可执行此操作"
-            )
+            raise PermissionException("仅系统管理员可执行此操作")
         return user
     return admin_checker
 
@@ -475,10 +460,7 @@ def require_manager():
     """
     async def manager_checker(user: TokenData = Depends(get_current_user)) -> TokenData:
         if user.role not in ("manager", "admin"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="仅管理员可执行此操作"
-            )
+            raise PermissionException("仅管理员可执行此操作")
         return user
     return manager_checker
 

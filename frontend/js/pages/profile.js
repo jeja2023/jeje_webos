@@ -253,7 +253,7 @@ class ProfilePage extends Component {
                 Toast.error(uploadRes.message || '上传失败');
             }
         } catch (err) {
-            console.error(err);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(err);
             Toast.error('上传头像失败');
         } finally {
             if (avatarEl) avatarEl.style.opacity = '1';
@@ -459,7 +459,7 @@ class ProfilePage extends Component {
                     }, file.type || 'image/png', 0.9);
 
                 } catch (err) {
-                    console.error(err);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error(err);
                     Toast.error('裁切失败: ' + err.message);
                     confirmBtn.disabled = false;
                     confirmBtn.innerText = '确认并上传';
@@ -668,3 +668,10 @@ class ChangePasswordPage extends Component {
 }
 
 
+
+
+// 将 ProfilePage 导出到全局作用域以支持动态加载
+window.ProfilePage = ProfilePage;
+
+// 将 ChangePasswordPage 导出到全局作用域以支持动态加载
+window.ChangePasswordPage = ChangePasswordPage;

@@ -6,7 +6,7 @@
 import logging
 from typing import Optional
 from utils.timezone import get_beijing_time
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, Query
 from pathlib import Path
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from sqlalchemy import select, func, desc, update
 
 from core.database import get_db
 from core.security import require_admin, TokenData, decode_token
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from models.backup import BackupRecord, BackupType, BackupStatus, BackupSchedule
 from schemas.backup import (
     BackupInfo, BackupCreate, BackupRestore, BackupListResponse,
@@ -46,11 +47,11 @@ async def create_backup(
     """
     # 验证备份类型
     if data.backup_type not in [t.value for t in BackupType]:
-        raise HTTPException(status_code=400, detail="无效的备份类型")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的备份类型")
     
     # 如果启用加密，必须提供密码
     if data.is_encrypted and not data.encrypt_password:
-        raise HTTPException(status_code=400, detail="加密备份必须提供密码")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "加密备份必须提供密码")
     
     # 创建备份记录
     backup = BackupRecord(
@@ -143,7 +144,7 @@ async def create_schedule(
     """创建备份调度计划"""
     # 验证调度类型
     if data.schedule_type not in ["daily", "weekly", "monthly"]:
-        raise HTTPException(status_code=400, detail="无效的调度类型")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的调度类型")
     
     # 验证时间格式
     try:
@@ -151,7 +152,7 @@ async def create_schedule(
         if not (0 <= hour <= 23 and 0 <= minute <= 59):
             raise ValueError()
     except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="无效的时间格式，请使用 HH:MM")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的时间格式，请使用 HH:MM")
     
     # 计算下次执行时间
     next_run = calculate_next_run(data.schedule_type, data.schedule_time, data.schedule_day)
@@ -187,7 +188,7 @@ async def update_schedule(
     schedule = result.scalar_one_or_none()
     
     if not schedule:
-        raise HTTPException(status_code=404, detail="调度计划不存在")
+        raise NotFoundException("调度计划")
     
     # 更新字段（exclude_unset 已过滤未发送的字段，允许显式设为 None 的值通过）
     update_data = data.model_dump(exclude_unset=True)
@@ -219,7 +220,7 @@ async def delete_schedule(
     schedule = result.scalar_one_or_none()
     
     if not schedule:
-        raise HTTPException(status_code=404, detail="调度计划不存在")
+        raise NotFoundException("调度计划")
     
     await db.delete(schedule)
     await db.commit()
@@ -238,7 +239,7 @@ async def toggle_schedule(
     schedule = result.scalar_one_or_none()
     
     if not schedule:
-        raise HTTPException(status_code=404, detail="调度计划不存在")
+        raise NotFoundException("调度计划")
     
     schedule.is_enabled = not schedule.is_enabled
     
@@ -272,7 +273,7 @@ async def get_backup_info(
     backup = result.scalar_one_or_none()
     
     if not backup:
-        raise HTTPException(status_code=404, detail="备份记录不存在")
+        raise NotFoundException("备份记录")
     
     return success(BackupInfo.model_validate(backup).model_dump())
 
@@ -297,13 +298,13 @@ async def restore_backup(
     
     if not backup:
         logger.warning(f"备份不存在: {data.backup_id}")
-        raise HTTPException(status_code=404, detail="备份记录不存在")
+        raise NotFoundException("备份记录")
     
     if backup.status != BackupStatus.SUCCESS.value:
-        raise HTTPException(status_code=400, detail="备份未完成或已失败，无法恢复")
+        raise BusinessException(ErrorCode.INVALID_OPERATION, "备份未完成或已失败，无法恢复")
     
     if not backup.file_path:
-        raise HTTPException(status_code=400, detail="备份文件不存在")
+        raise NotFoundException("备份文件")
     
     # 提取所需数据
     backup_type = backup.backup_type
@@ -324,7 +325,7 @@ async def restore_backup(
             # 处理解密
             if is_encrypted:
                 if not data.decrypt_password:
-                    raise HTTPException(status_code=400, detail="该备份已加密，请提供解密密码")
+                    raise BusinessException(ErrorCode.VALIDATION_ERROR, "该备份已加密，请提供解密密码")
                 
                 logger.info(f"开始解密备份文件 (ID: {data.backup_id})...")
                 for p in raw_paths:
@@ -335,7 +336,7 @@ async def restore_backup(
                          
                     success_dec, result_dec = backup_manager.decrypt_file(p_obj, data.decrypt_password)
                     if not success_dec:
-                        raise HTTPException(status_code=400, detail=f"解密失败: {result_dec}")
+                        raise BusinessException(ErrorCode.VALIDATION_ERROR, f"解密失败: {result_dec}")
                     
                     restore_paths.append(result_dec)
                     temp_decrypted_files.append(result_dec)
@@ -348,14 +349,14 @@ async def restore_backup(
                  if restore_paths:
                      logger.info(f"开始恢复数据库: {restore_paths[0]}")
                      ok, err = backup_manager.restore_database(restore_paths[0])
-                     if not ok: raise HTTPException(status_code=500, detail=f"数据库恢复失败: {err}")
+                     if not ok: raise BusinessException(ErrorCode.INTERNAL_ERROR, f"数据库恢复失败: {err}")
                      
             elif backup_type == BackupType.FILES.value:
                  # 只有 Files
                  if restore_paths:
                      logger.info(f"开始恢复文件: {restore_paths[0]}")
                      ok, err = backup_manager.restore_files(restore_paths[0])
-                     if not ok: raise HTTPException(status_code=500, detail=f"文件恢复失败: {err}")
+                     if not ok: raise BusinessException(ErrorCode.INTERNAL_ERROR, f"文件恢复失败: {err}")
                      
             elif backup_type == BackupType.FULL.value:
                  # DB + Files
@@ -365,12 +366,12 @@ async def restore_backup(
                  if db_path:
                      logger.info(f"开始恢复数据库: {db_path}")
                      ok, err = backup_manager.restore_database(db_path)
-                     if not ok: raise HTTPException(status_code=500, detail=f"数据库恢复失败: {err}")
+                     if not ok: raise BusinessException(ErrorCode.INTERNAL_ERROR, f"数据库恢复失败: {err}")
                  
                  if files_path:
                      logger.info(f"开始恢复文件: {files_path}")
                      ok, err = backup_manager.restore_files(files_path)
-                     if not ok: raise HTTPException(status_code=500, detail=f"文件恢复失败: {err}")
+                     if not ok: raise BusinessException(ErrorCode.INTERNAL_ERROR, f"文件恢复失败: {err}")
                      
             logger.info("备份恢复操作完成")
             
@@ -390,7 +391,7 @@ async def restore_backup(
         raise
     except Exception as e:
         logger.error(f"恢复过程发生未捕获异常: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="恢复过程出错，请查看服务器日志获取详情")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "恢复过程出错，请查看服务器日志获取详情")
 
 
 @router.delete("/{backup_id}")
@@ -408,7 +409,7 @@ async def delete_backup(
     backup = result.scalar_one_or_none()
     
     if not backup:
-        raise HTTPException(status_code=404, detail="备份记录不存在")
+        raise NotFoundException("备份记录")
     
     # 删除备份文件
     backup_manager = get_backup_manager()
@@ -443,15 +444,15 @@ async def download_backup(
     backup = result.scalar_one_or_none()
     
     if not backup:
-        raise HTTPException(status_code=404, detail="备份记录不存在")
+        raise NotFoundException("备份记录")
     
     if not backup.file_path:
-        raise HTTPException(status_code=404, detail="备份文件不存在")
+        raise NotFoundException("备份文件")
     
     # 获取文件路径
     file_paths = backup.file_path.split(",")
     if file_index >= len(file_paths):
-        raise HTTPException(status_code=400, detail="文件索引超出范围")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "文件索引超出范围")
     
     file_path = file_paths[file_index]
     full_path = Path(file_path).resolve()
@@ -462,10 +463,10 @@ async def download_backup(
     backup_base = Path(storage.root_dir).resolve()
     if not str(full_path).startswith(str(backup_base)):
         logger.warning(f"备份文件路径越界: {full_path} 不在 {backup_base} 内")
-        raise HTTPException(status_code=403, detail="备份文件路径不合法")
+        raise PermissionException("备份文件路径不合法")
     
     if not full_path.exists():
-        raise HTTPException(status_code=404, detail="备份文件已丢失")
+        raise NotFoundException("备份文件")
     
     return FileResponse(
         path=str(full_path),

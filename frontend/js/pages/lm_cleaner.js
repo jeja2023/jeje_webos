@@ -127,7 +127,7 @@ class LmCleanerPage extends Component {
             }
         } catch (error) {
             Toast.error('上传处理出错');
-            console.error(error);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(error);
         } finally {
             this.state.processing = false;
             this.state.uploadingFile = null;

@@ -143,12 +143,31 @@ class PdfPage extends Component {
                         if (cardAction === 'open-pdf') {
                             const fileJson = { id: null, name: fileName, path: filePath, source: 'pdf' };
                             this.openReader(fileJson, fileName, 'pdf');
-                        } else if (cardAction === 'tip-word') {
-                            Toast.info('请使用 [Word转PDF] 功能转换此文件');
-                        } else if (cardAction === 'tip-excel') {
-                            Toast.info('请使用 [Excel转PDF] 功能转换此文件');
+                        } else if (cardAction === 'open-office' || cardAction === 'tip-word' || cardAction === 'tip-excel') {
+                            if (window.OfficeViewer && OfficeViewer.isOfficeFile(fileName)) {
+                                const url = Utils.withToken(`${Config.apiBase}/pdf/preview?path=${encodeURIComponent(filePath)}`);
+                                OfficeViewer.preview({
+                                    url: url,
+                                    filename: fileName
+                                });
+                            } else {
+                                Toast.info('请使用相关转换功能处理此文件');
+                            }
                         } else if (cardAction === 'tip-image') {
+                            // 旧版逻辑，保留以兼容
                             Toast.info('请使用 [图片转PDF] 功能转换此文件');
+                        } else if (cardAction === 'open-image') {
+                            const url = Utils.withToken(`${Config.apiBase}/pdf/preview?path=${encodeURIComponent(filePath)}`);
+                            Modal.show({
+                                title: fileName,
+                                content: `
+                                    <div style="text-align: center; padding: 20px; background: #000; display: flex; align-items: center; justify-content: center; min-height: 400px; border-radius: 8px;">
+                                        <img src="${url}" style="max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                                    </div>
+                                `,
+                                width: '80%',
+                                footer: false
+                            });
                         }
                         return;
                     }
@@ -251,7 +270,7 @@ class PdfPage extends Component {
                 this.renderAll();
             }
         } catch (e) {
-            console.error('加载文件列表失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载文件列表失败', e);
         }
     }
 
@@ -264,7 +283,7 @@ class PdfPage extends Component {
                 this.state.allFiles = res.data.files || [];
             }
         } catch (e) {
-            console.error('加载全量文件失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载全量文件失败', e);
         } finally {
             this.state.loading = false;
             this.renderAll();
@@ -299,7 +318,7 @@ class PdfPage extends Component {
                 throw new Error(res.message || '后端解析返回空错误');
             }
         } catch (e) {
-            console.error('PDF解析详情:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('PDF解析详情:', e);
             Toast.error(`文档打开失败: ${e.message}`);
             this.state.activeTab = 'files';
         } finally {
@@ -549,7 +568,7 @@ class PdfPage extends Component {
                                     Toast.error(res.message || '保存失败');
                                 }
                             } catch (e) {
-                                console.error(e);
+                                (typeof Config !== 'undefined' && Config.error) && Config.error(e);
                                 Toast.error('保存请求出错');
                             }
                         }
@@ -580,7 +599,7 @@ class PdfPage extends Component {
                         });
                     }
                 } else Toast.error(res.message);
-            } catch (e) { console.error(e); Toast.error('提取失败'); }
+            } catch (e) { (typeof Config !== 'undefined' && Config.error) && Config.error(e); Toast.error('提取失败'); }
         });
     }
 
@@ -895,7 +914,7 @@ class PdfPage extends Component {
                 Toast.error('下载失败');
             }
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error('下载出错');
         }
     }
@@ -929,7 +948,7 @@ class PdfPage extends Component {
                 Toast.error('下载失败');
             }
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error('下载出错');
         }
     }
@@ -960,7 +979,7 @@ class PdfPage extends Component {
                         Toast.error(`文件 ${file.name} 上传失败: ${res.message}`);
                     }
                 } catch (err) {
-                    console.error(err);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error(err);
                     Toast.error(`文件 ${file.name} 上传出错`);
                 }
             }
@@ -1001,3 +1020,7 @@ class PdfPage extends Component {
     }
 }
 window._pdfPage = null;
+
+
+// 将 PdfPage 导出到全局作用域以支持动态加载
+window.PdfPage = PdfPage;

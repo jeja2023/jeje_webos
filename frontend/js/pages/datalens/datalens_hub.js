@@ -19,7 +19,7 @@ const DataLensHubMixin = {
                 loading: false
             });
         } catch (e) {
-            console.error('加载数据失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载数据失败:', e);
             this.setState({ loading: false });
             Toast.error('加载数据失败');
         }
@@ -34,7 +34,7 @@ const DataLensHubMixin = {
             const res = await LensApi.getViews(params);
             this.setState({ views: res.data || [] });
         } catch (e) {
-            console.error('加载视图列表失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载视图列表失败:', e);
         }
     },
 
@@ -91,7 +91,7 @@ const DataLensHubMixin = {
                 this.setState({ views: updatedViews });
             } else {
                 // 降级处理：如果 ShortcutManager 未加载，使用原有逻辑
-                console.warn('[DataLens] ShortcutManager 未加载，使用降级逻辑');
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('[DataLens] ShortcutManager 未加载，使用降级逻辑');
                 const user = Store.get('user');
                 if (!user) {
                     Toast.error('请先登录');
@@ -130,12 +130,12 @@ const DataLensHubMixin = {
 
                 if (window.UserApi) {
                     UserApi.updateProfile({ settings: newSettings }).catch(err => {
-                        console.error('[DataLens] 同步快捷方式到后端失败:', err);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('[DataLens] 同步快捷方式到后端失败:', err);
                     });
                 }
             }
         } catch (e) {
-            console.error('[DataLens] 固定快捷方式失败:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('[DataLens] 固定快捷方式失败:', e);
             Toast.error('操作失败: ' + (e.message || '未知错误'));
         }
     },

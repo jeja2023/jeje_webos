@@ -7,13 +7,14 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
+from core.errors import NotFoundException, PermissionException, BusinessException, AppException, ErrorCode
 from models.storage import FileRecord
 from models.account import User
 from schemas.storage import FileInfo, FileUploadResponse, FileListResponse
@@ -64,7 +65,7 @@ async def upload_file(
         has_permission = current_user.permissions and ("*" in current_user.permissions or "storage.upload" in current_user.permissions)
 
     if not has_permission:
-        raise HTTPException(status_code=403, detail=f"无权上传 {category} 类型的文件")
+        raise PermissionException(f"无权上传 {category} 类型的文件")
     
     storage = get_storage_manager()
     max_size = storage.max_size
@@ -77,9 +78,9 @@ async def upload_file(
             try:
                 content_length = int(content_length_str)
                 if content_length > max_size:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                    raise BusinessException(
+                        ErrorCode.FILE_TOO_LARGE,
+                        f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
                     )
             except (ValueError, TypeError):
                 pass
@@ -110,9 +111,9 @@ async def upload_file(
             if total_size > max_size:
                 temp_file.close()
                 os.unlink(temp_path)
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
+                raise BusinessException(
+                    ErrorCode.FILE_TOO_LARGE,
+                    f"文件大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
                 )
             
             # 直接写入临时文件（不占用额外内存）
@@ -121,7 +122,7 @@ async def upload_file(
         temp_file.close()
         file_size = total_size
         
-    except HTTPException:
+    except AppException:
         raise
     except Exception as e:
         if temp_file:
@@ -131,13 +132,13 @@ async def upload_file(
             except Exception as cleanup_err:
                 logger.debug(f"清理临时文件失败: {cleanup_err}")
         logger.error(f"读取文件失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="读取文件失败，请稍后重试")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "读取文件失败，请稍后重试")
     
     # 3. 验证文件类型（使用第一个块进行内容检测）
     is_valid, error_msg = storage.validate_file(file.filename or "unknown", file_size, first_chunk)
     if not is_valid:
         os.unlink(temp_path)
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, error_msg)
     
     # 4. 检查用户存储配额（头像除外）
     if category != "avatar":
@@ -157,18 +158,18 @@ async def upload_file(
                 used_mb = current_size / 1024 / 1024
                 quota_mb = user.storage_quota / 1024 / 1024
                 file_mb = file_size / 1024 / 1024
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"存储空间不足：当前已使用 {used_mb:.2f}MB / {quota_mb:.2f}MB，"
-                           f"本次上传需要 {file_mb:.2f}MB，超出配额限制。"
-                           f"请删除部分文件或联系管理员增加配额。"
+                raise BusinessException(
+                    ErrorCode.QUOTA_EXCEEDED,
+                    f"存储空间不足：当前已使用 {used_mb:.2f}MB / {quota_mb:.2f}MB，"
+                    f"本次上传需要 {file_mb:.2f}MB，超出配额限制。"
+                    f"请删除部分文件或联系管理员增加配额。"
                 )
     
     # 5. 头像额外检查
     if category == "avatar":
         if not (file.content_type and file.content_type.startswith("image/")):
             os.unlink(temp_path)
-            raise HTTPException(status_code=400, detail="头像必须是图片格式")
+            raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "头像必须是图片格式")
     
     # 6. 生成存储路径并移动文件（原子操作）
     relative_path, full_path = storage.generate_filename(
@@ -188,7 +189,7 @@ async def upload_file(
         except Exception as cleanup_err:
             logger.debug(f"清理临时文件失败: {cleanup_err}")
         logger.error(f"文件保存失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="文件保存失败，请稍后重试")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "文件保存失败，请稍后重试")
     
     # 7. 保存文件记录到数据库
     mime_type = file.content_type
@@ -242,7 +243,7 @@ async def download_file(
     file_record = result.scalar_one_or_none()
     
     if not file_record:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 权限检查
     # 1. 管理员可以直接访问
@@ -255,14 +256,14 @@ async def download_file(
     has_perm = current_user.permissions and ("*" in current_user.permissions or "storage.download" in current_user.permissions)
 
     if not (is_admin or is_owner or is_avatar or has_perm):
-        raise HTTPException(status_code=403, detail="无权下载文件")
+        raise PermissionException("无权下载文件")
 
     # 获取文件路径
     storage = get_storage_manager()
     file_path = storage.get_file_path(file_record.storage_path)
     
     if not file_path:
-        raise HTTPException(status_code=404, detail="文件已丢失")
+        raise NotFoundException("文件")
     
     # 返回文件
     return FileResponse(
@@ -287,7 +288,7 @@ async def list_files(
     """
     # 权限检查
     if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions))):
-        raise HTTPException(status_code=403, detail="无权查看文件列表")
+        raise PermissionException("无权查看文件列表")
     
     # 构建查询
     query = select(FileRecord)
@@ -337,18 +338,18 @@ async def delete_file(
     """
     # 权限检查
     if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.delete" in current_user.permissions))):
-        raise HTTPException(status_code=403, detail="无权删除文件")
+        raise PermissionException("无权删除文件")
     
     # 查询文件记录
     result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
     file_record = result.scalar_one_or_none()
     
     if not file_record:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 权限检查：非管理员只能删除自己上传的文件
     if current_user.role not in ("admin", "manager") and file_record.uploader_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="只能删除自己上传的文件")
+        raise PermissionException("只能删除自己上传的文件")
     
     # 删除物理文件
     storage = get_storage_manager()
@@ -374,18 +375,18 @@ async def get_file_info(
     """
     # 权限检查
     if not (current_user.role == "admin" or (current_user.permissions and ("*" in current_user.permissions or "storage.list" in current_user.permissions))):
-        raise HTTPException(status_code=403, detail="无权查看文件信息")
+        raise PermissionException("无权查看文件信息")
     
     # 查询文件记录
     result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
     file_record = result.scalar_one_or_none()
     
     if not file_record:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise NotFoundException("文件")
     
     # 权限检查：非管理员只能查看自己上传的文件
     if current_user.role not in ("admin", "manager") and file_record.uploader_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="无权查看此文件")
+        raise PermissionException("无权查看此文件")
     
     return success(FileInfo.model_validate(file_record).model_dump())
 

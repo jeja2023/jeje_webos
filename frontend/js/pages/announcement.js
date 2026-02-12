@@ -593,7 +593,7 @@ class AnnouncementEditPage extends Component {
                 }
             }
         } catch (e) {
-            console.error('加载编辑器失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载编辑器失败', e);
             Toast.error('编辑器加载失败');
         }
     }
@@ -746,7 +746,7 @@ class AnnouncementViewPage extends Component {
                 }
             }
         } catch (e) {
-            console.error('加载查看器失败', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载查看器失败', e);
         }
     }
 
@@ -763,3 +763,13 @@ class AnnouncementViewPage extends Component {
         }
     }
 }
+
+
+// 将 AnnouncementListPage 导出到全局作用域以支持动态加载
+window.AnnouncementListPage = AnnouncementListPage;
+
+// 将 AnnouncementEditPage 导出到全局作用域以支持动态加载
+window.AnnouncementEditPage = AnnouncementEditPage;
+
+// 将 AnnouncementViewPage 导出到全局作用域以支持动态加载
+window.AnnouncementViewPage = AnnouncementViewPage;

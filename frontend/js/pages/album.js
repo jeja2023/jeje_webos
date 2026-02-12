@@ -232,7 +232,7 @@ class AlbumPage extends Component {
                 this.setState({ albums: [] });
             }
         } catch (e) {
-            console.error('加载相册异常:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('加载相册异常:', e);
             Toast.error('加载相册失败: ' + (e.message || '未知错误'));
         } finally {
             this.setState({ loading: false });
@@ -325,7 +325,7 @@ class AlbumPage extends Component {
                 this.setState({ uploadProgress: Math.round((uploadedCount / total) * 100) });
                 return true;
             } catch (err) {
-                console.error('上传失败:', file.name, err);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('上传失败:', file.name, err);
                 return false;
             }
         };
@@ -500,7 +500,7 @@ class AlbumPage extends Component {
                 </div>
             `;
         } catch (e) {
-            console.error('渲染错误:', e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error('渲染错误:', e);
             return `<div class="alert alert-danger m-4">页面渲染错误: ${e.message}</div>`;
         }
     }
@@ -709,7 +709,7 @@ class AlbumPage extends Component {
                     try {
                         await this.loadAlbums();
                     } catch (e) {
-                        console.error('刷新列表失败:', e);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('刷新列表失败:', e);
                     }
                 } else {
                     throw new Error(res.message || '创建失败');
@@ -828,7 +828,7 @@ class AlbumPage extends Component {
             Toast.success('所有文件已加入下载队列');
             this.toggleSelectionMode(); // 退出选择模式
         } catch (e) {
-            console.error(e);
+            (typeof Config !== 'undefined' && Config.error) && Config.error(e);
             Toast.error('下载发生错误');
         }
     }
@@ -884,7 +884,7 @@ class AlbumPage extends Component {
                 // POST /album/{id}/reorder
                 await Api.post(`/album/${this.state.currentAlbum.id}/reorder`, { ids });
             } catch (err) {
-                console.error('排序失败', err);
+                (typeof Config !== 'undefined' && Config.error) && Config.error('排序失败', err);
                 // 失败可考虑回滚，这里从简暂不处理
                 Toast.error('排序同步失败');
             }
@@ -900,3 +900,7 @@ class AlbumPage extends Component {
         this.dragSourceEl = null;
     }
 }
+
+
+// 将 AlbumPage 导出到全局作用域以支持动态加载
+window.AlbumPage = AlbumPage;

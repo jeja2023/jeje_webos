@@ -417,7 +417,7 @@ class TopBarComponent extends Component {
                             Toast.success('删除成功');
                         }
                     } catch (err) {
-                        console.error(err);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error(err);
                         Toast.error('操作失败');
                         btn.disabled = false;
                     }
@@ -571,7 +571,7 @@ class TopBarComponent extends Component {
                 Toast.success('已退出登录');
                 window.location.reload();
             } catch (e) {
-                console.error(e);
+                (typeof Config !== 'undefined' && Config.error) && Config.error(e);
                 window.location.reload();
             }
         }

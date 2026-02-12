@@ -3,13 +3,14 @@
 """
 
 import os
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from core.database import get_db
 from core.security import get_current_user, TokenData
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from schemas.response import success, error
 from utils.background_tasks import BackgroundTaskHelper
 from .knowledge_schemas import (
@@ -192,10 +193,10 @@ async def preview_file(
     """预览/下载文件接口"""
     node = await KnowledgeService.get_node(db, node_id)
     if not node:
-        raise HTTPException(status_code=404, detail="文档不存在")
+        raise NotFoundException("文档")
         
     if not node.file_path or not os.path.exists(node.file_path):
-        raise HTTPException(status_code=404, detail="文件实体不存在")
+        raise NotFoundException("文件实体")
     
     # 路径安全验证：确保文件在 storage 目录下
     from core.config import get_settings
@@ -203,7 +204,7 @@ async def preview_file(
     resolved = os.path.realpath(node.file_path)
     storage_root = os.path.realpath(_settings.upload_dir)
     if not resolved.startswith(storage_root):
-        raise HTTPException(status_code=403, detail="文件路径非法")
+        raise PermissionException("文件路径非法")
     
     return FileResponse(
         path=resolved,

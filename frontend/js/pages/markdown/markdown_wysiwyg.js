@@ -1007,7 +1007,7 @@ class MarkdownWysiwygEditor {
             return preCaretRange.toString().length;
         } catch (e) {
             // 边缘情况处理：如果 range 异常，回退到 0
-            console.warn('getCaretOffsetInLine failed:', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('getCaretOffsetInLine failed:', e);
             return 0;
         }
     }
@@ -1044,7 +1044,7 @@ class MarkdownWysiwygEditor {
             selection.removeAllRanges();
             selection.addRange(range);
         } catch (e) {
-            console.warn('setCaretOffsetInLine failed:', e);
+            (typeof Config !== 'undefined' && Config.warn) && Config.warn('setCaretOffsetInLine failed:', e);
         }
     }
 
@@ -1150,7 +1150,7 @@ class MarkdownWysiwygEditor {
                 sel.removeAllRanges();
                 sel.addRange(range);
             } catch (e) {
-                console.warn('restoreHistory selection failed:', e);
+                (typeof Config !== 'undefined' && Config.warn) && Config.warn('restoreHistory selection failed:', e);
             }
 
             if (this.options.onChange) this.options.onChange(this.getMarkdown());

@@ -5,11 +5,12 @@ RESTful风格，所有接口都需要认证且限定用户
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, TokenData, require_permission
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from schemas import success, paginate, error
 
 from .vault_schemas import (
@@ -77,7 +78,7 @@ async def create_master_key(
             "message": "主密码创建成功，请妥善保管恢复码"
         })
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.post("/master/verify")
@@ -95,9 +96,9 @@ async def verify_master_password(
             # 前端收到后应该在后续请求的Header中带上原始密码
             return success({"verified": True}, "验证成功")
         else:
-            raise HTTPException(status_code=400, detail="主密码错误")
+            raise BusinessException(ErrorCode.PASSWORD_INCORRECT, "主密码错误")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.post("/master/change")
@@ -112,7 +113,7 @@ async def change_master_password(
         await service.change_master_password(data.old_password, data.new_password)
         return success(message="主密码修改成功，请使用新密码重新解锁")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.post("/master/reset")
@@ -141,7 +142,7 @@ async def recover_with_recovery_key(
             "message": "主密码重置成功，请保存新的恢复码"
         })
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 # ============ 分类接口 ============
@@ -175,7 +176,7 @@ async def get_category(
     service = get_service(db, user)
     category = await service.get_category(category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
     
     item_count = await service.get_category_item_count(category_id)
     cat_dict = CategoryInfo.model_validate(category).model_dump()
@@ -209,7 +210,7 @@ async def update_category(
     service = get_service(db, user)
     category = await service.update_category(category_id, data)
     if not category:
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
     return success(CategoryInfo.model_validate(category).model_dump(), "更新成功")
 
 
@@ -222,7 +223,7 @@ async def delete_category(
     """删除分类"""
     service = get_service(db, user)
     if not await service.delete_category(category_id):
-        raise HTTPException(status_code=404, detail="分类不存在")
+        raise NotFoundException("分类")
     return success(message="删除成功")
 
 
@@ -292,7 +293,7 @@ async def get_item(
     """获取条目详情（含解密的敏感数据）"""
     item = await service.get_item(item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="条目不存在")
+        raise NotFoundException("条目")
     
     # 检查是否已解锁
     if not service._encryption_key:
@@ -308,7 +309,7 @@ async def get_item(
     try:
         decrypted = service.decrypt_item(item)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="解密失败")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "解密失败")
     
     # 记录使用
     await service.record_item_usage(item_id)
@@ -343,13 +344,13 @@ async def create_item(
 ):
     """创建条目"""
     if not service._encryption_key:
-        raise HTTPException(status_code=403, detail="请先解锁保险箱")
+        raise PermissionException("请先解锁保险箱")
     
     try:
         item = await service.create_item(data)
         return success({"id": item.id}, "创建成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/items/{item_id}")
@@ -360,15 +361,15 @@ async def update_item(
 ):
     """更新条目"""
     if not service._encryption_key:
-        raise HTTPException(status_code=403, detail="请先解锁保险箱")
+        raise PermissionException("请先解锁保险箱")
     
     try:
         item = await service.update_item(item_id, data)
         if not item:
-            raise HTTPException(status_code=404, detail="条目不存在")
+            raise NotFoundException("条目")
         return success({"id": item.id}, "更新成功")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.put("/items/{item_id}/star")
@@ -381,7 +382,7 @@ async def toggle_star(
     service = get_service(db, user)
     item = await service.get_item(item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="条目不存在")
+        raise NotFoundException("条目")
     
     # 不需要加密密钥，直接更新收藏状态
     from sqlalchemy import update as sql_update
@@ -406,13 +407,13 @@ async def move_item(
     service = get_service(db, user)
     item = await service.get_item(item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="条目不存在")
+        raise NotFoundException("条目")
     
     # 验证分类存在
     if data.category_id:
         category = await service.get_category(data.category_id)
         if not category:
-            raise HTTPException(status_code=400, detail="分类不存在")
+            raise BusinessException(ErrorCode.VALIDATION_ERROR, "分类不存在")
     
     from sqlalchemy import update as sql_update
     from .vault_models import VaultItem
@@ -434,7 +435,7 @@ async def delete_item(
     """删除条目"""
     service = get_service(db, user)
     if not await service.delete_item(item_id):
-        raise HTTPException(status_code=404, detail="条目不存在")
+        raise NotFoundException("条目")
     return success(message="删除成功")
 
 
@@ -484,7 +485,7 @@ async def export_data(
         data = await service.export_data()
         return success(data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
 @router.post("/import")
@@ -497,4 +498,4 @@ async def import_data(
         result = await service.import_data(data)
         return success(result, f"导入完成：{result['imported_items']}个密码，{result['imported_categories']}个分类")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))

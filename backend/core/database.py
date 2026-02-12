@@ -266,33 +266,29 @@ async def init_db():
                     continue
                 
                 try:
-                    # 只创建表结构
-                    connection.execute(CreateTable(table, if_not_exists=False))
+                    # 只创建表结构，使用 IF NOT EXISTS
+                    connection.execute(CreateTable(table, if_not_exists=True))
                     created_tables.append(table.name)
-                    logger.debug(f"创建表: {table.name}")
+                    logger.debug(f"确保表存在: {table.name}")
                 except (OperationalError, ProgrammingError) as e:
-                    if "1050" in str(e) or "already exists" in str(e):
-                        logger.debug(f"表已存在，跳过: {table.name}")
-                        skipped_tables.append(table.name)
-                    else:
-                        logger.error(f"创建表失败 {table.name}: {e}")
-                        raise
+                    logger.error(f"创建表失败 {table.name}: {e}")
+                    raise
             
             # 然后创建索引（允许失败）
             for table in Base.metadata.sorted_tables:
                 for index in table.indexes:
                     try:
-                        connection.execute(CreateIndex(index, if_not_exists=False))
-                        logger.debug(f"创建索引: {index.name}")
+                        connection.execute(CreateIndex(index))
+                        logger.debug(f"尝试创建索引: {index.name}")
                     except (OperationalError, ProgrammingError) as e:
-                        # 忽略索引已存在的错误
-                        if "1061" in str(e) or "Duplicate key" in str(e):
+                        # 忽略索引已存在的错误 (兼容旧版本 MySQL)
+                        if "1061" in str(e) or "Duplicate key" in str(e) or "already exists" in str(e):
                             logger.debug(f"索引已存在，跳过: {index.name}")
                         else:
                             # 其他错误也警告但不中断
                             logger.warning(f"创建索引失败（已忽略）{index.name}: {e}")
             
-            logger.debug(f"数据库表初始化完成（创建: {len(created_tables)}, 跳过: {len(skipped_tables)}）")
+            logger.debug(f"数据库表初始化完成（创建/检查: {len(created_tables)}, 跳过: {len(skipped_tables)}）")
         
         await conn.run_sync(create_tables_safe)
 

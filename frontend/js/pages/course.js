@@ -1152,7 +1152,7 @@ class CoursePage extends Component {
                     try {
                         await Api.delete(`/course/chapters/${tempChapterId}`);
                     } catch (e) {
-                        console.error('清理临时章节失败:', e);
+                        (typeof Config !== 'undefined' && Config.error) && Config.error('清理临时章节失败:', e);
                     }
                 }
                 this._pendingVideoFile = null;
@@ -1692,7 +1692,7 @@ class CoursePage extends Component {
                         this.setState({ currentCourse: res.data }, false);
                     }
                 } catch (e) {
-                    console.error('自动标记完成失败:', e);
+                    (typeof Config !== 'undefined' && Config.error) && Config.error('自动标记完成失败:', e);
                 }
             }
         });
@@ -1738,3 +1738,7 @@ class CoursePage extends Component {
         };
     }
 }
+
+
+// 将 CoursePage 导出到全局作用域以支持动态加载
+window.CoursePage = CoursePage;

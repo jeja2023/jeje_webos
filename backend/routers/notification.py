@@ -5,12 +5,13 @@
 
 from typing import Optional
 from utils.timezone import get_beijing_time
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_, update, delete
 
 from core.database import get_db
 from core.security import get_current_user, require_admin, TokenData
+from core.errors import NotFoundException, PermissionException, BusinessException, ErrorCode
 from core.ws_manager import manager
 from models.notification import Notification
 from models.account import User
@@ -41,21 +42,21 @@ async def create_notification(
         result = await db.execute(select(User).where(User.username == data.receiver_username))
         target_user = result.scalar_one_or_none()
         if not target_user:
-            raise HTTPException(status_code=404, detail="接收用户不存在")
+            raise NotFoundException("用户")
         target_user_id = target_user.id
 
     if target_user_id is None:
-        raise HTTPException(status_code=400, detail="必须指定接收用户ID或用户名")
+        raise BusinessException(ErrorCode.VALIDATION_ERROR, "必须指定接收用户ID或用户名")
     
     # 权限检查：仅管理员可发送通知给其他用户（防止滥用通知功能进行骚扰）
     if target_user_id != current_user.user_id and target_user_id != 0:
         if current_user.role not in ("admin", "manager"):
-            raise HTTPException(status_code=403, detail="仅管理员可向其他用户发送通知")
+            raise PermissionException("仅管理员可向其他用户发送通知")
 
     if target_user_id == 0:
         # 发送给所有用户 (仅管理员)
         if current_user.role != 'admin':
-            raise HTTPException(status_code=403, detail="权限不足")
+            raise PermissionException("权限不足")
             
         result = await db.execute(select(User.id))
         user_ids = [row[0] for row in result.all()]
@@ -254,7 +255,7 @@ async def mark_as_read(
     notification = result.scalar_one_or_none()
     
     if not notification:
-        raise HTTPException(status_code=404, detail="通知不存在")
+        raise NotFoundException("通知")
     
     if not notification.is_read:
         notification.is_read = True
@@ -313,7 +314,7 @@ async def delete_notification(
     await db.commit()
     
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="通知不存在")
+        raise NotFoundException("通知")
     
     return success(message="通知已删除")
 

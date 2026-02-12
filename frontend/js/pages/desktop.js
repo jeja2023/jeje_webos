@@ -11,3 +11,7 @@ class DesktopPage extends Component {
         return `<div class="desktop-view fade-in"></div>`;
     }
 }
+
+
+// 将 DesktopPage 导出到全局作用域以支持动态加载
+window.DesktopPage = DesktopPage;
