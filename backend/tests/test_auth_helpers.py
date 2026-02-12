@@ -5,9 +5,9 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from fastapi import HTTPException
 
 from core.security import TokenData, create_token
+from core.errors import AuthException, PermissionException
 from utils.auth_helpers import get_user_from_token, get_admin_from_token
 
 
@@ -56,21 +56,19 @@ class TestGetUserFromToken:
         mock_settings.auth_use_httponly_cookie = False
         
         with patch("utils.auth_helpers.get_settings", return_value=mock_settings):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(AuthException):
                 get_user_from_token(request, token=None)
-            assert exc_info.value.status_code == 401
 
     def test_invalid_token_raises_401(self):
-        """测试无效令牌抛出 401"""
+        """测试无效令牌抛出 401 (AuthException)"""
         request = self._make_request()
         
         mock_settings = MagicMock()
         mock_settings.auth_use_httponly_cookie = False
         
         with patch("utils.auth_helpers.get_settings", return_value=mock_settings):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(AuthException):
                 get_user_from_token(request, token="invalid_token")
-            assert exc_info.value.status_code == 401
 
     def test_cookie_priority_over_query(self):
         """测试 Cookie 优先于 Query"""
@@ -124,12 +122,11 @@ class TestGetAdminFromToken:
         mock_settings.auth_use_httponly_cookie = False
         
         with patch("utils.auth_helpers.get_settings", return_value=mock_settings):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(PermissionException):
                 get_admin_from_token(request, token=token)
-            assert exc_info.value.status_code == 403
 
     def test_manager_raises_403(self):
-        """测试业务管理员也抛出 403（require_admin 仅允许 admin）"""
+        """测试业务管理员也抛出 403 (PermissionException)"""
         token_data = TokenData(user_id=3, username="manager", role="manager")
         token = create_token(token_data)
         request = self._make_request()
@@ -138,18 +135,16 @@ class TestGetAdminFromToken:
         mock_settings.auth_use_httponly_cookie = False
         
         with patch("utils.auth_helpers.get_settings", return_value=mock_settings):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(PermissionException):
                 get_admin_from_token(request, token=token)
-            assert exc_info.value.status_code == 403
 
     def test_no_token_raises_401(self):
-        """测试无令牌抛出 401"""
+        """测试无令牌抛出 401 (AuthException)"""
         request = self._make_request()
         
         mock_settings = MagicMock()
         mock_settings.auth_use_httponly_cookie = False
         
         with patch("utils.auth_helpers.get_settings", return_value=mock_settings):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(AuthException):
                 get_admin_from_token(request, token=None)
-            assert exc_info.value.status_code == 401

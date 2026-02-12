@@ -21,7 +21,7 @@ class TestCachedStaticFiles:
         
         app = CachedStaticFiles(directory=str(tmp_path))
         
-        # 模拟请求 CSS (Cache-Age=0)
+        # 模拟请求 CSS (Cache-Age=604800)
         scope_css = {"type": "http", "method": "GET", "path": "/style.css", "headers": []}
         
         # 捕获响应
@@ -37,7 +37,7 @@ class TestCachedStaticFiles:
             
         await app(scope_css, mock_receive, mock_send)
         
-        assert "no-cache" in headers.get("cache-control", "")
+        assert "max-age=604800" in headers.get("cache-control", "")
         
         # 模拟请求 PNG (Cache-Age>0)
         scope_img = {"type": "http", "method": "GET", "path": "/image.png", "headers": []}
