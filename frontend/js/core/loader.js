@@ -15,6 +15,7 @@ const ResourceLoader = {
     // 约定：路由 /path 默认对应 /static/css/pages/{path}.css 与 /static/js/pages/{path}.js
     // 仅需为不符合约定的路由配置覆盖项（多文件、子目录、不同命名等）
     moduleResourceMapOverrides: {
+        '/': { css: [], js: [] },
         '/theme': {
             css: ['/static/css/pages/theme_editor.css'],
             js: ['/static/js/pages/theme_editor.js']
