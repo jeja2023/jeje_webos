@@ -253,7 +253,7 @@ class PdfPage extends Component {
     async loadHistory() {
         try {
             const res = await Api.get('/pdf/history');
-            if (res.code === 0) {
+            if (res.code === 200) {
                 this.state.history = res.data.items || [];
                 this.renderAll();
             }
@@ -305,7 +305,7 @@ class PdfPage extends Component {
             if (filePath) url += `&path=${encodeURIComponent(filePath)}`;
 
             const res = await Api.get(url);
-            if (res.code === 0) {
+            if (res.code === 200) {
                 // 检查加密状态 (只要是加密的，PyMuPDF 渲染通常需要密码，除非是 Owner Password 且有权限，但这里为了简单起见，统一拦截)
                 if (res.data.is_encrypted) {
                     Toast.warning('该文档已加密，无法直接预览。请先使用 [解密 PDF] 工具移除密码。');
@@ -392,7 +392,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/split', payload);
-                if (res.code === 0) { Toast.success('处理成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('处理成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('处理过程出错'); }
         });
@@ -410,7 +410,7 @@ class PdfPage extends Component {
                     paths: files.filter(f => !f.id).map(f => f.path),
                     output_name: outputName
                 });
-                if (res.code === 0) { Toast.success('合并成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('合并成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('合并失败'); }
         }, true, { min: 2, extensions: ['.pdf'] });
@@ -428,7 +428,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/compress', payload);
-                if (res.code === 0) { Toast.success('压缩成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('压缩成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('压缩失败'); }
         });
@@ -449,7 +449,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/watermark', payload);
-                if (res.code === 0) { Toast.success('处理成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('处理成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('处理过程出错'); }
         });
@@ -469,7 +469,7 @@ class PdfPage extends Component {
                     paths: files.filter(f => !f.id).map(f => f.path),
                     output_name: outputName
                 });
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换失败'); }
         }, { multiple: true, extensions: ['.jpg', '.jpeg', '.png', '.webp', '.bmp'] });
@@ -484,7 +484,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/pdf-to-images', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         });
@@ -518,7 +518,7 @@ class PdfPage extends Component {
                 });
 
                 const res = await Api.post('/pdf/images-to-pdf', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         }, {
@@ -537,7 +537,7 @@ class PdfPage extends Component {
                 else url += `path=${encodeURIComponent(file.path)}`;
 
                 const res = await Api.get(url);
-                if (res.code === 0) {
+                if (res.code === 200) {
                     const safeText = (res.data.text || '')
                         .replace(/&/g, "&amp;")
                         .replace(/</g, "&lt;")
@@ -559,7 +559,7 @@ class PdfPage extends Component {
 
                                 const res = await Api.post('/pdf/save-text', payload);
 
-                                if (res.code === 0) {
+                                if (res.code === 200) {
                                     Toast.success('已保存到我的文档 (成果)');
                                     Modal.closeAll();
                                     // 刷新列表以便看到新文件
@@ -612,7 +612,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/word-to-pdf', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         }, { extensions: ['.docx', '.doc'], title: '请选择 Word 文档' });
@@ -627,7 +627,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/excel-to-pdf', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         }, { extensions: ['.xlsx', '.xls', '.csv'], title: '请选择 Excel 文档' });
@@ -644,7 +644,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/pdf-to-word', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         });
@@ -660,7 +660,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/pdf-to-excel', payload);
-                if (res.code === 0) { Toast.success('转换成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('转换成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('转换过程出错'); }
         });
@@ -675,7 +675,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/remove-watermark', payload);
-                if (res.code === 0) { Toast.success('处理成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('处理成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('处理过程出错'); }
         });
@@ -693,7 +693,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/encrypt', payload);
-                if (res.code === 0) { Toast.success('加密成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('加密成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('加密过程出错'); }
         });
@@ -711,7 +711,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/decrypt', payload);
-                if (res.code === 0) { Toast.success('解密成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('解密成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('解密过程出错'); }
         });
@@ -743,7 +743,7 @@ class PdfPage extends Component {
                         else payload.path = file.path;
 
                         const res = await Api.post('/pdf/rotate', payload);
-                        if (res.code === 0) { Toast.success('旋转成功'); this.switchTab('history'); }
+                        if (res.code === 200) { Toast.success('旋转成功'); this.switchTab('history'); }
                         else Toast.error(res.message);
                     } catch (e) { Toast.error('旋转过程出错'); }
                 }
@@ -763,7 +763,7 @@ class PdfPage extends Component {
                 else payload.path = file.path;
 
                 const res = await Api.post('/pdf/extract-pages', payload);
-                if (res.code === 0) { Toast.success('提取成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('提取成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('提取过程出错'); }
         });
@@ -782,7 +782,7 @@ class PdfPage extends Component {
                 url += `&page_ranges=${encodeURIComponent(ranges)}`;
 
                 const res = await Api.post(url);
-                if (res.code === 0) { Toast.success('删除成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('删除成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('删除过程出错'); }
         });
@@ -797,7 +797,7 @@ class PdfPage extends Component {
                 else url += `path=${encodeURIComponent(file.path)}`;
 
                 const res = await Api.post(url);
-                if (res.code === 0) { Toast.success('反转成功'); this.switchTab('history'); }
+                if (res.code === 200) { Toast.success('反转成功'); this.switchTab('history'); }
                 else Toast.error(res.message);
             } catch (e) { Toast.error('反转过程出错'); }
         });
@@ -832,7 +832,7 @@ class PdfPage extends Component {
                         else payload.path = file.path;
 
                         const res = await Api.post('/pdf/add-page-numbers', payload);
-                        if (res.code === 0) { Toast.success('添加页码成功'); this.switchTab('history'); }
+                        if (res.code === 200) { Toast.success('添加页码成功'); this.switchTab('history'); }
                         else Toast.error(res.message);
                     } catch (e) { Toast.error('添加页码出错'); }
                 }
@@ -873,7 +873,7 @@ class PdfPage extends Component {
                                 else payload.image_path = imageFile.path;
 
                                 const res = await Api.post('/pdf/sign', payload);
-                                if (res.code === 0) { Toast.success('添加签名成功'); this.switchTab('history'); }
+                                if (res.code === 200) { Toast.success('添加签名成功'); this.switchTab('history'); }
                                 else Toast.error(res.message);
                             } catch (e) { Toast.error('添加签名出错'); }
                         }
@@ -973,7 +973,7 @@ class PdfPage extends Component {
 
                 try {
                     const res = await Api.upload('/pdf/upload', formData);
-                    if (res.code === 0) {
+                    if (res.code === 200) {
                         successCount++;
                     } else {
                         Toast.error(`文件 ${file.name} 上传失败: ${res.message}`);
@@ -1004,7 +1004,7 @@ class PdfPage extends Component {
 
         try {
             const res = await Api.delete(`/pdf/files/${encodeURIComponent(filename)}?category=${category}`);
-            if (res.code === 0) {
+            if (res.code === 200) {
                 Toast.success('删除成功');
                 if (this.state.activeTab === 'files') {
                     this.loadAllFiles();

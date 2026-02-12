@@ -540,19 +540,19 @@ class NotesService:
         )
         tag_query = select(func.count(NotesTag.id)).where(NotesTag.user_id == self.user_id)
         
-        # 使用 asyncio.gather() 并发执行查询
-        results = await asyncio.gather(
-            self.db.execute(note_query),
-            self.db.execute(folder_query),
-            self.db.execute(starred_query),
-            self.db.execute(tag_query)
-        )
+        # 依次执行统计查询（避免 SQLAlchemy 同一会话并发问题）
+        results = [
+            (await self.db.execute(note_query)).scalar() or 0,
+            (await self.db.execute(folder_query)).scalar() or 0,
+            (await self.db.execute(starred_query)).scalar() or 0,
+            (await self.db.execute(tag_query)).scalar() or 0
+        ]
         
         return {
-            "notes": results[0].scalar() or 0,
-            "folders": results[1].scalar() or 0,
-            "starred": results[2].scalar() or 0,
-            "tags": results[3].scalar() or 0
+            "notes": results[0],
+            "folders": results[1],
+            "starred": results[2],
+            "tags": results[3]
         }
 
 

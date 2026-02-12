@@ -446,25 +446,25 @@ async def system_stats(
     else:
         user_stats = {}
         
-        # 笔记数量
+        # 优化：合并计数查询
         try:
             from sqlalchemy import text
-            notes_result = await db.execute(
-                text("SELECT COUNT(*) FROM notes_notes WHERE user_id = :uid"),
-                {"uid": current_user.user_id}
-            )
-            user_stats["notes_count"] = notes_result.scalar() or 0
-        except Exception:
+            stats_sql = """
+                SELECT 
+                    (SELECT COUNT(*) FROM notes_notes WHERE user_id = :uid) as notes_count,
+                    (SELECT COUNT(*) FROM blog_posts WHERE author_id = :uid) as blogs_count
+            """
+            count_result = await db.execute(text(stats_sql), {"uid": current_user.user_id})
+            counts = count_result.fetchone()
+            if counts:
+                user_stats["notes_count"] = counts[0] or 0
+                user_stats["blogs_count"] = counts[1] or 0
+            else:
+                user_stats["notes_count"] = 0
+                user_stats["blogs_count"] = 0
+        except Exception as e:
+            logger.warning(f"统计查询失败: {e}")
             user_stats["notes_count"] = 0
-        
-        # 博客数量（如果博客模块可用）
-        try:
-            blogs_result = await db.execute(
-                text("SELECT COUNT(*) FROM blog_posts WHERE author_id = :uid"),
-                {"uid": current_user.user_id}
-            )
-            user_stats["blogs_count"] = blogs_result.scalar() or 0
-        except Exception:
             user_stats["blogs_count"] = 0
         
         # 最近收藏的笔记
@@ -486,7 +486,7 @@ async def system_stats(
         except Exception:
             user_stats["recent_starred"] = []
         
-        # 最近浏览的内容（基于笔记更新时间，因为没有单独的浏览记录表）
+        # 最近浏览的内容
         try:
             recent_result = await db.execute(
                 text("""

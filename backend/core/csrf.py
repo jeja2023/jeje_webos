@@ -27,8 +27,7 @@ async def generate_csrf_token() -> str:
     token = secrets.token_urlsafe(32)
     timestamp = time.time()
     token_data = {
-        "created_at": timestamp,
-        "used": False
+        "created_at": timestamp
     }
     
     # 尝试存入 Redis
@@ -62,8 +61,7 @@ async def verify_and_consume_csrf_token(token: str) -> bool:
         # 必须是 dict 且包含 created_at，否则视为无效
         if not isinstance(redis_data, dict) or "created_at" not in redis_data:
             return False
-        if redis_data.get("used"): # 暂时保留逻辑，虽然现在不标记 used
-            return False
+        # 不再检查 used 状态，允许多次使用
         if time.time() - redis_data["created_at"] > TOKEN_EXPIRE_SECONDS:
             return False
         return True
@@ -71,9 +69,7 @@ async def verify_and_consume_csrf_token(token: str) -> bool:
     # 2. 尝试从内存获取
     token_info = _csrf_tokens.get(token)
     if token_info:
-        # 检查是否过期或已使用
-        if token_info.get("used"):
-            return False
+        # 检查是否过期
         if time.time() - token_info["created_at"] > TOKEN_EXPIRE_SECONDS:
             return False
         return True

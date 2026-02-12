@@ -166,6 +166,10 @@ def _build_sort_clause(request, db_type: str = "mysql") -> str:
             field = sort_item.get("field", "")
             order = sort_item.get("order", "asc").upper()
             if field and order in ("ASC", "DESC"):
+                # 安全检查
+                if not is_safe_column_name(field.replace(".", "_")):
+                    continue
+                
                 # 处理带表名的字段别名
                 safe_field = field.replace(".", "__") if "." in field else field
                 # 根据数据库类型使用不同的引用符号
@@ -175,12 +179,14 @@ def _build_sort_clause(request, db_type: str = "mysql") -> str:
                     sort_parts.append(f'"{safe_field}" {order}')
     # 兼容单字段排序
     elif request.sort_field:
-        order = "DESC" if request.sort_order == "desc" else "ASC"
-        safe_field = request.sort_field.replace(".", "__") if "." in request.sort_field else request.sort_field
-        if db_type == "mysql":
-            sort_parts.append(f"`{safe_field}` {order}")
-        else:
-            sort_parts.append(f'"{safe_field}" {order}')
+        # 安全检查
+        if is_safe_column_name(request.sort_field.replace(".", "_")):
+            order = "DESC" if request.sort_order == "desc" else "ASC"
+            safe_field = request.sort_field.replace(".", "__") if "." in request.sort_field else request.sort_field
+            if db_type == "mysql":
+                sort_parts.append(f"`{safe_field}` {order}")
+            else:
+                sort_parts.append(f'"{safe_field}" {order}')
     
     if sort_parts:
         return " ORDER BY " + ", ".join(sort_parts)
@@ -201,6 +207,11 @@ def _build_filter_clause(filters: Dict[str, Any], db_type: str = "mysql") -> Tup
     param_index = 0
     
     for field, condition in filters.items():
+        # 安全检查
+        if not is_safe_column_name(field.replace(".", "_")):
+            logger.warning(f"Invalid filter field: {field}")
+            continue
+
         # 处理带表名的字段别名 (persons.name -> persons__name)
         safe_field = field.replace(".", "__") if "." in field else field
         

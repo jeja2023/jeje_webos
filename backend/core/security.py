@@ -317,7 +317,7 @@ async def _sync_user_permissions(token_data: TokenData, raise_on_error: bool = T
 
         async with async_session() as db:
             result = await db.execute(select(User).where(User.id == token_data.user_id))
-            user = result.scalar_one_or_none()
+            user = result.scalars().first()
             if user and user.is_active:
                 # 动态汇总权限: 直接权限 + 角色权限(实现即时同步)
                 token_data.permissions = await resolve_permissions(db, user.permissions, user.role_ids)
