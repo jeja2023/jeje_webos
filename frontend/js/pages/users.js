@@ -523,7 +523,8 @@ class UserListPage extends Component {
                     <label class="form-label">密码 <span style="color:var(--color-error);">*</span></label>
                     <input type="password" name="password" class="form-input" 
                            placeholder="至少${Store.get('systemSettings')?.password_min_length || 6}位" 
-                           minlength="${Store.get('systemSettings')?.password_min_length || 6}" required>
+                           minlength="${Store.get('systemSettings')?.password_min_length || 6}" 
+                           autocomplete="new-password" required>
                 </div>
                 
                 <div class="form-group">
@@ -624,7 +625,7 @@ class UserListPage extends Component {
                 <div class="form-group">
                     <label class="form-label">新密码 <span style="color:var(--color-error);">*</span></label>
                     <div style="display:flex;gap:8px;">
-                        <input type="text" name="newPassword" class="form-input" placeholder="请输入或生成新密码" required autocomplete="off">
+                        <input type="text" name="newPassword" class="form-input" placeholder="请输入或生成新密码" required autocomplete="new-password">
                         <button type="button" class="btn btn-secondary" id="generatePwdBtn" title="生成随机密码">
                             <i class="ri-refresh-line"></i> 生成
                         </button>

@@ -105,6 +105,18 @@ const ResourceLoader = {
                 '/static/js/pages/datalens/datalens_viewer.js',
                 '/static/js/pages/datalens/datalens_editor.js'
             ]
+        },
+        '/system/monitor': {
+            css: ['/static/css/pages/monitor.css'],
+            js: ['/static/js/pages/monitor.js']
+        },
+        '/system/backup': {
+            css: ['/static/css/pages/backup.css'],
+            js: ['/static/js/pages/backup.js']
+        },
+        '/system/roles': {
+            css: ['/static/css/pages/roles.css'],
+            js: ['/static/js/pages/roles.js']
         }
     },
 
@@ -271,16 +283,25 @@ const ResourceLoader = {
      * @returns {Promise} 加载完成的 Promise
      */
     async loadModuleByPath(path) {
-        // 提取基础路径（如 /users/list -> /users）
-        const basePath = '/' + (path.split('/')[1] || '');
+        // 去掉查询参数
+        const purePath = path.split('?')[0];
+        // 提取基础路径 (如 /users/list -> /users)
+        const basePath = '/' + (purePath.split('/')[1] || '');
 
-        const resources = this.getResourcesForPath(basePath);
+        // 优先尝试全路径匹配（覆盖表），其次尝试基础路径
+        let resources = null;
+        if (this.moduleResourceMapOverrides[purePath] || this.moduleResourceMapDynamic[purePath]) {
+            resources = this.getResourcesForPath(purePath);
+        } else {
+            resources = this.getResourcesForPath(basePath);
+        }
+
         if (!resources || (!resources.css?.length && !resources.js?.length)) {
             return;
         }
 
         const startTime = Date.now();
-        this.log(`开始加载模块资源: ${basePath}`);
+        this.log(`开始加载模块资源: ${purePath} (${basePath})`);
 
         // 并行加载 CSS，顺序加载 JS（因为可能有依赖）
         const cssPromise = resources.css ? this.loadCSSParallel(resources.css) : Promise.resolve();
