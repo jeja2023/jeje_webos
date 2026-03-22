@@ -19,7 +19,7 @@ echo "  - 地图瓦片目录: $(ls /app/storage/modules/map/map_tiles/ 2>/dev/nu
 # 等待 MySQL 就绪
 echo "等待 MySQL 就绪..."
 RETRY_COUNT=0
-until python -c "import pymysql, os; pymysql.connect(host='${DB_HOST:-mysql}', port=${DB_PORT:-3306}, user='${DB_USER:-jeje}', password=os.environ.get('DB_PASSWORD'))" 2>/dev/null; do
+until python -c "import pymysql, os; pymysql.connect(host='${DB_HOST:-mysql}', port=${DB_PORT:-3306}, user='${DB_USER:-jeje}', password=os.environ.get('DB_PASSWORD'))"; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo "错误: MySQL 连接超时（等待了 $((MAX_RETRIES * 2)) 秒）！"
@@ -29,20 +29,24 @@ until python -c "import pymysql, os; pymysql.connect(host='${DB_HOST:-mysql}', p
     echo "MySQL 未就绪，等待 2 秒... ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 2
 done
-echo " MySQL 已就绪！"
+echo "  MySQL 已就绪！"
 
 # 等待 Redis 就绪
 echo "等待 Redis 就绪..."
 RETRY_COUNT=0
 REDIS_PASS="${REDIS_PASSWORD:-}"
 
+# 调试检查 DNS 情况
+echo "  - 正在检查 Redis 主机解析: ${REDIS_HOST:-redis}"
+python -c "import socket; h='${REDIS_HOST:-redis}'; print(f'    解析成功: {h} -> {socket.gethostbyname(h)}')" || echo "    [!!!] DNS 解析失败，无法找到主机 ${REDIS_HOST:-redis}"
+
 if [ -z "$REDIS_PASS" ]; then
-    REDIS_CMD="import redis; r = redis.Redis(host='${REDIS_HOST:-redis}', port=${REDIS_PORT:-6379}, decode_responses=True); r.ping()"
+    REDIS_CMD="import redis; r = redis.Redis(host='${REDIS_HOST:-redis}', port=${REDIS_PORT:-6379}, socket_timeout=5); r.ping()"
 else
-    REDIS_CMD="import redis; r = redis.Redis(host='${REDIS_HOST:-redis}', port=${REDIS_PORT:-6379}, password='$REDIS_PASS', decode_responses=True); r.ping()"
+    REDIS_CMD="import redis, os; r = redis.Redis(host='${REDIS_HOST:-redis}', port=${REDIS_PORT:-6379}, password=os.environ.get('REDIS_PASSWORD'), socket_timeout=5); r.ping()"
 fi
 
-until python -c "$REDIS_CMD" 2>/dev/null; do
+until python -c "$REDIS_CMD"; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo "错误: Redis 连接超时（等待了 $((MAX_RETRIES * 2)) 秒）！"
