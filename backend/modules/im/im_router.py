@@ -4,6 +4,7 @@
 
 import logging
 from typing import Optional, List
+import aiofiles
 from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -253,9 +254,9 @@ async def upload_message_file(
     max_file_size = 50 * 1024 * 1024  # 50MB
     
     # 读取文件内容
-    content_chunks = []
     total_size = 0
     chunk_size = 1024 * 1024  # 1MB
+    sample = b""
     
     try:
         while True:
@@ -263,12 +264,12 @@ async def upload_message_file(
             if not chunk:
                 break
             total_size += len(chunk)
-            content_chunks.append(chunk)
+            if not sample:
+                sample = chunk[:8192]
     except Exception as e:
         raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
     
-    content = b''.join(content_chunks)
-    actual_size = len(content)
+    actual_size = total_size
     
     # 判断文件类型
     file_ext = file.filename.split('.')[-1].lower() if file.filename else ''
@@ -284,6 +285,7 @@ async def upload_message_file(
         )
     
     # 保存文件
+    await file.seek(0)
     rel_path, full_path = storage.generate_filename(
         file.filename or "file",
         user_id=user.user_id,
@@ -293,8 +295,12 @@ async def upload_message_file(
     )
     
     try:
-        with open(full_path, 'wb') as f:
-            f.write(content)
+        async with aiofiles.open(full_path, "wb") as f:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                await f.write(chunk)
     except Exception as e:
         raise BusinessException(ErrorCode.INTERNAL_ERROR, f"保存文件失败: {str(e)}")
     
@@ -302,7 +308,7 @@ async def upload_message_file(
     file_mime = None
     try:
         import filetype
-        kind = filetype.guess(content)
+        kind = filetype.guess(sample)
         if kind:
             file_mime = kind.mime
     except (ImportError, Exception) as e:

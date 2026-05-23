@@ -657,8 +657,16 @@ async def upload_file(
     storage_manager = get_storage_manager()
     
     # 验证文件大小和类型
-    content = await file.read()
-    is_valid, error_msg = storage_manager.validate_file(file.filename, len(content), content)
+    total_size = 0
+    sample = b""
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        if not sample:
+            sample = chunk[:8192]
+        total_size += len(chunk)
+    is_valid, error_msg = storage_manager.validate_file(file.filename, total_size, sample)
     if not is_valid:
         raise BusinessException(ErrorCode.VALIDATION_ERROR, error_msg)
 
@@ -669,12 +677,17 @@ async def upload_file(
         module="datalens", 
         sub_type="uploads"
     )
+    await file.seek(0)
 
     # 保存文件
     try:
         # generate_filename 已经创建了父目录
         async with aiofiles.open(full_path, "wb") as f:
-            await f.write(content)
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                await f.write(chunk)
     except Exception as e:
         logger.error(f"保存 DataLens 文件失败: {e}")
         raise BusinessException(ErrorCode.INTERNAL_ERROR, "文件保存失败")
@@ -683,7 +696,7 @@ async def upload_file(
     return success(data={
         "file_path": relative_path,
         "file_name": file.filename,
-        "file_size": len(content)
+        "file_size": total_size
     }, message="文件上传成功")
 
 

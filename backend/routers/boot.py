@@ -185,6 +185,15 @@ async def system_init(
     
     # 生成 CSRF Token（用于状态变更操作）
     csrf_token = await generate_csrf_token()
+
+    # 合并启动所需的公开系统设置，避免前端初始化阶段再额外请求一次 /system/settings。
+    # 保留原接口不变，系统设置页面仍可独立刷新最新配置。
+    system_settings = {}
+    try:
+        from routers.system_settings import _get_settings
+        system_settings = (await _get_settings(db)).model_dump()
+    except Exception as e:
+        logger.warning(f"加载启动系统设置失败: {e}")
     
     # 获取版本更新信息
     from core.changelog import get_version_changes, get_latest_version
@@ -200,6 +209,7 @@ async def system_init(
         "module_assets": module_assets,  # 模块前端资源（CSS/JS）
         "csrf_token": csrf_token,  # CSRF Token（前端需要在请求头中携带）
         "use_http_only_cookie": settings.auth_use_httponly_cookie,  # 是否使用 HttpOnly Cookie 存 Token（前端据此决定是否带 credentials、是否存 localStorage）
+        "system_settings": system_settings,
         "version_info": {
             "current": settings.app_version,
             "latest": latest_version_info.get("version") if latest_version_info else settings.app_version,
@@ -772,5 +782,4 @@ async def get_latest_changelog():
         "has_updates": changes.get("has_updates", False),
         "changes": changes.get("changes", {})
     })
-
 

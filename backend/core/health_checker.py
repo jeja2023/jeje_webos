@@ -4,6 +4,7 @@
 """
 
 import time
+import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -204,11 +205,12 @@ class HealthChecker:
     
     async def get_full_health(self) -> Dict[str, Any]:
         """获取完整健康状态"""
-        # 并行检查所有组件
-        db_health = await self.check_database()
-        redis_health = await self.check_redis()
-        disk_health = await self.check_disk()
-        memory_health = await self.check_memory()
+        db_health, redis_health, disk_health, memory_health = await asyncio.gather(
+            self.check_database(),
+            self.check_redis(),
+            self.check_disk(),
+            self.check_memory(),
+        )
         
         components = [db_health, redis_health, disk_health, memory_health]
         
@@ -249,27 +251,11 @@ async def health_check():
     用于 Kubernetes liveness probe 或负载均衡健康检查
     只检查最基本的服务可用性
     """
-    try:
-        # 只检查数据库（最关键的依赖）
-        db_health = await health_checker.check_database()
-        
-        if db_health.status == HealthStatus.UNHEALTHY:
-            return {
-                "status": "unhealthy",
-                "message": db_health.message
-            }
-        
-        return {
-            "status": "healthy",
-            "version": settings.app_version,
-            "uptime": health_checker.uptime_seconds
-        }
-    except Exception as e:
-        logger.error(f"健康检查失败: {e}")
-        return {
-            "status": "unhealthy",
-            "message": str(e)
-        }
+    return {
+        "status": "healthy",
+        "version": settings.app_version,
+        "uptime": health_checker.uptime_seconds
+    }
 
 
 @router.get("/health/ready")

@@ -1,0 +1,7 @@
+# Optional AI / OCR / vector dependencies.
+# Install with: pip install -r requirements-ai.txt
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+llama-cpp-python>=0.2.0
+opencv-python-headless<4.10.0
+rapidocr-onnxruntime>=1.3.0

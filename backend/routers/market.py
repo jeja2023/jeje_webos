@@ -9,6 +9,7 @@ import zipfile
 import tempfile
 import logging
 from typing import List, Optional
+import aiofiles
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
@@ -189,11 +190,11 @@ async def upload_package(
     try:
         # 1. 保存临时文件（限制大小为 100MB）
         MAX_MODULE_SIZE = 100 * 1024 * 1024  # 100MB
-        temp_zip = temp_dir / file.filename
+        temp_zip = temp_dir / Path(file.filename or "module.zip").name
         total_size = 0
-        with open(temp_zip, "wb") as buffer:
+        async with aiofiles.open(temp_zip, "wb") as buffer:
             while True:
-                chunk = file.file.read(1024 * 1024)
+                chunk = await file.read(1024 * 1024)
                 if not chunk:
                     break
                 total_size += len(chunk)
@@ -202,7 +203,7 @@ async def upload_package(
                         ErrorCode.FILE_TOO_LARGE,
                         f"模块包大小超过限制（最大 {MAX_MODULE_SIZE // 1024 // 1024}MB）"
                     )
-                buffer.write(chunk)
+                await buffer.write(chunk)
         
         # 2. 预检查 zip 内容
         with zipfile.ZipFile(temp_zip, 'r') as zf:
@@ -443,4 +444,3 @@ async def list_user_modules(
         "enabled": um.enabled,
         "installed_at": um.installed_at.isoformat() if um.installed_at else None
     } for um in user_modules])
-

@@ -6,6 +6,8 @@
 import os
 import mimetypes
 import logging
+import tempfile
+import aiofiles
 
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, UploadFile, File, Query, Header
@@ -192,15 +194,39 @@ async def upload_video(
         raise BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "只能上传视频文件")
     
     # 读取文件内容
-    content = await file.read()
-    if len(content) > 1024 * 1024 * 1024:  # 1GB 限制 (与前端一致)
-        raise BusinessException(ErrorCode.FILE_TOO_LARGE, "文件大小不能超过 1GB")
+    original_filename = file.filename or "video"
+    max_video_size = 1024 * 1024 * 1024  # 1GB limit
+    total_size = 0
+    sample = b""
+    temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(original_filename)[1])
+    os.close(temp_fd)
+    try:
+        async with aiofiles.open(temp_path, "wb") as f:
+            while True:
+                chunk = await file.read(2 * 1024 * 1024)
+                if not chunk:
+                    break
+                if not sample:
+                    sample = chunk[:8192]
+                total_size += len(chunk)
+                if total_size > max_video_size:
+                    raise BusinessException(ErrorCode.FILE_TOO_LARGE, "文件大小不能超过 1GB")
+                await f.write(chunk)
+    except BusinessException:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise
+    except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        logger.error(f"读取视频文件失败: {e}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, "读取视频文件失败")
     
     # 验证文件魔数（防止 Content-Type 伪造）
     # 注意：如果 filetype 库不可用或不支持该格式，默认放行，依靠后续处理（ffmpeg）来验证
     try:
         import filetype
-        kind = filetype.guess(content[:8192])
+        kind = filetype.guess(sample)
         if kind and not kind.mime.startswith('video/'):
             # 只有确信它不是视频时才拒绝（例如它是图片或可执行文件）
             # 有些特殊的视频格式 filetype 可能识别不出来，此时 kind 为 None，我们选择放行
@@ -210,14 +236,17 @@ async def upload_video(
         pass  # filetype 库未安装时跳过
     
     try:
-        video = await VideoService.upload_video(
+        video = await VideoService.upload_video_from_path(
             db, user.user_id, collection_id,
-            content, file.filename, file.content_type,
+            temp_path, total_size, original_filename, file.content_type,
             storage_manager
         )
         if not video:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
             raise NotFoundException("视频集")
         
+        temp_path = None
         await db.commit()
         
         return success(data={
@@ -233,6 +262,8 @@ async def upload_video(
             "file_size": video.file_size
         }, message="视频上传成功")
     except ValueError as e:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise BusinessException(ErrorCode.VALIDATION_ERROR, str(e))
 
 
@@ -417,4 +448,3 @@ async def batch_delete_videos(
     await db.commit()
     
     return success(message=f"成功删除 {count} 个视频")
-

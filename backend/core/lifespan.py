@@ -289,6 +289,12 @@ async def lifespan(app: FastAPI):
     
     # 9. 发送启动完成事件
     await event_bus.publish(Event(name=Events.SYSTEM_STARTUP, source="kernel"))
+
+    try:
+        from utils.backup_executor import set_backup_notification_loop
+        set_backup_notification_loop()
+    except Exception as e:
+        logger.debug(f"无法注册备份通知事件循环: {e}")
     logger.info(f"🎉 {current_settings.app_name} 启动完成! 访问: http://localhost:8000")
     
     yield

@@ -6,6 +6,7 @@ import os
 import duckdb
 import logging
 import threading
+import asyncio
 from typing import List, Dict, Any, Optional
 import pandas as pd
 
@@ -73,6 +74,10 @@ class DuckDBService:
                     logger.error(f"DuckDB 连接失败: {e}")
                     raise
         return self._conn
+
+    async def ensure_connection_async(self):
+        """异步上下文中建立连接，避免重试等待阻塞事件循环。"""
+        return await asyncio.to_thread(self.ensure_connection)
     
     @property
     def conn(self):

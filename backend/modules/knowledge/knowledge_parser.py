@@ -91,7 +91,8 @@ class DocumentParser:
         """
         ext = filename.lower().split('.')[-1] if '.' in filename else ''
         
-        return await asyncio.get_event_loop().run_in_executor(
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
             DocumentParser._executor,
             DocumentParser._parse_sync,
             file_content, ext

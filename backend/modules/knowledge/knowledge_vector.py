@@ -23,44 +23,62 @@ class KnowledgeVectorStore:
         self.model_name = "paraphrase-multilingual-MiniLM-L12-v2"
         self.model_local_path = os.path.join(self.models_root, self.model_name)
         
-        # 延迟加载标志
         self._embedding_fn = None
-        
-        # 初始化 Chroma 客户端 (禁用匿名遥控，防止内网/离线环境下启动缓慢)
-        self.client = chromadb.PersistentClient(
-            path=self.persist_path,
-            settings=chromadb.Settings(anonymized_telemetry=False)
-        )
-        
-        # 1. 文本向量集合 (仅文本)
-        # 优化：添加 HNSW 索引参数
-        # M: 每个节点的邻居数，ef_construction: 构建索引时的搜索深度
-        self.collection = self.client.get_or_create_collection(
-            name="jeje_knowledge",
-            embedding_function=self,
-            metadata={
-                "description": "JeJe 知识库文本集合",
-                "hnsw:space": "cosine",
-                "hnsw:M": 16,
-                "hnsw:construction_ef": 200
-            }
-        )
-        
-        # 2. 多模态/视觉向量集合 (CLIP)
-        # 注意：多模态通常需要不同的维度和模型
-        self.clip_collection = self.client.get_or_create_collection(
-            name="jeje_knowledge_clip",
-            # 这里暂时传 self，后续通过专门的 CLIP 函数处理输入
-            embedding_function=self,
-            metadata={
-                "description": "JeJe 知识库图像/CLIP 集合", 
-                "hnsw:space": "cosine",
-                "hnsw:M": 16
-            }
-        )
-        
-        # 预留 Reranker 实例容器
+        self._client = None
+        self._collection = None
+        self._clip_collection = None
+        self._init_error = None
         self._reranker = None
+
+    def _ensure_chroma(self) -> bool:
+        """按需初始化 Chroma，避免本地向量库错误拖垮应用启动。"""
+        if self._collection is not None and self._clip_collection is not None:
+            return True
+        if self._init_error is not None:
+            logger.error(f"Chroma 向量库不可用: {self._init_error}")
+            return False
+
+        try:
+            self._client = chromadb.PersistentClient(
+                path=self.persist_path,
+                settings=chromadb.Settings(anonymized_telemetry=False)
+            )
+            self._collection = self._client.get_or_create_collection(
+                name="jeje_knowledge",
+                embedding_function=self,
+                metadata={
+                    "description": "JeJe knowledge text collection",
+                    "hnsw:space": "cosine",
+                    "hnsw:M": 16,
+                    "hnsw:construction_ef": 200
+                }
+            )
+            self._clip_collection = self._client.get_or_create_collection(
+                name="jeje_knowledge_clip",
+                embedding_function=self,
+                metadata={
+                    "description": "JeJe knowledge image clip collection",
+                    "hnsw:space": "cosine",
+                    "hnsw:M": 16
+                }
+            )
+            return True
+        except Exception as e:
+            self._init_error = e
+            logger.error(f"初始化 Chroma 向量库失败: {e}", exc_info=True)
+            return False
+
+    @property
+    def collection(self):
+        if not self._ensure_chroma():
+            raise RuntimeError("Chroma 向量库不可用")
+        return self._collection
+
+    @property
+    def clip_collection(self):
+        if not self._ensure_chroma():
+            raise RuntimeError("Chroma 向量库不可用")
+        return self._clip_collection
 
     def name(self) -> str:
         """实现 EmbeddingFunction 接口要求的 name 方法"""

@@ -4,7 +4,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from core.health_checker import HealthChecker, HealthStatus
+from core.health_checker import HealthChecker, HealthStatus, health_check
 
 class TestHealthChecker:
     """健康检查功能测试"""
@@ -106,3 +106,11 @@ class TestHealthChecker:
             
             report = await checker.get_full_health()
             assert report["status"] == HealthStatus.DEGRADED
+
+    @pytest.mark.asyncio
+    async def test_liveness_does_not_check_database(self):
+        with patch("core.health_checker.health_checker.check_database") as mock_check:
+            response = await health_check()
+
+        mock_check.assert_not_called()
+        assert response["status"] == "healthy"

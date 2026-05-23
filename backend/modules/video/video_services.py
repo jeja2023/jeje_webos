@@ -6,6 +6,7 @@
 import os
 import logging
 import subprocess
+import shutil
 from typing import Optional, List, Tuple
 from datetime import datetime
 from sqlalchemy import select, func, and_
@@ -295,7 +296,88 @@ class VideoService:
         
         logger.info(f"上传视频: id={video.id}, collection_id={collection_id}")
         return video
-    
+
+    @staticmethod
+    async def upload_video_from_path(
+        db: AsyncSession,
+        user_id: int,
+        collection_id: int,
+        source_path: str,
+        file_size: int,
+        filename: str,
+        content_type: str,
+        storage_manager
+    ) -> Optional[Video]:
+        """Register an uploaded video after it has already been streamed to disk."""
+        collection = await VideoService.get_collection_by_id(db, collection_id, user_id)
+        if not collection:
+            return None
+
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise ValueError(f"Unsupported video file type: {ext}")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        safe_filename = f"{timestamp}{ext}"
+        video_dir = storage_manager.get_module_dir("video", "uploads", user_id=user_id)
+        thumb_dir = storage_manager.get_module_dir("video", "outputs", user_id=user_id)
+        video_path = os.path.join(video_dir, safe_filename)
+        thumb_path = os.path.join(thumb_dir, f"{timestamp}.jpg")
+
+        moved = False
+        try:
+            try:
+                os.replace(source_path, video_path)
+            except OSError:
+                shutil.move(source_path, video_path)
+            moved = True
+
+            duration, width, height = None, None, None
+            thumbnail_created = False
+            if check_ffmpeg_available():
+                try:
+                    probe_result = VideoService._get_video_info(video_path)
+                    if probe_result:
+                        duration = probe_result.get('duration')
+                        width = probe_result.get('width')
+                        height = probe_result.get('height')
+                    thumbnail_created = VideoService._generate_thumbnail(video_path, thumb_path)
+                except Exception as e:
+                    logger.warning(f"Failed to process video metadata: {e}")
+
+            video = Video(
+                user_id=user_id,
+                collection_id=collection_id,
+                filename=filename,
+                storage_path=video_path,
+                thumbnail_path=thumb_path if thumbnail_created else None,
+                duration=duration,
+                width=width,
+                height=height,
+                file_size=file_size,
+                mime_type=content_type,
+                sort_order=collection.video_count
+            )
+            db.add(video)
+            collection.video_count += 1
+
+            if collection.video_count == 1:
+                await db.flush()
+                await db.refresh(video)
+                collection.cover_video_id = video.id
+
+            await db.flush()
+            await db.refresh(video)
+
+            logger.info(f"Uploaded video: id={video.id}, collection_id={collection_id}")
+            return video
+        except Exception:
+            if moved and os.path.exists(video_path):
+                os.remove(video_path)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+            raise
+
     @staticmethod
     def _get_video_info(video_path: str) -> Optional[dict]:
         """使用 ffprobe 获取视频信息"""

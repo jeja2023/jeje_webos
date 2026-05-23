@@ -7,6 +7,7 @@
 import logging
 import os
 import uuid
+import aiofiles
 from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -379,7 +380,6 @@ async def upload_chapter_video(
     max_video_size = 500 * 1024 * 1024  # 500MB
     
     # 读取文件内容（流式读取检查大小）
-    content_chunks = []
     total_size = 0
     chunk_size = 2 * 1024 * 1024  # 2MB 块
     
@@ -391,24 +391,26 @@ async def upload_chapter_video(
             total_size += len(chunk)
             if total_size > max_video_size:
                 return error(code=413, message="视频文件过大，最大支持 500MB")
-            content_chunks.append(chunk)
     except Exception as e:
         logger.error(f"读取视频文件失败: {e}")
         return error(code=500, message="读取视频文件失败")
     
-    content = b''.join(content_chunks)
-    
     # 生成文件名
     ext = ALLOWED_VIDEO_TYPES.get(content_type, '.mp4')
     filename = f"{uuid.uuid4().hex}{ext}"
+    await file.seek(0)
     
     # 保存到课程模块的 uploads 目录
     video_dir = storage.get_module_dir("course", "uploads", user_id=user.user_id)
     video_path = os.path.join(video_dir, filename)
     
     try:
-        with open(video_path, 'wb') as f:
-            f.write(content)
+        async with aiofiles.open(video_path, "wb") as f:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                await f.write(chunk)
         
         # 生成访问URL
         # 使用相对路径存储，方便迁移
@@ -520,4 +522,3 @@ async def delete_chapter_video(
     await ChapterService.update_chapter(db, chapter_id, update_data)
     
     return success(message="视频已删除")
-

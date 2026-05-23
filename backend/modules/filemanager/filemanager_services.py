@@ -3,10 +3,12 @@
 """
 
 import os
+import shutil
 import logging
 from pathlib import Path
 from typing import Optional, List, Tuple
 from datetime import datetime
+import aiofiles
 from utils.timezone import get_beijing_time
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -410,8 +412,8 @@ class FileManagerService:
         
         try:
             Path(full_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(full_path, "wb") as f:
-                f.write(content)
+            async with aiofiles.open(full_path, "wb") as f:
+                await f.write(content)
         except Exception as e:
             raise ValueError(f"文件保存失败: {str(e)}")
         
@@ -431,6 +433,67 @@ class FileManagerService:
         logger.info(f"用户 {self.user_id} 上传文件: {filename}")
         return file
     
+    async def upload_file_from_path(
+        self,
+        filename: str,
+        source_path: str | Path,
+        mime_type: str,
+        folder_id: Optional[int] = None,
+        description: Optional[str] = None,
+        file_size: Optional[int] = None
+    ) -> VirtualFile:
+        """Upload a file already streamed to disk."""
+        if folder_id:
+            folder = await self.get_folder(folder_id)
+            if not folder:
+                raise ValueError("Folder does not exist")
+
+        source = Path(source_path)
+        if not source.exists() or not source.is_file():
+            raise ValueError("Uploaded temporary file does not exist")
+
+        file_size = file_size if file_size is not None else source.stat().st_size
+        await self._check_storage_quota(file_size)
+
+        with open(source, "rb") as f:
+            sample = f.read(8192)
+
+        is_valid, error_msg = self.storage.validate_file(filename, file_size, sample)
+        if not is_valid:
+            raise ValueError(error_msg)
+
+        relative_path, full_path = self.storage.generate_filename(filename, self.user_id)
+        target = Path(full_path)
+
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.replace(source, target)
+            except OSError:
+                shutil.move(str(source), str(target))
+        except Exception as e:
+            raise ValueError(f"File save failed: {str(e)}")
+
+        file = VirtualFile(
+            name=filename,
+            folder_id=folder_id,
+            user_id=self.user_id,
+            storage_path=relative_path,
+            file_size=file_size,
+            mime_type=mime_type,
+            description=description
+        )
+        self.db.add(file)
+        try:
+            await self.db.commit()
+            await self.db.refresh(file)
+        except Exception:
+            self.storage.delete_file(relative_path)
+            raise
+
+        logger.info(f"User {self.user_id} uploaded file: {filename}")
+        return file
+
     async def update_file(self, file_id: int, data: FileUpdate) -> Optional[VirtualFile]:
         """更新文件信息"""
         file = await self.get_file(file_id)

@@ -16,6 +16,8 @@ import sys
 import os
 import json
 import logging
+import tempfile
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Any, Callable, Awaitable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -152,6 +154,10 @@ class ModuleLoader:
             self._state_file = Path(_backend_path) / "state" / "module_states.json"
             
         self._states: Dict[str, ModuleState] = {}
+        self._manifest_cache: Dict[str, ModuleManifest] = {}
+        self._atomic_write_warned = False
+        self._state_save_depth = 0
+        self._state_save_pending = False
         # 加载持久化状态
         self._load_states()
     
@@ -185,8 +191,12 @@ class ModuleLoader:
             except Exception as e:
                 logger.warning(f"加载模块状态失败: {e}")
     
-    def _save_states(self):
+    def _write_states_now(self):
         """保存模块状态"""
+        def _write_direct(data: dict):
+            with open(self._state_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
         try:
             # 确保目录存在
             self._state_file.parent.mkdir(parents=True, exist_ok=True)
@@ -201,12 +211,54 @@ class ModuleLoader:
                     "last_enabled_at": state.last_enabled_at.isoformat() if state.last_enabled_at else None,
                     "config": state.config
                 }
-            
-            with open(self._state_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            fd, tmp_name = tempfile.mkstemp(
+                prefix=f"{self._state_file.name}.",
+                suffix=".tmp",
+                dir=str(self._state_file.parent)
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, self._state_file)
+            except OSError as e:
+                # Windows/NAS 环境下临时文件替换偶尔会被实时扫描或文件锁拦截。
+                # 回退到原有直接写入策略，避免模块状态无法保存。
+                if not self._atomic_write_warned:
+                    logger.warning(f"模块状态原子写入失败，回退到直接写入: {e}")
+                    self._atomic_write_warned = True
+                else:
+                    logger.debug(f"模块状态原子写入失败，继续使用直接写入: {e}")
+                _write_direct(data)
+            finally:
+                try:
+                    if os.path.exists(tmp_name):
+                        os.unlink(tmp_name)
+                except OSError:
+                    pass
         except Exception as e:
             logger.error(f"保存模块状态失败: {e}")
     
+    def _save_states(self):
+        """Save module states, deferring disk writes inside batch contexts."""
+        if self._state_save_depth > 0:
+            self._state_save_pending = True
+            return
+        self._write_states_now()
+
+    @contextmanager
+    def batch_state_writes(self):
+        """Batch module state writes during bulk operations."""
+        self._state_save_depth += 1
+        try:
+            yield
+        finally:
+            self._state_save_depth -= 1
+            if self._state_save_depth == 0 and self._state_save_pending:
+                self._state_save_pending = False
+                self._write_states_now()
+
     @staticmethod
     def _is_version_newer(new_version: str, old_version: str) -> bool:
         """
@@ -269,6 +321,9 @@ class ModuleLoader:
 
     def load_manifest(self, module_id: str) -> Optional[ModuleManifest]:
         """加载模块清单"""
+        if module_id in self._manifest_cache:
+            return self._manifest_cache[module_id]
+
         module_path = self.modules_path / module_id
         # 按命名规范，清单文件为 {module_id}_manifest.py
         manifest_file = module_path / f"{module_id}_manifest.py"
@@ -282,10 +337,18 @@ class ModuleLoader:
             manifest = module.manifest
             # 自动发现前端资源
             self._discover_assets(module_id, manifest)
+            self._manifest_cache[module_id] = manifest
             return manifest
         else:
             logger.error(f"清单文件缺少manifest对象: {module_id}")
-            return None
+        return None
+
+    def clear_manifest_cache(self, module_id: Optional[str] = None):
+        """清理 manifest 缓存，用于安装、卸载或开发态热更新后重新读取清单。"""
+        if module_id:
+            self._manifest_cache.pop(module_id, None)
+        else:
+            self._manifest_cache.clear()
     
     def _discover_assets(self, module_id: str, manifest: ModuleManifest):
         """自动发现模块前端资源"""
@@ -536,8 +599,9 @@ class ModuleLoader:
         # 按依赖排序
         sorted_ids = self._sort_by_dependencies(module_ids)
         
-        for module_id in sorted_ids:
-            results[module_id] = self.load_module(module_id)
+        with self.batch_state_writes():
+            for module_id in sorted_ids:
+                results[module_id] = self.load_module(module_id)
         
         return results
 

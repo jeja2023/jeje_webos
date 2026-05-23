@@ -4,6 +4,7 @@
 """
 
 from utils.timezone import get_beijing_time
+import asyncio
 from typing import Optional
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Query
 from fastapi.responses import StreamingResponse, Response
@@ -65,21 +66,21 @@ async def export_users(
     timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
-        file_stream = exporter.export_to_csv(data)
+        file_stream = await asyncio.to_thread(exporter.export_to_csv, data)
         return StreamingResponse(
             file_stream,
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="users_{timestamp}.csv"'}
         )
     elif format in ("xlsx", "excel"):
-        file_stream = exporter.export_to_excel(data, sheet_name="用户数据")
+        file_stream = await asyncio.to_thread(exporter.export_to_excel, data, "用户数据")
         return StreamingResponse(
             file_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="users_{timestamp}.xlsx"'}
         )
     else:  # json
-        json_content = exporter.export_to_json(data)
+        json_content = await asyncio.to_thread(exporter.export_to_json, data)
         return Response(
             content=json_content,
             media_type="application/json",
@@ -133,21 +134,21 @@ async def export_notifications(
     timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
-        file_stream = exporter.export_to_csv(data)
+        file_stream = await asyncio.to_thread(exporter.export_to_csv, data)
         return StreamingResponse(
             file_stream,
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="notifications_{timestamp}.csv"'}
         )
     elif format in ("xlsx", "excel"):
-        file_stream = exporter.export_to_excel(data, sheet_name="通知数据")
+        file_stream = await asyncio.to_thread(exporter.export_to_excel, data, "通知数据")
         return StreamingResponse(
             file_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="notifications_{timestamp}.xlsx"'}
         )
     else:  # json
-        json_content = exporter.export_to_json(data)
+        json_content = await asyncio.to_thread(exporter.export_to_json, data)
         return Response(
             content=json_content,
             media_type="application/json",
@@ -207,21 +208,21 @@ async def export_files(
     timestamp = get_beijing_time().strftime("%Y%m%d_%H%M%S")
     
     if format == "csv":
-        file_stream = exporter.export_to_csv(data)
+        file_stream = await asyncio.to_thread(exporter.export_to_csv, data)
         return StreamingResponse(
             file_stream,
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="files_{timestamp}.csv"'}
         )
     elif format in ("xlsx", "excel"):
-        file_stream = exporter.export_to_excel(data, sheet_name="文件记录")
+        file_stream = await asyncio.to_thread(exporter.export_to_excel, data, "文件记录")
         return StreamingResponse(
             file_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="files_{timestamp}.xlsx"'}
         )
     else:  # json
-        json_content = exporter.export_to_json(data)
+        json_content = await asyncio.to_thread(exporter.export_to_json, data)
         return Response(
             content=json_content,
             media_type="application/json",
@@ -258,12 +259,12 @@ async def import_users(
     
     if filename.endswith(".csv"):
         content_str = content.decode('utf-8-sig')  # 支持 BOM
-        data = importer.import_from_csv(content_str)
+        data = await asyncio.to_thread(importer.import_from_csv, content_str)
     elif filename.endswith(".json"):
         content_str = content.decode('utf-8')
-        data = importer.import_from_json(content_str)
+        data = await asyncio.to_thread(importer.import_from_json, content_str)
     elif filename.endswith((".xlsx", ".xls")):
-        data = importer.import_from_excel(content)
+        data = await asyncio.to_thread(importer.import_from_excel, content)
     else:
         raise BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的文件格式，支持: csv, json, xlsx")
     
@@ -457,7 +458,7 @@ async def download_user_import_template(
     
     # 导出 Excel
     exporter = DataExporter()
-    file_stream = exporter.export_to_excel(template_data, sheet_name="用户导入模板")
+    file_stream = await asyncio.to_thread(exporter.export_to_excel, template_data, "用户导入模板")
     return StreamingResponse(
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

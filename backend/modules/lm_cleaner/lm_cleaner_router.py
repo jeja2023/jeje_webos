@@ -6,6 +6,7 @@ NotebookLM水印清除模块API路由
 import logging
 import os
 import uuid
+import aiofiles
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -40,16 +41,29 @@ async def clean_file(
     上传文件并清除 NotebookLM 水印
     """
     # 1. 验证文件
-    content = await file.read()
-    is_valid, error = storage_manager.validate_file(file.filename, len(content), content)
+    total_size = 0
+    sample = b""
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        if not sample:
+            sample = chunk[:8192]
+        total_size += len(chunk)
+    is_valid, error = storage_manager.validate_file(file.filename, total_size, sample)
     if not is_valid:
         raise ValidationException(error)
     
     # 2. 保存原始文件到上传目录（用户隔离）
     uploads_dir = LmCleanerService._get_user_dir(user.user_id, "uploads")
     temp_input_path = uploads_dir / f"source_{uuid.uuid4().hex[:8]}_{file.filename}"
-    with open(temp_input_path, "wb") as f:
-        f.write(content)
+    await file.seek(0)
+    async with aiofiles.open(temp_input_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            await f.write(chunk)
     
     try:
         # 3. 处理文件

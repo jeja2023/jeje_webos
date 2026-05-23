@@ -1,5 +1,6 @@
 
 import pytest
+import asyncio
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 from utils.backup_executor import calculate_next_run
@@ -104,3 +105,13 @@ class TestBackupExecutor:
         assert "数据库备份失败" in mock_backup.error_message
         
         mock_db_session.commit.assert_called()
+
+    def test_set_backup_notification_loop(self):
+        from utils.backup_executor import set_backup_notification_loop
+
+        loop = asyncio.new_event_loop()
+        try:
+            set_backup_notification_loop(loop)
+            assert utils.backup_executor._notification_loop is loop
+        finally:
+            loop.close()

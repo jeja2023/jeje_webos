@@ -5,6 +5,7 @@
 
 import os
 import pandas as pd
+import aiofiles
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -171,9 +172,14 @@ async def upload_gps_data(
         sub_type="map_gps"
     )
     
-    with open(full_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
+    total_size = 0
+    async with aiofiles.open(full_path, "wb") as buffer:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            await buffer.write(chunk)
 
     try:
         # 解析数据
@@ -184,7 +190,7 @@ async def upload_gps_data(
             user_id=user.user_id,
             filename=file.filename,
             file_path=rel_path,
-            file_size=len(content),
+            file_size=total_size,
             file_type=ext.lstrip('.'),
             stats={"point_count": len(points)}
         )

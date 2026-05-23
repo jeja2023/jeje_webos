@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 1. 先复制依赖文件（变更频率低，充分利用 Docker 层缓存）
-COPY backend/requirements.txt .
+COPY backend/requirements*.txt ./
 
 # 2. 安装 CPU 版本的 PyTorch（体积巨大，单独一层以利用缓存）
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
@@ -101,7 +101,7 @@ USER appuser
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')" || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"]

@@ -7,10 +7,12 @@ import shutil
 import asyncio
 import logging
 import hashlib
+import aiofiles
 from cachetools import TTLCache
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, or_, and_
 from typing import List, Optional, Dict, Any
+from pathlib import Path
 from fastapi import UploadFile
 
 from utils.storage import get_storage_manager
@@ -229,9 +231,14 @@ class KnowledgeService:
         file_path = os.path.join(save_dir, safe_filename)
         
         # 写入文件
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
+        total_size = 0
+        async with aiofiles.open(file_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                await f.write(chunk)
             
         # 创建节点记录，状态设为处理中
         node = KnowledgeNode(
@@ -241,7 +248,7 @@ class KnowledgeService:
             node_type="file",
             file_path=str(file_path),
             file_meta={
-                "size": len(content),
+                "size": total_size,
                 "mime": file.content_type,
                 "ext": file.filename.split('.')[-1] if '.' in file.filename else ''
             },
@@ -269,8 +276,7 @@ class KnowledgeService:
             if not os.path.exists(node.file_path):
                 raise FileNotFoundError(f"文件未找到: {node.file_path}")
                 
-            with open(node.file_path, "rb") as f:
-                content = f.read()
+            content = await asyncio.to_thread(Path(node.file_path).read_bytes)
             
             # 解析文件内容为文本
             extracted_text = await DocumentParser.parse_file(content, node.title, node.file_meta.get('mime'))

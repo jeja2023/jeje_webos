@@ -21,11 +21,15 @@ const App = {
             const token = localStorage.getItem(Config.storageKeys.token);
             const res = await SystemApi.init(token);
             Store.setSystemInfo(res.data);
-            try {
-                const setRes = await SystemApi.getSettings();
-                Store.setSystemSettings(setRes.data);
-            } catch (err) {
-                if (typeof Config !== 'undefined' && Config.warn) Config.warn('获取系统设置失败', err);
+            if (res.data && res.data.system_settings) {
+                Store.setSystemSettings(res.data.system_settings);
+            } else {
+                try {
+                    const setRes = await SystemApi.getSettings();
+                    Store.setSystemSettings(setRes.data);
+                } catch (err) {
+                    if (typeof Config !== 'undefined' && Config.warn) Config.warn('获取系统设置失败', err);
+                }
             }
 
             if (res.data.app_name) {
@@ -427,5 +431,4 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof Config !== 'undefined' && Config.error) Config.error('应用初始化失败:', err);
     });
 });
-
 

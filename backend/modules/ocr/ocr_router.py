@@ -3,6 +3,7 @@
 OCR 模块 API 路由
 """
 
+import asyncio
 import logging
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from typing import Optional, List
@@ -62,10 +63,11 @@ async def recognize_image(
             pass  # filetype 库未安装时跳过
         
         # 执行识别
-        result = OCRService.recognize_image(
-            image_data=image_data,
-            detect_direction=detect_direction,
-            language=language
+        result = await asyncio.to_thread(
+            OCRService.recognize_image,
+            image_data,
+            detect_direction,
+            language,
         )
         
         logger.info(f"用户 {user.user_id} 识别图片成功，文字长度: {len(result['text'])}")
@@ -98,10 +100,11 @@ async def recognize_base64(
         if not request.image_base64:
             return error(code=400, message="缺少图片数据")
         
-        result = OCRService.recognize_from_base64(
-            base64_data=request.image_base64,
-            detect_direction=request.detect_direction,
-            language=request.language
+        result = await asyncio.to_thread(
+            OCRService.recognize_from_base64,
+            request.image_base64,
+            request.detect_direction,
+            request.language,
         )
         
         logger.info(f"用户 {user.user_id} Base64 识别成功，文字长度: {len(result['text'])}")
@@ -132,26 +135,34 @@ async def recognize_batch(
         if len(files) > 10:
             return error(code=400, message="单次最多识别 10 张图片")
         
-        results = []
+        payloads = []
         for file in files:
+            image_data = await file.read()
+            payloads.append((file.filename, image_data))
+
+        async def _recognize_item(filename: str, image_data: bytes):
             try:
-                image_data = await file.read()
-                result = OCRService.recognize_image(
-                    image_data=image_data,
-                    detect_direction=detect_direction,
-                    language=language
+                result = await asyncio.to_thread(
+                    OCRService.recognize_image,
+                    image_data,
+                    detect_direction,
+                    language,
                 )
-                results.append({
-                    "filename": file.filename,
+                return {
+                    "filename": filename,
                     "success": True,
                     **result
-                })
+                }
             except Exception as e:
-                results.append({
-                    "filename": file.filename,
+                return {
+                    "filename": filename,
                     "success": False,
                     "error": str(e)
-                })
+                }
+
+        results = await asyncio.gather(
+            *(_recognize_item(filename, image_data) for filename, image_data in payloads)
+        )
         
         # 统计成功数量
         success_count = sum(1 for r in results if r.get("success"))

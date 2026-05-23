@@ -81,6 +81,37 @@ class TestFilemanagerService:
         results = await svc.search("不存在的文件_xyz")
         assert results is not None
 
+    @pytest.mark.asyncio
+    async def test_upload_file_from_path(self, db_session, tmp_path):
+        from modules.filemanager.filemanager_services import FileManagerService
+        from tests.test_conftest import create_test_user
+
+        user = await create_test_user(db_session, {
+            "username": "uploadpath",
+            "password": "Test@123456",
+            "phone": "13800138009",
+        })
+        svc = FileManagerService(db_session, user_id=user["id"])
+        source = tmp_path / "sample.txt"
+        payload = b"hello from temp file"
+        source.write_bytes(payload)
+
+        uploaded = await svc.upload_file_from_path(
+            filename="sample.txt",
+            source_path=source,
+            mime_type="text/plain",
+            file_size=source.stat().st_size
+        )
+
+        saved_path = svc.storage.get_file_path(uploaded.storage_path)
+        assert uploaded.name == "sample.txt"
+        assert uploaded.file_size == len(payload)
+        assert not source.exists()
+        assert saved_path is not None
+        assert saved_path.read_bytes() == payload
+
+        await svc.delete_file(uploaded.id)
+
 
 @pytest.mark.asyncio
 class TestFilemanagerAPI:

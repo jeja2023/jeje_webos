@@ -103,7 +103,7 @@ class AIService:
     @classmethod
     async def _chat_local(cls, messages: List[Dict[str, str]], stream: bool = True, model_name: Optional[str] = None) -> Any:
         """本地模型推理"""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         # 获取可用模型列表（排除已知失败的模型）
         available = [m for m in cls.get_available_models() if m not in cls._failed_models]

@@ -1,4 +1,5 @@
-const CACHE_NAME = 'jeje-webos-cache';
+const CACHE_VERSION = '2.5.33';
+const CACHE_NAME = `jeje-webos-cache-${CACHE_VERSION}`;
 
 // 需要预缓存的核心资源
 const PRECACHE_ASSETS = [
@@ -70,8 +71,8 @@ const PRECACHE_ASSETS = [
 
     // ========== 第三方库 ==========
     '/static/libs/remixicon/remixicon.css',
-    '/static/libs/remixicon/remixicon.woff2?t=1708865856766',
-    '/static/libs/remixicon/remixicon.woff?t=1708865856766'
+    '/static/libs/remixicon/remixicon.woff2',
+    '/static/libs/remixicon/remixicon.woff'
 ];
 
 // 安装阶段：预缓存核心资源

@@ -82,6 +82,11 @@ const ResourceLoader = {
                 '/static/css/pages/analysis/analysis_smart_table.css'
             ],
             js: [
+                '/static/js/components/chart/chart_style_config.js',
+                '/static/js/components/chart/chart_render_cache.js',
+                '/static/js/components/chart/chart_helper.js',
+                '/static/js/components/chart/chart_factory.js',
+                '/static/js/components/chart/chart_config_ui.js',
                 '/static/js/pages/analysis/analysis.js',
                 '/static/js/pages/analysis/analysis_import.js',
                 '/static/js/pages/analysis/analysis_cleaning.js',
@@ -101,6 +106,11 @@ const ResourceLoader = {
                 '/static/css/pages/datalens/datalens_editor.css'
             ],
             js: [
+                '/static/js/components/chart/chart_style_config.js',
+                '/static/js/components/chart/chart_render_cache.js',
+                '/static/js/components/chart/chart_helper.js',
+                '/static/js/components/chart/chart_factory.js',
+                '/static/js/components/chart/chart_config_ui.js',
                 '/static/js/pages/datalens/datalens.js',
                 '/static/js/pages/datalens/datalens_hub.js',
                 '/static/js/pages/datalens/datalens_viewer.js',

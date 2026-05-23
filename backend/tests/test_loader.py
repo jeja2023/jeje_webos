@@ -87,3 +87,30 @@ manifest = ModuleManifest(
         loader2 = ModuleLoader(modules_dir=str(tmp_path), state_file=str(tmp_path / "state.json"))
         loader2.scan_modules()
         assert loader2.get_module_state(mod_id).enabled is True
+
+    def test_load_all_batches_state_writes(self, tmp_path, monkeypatch):
+        """批量加载模块时只落盘一次状态文件。"""
+        for mod_id in ("batch_a", "batch_b"):
+            mod_dir = tmp_path / mod_id
+            mod_dir.mkdir()
+            content = (
+                "from core.loader import ModuleManifest\n"
+                f"manifest = ModuleManifest(id='{mod_id}', name='{mod_id}', version='1.0.0', enabled=True)\n"
+            )
+            (mod_dir / f"{mod_id}_manifest.py").write_text(content, encoding="utf-8")
+            (mod_dir / "__init__.py").write_text("", encoding="utf-8")
+
+        loader = ModuleLoader(modules_dir=str(tmp_path), state_file=str(tmp_path / "state.json"))
+        calls = 0
+        original = loader._write_states_now
+
+        def wrapped_write():
+            nonlocal calls
+            calls += 1
+            original()
+
+        monkeypatch.setattr(loader, "_write_states_now", wrapped_write)
+        results = loader.load_all()
+
+        assert results == {"batch_a": True, "batch_b": True}
+        assert calls == 1

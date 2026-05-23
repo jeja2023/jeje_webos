@@ -122,68 +122,79 @@ class GzipMiddleware:
             await self.app(scope, receive, send)
             return
         
-        # 创建响应包装器
         initial_message = {}
         body_parts = []
-        response_started = False
         should_buffer = False
+        passthrough = False
         
         async def send_wrapper(message):
-            nonlocal initial_message, body_parts, response_started, should_buffer
+            nonlocal initial_message, body_parts, should_buffer, passthrough
             
             if message["type"] == "http.response.start":
                 initial_message = message
                 
-                # 获取 Content-Type
                 content_type = ""
+                content_encoding = ""
                 headers = dict(message.get("headers", []))
                 if b"content-type" in headers:
                     content_type = headers[b"content-type"].decode("latin-1", errors="replace").lower()
-                
-                # 检查是否是可压缩类型
-                should_buffer = any(ct in content_type for ct in self.COMPRESSIBLE_TYPES)
-                
-                if not should_buffer:
-                    # 如果不需要压缩，直接发送并标记不再缓冲
+                if b"content-encoding" in headers:
+                    content_encoding = headers[b"content-encoding"].decode("latin-1", errors="replace").lower()
+
+                should_buffer = (
+                    not content_encoding
+                    and any(ct in content_type for ct in self.COMPRESSIBLE_TYPES)
+                )
+                passthrough = not should_buffer
+
+                if passthrough:
                     await send(message)
-                    response_started = True
                 return
             
             if message["type"] == "http.response.body":
-                if not should_buffer:
-                    # 透传模式
+                if passthrough:
                     await send(message)
                     return
                 
-                # 缓冲模式
                 body = message.get("body", b"")
                 more_body = message.get("more_body", False)
+                if more_body:
+                    passthrough = True
+                    await send(initial_message)
+                    for part in body_parts:
+                        await send({"type": "http.response.body", "body": part, "more_body": True})
+                    await send(message)
+                    body_parts.clear()
+                    return
+
                 body_parts.append(body)
                 
                 if not more_body:
-                    # 完整响应已收集
                     full_body = b"".join(body_parts)
                     
-                    # 检查最终大小是否达到压缩阈值
                     if len(full_body) >= self.minimum_size:
-                        # 压缩内容
                         compressed_body = gzip.compress(full_body, compresslevel=self.compresslevel)
                         
-                        # 更新头信息
                         new_headers = []
+                        has_vary = False
                         for name, value in initial_message.get("headers", []):
-                            if name.lower() == b"content-length":
-                                continue  # 将重新计算
+                            lower_name = name.lower()
+                            if lower_name == b"content-length":
+                                continue
+                            if lower_name == b"vary":
+                                has_vary = True
+                                if b"accept-encoding" not in value.lower():
+                                    value = value + b", Accept-Encoding"
                             new_headers.append((name, value))
                         
                         new_headers.append((b"content-encoding", b"gzip"))
                         new_headers.append((b"content-length", str(len(compressed_body)).encode()))
-                        new_headers.append((b"vary", b"Accept-Encoding"))
+                        if not has_vary:
+                            new_headers.append((b"vary", b"Accept-Encoding"))
                         
                         initial_message["headers"] = new_headers
                         full_body = compressed_body
                     
-                    # 发送响应
                     await send(initial_message)
                     await send({
                         "type": "http.response.body",
@@ -199,4 +210,3 @@ class GzipMiddleware:
             logger = logging.getLogger(__name__)
             logger.error(f"Gzip中间件捕获异常: {type(e).__name__}: {e}, 请求路径: {scope.get('path', 'unknown')}")
             raise
-

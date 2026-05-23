@@ -9,6 +9,7 @@ import uuid
 import json
 import logging
 import asyncio
+import aiofiles
 import pandas as pd
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -204,7 +205,7 @@ async def upload_analysis_file(
     total_size = 0
     size_exceeded = False
     try:
-        with open(save_path, "wb") as f:
+        async with aiofiles.open(save_path, "wb") as f:
             while True:
                 chunk = await file.read(1024 * 1024)  # 1MB 块
                 if not chunk:
@@ -213,7 +214,7 @@ async def upload_analysis_file(
                 if total_size > max_upload_size:
                     size_exceeded = True
                     break
-                f.write(chunk)
+                await f.write(chunk)
         # 文件已关闭后再清理（避免 Windows 上文件占用导致删除失败）
         if size_exceeded:
             os.unlink(save_path)

@@ -207,7 +207,11 @@ async def manifest():
     """PWA Manifest"""
     path = os.path.join(FRONTEND_PATH, "manifest.json")
     if os.path.exists(path):
-        return FileResponse(path, media_type="application/json")
+        return FileResponse(
+            path,
+            media_type="application/json",
+            headers={"Cache-Control": "no-cache, must-revalidate"}
+        )
     raise NotFoundException("资源")
 
 @app.get("/sw.js", include_in_schema=False)
@@ -216,7 +220,11 @@ async def service_worker():
     path = os.path.join(FRONTEND_PATH, "sw.js")
     if os.path.exists(path):
         # 从根目录提供 Service Worker 时，作用域自动为根路径
-        return FileResponse(path, media_type="application/javascript")
+        return FileResponse(
+            path,
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
     raise NotFoundException("资源")
 
 @app.get("/", include_in_schema=False)
@@ -224,7 +232,10 @@ async def root():
     """入口页: 返回前端 Index 页面"""
     index_path = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return FileResponse(
+            index_path,
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
     return {
         "message": f"Welcome to {settings.app_name}",
         "version": settings.app_version,
@@ -262,7 +273,10 @@ async def spa_history_fallback(full_path: str):
     
     index_path_local = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path_local):
-        return FileResponse(index_path_local)
+        return FileResponse(
+            index_path_local,
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
     raise NotFoundException("资源")
 
 app.add_api_route(

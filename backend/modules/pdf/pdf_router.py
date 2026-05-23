@@ -5,6 +5,7 @@ PDF 工具模块 API 路由
 
 import logging
 import os
+import aiofiles
 from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, Response, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
@@ -139,17 +140,22 @@ async def upload_pdf(
         save_path = uploads_dir / safe_filename
         counter += 1
     
-    # 保存文件
-    content = await file.read()
-    with open(save_path, "wb") as f:
-        f.write(content)
+    # 流式保存文件，避免大文件一次性进入内存。
+    total_size = 0
+    async with aiofiles.open(save_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            await f.write(chunk)
     
     logger.info(f"用户 {user.user_id} 上传 PDF 文件: {safe_filename}")
     
     return success_response(data={
         "name": safe_filename,
         "path": str(save_path.relative_to(storage.root_dir)),
-        "size": len(content)
+        "size": total_size
     }, message="上传成功")
 
 
@@ -696,4 +702,3 @@ async def save_text(
         return success_response(data={"path": output_path}, message="保存成功")
     except ValueError as e:
         return error_response(message=str(e))
-

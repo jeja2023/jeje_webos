@@ -370,7 +370,7 @@ class AuditLogger:
         """启动自动刷新任务"""
         if cls._flush_task is None or cls._flush_task.done():
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 cls._flush_task = loop.create_task(cls._auto_flush_loop())
                 logger.debug("审计日志自动刷新任务已启动")
             except RuntimeError:

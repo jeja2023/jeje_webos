@@ -125,3 +125,68 @@ class TestGzipMiddleware:
         await middleware(scope, lambda: {}, mock_send)
         
         assert "content-encoding" not in captured_headers
+
+    @pytest.mark.asyncio
+    async def test_streaming_response_passthrough(self):
+        chunks = [b"a" * 600, b"b" * 600]
+
+        async def mock_app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "headers": [(b"content-type", b"text/plain")]
+            })
+            await send({"type": "http.response.body", "body": chunks[0], "more_body": True})
+            await send({"type": "http.response.body", "body": chunks[1], "more_body": False})
+
+        middleware = GzipMiddleware(mock_app, minimum_size=100)
+        scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+        messages = []
+
+        async def mock_send(message):
+            messages.append(message)
+
+        async def mock_receive():
+            return {}
+
+        await middleware(scope, mock_receive, mock_send)
+
+        headers = {k.decode().lower(): v.decode() for k, v in messages[0]["headers"]}
+        bodies = [m["body"] for m in messages if m["type"] == "http.response.body"]
+        assert "content-encoding" not in headers
+        assert bodies == chunks
+
+    @pytest.mark.asyncio
+    async def test_existing_content_encoding_passthrough(self):
+        body = gzip.compress(b"a" * 1000)
+
+        async def mock_app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "headers": [
+                    (b"content-type", b"text/plain"),
+                    (b"content-encoding", b"gzip"),
+                    (b"content-length", str(len(body)).encode())
+                ]
+            })
+            await send({"type": "http.response.body", "body": body})
+
+        middleware = GzipMiddleware(mock_app, minimum_size=100)
+        scope = {"type": "http", "headers": [(b"accept-encoding", b"gzip")]}
+        captured_body = b""
+        captured_headers = {}
+
+        async def mock_send(message):
+            nonlocal captured_body
+            if message["type"] == "http.response.start":
+                for k, v in message["headers"]:
+                    captured_headers[k.decode().lower()] = v.decode()
+            elif message["type"] == "http.response.body":
+                captured_body += message["body"]
+
+        async def mock_receive():
+            return {}
+
+        await middleware(scope, mock_receive, mock_send)
+
+        assert captured_headers.get("content-encoding") == "gzip"
+        assert captured_body == body

@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import threading
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -16,11 +17,18 @@ from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
 
+_notification_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def set_backup_notification_loop(loop: Optional[asyncio.AbstractEventLoop] = None):
+    """Register the main event loop used for backup WebSocket notifications."""
+    global _notification_loop
+    _notification_loop = loop or asyncio.get_running_loop()
+
 def _notify_backup_status_sync(backup_id: int, status: str, message: str, progress: int = 0):
     """
     通过 WebSocket 发送备份状态更新的同步包装器
     """
-    import asyncio
     try:
         from core.ws_manager import manager
         payload = {
@@ -33,14 +41,11 @@ def _notify_backup_status_sync(backup_id: int, status: str, message: str, progre
             }
         }
         
-        # 获取主事件循环并调度广播
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.run_coroutine_threadsafe(manager.broadcast(payload), loop)
-        except RuntimeError:
-            # 某些情况下 get_event_loop 可能失败，尝试 get_running_loop 或直接忽略
-            pass
+        loop = _notification_loop
+        if loop and loop.is_running():
+            asyncio.run_coroutine_threadsafe(manager.broadcast(payload), loop)
+        else:
+            logger.debug("Backup status notification skipped: event loop is not available")
             
     except Exception as e:
         logger.error(f"WebSocket 备份通知失败: {e}")

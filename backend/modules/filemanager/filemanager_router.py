@@ -28,6 +28,8 @@ from utils.storage import get_storage_manager
 
 logger = logging.getLogger(__name__)
 
+UPLOAD_CHUNK_SIZE = 1024 * 1024
+
 
 def encode_filename_for_header(filename: str) -> str:
     """
@@ -225,6 +227,51 @@ async def delete_folder(
 
 # ============ 文件操作 ============
 
+async def _stream_upload_to_temp(
+    file: UploadFile,
+    display_name: str,
+    storage,
+    content_length: Optional[int],
+) -> tuple[str, int]:
+    import tempfile
+
+    max_size = storage.max_size
+    max_size_mb = max_size / 1024 / 1024
+    total_size = 0
+    suffix = os.path.splitext(display_name or "")[1]
+    temp_fd, temp_file_path = tempfile.mkstemp(suffix=suffix)
+
+    try:
+        with os.fdopen(temp_fd, 'wb') as tmp_f:
+            while True:
+                chunk = await file.read(UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+
+                total_size += len(chunk)
+                if total_size > max_size:
+                    raise BusinessException(
+                        ErrorCode.FILE_TOO_LARGE,
+                        f"File {display_name} exceeds the size limit ({max_size_mb:.1f}MB)"
+                    )
+
+                tmp_f.write(chunk)
+
+                if content_length and total_size > content_length:
+                    logger.warning(
+                        f"File {display_name} actual size ({total_size}) exceeds Content-Length ({content_length})"
+                    )
+                    break
+    except Exception:
+        if os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception:
+                pass
+        raise
+
+    return temp_file_path, total_size
+
 async def _process_single_file(
     file: UploadFile,
     service: FileManagerService,
@@ -234,11 +281,9 @@ async def _process_single_file(
     user_id: int
 ) -> dict:
     """处理单个文件上传（内部辅助函数）"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
     max_size = storage.max_size
     max_size_mb = max_size / 1024 / 1024
+    display_name = file.filename or "unknown"
     
     # 1. 检查 Content-Length 头
     content_length = None
@@ -250,106 +295,70 @@ async def _process_single_file(
                 if content_length > max_size:
                     raise BusinessException(
                         ErrorCode.FILE_TOO_LARGE,
-                        f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
+                        f"文件 {display_name} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {content_length / 1024 / 1024:.1f}MB）"
                     )
             except (ValueError, TypeError):
                 pass
     
-    # 2. 流式读取到临时文件（避免大文件占用内存）
-    import tempfile
-    import os
-    
-    total_size = 0
-    chunk_size = 1024 * 1024  # 1MB 块大小
     temp_file_path = None
-    
     try:
-        # 使用临时文件而非内存缓冲
-        temp_fd, temp_file_path = tempfile.mkstemp(suffix=os.path.splitext(file.filename or "")[1])
-        try:
-            with os.fdopen(temp_fd, 'wb') as tmp_f:
-                while True:
-                    chunk = await file.read(chunk_size)
-                    if not chunk:
-                        break
-                    
-                    total_size += len(chunk)
-                    
-                    if total_size > max_size:
-                        raise BusinessException(
-                            ErrorCode.FILE_TOO_LARGE,
-                            f"文件 {file.filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
-                        )
-                    
-                    tmp_f.write(chunk)
-                    
-                    if content_length and total_size > content_length:
-                        logger.warning(f"文件 {file.filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
-                        break
-        except AppException:
-            raise
-        except Exception as e:
-            logger.error(f"读取文件 {file.filename} 时发生错误: {str(e)}")
-            raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
-        
-        # 3. 从临时文件读取内容用于上传
-        with open(temp_file_path, 'rb') as tmp_f:
-            content = tmp_f.read()
-        actual_size = len(content)
-    
+        temp_file_path, actual_size = await _stream_upload_to_temp(
+            file, display_name, storage, content_length
+        )
     except AppException:
         raise
+    except Exception as e:
+        logger.error(f"读取文件 {display_name} 时发生错误: {str(e)}")
+        raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
+
+    try:
+        uploaded = await service.upload_file_from_path(
+            filename=display_name,
+            source_path=temp_file_path,
+            mime_type=file.content_type or "application/octet-stream",
+            folder_id=folder_id,
+            description=description,
+            file_size=actual_size
+        )
+    except ValueError as e:
+        return {
+            "success": False,
+            "filename": display_name,
+            "error": str(e)
+        }
+    except Exception as e:
+        logger.error(f"保存文件 {display_name} 失败: {str(e)}")
+        return {
+            "success": False,
+            "filename": display_name,
+            "error": f"保存文件失败: {str(e)}"
+        }
     finally:
-        # 清理临时文件
         if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
             except Exception:
                 pass
-    
-    # 4. 上传文件
-    try:
-        uploaded = await service.upload_file(
-            filename=file.filename or "unknown",
-            content=content,
-            mime_type=file.content_type or "application/octet-stream",
-            folder_id=folder_id,
-            description=description
-        )
-        
-        logger.info(f"文件上传成功: {file.filename}, 大小: {actual_size / 1024 / 1024:.2f}MB, 用户: {user_id}")
-        
-        return {
-            "success": True,
-            "file": FileInfo(
-                id=uploaded.id,
-                name=uploaded.name,
-                folder_id=uploaded.folder_id,
-                storage_path=uploaded.storage_path,
-                file_size=uploaded.file_size,
-                mime_type=uploaded.mime_type,
-                description=uploaded.description,
-                is_starred=uploaded.is_starred,
-                created_at=uploaded.created_at,
-                updated_at=uploaded.updated_at,
-                download_url=f"/api/v1/filemanager/download/{uploaded.id}",
-                preview_url=f"/api/v1/filemanager/preview/{uploaded.id}"
-            ).model_dump()
-        }
-    except ValueError as e:
-        return {
-            "success": False,
-            "filename": file.filename or "unknown",
-            "error": str(e)
-        }
-    except Exception as e:
-        logger.error(f"保存文件 {file.filename} 失败: {str(e)}")
-        return {
-            "success": False,
-            "filename": file.filename or "unknown",
-            "error": f"保存文件失败: {str(e)}"
-        }
 
+    logger.info(f"文件上传成功: {display_name}, 大小: {actual_size / 1024 / 1024:.2f}MB, 用户: {user_id}")
+
+    return {
+        "success": True,
+        "file": FileInfo(
+            id=uploaded.id,
+            name=uploaded.name,
+            folder_id=uploaded.folder_id,
+            storage_path=uploaded.storage_path,
+            file_size=uploaded.file_size,
+            mime_type=uploaded.mime_type,
+            description=uploaded.description,
+            is_starred=uploaded.is_starred,
+            created_at=uploaded.created_at,
+            updated_at=uploaded.updated_at,
+            download_url=f"/api/v1/filemanager/download/{uploaded.id}",
+            preview_url=f"/api/v1/filemanager/preview/{uploaded.id}"
+        ).model_dump()
+    }
 
 async def _process_single_file_with_name(
     file: UploadFile,
@@ -360,14 +369,10 @@ async def _process_single_file_with_name(
     description: Optional[str],
     user_id: int
 ) -> dict:
-    """
-    处理单个文件上传（允许覆盖文件名）
-    用于文件夹上传时，提取正确的文件名而非含路径的完整名称
-    """
+    """处理单个文件上传（允许覆盖文件名）"""
     max_size = storage.max_size
     max_size_mb = max_size / 1024 / 1024
-    
-    # 1. 检查 Content-Length 头
+
     content_length = None
     if hasattr(file, 'headers'):
         content_length_str = file.headers.get('content-length')
@@ -381,78 +386,27 @@ async def _process_single_file_with_name(
                     )
             except (ValueError, TypeError):
                 pass
-    
-    # 2. 流式读取并检查大小
-    content_chunks = []
-    total_size = 0
-    chunk_size = 1024 * 1024  # 1MB 块大小
-    
+
+    temp_file_path = None
     try:
-        while True:
-            chunk = await file.read(chunk_size)
-            if not chunk:
-                break
-            
-            total_size += len(chunk)
-            
-            if total_size > max_size:
-                raise BusinessException(
-                    ErrorCode.FILE_TOO_LARGE,
-                    f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前已读取 {total_size / 1024 / 1024:.1f}MB）"
-                )
-            
-            content_chunks.append(chunk)
-            
-            if content_length and total_size > content_length:
-                logger.warning(f"文件 {filename} 实际大小 ({total_size}) 超过声明的 Content-Length ({content_length})")
-                break
-    
+        temp_file_path, actual_size = await _stream_upload_to_temp(
+            file, filename, storage, content_length
+        )
     except AppException:
         raise
     except Exception as e:
         logger.error(f"读取文件 {filename} 时发生错误: {str(e)}")
         raise BusinessException(ErrorCode.INTERNAL_ERROR, f"读取文件失败: {str(e)}")
-    
-    # 3. 合并所有块
-    content = b''.join(content_chunks)
-    actual_size = len(content)
-    
-    # 4. 最终验证
-    if actual_size > max_size:
-        raise BusinessException(
-            ErrorCode.FILE_TOO_LARGE,
-            f"文件 {filename} 大小超过限制（最大 {max_size_mb:.1f}MB，当前文件 {actual_size / 1024 / 1024:.1f}MB）"
-        )
-    
-    # 5. 上传文件（使用指定的文件名）
+
     try:
-        uploaded = await service.upload_file(
+        uploaded = await service.upload_file_from_path(
             filename=filename,
-            content=content,
+            source_path=temp_file_path,
             mime_type=file.content_type or "application/octet-stream",
             folder_id=folder_id,
-            description=description
+            description=description,
+            file_size=actual_size
         )
-        
-        logger.info(f"文件上传成功: {filename}, 大小: {actual_size / 1024 / 1024:.2f}MB, 用户: {user_id}")
-        
-        return {
-            "success": True,
-            "file": FileInfo(
-                id=uploaded.id,
-                name=uploaded.name,
-                folder_id=uploaded.folder_id,
-                storage_path=uploaded.storage_path,
-                file_size=uploaded.file_size,
-                mime_type=uploaded.mime_type,
-                description=uploaded.description,
-                is_starred=uploaded.is_starred,
-                created_at=uploaded.created_at,
-                updated_at=uploaded.updated_at,
-                download_url=f"/api/v1/filemanager/download/{uploaded.id}",
-                preview_url=f"/api/v1/filemanager/preview/{uploaded.id}"
-            ).model_dump()
-        }
     except ValueError as e:
         return {
             "success": False,
@@ -466,6 +420,32 @@ async def _process_single_file_with_name(
             "filename": filename,
             "error": f"保存文件失败: {str(e)}"
         }
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception:
+                pass
+
+    logger.info(f"文件上传成功: {filename}, 大小: {actual_size / 1024 / 1024:.2f}MB, 用户: {user_id}")
+
+    return {
+        "success": True,
+        "file": FileInfo(
+            id=uploaded.id,
+            name=uploaded.name,
+            folder_id=uploaded.folder_id,
+            storage_path=uploaded.storage_path,
+            file_size=uploaded.file_size,
+            mime_type=uploaded.mime_type,
+            description=uploaded.description,
+            is_starred=uploaded.is_starred,
+            created_at=uploaded.created_at,
+            updated_at=uploaded.updated_at,
+            download_url=f"/api/v1/filemanager/download/{uploaded.id}",
+            preview_url=f"/api/v1/filemanager/preview/{uploaded.id}"
+        ).model_dump()
+    }
 
 @router.post("/upload")
 async def upload_file(

@@ -4,6 +4,7 @@
 覆盖：模型、服务层 CRUD、API 路由端点
 """
 import pytest
+import os
 from httpx import AsyncClient
 from modules.video.video_models import VideoCollection, Video
 from modules.video.video_schemas import CollectionCreate
@@ -58,6 +59,44 @@ class TestVideoService:
         # None 可能返回 "" 或 "0:00"
         result_none = VideoService.format_duration(None)
         assert result_none is not None
+
+    @pytest.mark.asyncio
+    async def test_upload_video_from_path(self, db_session, tmp_path, monkeypatch):
+        import modules.video.video_services as video_services
+        from modules.video.video_services import VideoService
+
+        monkeypatch.setattr(video_services, "_ffmpeg_checked", True)
+        monkeypatch.setattr(video_services, "_ffmpeg_available", False)
+
+        coll = await VideoService.create_collection(
+            db_session,
+            user_id=1,
+            data=CollectionCreate(name="stream upload")
+        )
+        source = tmp_path / "source.mp4"
+        source.write_bytes(b"video-data")
+
+        class Storage:
+            def get_module_dir(self, module, sub_type, user_id=None):
+                path = tmp_path / module / sub_type / f"user_{user_id}"
+                path.mkdir(parents=True, exist_ok=True)
+                return path
+
+        video = await VideoService.upload_video_from_path(
+            db_session,
+            user_id=1,
+            collection_id=coll.id,
+            source_path=str(source),
+            file_size=source.stat().st_size,
+            filename="clip.mp4",
+            content_type="video/mp4",
+            storage_manager=Storage()
+        )
+
+        assert video is not None
+        assert video.file_size == len(b"video-data")
+        assert not source.exists()
+        assert os.path.exists(video.storage_path)
 
 
 @pytest.mark.asyncio
