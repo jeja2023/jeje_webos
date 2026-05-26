@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from core.config import get_settings
 from core.database import async_session
+from utils.psutil_compat import psutil
 from utils.timezone import get_beijing_time
 
 logger = logging.getLogger(__name__)
@@ -165,8 +166,6 @@ class HealthChecker:
     async def check_memory(self) -> ComponentHealth:
         """检查内存使用"""
         try:
-            import psutil
-            
             memory = psutil.virtual_memory()
             usage_percent = memory.percent
             

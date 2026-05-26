@@ -1,51 +1,12 @@
 from __future__ import annotations
 
-import importlib.machinery
-import importlib.util
 import os
 import shutil
-import sys
 import time
-from pathlib import Path
 from types import SimpleNamespace
 
 
-def _load_real_psutil():
-    module_path = Path(__file__).resolve()
-    module_dir = module_path.parent
-    search_paths = []
-    for entry in sys.path:
-        try:
-            resolved = Path(entry or os.getcwd()).resolve()
-        except Exception:
-            continue
-        if resolved == module_dir:
-            continue
-        search_paths.append(entry)
-
-    spec = importlib.machinery.PathFinder.find_spec("psutil", search_paths)
-    if not spec or not spec.loader or not spec.origin:
-        return None
-
-    try:
-        if Path(spec.origin).resolve() == module_path:
-            return None
-    except Exception:
-        return None
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-_real = _load_real_psutil()
-
-if _real is not None:
-    for name, value in vars(_real).items():
-        if name.startswith("__") and name not in {"__version__", "__all__"}:
-            continue
-        globals()[name] = value
-else:
+def _build_fallback_psutil():
     class AccessDenied(Exception):
         pass
 
@@ -62,11 +23,12 @@ else:
             try:
                 page_size = os.sysconf("SC_PAGE_SIZE")
                 phys_pages = os.sysconf("SC_PHYS_PAGES")
-                total = int(page_size * phys_pages)
                 available_pages = os.sysconf("SC_AVPHYS_PAGES")
+                total = int(page_size * phys_pages)
                 available = int(page_size * available_pages)
             except Exception:
                 pass
+
         used = max(total - available, 0)
         percent = (used / total * 100) if total else 0.0
         return SimpleNamespace(
@@ -104,5 +66,20 @@ else:
         def num_threads(self):
             return 1
 
-    __version__ = "0.0.0"
+    return SimpleNamespace(
+        AccessDenied=AccessDenied,
+        NoSuchProcess=NoSuchProcess,
+        Process=Process,
+        __version__="0.0.0-fallback",
+        boot_time=boot_time,
+        cpu_count=cpu_count,
+        cpu_percent=cpu_percent,
+        disk_usage=disk_usage,
+        virtual_memory=virtual_memory,
+    )
 
+
+try:
+    import psutil as psutil
+except ModuleNotFoundError:
+    psutil = _build_fallback_psutil()

@@ -45,6 +45,17 @@ class ChangelogEntry:
 # 版本更新日志
 CHANGELOG: List[ChangelogEntry] = [
     ChangelogEntry(
+        version="2.5.35",
+        date="2026-05-26",
+        description="部署启动热修复",
+        changes={
+            "fix": [
+                "移除遮蔽真实第三方 psutil 包的本地 psutil.py 文件，修复容器启动循环导入问题",
+                "新增 utils.psutil_compat 兼容入口，优先使用官方 psutil，本地缺失时自动降级"
+            ]
+        }
+    ),
+    ChangelogEntry(
         version="2.5.34",
         date="2026-05-26",
         description="注册审核、用户组与默认配额安全优化",

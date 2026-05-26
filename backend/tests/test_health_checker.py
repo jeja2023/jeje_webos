@@ -63,7 +63,7 @@ class TestHealthChecker:
         
         # 模拟 shutil.disk_usage
         with patch("shutil.disk_usage", return_value=(100, 50, 50)), \
-             patch("psutil.virtual_memory") as mock_mem:
+             patch("core.health_checker.psutil.virtual_memory") as mock_mem:
             
             mock_mem.return_value.percent = 40
             mock_mem.return_value.total = 100

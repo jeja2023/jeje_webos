@@ -6,10 +6,10 @@
 import os
 import sys
 import platform
-import psutil
 import logging
 from typing import Dict, Any
 from datetime import datetime
+from utils.psutil_compat import psutil
 from utils.timezone import get_beijing_time, BEIJING_TZ
 
 logger = logging.getLogger(__name__)
