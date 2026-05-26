@@ -109,9 +109,22 @@ class SystemSettingsPage extends Component {
                                     <small class="form-hint">连续登录失败多少次后锁定</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">注册需要审核</label>
+                                    <label class="switch" style="display:block;margin-top:8px;">
+                                        <input type="checkbox" name="register_requires_review" ${data.register_requires_review ? 'checked' : ''}>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <small class="form-hint">关闭后，注册用户将直接激活并可登录</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">JWT 过期时间（分钟）</label>
                                     <input type="number" name="jwt_expire_minutes" class="form-input" min="15" max="${60 * 24 * 30}" value="${Utils.escapeHtml(String(data.jwt_expire_minutes))}">
                                     <small class="form-hint">登录令牌有效期</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">默认存储配额</label>
+                                    <input type="number" name="default_user_storage_quota" class="form-input" min="0" step="1" value="${data.default_user_storage_quota === null || data.default_user_storage_quota === undefined ? '' : Math.round(data.default_user_storage_quota / 1024 / 1024)}" placeholder="MB">
+                                    <small class="form-hint">新用户默认配额，留空或 0 表示不限制</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">JWT 自动轮换</label>
@@ -270,6 +283,14 @@ class SystemSettingsPage extends Component {
             password_min_length: parseInt(formData.get('password_min_length')) || 8,
             jwt_expire_minutes: parseInt(formData.get('jwt_expire_minutes')) || 10080,
             login_fail_lock: parseInt(formData.get('login_fail_lock')) || 5,
+            register_requires_review: form.querySelector('[name="register_requires_review"]')?.checked || false,
+            default_user_storage_quota: (() => {
+                const raw = formData.get('default_user_storage_quota');
+                if (raw === null || raw === '') return null;
+                const mb = parseFloat(raw);
+                if (!Number.isFinite(mb) || mb <= 0) return null;
+                return Math.round(mb * 1024 * 1024);
+            })(),
             jwt_rotate_enabled: form.querySelector('[name="jwt_rotate_enabled"]')?.checked || false,
             rate_limit_requests: parseInt(formData.get('rate_limit_requests')) || 200,
             rate_limit_window: parseInt(formData.get('rate_limit_window')) || 60,

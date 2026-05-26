@@ -18,7 +18,7 @@ class RolesPage extends Component {
         const map = {
             'admin': '系统管理员',
             'manager': '管理员',
-            'guest': '访客',
+            'guest': '普通用户',
             'user': '普通用户'
         };
         return map[name] || name;
@@ -57,7 +57,7 @@ class RolesPage extends Component {
         const isEdit = !!role;
         const isAdmin = role && role.name === 'admin';
         const isManager = role && role.name === 'manager';
-        const isSystemRole = role && ['admin', 'manager', 'user', 'guest'].includes(role.name);
+        const isSystemRole = role && ['admin', 'manager', 'user'].includes(role.name);
         const perms = role?.permissions || [];
         const featureEntries = Object.entries(this.featureMap);
 

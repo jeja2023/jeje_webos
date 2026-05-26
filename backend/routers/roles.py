@@ -153,7 +153,7 @@ async def delete_role(
         raise NotFoundException("角色")
     
     # 禁止删除系统内置组
-    if role.name in ("admin", "manager", "user", "guest"):
+    if role.name in ("admin", "manager", "user"):
         raise BusinessException(ErrorCode.INVALID_OPERATION, "不能删除系统内置用户组")
     
     # 清理关联用户的 role_ids（移除该组 ID）
@@ -168,5 +168,4 @@ async def delete_role(
     await db.execute(delete(UserGroup).where(UserGroup.id == role_id))
     await db.commit()
     return success(message="删除成功")
-
 

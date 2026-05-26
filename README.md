@@ -51,7 +51,7 @@
 | **📷 图文识别 (OCR)** | 基于 RapidOCR 的离线识别，支持图片和 PDF 文本精准提取 |
 
 ### ⚙️ 系统管理
-- **用户权限**：RBAC 角色控制（Admin/Manager/User/Guest）
+- **用户权限**：RBAC 角色控制（系统管理员/管理员/普通用户），支持注册审核开关与新用户默认存储配额
 - **系统监控**：CPU、内存、磁盘实时仪表盘
 - **审计日志**：全量操作行为记录
 - **数据备份**：数据库自动备份与恢复，支持 AES 256 加密
@@ -305,7 +305,7 @@ python -m pytest tests/ modules/ --cov=. --cov-report=html
 | 类别 | 变量名 | 说明 | 默认值 |
 |:---|:---|:---|:---|
 | **基础** | `APP_NAME` | 系统名称 | JeJe WebOS |
-| | `APP_VERSION` | 系统版本 | 2.5.33 |
+| | `APP_VERSION` | 系统版本 | 2.5.34 |
 | | `DEBUG` | 调试模式 | False |
 | **数据库** | `DB_HOST` | MySQL 主机 | localhost |
 | | `DB_PORT` | MySQL 端口 | 3306 |

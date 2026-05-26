@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2.5.33';
+const CACHE_VERSION = '2.5.34';
 const CACHE_NAME = `jeje-webos-cache-${CACHE_VERSION}`;
 
 // 需要预缓存的核心资源

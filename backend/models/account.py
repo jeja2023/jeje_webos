@@ -23,7 +23,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(128), comment="密码哈希")
     nickname: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="昵称")
     avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="头像URL")
-    role: Mapped[str] = mapped_column(String(20), default="guest", comment="角色")
+    role: Mapped[str] = mapped_column(String(20), default="user", comment="角色")
     permissions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="权限列表")
     role_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list, comment="角色ID列表")
     settings: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict, comment="个性化设置")

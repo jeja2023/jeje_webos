@@ -156,10 +156,6 @@ class HelpPage extends Component {
                         <td><strong>user</strong></td>
                         <td>普通用户，使用已分配的功能</td>
                     </tr>
-                    <tr>
-                        <td><strong>guest</strong></td>
-                        <td>访客，仅有只读权限</td>
-                    </tr>
                 </tbody>
             </table>
             

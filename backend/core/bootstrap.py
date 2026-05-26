@@ -6,7 +6,8 @@
 import re
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.orm.attributes import flag_modified
 
 from .database import async_session
 from .config import get_settings
@@ -161,7 +162,7 @@ async def ensure_default_roles():
     确保存在基础角色模板：
     - admin: ["*"]
     - user:  []（普通用户，按需分配权限）
-    - guest: []（访客，默认用于新用户）
+    - user: []（普通用户，默认用于新用户）
     """
     async with async_session() as db:
         try:
@@ -171,8 +172,7 @@ async def ensure_default_roles():
             defaults = {
                 "admin": ["*"],         # 系统管理员（超级管理员）
                 "manager": ["*"],       # 业务管理员（业务全权，不含系统级操作）
-                "user": [],
-                "guest": []
+                "user": []
             }
             changed = False
             for name, perms in defaults.items():
@@ -190,8 +190,31 @@ async def ensure_default_roles():
                 logger.debug(f"创建默认角色模板: {name}")
             if changed:
                 await db.commit()
+                existing = await db.execute(select(UserGroup))
+                roles = {r.name: r for r in existing.scalars().all()}
+
+            user_role = roles.get("user")
+            guest_role = roles.get("guest")
+            if user_role and guest_role:
+                users_res = await db.execute(select(User))
+                migrated = False
+                for user in users_res.scalars().all():
+                    role_ids = list(user.role_ids or [])
+                    if user.role == "guest":
+                        user.role = "user"
+                        migrated = True
+                    if guest_role.id in role_ids:
+                        role_ids = [rid for rid in role_ids if rid != guest_role.id]
+                        if user_role.id not in role_ids:
+                            role_ids.append(user_role.id)
+                        user.role_ids = role_ids
+                        flag_modified(user, "role_ids")
+                        migrated = True
+                await db.execute(delete(UserGroup).where(UserGroup.id == guest_role.id))
+                await db.commit()
+                if migrated:
+                    logger.info("已将历史访客用户组迁移为普通用户组")
         except Exception as e:
             await db.rollback()
             logger.error(f"初始化默认角色模板失败: {e}", exc_info=True)
             raise
-

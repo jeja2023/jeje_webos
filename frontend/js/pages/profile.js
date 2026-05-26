@@ -207,7 +207,7 @@ class ProfilePage extends Component {
             'admin': '管理员',
             'manager': '管理员',
             'user': '普通用户',
-            'guest': '访客'
+            'guest': '普通用户'
         };
         return roles[role] || role;
     }

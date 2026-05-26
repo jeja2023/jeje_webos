@@ -424,14 +424,13 @@ async def update_role(
     - admin: 系统管理员，自动拥有 ["*"] 权限，权限不可被收紧
     - manager: 业务管理员，默认拥有 ["*"] 权限，但权限可以被收紧
     - user: 普通用户，权限由 permissions 字段决定
-    - guest: 访客，默认无权限，权限由 permissions 字段决定
     
     注意：
     - 设置为 admin/manager 会同时赋予权限 ["*"]
     - 降级时保留已有权限（可再通过权限接口收紧）
     - 如果从 admin/manager 降级，建议通过权限接口重新分配权限
     """
-    if role not in ("admin", "manager", "user", "guest"):
+    if role not in ("admin", "manager", "user"):
         raise BusinessException(ErrorCode.VALIDATION_ERROR, "角色无效")
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -439,16 +438,12 @@ async def update_role(
     if not user:
         raise NotFoundException("用户")
 
-    # 禁止修改自己为 guest
-    if user.id == current_user.user_id and role == "guest":
-        raise BusinessException(ErrorCode.INVALID_OPERATION, "不能将自身降级为访客")
-
     user.role = role
     # 设置 admin/manager 时，赋予所有权限
     # manager 的权限可以被收紧，但 admin 的权限在权限检查时始终通过
     if role in ("admin", "manager"):
         user.permissions = ["*"]
-    # 降级为 user/guest 时，保留当前权限（可通过权限接口收紧）
+    # 降级为 user 时，保留当前权限（可通过权限接口收紧）
     
     await db.commit()
     return success({
@@ -507,7 +502,7 @@ async def update_permissions(
     更新用户权限（管理员）
     
     权限设计说明：
-    - role 字段：快速标识用户类型（admin/manager/user/guest），用于权限检查的快速判断
+    - role 字段：快速标识用户类型（admin/manager/user），用于权限检查的快速判断
     - permissions 字段：实际权限列表，支持通配符（*、module.*）和细粒度权限
     - role_ids 字段：关联的用户组ID，用于权限模板和权限上限
     
@@ -699,8 +694,6 @@ async def update_permissions(
         # 其他用户组
         if group_name == "user":
             user.role = "user"
-        elif group_name == "guest":
-            user.role = "guest"
         else:
             # 自定义用户组，保持原角色或降为 user
             if user.role in ("manager", "admin"):
@@ -812,6 +805,7 @@ async def create_user(
     # 获取系统设置
     settings = await _get_settings(db)
     min_len = settings.password_min_length or 6
+    default_quota = getattr(settings, "default_user_storage_quota", 1024 * 1024 * 1024)
     
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -829,7 +823,7 @@ async def create_user(
     if not password or len(password) < min_len:
         raise BusinessException(ErrorCode.VALIDATION_ERROR, f"密码至少{min_len}个字符")
     
-    if role not in ("admin", "manager", "user", "guest"):
+    if role not in ("admin", "manager", "user"):
         raise BusinessException(ErrorCode.VALIDATION_ERROR, "无效的角色")
     
     # 检查用户名是否已存在
@@ -850,8 +844,9 @@ async def create_user(
         phone=phone,
         nickname=nickname,
         role=role,
-        is_active=True,  # 管理员创建的用户直接激活
-        permissions=["*"] if role in ("admin", "manager") else []
+        permissions=["*"] if role in ("admin", "manager") else [],
+        storage_quota=default_quota,
+        is_active=True  # 管理员创建的用户直接激活
     )
     
     db.add(user)

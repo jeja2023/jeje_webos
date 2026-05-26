@@ -82,7 +82,7 @@ class UserListPage extends Component {
                         <li><b>用户名</b>（必填）：username 或 用户名，需唯一</li>
                         <li><b>手机号</b>（必填）：phone 或 手机号，11位手机号码</li>
                         <li><b>昵称</b>（可选）：nickname 或 昵称</li>
-                        <li><b>角色</b>（可选）：role 或 角色，默认 guest</li>
+                        <li><b>角色</b>（可选）：role 或 角色，默认 user</li>
                         <li><b>是否激活</b>（可选）：is_active，默认未激活需审核</li>
                         <li style="margin-top:8px;"><i class="ri-lightbulb-line"></i> 密码将使用默认密码 <code style="background:var(--color-bg-tertiary);padding:2px 6px;border-radius:4px;">Import@123</code></li>
                         <li>已存在的用户名或手机号会被跳过</li>
@@ -377,11 +377,7 @@ class UserListPage extends Component {
         if (user.role === 'manager') return { label: '管理员', cls: 'tag-warning' };
         // 优先根据用户组判断
         const groupIds = user.role_ids || [];
-        const guestGroup = this.state.groups.find(g => g.name?.toLowerCase() === 'guest');
-        if (guestGroup && groupIds.includes(guestGroup.id)) {
-            return { label: '访客', cls: 'tag-default' };
-        }
-        if (user.role === 'guest') return { label: '访客', cls: 'tag-default' };
+        if (user.role === 'guest') return { label: '普通用户', cls: 'tag-info' };
         return { label: '普通用户', cls: 'tag-info' };
     }
 
@@ -541,7 +537,6 @@ class UserListPage extends Component {
                     <label class="form-label">角色</label>
                     <select name="role" class="form-input form-select">
                         <option value="user" selected>普通用户</option>
-                        <option value="guest">访客</option>
                         <option value="manager">管理员</option>
                         <option value="admin">系统管理员</option>
                     </select>
@@ -754,7 +749,6 @@ class UserListPage extends Component {
                                 <option value="admin" ${filters.role === 'admin' ? 'selected' : ''}>系统管理员</option>
                                 <option value="manager" ${filters.role === 'manager' ? 'selected' : ''}>管理员</option>
                                 <option value="user" ${filters.role === 'user' ? 'selected' : ''}>普通用户</option>
-                                <option value="guest" ${filters.role === 'guest' ? 'selected' : ''}>访客</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -877,7 +871,7 @@ class UserListPage extends Component {
                                                     ${user.is_active ? `
                                                         <button class="btn btn-ghost btn-sm" data-disable="${Utils.escapeHtml(String(user.id))}" title="禁用"><i class="ri-forbid-line"></i></button>
                                                     ` : `
-                                                        ${user.role !== 'guest' ? `<button class="btn btn-ghost btn-sm" data-enable="${Utils.escapeHtml(String(user.id))}" title="启用"><i class="ri-check-line"></i></button>` : ''}
+                                                        <button class="btn btn-ghost btn-sm" data-enable="${Utils.escapeHtml(String(user.id))}" title="启用"><i class="ri-check-line"></i></button>
                                                     `}
                                                     <button class="btn btn-ghost btn-sm" data-edit="${Utils.escapeHtml(String(user.id))}" title="编辑"><i class="ri-edit-line"></i></button>
                                                     ${user.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perms="${Utils.escapeHtml(String(user.id))}" title="权限"><i class="ri-shield-keyhole-line"></i></button>` : ''}
@@ -1151,7 +1145,7 @@ class UserListPage extends Component {
                     'admin': 4,
                     'manager': 3,
                     'user': 2,
-                    'guest': 1
+                    'guest': 2
                 };
 
                 // 获取用户组的优先级

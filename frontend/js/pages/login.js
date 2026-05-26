@@ -151,7 +151,8 @@ class LoginPage extends Component {
                 });
 
                 // 显示后端返回的消息
-                Toast.success(res.message || '注册成功，请等待管理员审核');
+                const needsReview = Store.get('systemSettings')?.register_requires_review !== false;
+                Toast.success(res.message || (needsReview ? '注册成功，请等待管理员审核' : '注册成功'));
                 this.setState({ mode: 'login', error: '' });
             }
         } catch (error) {

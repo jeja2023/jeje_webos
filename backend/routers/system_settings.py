@@ -36,6 +36,8 @@ def _default_settings():
         password_min_length=8,
         jwt_expire_minutes=settings.jwt_expire_minutes,
         login_fail_lock=5,
+        register_requires_review=True,
+        default_user_storage_quota=1024 * 1024 * 1024,
         jwt_rotate_enabled=settings.jwt_auto_rotate,
         rate_limit_requests=getattr(settings, "rate_limit_requests", 200),
         rate_limit_window=getattr(settings, "rate_limit_window", 60),
@@ -87,6 +89,11 @@ async def _invalidate_settings_cache():
         logger.debug("系统设置缓存已清除")
 
 
+async def _refresh_settings_cache(settings: SystemSettingInfo):
+    """Refresh cached system settings after an update."""
+    await Cache.set(CACHE_KEY_SYSTEM_SETTINGS, settings.model_dump(), expire=CACHE_TTL_SECONDS)
+
+
 @router.get("/system/settings")
 async def get_system_settings(
     db: AsyncSession = Depends(get_db),
@@ -124,7 +131,16 @@ async def update_system_settings(
         val = update_fields["password_min_length"]
         if not isinstance(val, int) or val < 4 or val > 128:
             raise BusinessException(ErrorCode.VALIDATION_ERROR, "密码最小长度必须在 4~128 之间")
+    if "register_requires_review" in update_fields:
+        val = update_fields["register_requires_review"]
+        if not isinstance(val, bool):
+            raise BusinessException(ErrorCode.VALIDATION_ERROR, "注册审核开关必须为布尔值")
     
+    if "default_user_storage_quota" in update_fields:
+        val = update_fields["default_user_storage_quota"]
+        if val is not None and (not isinstance(val, int) or val < 0):
+            raise BusinessException(ErrorCode.VALIDATION_ERROR, "默认存储配额必须大于等于0")
+
     for k, v in update_fields.items():
         new_data[k] = v
     
@@ -167,6 +183,7 @@ async def update_system_settings(
     
     # 清除缓存，下次读取时自动从数据库加载最新值
     await _invalidate_settings_cache()
+    await _refresh_settings_cache(SystemSettingInfo(**new_data))
     
     # 通过 WebSocket 广播设置变更
     try:
@@ -205,4 +222,3 @@ async def load_settings_on_startup():
             
     except Exception as e:
         logger.warning(f"⚠️  加载动态系统设置失败: {e}")
-

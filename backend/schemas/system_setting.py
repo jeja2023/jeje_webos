@@ -12,6 +12,12 @@ class SystemSettingInfo(BaseModel):
     password_min_length: int = Field(8, ge=4, le=128)
     jwt_expire_minutes: int = Field(60 * 24 * 7, ge=15, le=60 * 24 * 30)
     login_fail_lock: int = Field(5, ge=3, le=20, description="连续登录失败锁定阈值")
+    register_requires_review: bool = True
+    default_user_storage_quota: Optional[int] = Field(
+        1024 * 1024 * 1024,
+        ge=0,
+        description="新用户默认存储配额（字节），None 表示无限制"
+    )
     jwt_rotate_enabled: bool = True
     rate_limit_requests: int = Field(200, ge=1, le=10000)
     rate_limit_window: int = Field(60, ge=1, le=3600)
@@ -41,6 +47,12 @@ class SystemSettingUpdate(BaseModel):
     password_min_length: Optional[int] = Field(None, ge=4, le=128)
     jwt_expire_minutes: Optional[int] = Field(None, ge=15, le=60 * 24 * 30)
     login_fail_lock: Optional[int] = Field(None, ge=3, le=20)
+    register_requires_review: Optional[bool] = None
+    default_user_storage_quota: Optional[int] = Field(
+        None,
+        ge=0,
+        description="新用户默认存储配额（字节），None 表示无限制"
+    )
     jwt_rotate_enabled: Optional[bool] = None
     rate_limit_requests: Optional[int] = Field(None, ge=1, le=10000)
     rate_limit_window: Optional[int] = Field(None, ge=1, le=3600)

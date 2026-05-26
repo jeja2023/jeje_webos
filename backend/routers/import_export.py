@@ -305,6 +305,9 @@ async def import_users(
     from models import Role as UserGroup
     groups_result = await db.execute(select(UserGroup))
     groups = {g.name.lower(): g for g in groups_result.scalars().all()}
+    from routers.system_settings import _get_settings
+    settings = await _get_settings(db)
+    default_quota = getattr(settings, "default_user_storage_quota", 1024 * 1024 * 1024)
     
     # 导入数据
     imported_count = 0
@@ -354,10 +357,10 @@ async def import_users(
                 errors.append(f"用户 {username} 的手机号 {phone} 已存在，跳过")
                 continue
             
-            # 处理角色（默认为 guest）
-            role = item.get("role") or "guest"
-            if role not in ("admin", "manager", "user", "guest"):
-                role = "guest"
+            # 处理角色（默认为 user）
+            role = item.get("role") or "user"
+            if role not in ("admin", "manager", "user"):
+                role = "user"
             
             # 根据角色自动分配用户组和权限
             role_ids = []
@@ -388,6 +391,7 @@ async def import_users(
                 role=role,
                 permissions=permissions,
                 role_ids=role_ids,
+                storage_quota=default_quota,
                 is_active=is_active
             )
             db.add(user)
@@ -423,7 +427,7 @@ async def download_user_import_template(
     - username (必填): 用户名，3-50个字符，需唯一
     - phone (必填): 11位手机号，需唯一
     - nickname (可选): 昵称
-    - role (可选): 角色 (admin/manager/user/guest)，默认为 guest
+    - role (可选): 角色 (admin/manager/user)，默认为 user
     - is_active (可选): 是否激活 (true/false/是/否)，默认为 false（需审核）
     
     默认密码为 Import@123
@@ -451,7 +455,7 @@ async def download_user_import_template(
             "username": "【必填】用户名需唯一",
             "phone": "【必填】11位手机号需唯一",
             "nickname": "【可选】用户昵称",
-            "role": "【可选】user/guest",
+            "role": "【可选】user",
             "is_active": "【可选】是/否"
         }
     ]

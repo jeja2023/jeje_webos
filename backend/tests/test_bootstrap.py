@@ -117,6 +117,6 @@ class TestBootstrap:
         with patch("core.bootstrap.async_session", mock_factory):
             await ensure_default_roles()
             
-            # 应该创建 4 个默认角色
-            assert mock_db.add.call_count == 4
+            # 应该创建 3 个默认角色（admin/manager/user）
+            assert mock_db.add.call_count == 3
             mock_db.commit.assert_called()

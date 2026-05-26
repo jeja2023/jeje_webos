@@ -38,6 +38,7 @@ from core.events import event_bus, Events
 from core.config import get_settings
 from core.rate_limit import rate_limiter
 from models import User, SystemLog, UserGroup
+from routers.system_settings import _get_settings_from_db
 from schemas import UserCreate, UserLogin, PasswordChange, success
 from pydantic import BaseModel
 
@@ -46,11 +47,34 @@ router = APIRouter(prefix="/api/v1/auth", tags=["认证"])
 
 # 配置认证相关接口的速率限制（严格限制防暴力破解）
 rate_limiter.configure_route("/api/v1/auth/login", requests=10, window=60, block_duration=300)  # 10次/分钟，5分钟封禁
-rate_limiter.configure_route("/api/v1/auth/register", requests=5, window=60, block_duration=600)  # 5次/分钟，10分钟封禁
+rate_limiter.configure_route("/api/v1/auth/register", requests=3, window=60, block_duration=1800)  # 3次/分钟，30分钟封禁
 rate_limiter.configure_route("/api/v1/auth/password", requests=5, window=60, block_duration=300)  # 5次/分钟，5分钟封禁
 
 
 
+
+
+async def _check_register_abuse(client_ip: str, username: str, phone: str):
+    """Additional low-cost registration abuse checks for auto-approval mode."""
+    from core.cache import Cache
+
+    safe_ip = (client_ip or "unknown").replace(":", "_").replace(".", "_")
+    normalized_username = (username or "").strip().lower()
+    normalized_phone = (phone or "").strip()
+    checks = [
+        (f"auth:register:ip_day:{safe_ip}", 86400, 30, "今日注册次数过多，请稍后再试"),
+        (f"auth:register:username:{normalized_username}", 3600, 5, "该用户名尝试过于频繁，请稍后再试"),
+        (f"auth:register:phone:{normalized_phone}", 3600, 5, "该手机号尝试过于频繁，请稍后再试"),
+    ]
+
+    for key, ttl, limit, message in checks:
+        count = await Cache.increment(key)
+        if count is None:
+            continue
+        if count == 1:
+            await Cache.expire(key, ttl)
+        if count > limit:
+            raise BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, message)
 
 
 @router.post("/register")
@@ -58,6 +82,8 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     """用户注册"""
     from utils.request import get_client_ip as _get_ip
     client_ip = _get_ip(request)
+    settings = await _get_settings_from_db(db)
+    await _check_register_abuse(client_ip, data.username, data.phone)
     
     # 检查用户名是否存在
     result = await db.execute(select(User).where(User.username == data.username))
@@ -69,23 +95,26 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     if result.scalar_one_or_none():
         raise BusinessException(ErrorCode.ACCOUNT_EXISTS, "该手机号已被注册")
     
-    # 获取 guest 用户组（用于默认分配）
-    guest_group_id = None
-    guest_res = await db.execute(select(UserGroup).where(UserGroup.name == "guest"))
-    guest_group = guest_res.scalar_one_or_none()
-    if guest_group:
-        guest_group_id = guest_group.id
+    # 获取 user 用户组（新注册默认分配）
+    user_group_id = None
+    user_res = await db.execute(select(UserGroup).where(UserGroup.name == "user"))
+    user_group = user_res.scalar_one_or_none()
+    if user_group:
+        user_group_id = user_group.id
 
-    # 创建用户（默认需要审核，is_active=False，角色=guest）
+    requires_review = getattr(settings, "register_requires_review", True)
+    default_quota = getattr(settings, "default_user_storage_quota", 1024 * 1024 * 1024)
+    # 创建用户：按系统开关决定是否需要管理员审核，默认进入普通用户组
     user = User(
         username=data.username,
         password_hash=hash_password(data.password),
         phone=data.phone,
         nickname=data.nickname or data.username,
-        role="guest",
+        role="user",
         permissions=[],
-        role_ids=[guest_group_id] if guest_group_id else [],
-        is_active=False  # 新注册用户需要管理员审核
+        role_ids=[user_group_id] if user_group_id else [],
+        storage_quota=default_quota,
+        is_active=not requires_review
     )
     db.add(user)
     await db.commit()
@@ -102,7 +131,8 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     db.add(reg_log)
     await db.commit()
     
-    return success({"id": user.id}, "注册成功，请等待管理员审核")
+    message = "注册成功，请等待管理员审核" if requires_review else "注册成功"
+    return success({"id": user.id, "is_active": user.is_active}, message)
 
 
 @router.post("/login")
